@@ -15,7 +15,9 @@ from functools import cached_property
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
 from monobit.storage.magic import Sentinel
-from monobit.core import Font, FontProperties, Glyph, Raster, Label, strip_matching
+from monobit.core import (
+    Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
+)
 from monobit.base import Props
 from monobit.base import Coord, passthrough
 
@@ -394,10 +396,10 @@ def _save_yaff(fonts, outstream):
                 props[key] = font_props[key]
             else:
                 logging.debug(
-                    "Moving unrecognised property '%s' to 'custom' namespace",
-                    key
+                    "Moving unrecognised property '%s' to '%s' namespace",
+                    key, CUSTOM_NAMESPACE
                 )
-                props[f'custom.{key}'] = font_props[key]
+                props[f'{CUSTOM_NAMESPACE}.{key}'] = font_props[key]
         global_metrics = globalise_glyph_metrics(font.glyphs)
         # keep only nonzero or non-default globalised properties
         props.update({

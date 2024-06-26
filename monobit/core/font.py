@@ -27,6 +27,9 @@ from .raster import turn_method
 ###############################################################################
 # font class
 
+# namespace prefix for unrecognised properties
+CUSTOM_NAMESPACE = 'custom'
+
 # pylint: disable=redundant-keyword-arg, no-member
 class FontProperties:
     """Representation of font, including glyphs and metadata."""
