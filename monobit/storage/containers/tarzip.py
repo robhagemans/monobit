@@ -107,7 +107,8 @@ class ZipContainer(ZipTarBase):
         """List full contents of archive."""
         # construct directory entries even if they are missing from the zip
         ziplist = tuple(set(chain(*(
-            (_name, *(f'{_path}/' for _path in Path(_name).parents[:-1]))
+            # the list() is only needed for python 3.9
+            (_name, *(f'{_path}/' for _path in list(Path(_name).parents)[:-1]))
             for _name in self._archive.namelist()
         ))))
         ziplist += tuple(str(PurePosixPath(self.root) / _file.name) for _file in self._files)

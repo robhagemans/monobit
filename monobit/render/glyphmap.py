@@ -24,7 +24,8 @@ def glyph_to_image(glyph, paper, ink):
     if image_mode in ('RGB', 'RGBA'):
         # itertools grouper idiom, split in groups of 3 or 4 bytes
         iterators = [iter(data)] * len(image_mode)
-        data = tuple(zip(*iterators, strict=True))
+        # strict=True requires python 3.10 or above
+        data = tuple(zip(*iterators)) #, strict=True))
     charimg.putdata(data)
     return charimg
 
