@@ -362,6 +362,27 @@ def globalise_glyph_metrics(glyphs):
     return properties
 
 
+def transfer_properties(font_props):
+    """Transfer properties in order, fix namespaces where needed."""
+    props = {}
+    for key in FontProperties.__annotations__:
+        if key in font_props:
+            props[key] = font_props.pop(key)
+    # transfer unrecognised properties
+    # move non-namespaced unrecognised properties into custom. namespace
+    for key, value in font_props.items():
+        if '.' in key or key.startswith('_') or key.startswith('-'):
+            props[key] = font_props[key]
+        else:
+            logging.debug(
+                "Moving unrecognised property '%s' to '%s' namespace",
+                key, CUSTOM_NAMESPACE
+            )
+            props[f'{CUSTOM_NAMESPACE}.{key}'] = font_props[key]
+    return props
+
+
+
 def _save_yaff(fonts, outstream):
     """Write fonts to a plaintext stream as yaff."""
     for number, font in enumerate(fonts):
@@ -386,20 +407,7 @@ def _save_yaff(fonts, outstream):
             props['bounding_box'] = font.bounding_box
         # transfer font properties in defined order
         font_props = font.get_properties()
-        for key in FontProperties.__annotations__:
-            if key in font_props:
-                props[key] = font_props.pop(key)
-        # transfer unrecognised properties
-        # move non-namespaced unrecognised properties into custom. namespace
-        for key, value in font_props.items():
-            if '.' in key or key.startswith('_') or key.startswith('-'):
-                props[key] = font_props[key]
-            else:
-                logging.debug(
-                    "Moving unrecognised property '%s' to '%s' namespace",
-                    key, CUSTOM_NAMESPACE
-                )
-                props[f'{CUSTOM_NAMESPACE}.{key}'] = font_props[key]
+        props |= transfer_properties(font_props)
         global_metrics = globalise_glyph_metrics(font.glyphs)
         # keep only nonzero or non-default globalised properties
         props.update({
