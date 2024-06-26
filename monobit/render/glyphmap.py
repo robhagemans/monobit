@@ -10,9 +10,45 @@ try:
 except ImportError:
     Image = None
 
-from ..base import Props
+from ..base import Props, Coord
 from ..base.blocks import blockstr
 from ..core import Raster
+from ..plumbing import convert_arguments
+
+
+def glyph_to_image(glyph, paper, ink):
+    """Create image of single glyph."""
+    image_mode = _get_image_mode(paper, ink, paper)
+    charimg = Image.new(image_mode, (glyph.width, glyph.height))
+    data = glyph.as_bits(ink, paper)
+    if image_mode in ('RGB', 'RGBA'):
+        # itertools grouper idiom, split in groups of 3 or 4 bytes
+        iterators = [iter(data)] * len(image_mode)
+        data = tuple(zip(*iterators, strict=True))
+    charimg.putdata(data)
+    return charimg
+
+
+def _get_image_mode(*colourspec):
+    if not Image:
+        raise ImportError('Rendering to image requires PIL module.')
+    if len(set(type(_c) for _c in colourspec)) > 1:
+        raise TypeError(
+            'paper, ink and border must be of the same type; '
+            f'got {colourspec}'
+        )
+    paper, ink, border = colourspec
+    if paper == border == 0 and ink == 1:
+        image_mode = '1'
+    elif isinstance(paper, int):
+        image_mode = 'L'
+    elif isinstance(paper, tuple) and len(paper) == 3:
+        image_mode = 'RGB'
+    elif isinstance(paper, tuple) and len(paper) == 4:
+        image_mode = 'RGBA'
+    else:
+        raise TypeError('paper, ink and border must be either int or RGB(A) tuple')
+    return image_mode
 
 
 class GlyphMap:
@@ -66,12 +102,10 @@ class GlyphMap:
         # note that this gives the bounds across *all* sheets
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
-        canvas = Canvas.blank(max_x - min_x, max_y - min_y)
+        canvas = _Canvas.blank(max_x - min_x, max_y - min_y)
         for entry in self._map:
             if entry.sheet == sheet:
-                canvas.blit(
-                    entry.glyph, entry.x - min_x, entry.y - min_y, operator=max
-                )
+                canvas.blit(entry.glyph, entry.x - min_x, entry.y - min_y)
         return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
     def to_images(
@@ -79,31 +113,13 @@ class GlyphMap:
             transparent=True,
         ):
         """Draw images based on sheets in glyph map."""
-        if not Image:
-            raise ImportError('Rendering to image requires PIL module.')
-        if not(type(paper) == type(ink) == type(border)):
-            raise TypeError(
-                'paper, ink and border must be of the same type; '
-                f'got {type(paper)}, {type(ink)}, {type(border)}'
-            )
-        if isinstance(paper, int):
-            image_mode = 'L'
-        elif isinstance(paper, tuple) and len(paper) == 3:
-            image_mode = 'RGB'
-        else:
-            raise TypeError('paper, ink and border must be either int or RGB tuple')
+        image_mode = _get_image_mode(paper, ink, border)
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
         images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
         for entry in self._map:
-            charimg = Image.new(image_mode, (entry.glyph.width, entry.glyph.height))
-            data = entry.glyph.as_bits(ink, paper)
-            if image_mode == 'RGB':
-                # itertools grouper idiom, split in groups of 3 bytes
-                iterators = [iter(data)] * 3
-                data = tuple(zip(*iterators, strict=True))
-            charimg.putdata(data)
+            charimg = glyph_to_image(entry.glyph, paper, ink)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
@@ -134,7 +150,7 @@ class GlyphMap:
     def as_text(
             self, *,
             ink='@', paper='.', border='.',
-            start='', end='',
+            start='', end='\n',
             sheet=0,
         ):
         """Convert glyph map to text."""
@@ -143,13 +159,14 @@ class GlyphMap:
             ink=ink, paper=paper, border=border, start=start, end=end
         )
 
-    def as_blocks(self, resolution=(2, 2)):
+    @convert_arguments
+    def as_blocks(self, resolution:Coord=(2, 2)):
         """Convert glyph map to a string of quadrant block characters."""
         canvas = self.to_canvas(sheet=0)
         return canvas.as_blocks(resolution)
 
 
-class Canvas(Raster):
+class _Canvas(Raster):
     """Mutable raster for glyph maps."""
 
     _inner = list
@@ -165,7 +182,7 @@ class Canvas(Raster):
         # setting 0 and 1 will make Raster init leave the input alone
         return cls(canvas, _0=0, _1=1)
 
-    def blit(self, raster, grid_x, grid_y, operator):
+    def blit(self, raster, grid_x, grid_y):
         """
         Draw a matrix onto a canvas
         (leaving exising ink in place, depending on operator).
@@ -178,13 +195,13 @@ class Canvas(Raster):
                 row = self._pixels[self.height - (grid_y + work_y) - 1]
                 for work_x, ink in enumerate(matrix[raster.height - work_y - 1]):
                     if 0 <= grid_x + work_x < self.width:
-                        row[grid_x + work_x] = operator(ink, row[grid_x + work_x])
+                        row[grid_x + work_x] = max(ink, row[grid_x + work_x])
         return self
 
     def as_text(
             self, *,
             ink='@', paper='.', border='.',
-            start='', end=''
+            start='', end='\n'
         ):
         """Convert raster to text."""
         if not self.height:

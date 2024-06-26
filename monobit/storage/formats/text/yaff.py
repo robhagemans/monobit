@@ -14,7 +14,10 @@ from functools import cached_property
 
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError
-from monobit.core import Font, FontProperties, Glyph, Raster, Label, strip_matching
+from monobit.storage.magic import Sentinel
+from monobit.core import (
+    Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
+)
 from monobit.base import Props
 from monobit.base import Coord, passthrough
 
@@ -27,8 +30,12 @@ from .draw import format_comment
 
 @loaders.register(
     name='yaff',
-    # maybe, if multi-section
-    magic=(b'---',),
+    magic=(
+        # maybe, if multi-section
+        b'---',
+        # maybe
+        Sentinel(b'yaff:'),
+    ),
     patterns=('*.yaff', '*.yaffs',),
 )
 def load_yaff(instream, allow_empty:bool=False):
@@ -155,7 +162,10 @@ def _read_yaff(text_stream):
         elif isinstance(block, (YaffProperty, YaffPropertyOrGlyph)):
             key = block.get_key()
             value = block.get_value()
-            _set_property(font_props, key, value)
+            if key == 'yaff':
+                logging.debug("yaff signature found, version %s", value)
+            else:
+                _set_property(font_props, key, value)
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -224,6 +234,8 @@ class YaffGlyph(YaffMultiline):
                 break
         else:
             i += 1
+        if not i:
+            raise FileFormatError('Malformed yaff file: expected glyph definition.')
         raster = lines[:i]
         properties = {}
         key = None
@@ -350,6 +362,27 @@ def globalise_glyph_metrics(glyphs):
     return properties
 
 
+def transfer_properties(font_props):
+    """Transfer properties in order, fix namespaces where needed."""
+    props = {}
+    for key in FontProperties.__annotations__:
+        if key in font_props:
+            props[key] = font_props.pop(key)
+    # transfer unrecognised properties
+    # move non-namespaced unrecognised properties into custom. namespace
+    for key, value in font_props.items():
+        if '.' in key or key.startswith('_') or key.startswith('-'):
+            props[key] = font_props[key]
+        else:
+            logging.debug(
+                "Moving unrecognised property '%s' to '%s' namespace",
+                key, CUSTOM_NAMESPACE
+            )
+            props[f'{CUSTOM_NAMESPACE}.{key}'] = font_props[key]
+    return props
+
+
+
 def _save_yaff(fonts, outstream):
     """Write fonts to a plaintext stream as yaff."""
     for number, font in enumerate(fonts):
@@ -372,7 +405,9 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
-        props.update(font.get_properties())
+        # transfer font properties in defined order
+        font_props = font.get_properties()
+        props |= transfer_properties(font_props)
         global_metrics = globalise_glyph_metrics(font.glyphs)
         # keep only nonzero or non-default globalised properties
         props.update({

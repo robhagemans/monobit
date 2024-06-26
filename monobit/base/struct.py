@@ -1,7 +1,7 @@
 """
 monobit.base.struct - binary structures
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -11,8 +11,10 @@ import logging
 from types import SimpleNamespace
 from functools import partial
 
+from .basetypes import FileFormatError
 
-class StructError(ValueError):
+
+class StructError(FileFormatError):
     pass
 
 

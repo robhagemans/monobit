@@ -693,7 +693,7 @@ class Glyph(HasProps):
         """
         if not any((left, bottom, right, top)):
             return self
-        # reduce raster
+        # expand raster
         pixels = self._pixels.expand(left, bottom, right, top)
         new_metrics = {}
         if adjust_metrics:

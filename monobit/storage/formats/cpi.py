@@ -10,7 +10,7 @@ import string
 import logging
 from itertools import accumulate
 
-from monobit.base import Props
+from monobit.base import Props, passthrough
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le, sizeof
 from monobit.storage import loaders, savers, FileFormatError, Magic
@@ -33,10 +33,14 @@ _ID_DR = b'DRFONT '
     ),
     patterns=('*.cpi',),
 )
-def load_cpi(instream):
-    """Load character-cell fonts from DOS Codepage Information (.CPI) file."""
+def load_cpi(instream, pointer_type:str='auto'):
+    """
+    Load character-cell fonts from DOS Codepage Information (.CPI) file.
+
+    pointer_type: `segmented` for segment:offset, `linear` for 32-bit, `auto` (default) determine based on value
+    """
     data = instream.read()
-    fonts = _parse_cpi(data)
+    fonts = _parse_cpi(data, pointer_type=pointer_type)
     return fonts
 
 
@@ -50,10 +54,14 @@ def load_cpi(instream):
         Magic.offset(6) + b'\1\0' + Magic.offset(20) + b'\2\0',
     ),
 )
-def load_cp(instream):
-    """Load character-cell fonts from Linux Keyboard Codepage (.CP) file."""
+def load_cp(instream, pointer_type:str='auto'):
+    """
+    Load character-cell fonts from Linux Keyboard Codepage (.CP) file.
+
+    pointer_type: `segmented` for segment:offset, `linear` for 32-bit, `auto` (default) determine based on value
+    """
     data = instream.read()
-    fonts, _ = _parse_cp(data, 0, standalone=True)
+    fonts, _ = _parse_cp(data, 0, standalone=True, pointer_type=pointer_type)
     return fonts
 
 
@@ -156,9 +164,41 @@ def drdos_ext_header(num_fonts_per_codepage=0):
     )
 
 
-def _parse_cpi(data):
+# from https://www.seasip.info/DOS/CPI/cpi.html
+# > At least one pathological CPI file is known to exist where values above 64k
+# > are stored as segment:offset rather than a 32-bit pointer (eg: 0x1000abcd
+# > rather than 0x0001abcd). The file EGA.ICE[10] is even worse - all its
+# >  pointers, even those below 64k, are stored as apparently arbitrary
+# > segment:offset combinations.
+
+# if the address is larger than this, assume it's seg:offset rather than linear
+_POINTER_CUTOFF = 0x40000
+
+def _get_pointer_converter(pointer_type):
+    """Returns converter to take pointers from seg:ofs to linear, if needed."""
+    def _conv_segofs(value):
+        segment, offset = divmod(value, 0x10000)
+        return segment*0x10 + offset
+
+    pointer_type = pointer_type[:1].lower()
+    if pointer_type == 'l':
+        # 32-bit linear pointer
+        return passthrough
+    elif pointer_type == 's':
+        return _conv_segofs
+    else:
+        def _conv_pointer(value):
+            if value > _POINTER_CUTOFF:
+                return _conv_segofs(value)
+            return value
+        return _conv_pointer
+
+
+def _parse_cpi(data, *, pointer_type):
     """Parse CPI data."""
+    pointer = _get_pointer_converter(pointer_type)
     cpi_header = _CPI_HEADER.from_bytes(data)
+    logging.debug('cpi header: %s', cpi_header)
     if not (
             (cpi_header.id0 == 0xff and cpi_header.id == _ID_MS)
             or (cpi_header.id0 == 0xff and cpi_header.id == _ID_NT)
@@ -175,20 +215,23 @@ def _parse_cpi(data):
         )
     else:
         drdos_effh = None
-    fih = _FONT_INFO_HEADER.from_bytes(data, cpi_header.fih_offset)
-    cpeh_offset = cpi_header.fih_offset + _FONT_INFO_HEADER.size
+    fih = _FONT_INFO_HEADER.from_bytes(data, pointer(cpi_header.fih_offset))
+    cpeh_offset = pointer(cpi_header.fih_offset) + _FONT_INFO_HEADER.size
     # run through the linked list and parse fonts
     fonts = []
     for cp in range(fih.num_codepages):
         try:
             cp_fonts, cpeh_offset = _parse_cp(
-                data, cpeh_offset, cpi_header.id, drdos_effh=drdos_effh
+                data, cpeh_offset, cpi_header.id, drdos_effh=drdos_effh,
+                pointer_type=pointer_type
             )
         except FileFormatError as e:
             logging.error('Could not parse font in CPI file: %s', e)
         else:
             fonts += cp_fonts
     if cpeh_offset:
+        # NOTE we're always setting the final cpeh offset ourselves,
+        # using linear notation. So no pointer() here
         notice = data[cpeh_offset:].decode('ascii', 'ignore')
         notice = '\n'.join(notice.splitlines())
         notice = ''.join(
@@ -277,8 +320,11 @@ _CHARACTER_INDEX_TABLE = le.Struct(
     FontIndex=le.int16 * 256,
 )
 
-def _read_cp_header(data, start_offset, format, standalone):
-    cpeh = _CODEPAGE_ENTRY_HEADER.from_bytes(data, start_offset)
+
+def _read_cp_header(data, start_offset, format, standalone, *, pointer_type):
+    pointer = _get_pointer_converter(pointer_type)
+    cpeh = _CODEPAGE_ENTRY_HEADER.from_bytes(data, pointer(start_offset))
+    logging.debug('cpeh: %s', cpeh)
     if cpeh.device_type == _DT_PRINTER:
         # printer fonts apparently hold printer-specific escape sequences
         raise FileFormatError(
@@ -294,7 +340,9 @@ def _read_cp_header(data, start_offset, format, standalone):
         # on a standalone codepage (kbd .cp file), ignore the offset
         # CPIH follows immediately after CPEH
         cpeh.cpih_offset = start_offset + _CODEPAGE_ENTRY_HEADER.size
-    cpih = _CODEPAGE_INFO_HEADER.from_bytes(data, cpeh.cpih_offset)
+    logging.debug('%x %x', cpeh.cpih_offset, pointer(cpeh.cpih_offset))
+    cpih = _CODEPAGE_INFO_HEADER.from_bytes(data, pointer(cpeh.cpih_offset))
+    logging.debug('cpih: %s', cpih)
     if cpih.version == 0:
         # https://www.seasip.info/DOS/CPI/cpi.html
         # > LCD.CPI from Toshiba MS-DOS 3.30 sets this field to 0, which should be treated as 1.
@@ -306,11 +354,18 @@ def _read_cp_header(data, start_offset, format, standalone):
     return cpeh, cpih
 
 
-def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=False):
+def _parse_cp(
+        data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=False,
+        *, pointer_type
+    ):
     """Parse a .CP codepage."""
-    cpeh, cpih = _read_cp_header(data, cpeh_offset, header_id, standalone)
+    logging.debug('parse cp')
+    pointer = _get_pointer_converter(pointer_type)
+    cpeh, cpih = _read_cp_header(
+        data, cpeh_offset, header_id, standalone, pointer_type=pointer_type
+    )
     # offset to the first font header
-    fh_offset = cpeh.cpih_offset + _CODEPAGE_INFO_HEADER.size
+    fh_offset = pointer(cpeh.cpih_offset) + _CODEPAGE_INFO_HEADER.size
     # glyph index table for drfont
     # for ms formats, the glyphs are in simple order
     if cpih.version == _CP_DRFONT:
@@ -345,6 +400,7 @@ def _parse_cp(data, cpeh_offset, header_id=_ID_MS, drdos_effh=None, standalone=F
         cpeh.next_cpeh_offset = bm_offset + (max(glyph_index[:fh.num_chars])+1) * bytesize
     return fonts, cpeh.next_cpeh_offset
 
+
 def _read_glyphs(data, bm_offset, bytesize, width, glyph_index):
     """Read bitmaps."""
     offsets = (
@@ -356,6 +412,7 @@ def _read_glyphs(data, bm_offset, bytesize, width, glyph_index):
         for _offs in offsets
     )
     return cells
+
 
 def _convert_from_cp(cells, cpeh, fh, header_id):
     """Convert to monobit font."""
@@ -411,6 +468,7 @@ def _make_fit(fonts, codepage_prefix):
         sizes &= cp_sizes
     fonts = tuple(_font for _font in fonts if _font.cell_size in sizes)
     return fonts
+
 
 def _make_one_fit(font, codepage_prefix):
     """Check if font fits in format and reshape as necessary."""
@@ -494,6 +552,7 @@ def _convert_to_cp(fonts):
             cp_output.bitmaps.append(bitmap)
     return output, notice
 
+
 def _write_cp(outstream, cpo, format=_ID_MS, start_offset=0):
     """Write the representation of a FONT codepage to file."""
     # format params
@@ -517,6 +576,7 @@ def _write_cp(outstream, cpo, format=_ID_MS, start_offset=0):
         outstream.write(_bmp)
     return cpo.cpeh.next_cpeh_offset
 
+
 def _write_dr_cp_header(outstream, cpo, start_offset, last):
     """Write the representation of a DRFONT codepage header to file."""
     # format params
@@ -538,6 +598,7 @@ def _write_dr_cp_header(outstream, cpo, start_offset, last):
     outstream.write(bytes(cit))
     # in DRFONT, bitmaps follow after all headers
     return cpo.cpeh.next_cpeh_offset
+
 
 def _save_ms_cpi(fonts, outstream, format, codepage_prefix):
     """Save to FONT or FONT.NT CPI file"""

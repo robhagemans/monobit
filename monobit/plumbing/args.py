@@ -1,7 +1,7 @@
 """
 monobit.plumbing.args - script argument parser
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -79,6 +79,11 @@ def parse_subcommands(operations, global_options):
                 # positional argument
                 ns = command_ns
                 ns.args.append(arg)
+            # rename argument provided with dashes
+            ns.kwargs = {
+                _kwarg.replace('-', '_'): _value
+                for _kwarg, _value in ns.kwargs.items()
+            }
         command_args.append(command_ns)
     return command_args, global_ns
 

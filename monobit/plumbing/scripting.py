@@ -1,7 +1,7 @@
 """
 monobit.plumbing.scripting - scripting utilities
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -35,7 +35,7 @@ def scriptable(
     Decorator to register operation for scripting.
 
     Decorated functions get
-    - a script_args record for argument parsing
+    - script arguments in annotations
     - automatic type conversion
     - recorded history
 
@@ -76,11 +76,6 @@ def check_arguments(func):
 
     @wraps(func)
     def _checked_func(*args, **kwargs):
-        # rename argument provided with dashes
-        kwargs = {
-            _kwarg.replace('-', '_'): _value
-            for _kwarg, _value in kwargs.items()
-        }
         for kwarg in kwargs:
             if kwarg not in func.__annotations__:
                 raise ArgumentError(func.__name__, kwarg) from None
@@ -109,3 +104,20 @@ def convert_arguments(func):
         return result
 
     return _converted_func
+
+
+def take_arguments(func, argdict):
+    """Subset the argument dictionary with args that occur in registered script args."""
+    _types = {
+        _key: func.__annotations__.get(_key, Any)
+        for _key in func.__annotations__
+    }
+    converters = {
+        _key: CONVERTERS.get(_type, _type)
+        for _key, _type in _types.items()
+    }
+    kwargs = {
+        _key: converters[_key](_value) for _key, _value in argdict.items()
+        if _key in converters
+    }
+    return kwargs

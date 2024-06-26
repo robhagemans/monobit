@@ -13,7 +13,10 @@ from io import BytesIO
 from monobit.base.struct import big_endian as be
 from monobit.storage import FileFormatError
 from monobit.storage import Stream
+from monobit.storage import loaders, savers
 from monobit.base import Props, reverse_dict
+from monobit.base import NOT_SET
+from monobit.encoding import EncodingName
 from monobit.core import Pack
 
 from ..common import MAC_ENCODING, STYLE_MAP
@@ -23,6 +26,31 @@ from .nfnt import (
     subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header
 )
 from .fond import extract_fond, convert_fond, create_fond
+
+
+@loaders.register(
+    name='mac',
+    # the magic is optional - a 'maybe magic'
+    magic=(b'\0\0\1\0\0',),
+    patterns=('*.dfont', '*.suit', '*.rsrc',),
+)
+def load_mac_dfont(instream):
+    """Load font from MacOS resource fork or data-fork resource."""
+    data = instream.read()
+    return parse_resource_fork(data)
+
+
+@savers.register(linked=load_mac_dfont)
+def save_mac_dfont(
+        fonts, outstream, resource_type:str='NFNT', family_id:int=None,
+        resample_encoding:EncodingName=NOT_SET,
+    ):
+    """Save font to MacOS resource fork or data-fork resource.
+
+    resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
+    resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
+    """
+    save_dfont(fonts, outstream, resource_type, resample_encoding)
 
 
 ##############################################################################

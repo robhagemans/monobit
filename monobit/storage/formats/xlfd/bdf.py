@@ -14,7 +14,7 @@ from monobit.core import Font, Raster, Glyph, Char, Codepoint, Tag
 from monobit.encoding import encodings, NotFoundError
 
 from .xlfd import parse_xlfd_properties, create_xlfd_properties
-from .xlfd import create_xlfd_name, CUSTOM_PROP
+from .xlfd import create_xlfd_name, CUSTOM_NAMESPACE
 
 
 @loaders.register(
@@ -174,7 +174,7 @@ def _convert_from_bdf(bdf_glyphs, bdf_props, x_props):
     for key, value in bdf_unparsed.items():
         logging.warning(f'Unrecognised BDF property {key}={value}')
         # preserve as custom property namespace, avoid clashes with yaff props
-        properties[f'{CUSTOM_PROP}.{key}'] = value
+        properties[f'{CUSTOM_NAMESPACE}.{key}'] = value
     for key, value in xlfd_props.items():
         if key in properties and properties[key] != value:
             logging.debug(

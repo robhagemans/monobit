@@ -79,6 +79,7 @@ def to_label(value):
         pass
     return Tag(value.strip())
 
+
 def _convert_char_element(element):
     """Convert character label element to char if possible."""
     # string delimited by single quotes denotes a character or sequence
@@ -109,8 +110,9 @@ class Char(str, Label):
     def __new__(cls, value=''):
         """Convert char or char sequence to char label."""
         if isinstance(value, Char):
+            return value
             # we don't want the redefined str() to be called on __new__ below
-            value = super().__str__(value)
+            # value = super().__str__(value)
         elif value is None:
             value = ''
         elif not isinstance(value, str):
@@ -143,7 +145,9 @@ class Codepoint(bytes, Label):
 
     def __new__(cls, value=b''):
         """Convert to codepoint label if possible."""
-        if isinstance(value, Codepoint) or isinstance(value, bytes):
+        if isinstance(value, Codepoint):
+            return value
+        elif isinstance(value, bytes):
             pass
         elif value is None:
             value = b''
@@ -171,7 +175,7 @@ class Codepoint(bytes, Label):
 
     def __str__(self):
         """Convert codepoint label to str for yaff."""
-        return '0x' + self.hex()
+        return '0x' + self.hex() if self else ''
 
     def __lt__(self, other):
         """Order like ints."""
@@ -256,6 +260,17 @@ def to_labels(set_str):
     """Convert from iterable or string representation to label generator."""
     return to_range(set_str, to_label, label_range)
 
+
+def to_chars(set_str):
+    return to_range(set_str, Char, label_range)
+
+def to_tags(set_str):
+    return to_range(set_str, Tag, label_range)
+
+def to_codepoints(set_str):
+    return to_range(set_str, Codepoint, label_range)
+
+
 def to_range(set_str, converter=to_int, inclusive_range=lambda _l, _u: range(_l, _u+1)):
     """Convert from iterable or string representation to generator."""
     if not isinstance(set_str, str):
@@ -286,6 +301,6 @@ def label_range(lower, upper):
 
 
 CONVERTERS[tuple[Label]] = to_labels
-CONVERTERS[tuple[Char]] = to_labels
-CONVERTERS[tuple[Codepoint]] = to_labels
-CONVERTERS[tuple[Tag]] = to_labels
+CONVERTERS[tuple[Char]] = to_chars
+CONVERTERS[tuple[Codepoint]] = to_codepoints
+CONVERTERS[tuple[Tag]] = to_tags

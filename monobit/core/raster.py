@@ -417,6 +417,26 @@ class Raster:
         )
         return concatenated
 
+    @classmethod
+    def stack(cls, *column_of_rasters):
+        """Concatenate rasters top-to-bottom."""
+        if not column_of_rasters:
+            return cls()
+        # drop empties
+        row_of_rasters = tuple(
+            _raster for _raster in column_of_rasters if _raster.height
+        )
+        widths = set(_raster.width for _raster in column_of_rasters)
+        if len(widths) > 1:
+            raise ValueError('Rasters must be of same width.')
+        matrices = (_raster.as_matrix() for _raster in column_of_rasters)
+        concatenated = cls(
+            _row
+            for _matrix in matrices
+            for _row in _matrix
+        )
+        return concatenated
+
 
     ##########################################################################
     # transformations

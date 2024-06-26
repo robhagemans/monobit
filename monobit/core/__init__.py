@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from .pack import Pack
-from .font import Font, FontProperties
+from .font import Font, FontProperties, CUSTOM_NAMESPACE
 from .glyph import Glyph, KernTable
 from .raster import Raster
 from .labels import Label, Char, Codepoint, Tag, strip_matching

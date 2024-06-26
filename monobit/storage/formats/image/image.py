@@ -16,10 +16,14 @@ except ImportError:
 
 from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
-from monobit.storage import loaders, savers
+from monobit.storage.base import (
+    loaders, savers, container_loaders, container_savers
+)
 from monobit.storage import FileFormatError
-from monobit.core import Font, Glyph
-from monobit.render import chart, grid_traverser
+from monobit.core import Font, Glyph, Codepoint
+from monobit.render import (
+    prepare_for_grid_map, grid_map, grid_traverser, glyph_to_image
+)
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -33,6 +37,15 @@ DEFAULT_IMAGE_FORMAT = 'png'
 # brightest         use brightest colour, by sum of RGB values
 # darkest           use darkest colour, by sum of RGB values
 # top-left          use colour of top-left pixel in first cell
+
+
+def loop_load(location, load_func):
+    """Loop over per-glyph files in container."""
+    glyphs = []
+    for name in sorted(location.iter_sub('')):
+        with location.open(name, mode='r') as stream:
+            glyphs.append(load_func(stream))
+    return glyphs
 
 
 if Image:
@@ -111,7 +124,7 @@ if Image:
                 raise ValueError('Either cell or table size must be specified.')
             cell_y = ceildiv(img.height, table_size.y*scale.y) - padding.y
         if not cell_x or not cell_y:
-            raise ValueError('Empty cell. Please sepcify larger cell size or smaller table size.')
+            raise ValueError('Empty cell. Please specify larger cell size or smaller table size.')
         logging.debug('Cell size %dx%d', cell_x, cell_y)
         cell = Coord(cell_x, cell_y)
         # work out image geometry
@@ -145,7 +158,7 @@ if Image:
         if len(colourset) > 3:
             raise FileFormatError(
                 f'More than three colours ({len(colourset)}) found in image. '
-                'Colour, greyscale and antialiased glyphs are not supported. '
+                'Colour, greyscale and antialiased glyphs are not supported.'
             )
         # three-colour mode - proportional width encoded with border colour
         elif len(colourset) == 3:
@@ -153,7 +166,15 @@ if Image:
             border = _get_border_colour(img, cell, margin, padding)
             # clip off border colour from cells
             crops = tuple(_crop_border(_crop, border) for _crop in crops)
+        return convert_crops_to_font(
+            enumerate(crops, first_codepoint), background, keep_empty
+        )
+
+    def convert_crops_to_font(enumerated_crops, background, keep_empty):
+        """Convert list of glyph images to font."""
+        enumerated_crops = tuple(enumerated_crops)
         # get pixels
+        _, crops = tuple(zip(*enumerated_crops))
         paper, ink = _identify_colours(crops, background)
         # convert to glyphs, set codepoints
         glyphs = tuple(
@@ -161,7 +182,7 @@ if Image:
                 tuple(_crop.getdata()), stride=_crop.width, _0=paper, _1=ink,
                 codepoint=_index,
             )
-            for _index, _crop in enumerate(crops, first_codepoint)
+            for _index, _crop in enumerated_crops
         )
         # drop empty glyphs
         if not keep_empty:
@@ -184,11 +205,16 @@ if Image:
         # check that cells are monochrome
         crops = tuple(tuple(_crop.getdata()) for _crop in crops)
         colourset = set.union(*(set(_data) for _data in crops))
-        if len(colourset) > 2:
+        if not colourset:
+            raise FileFormatError('Empty image.')
+        elif len(colourset) > 2:
             raise FileFormatError(
                 f'More than two colours ({len(colourset)}) found in image. '
                 'Colour, greyscale and antialiased glyphs are not supported. '
             )
+        elif len(colourset) == 1:
+            # only one colour - interpret as paper
+            return colourset.pop(), None
         colourfreq = Counter(_c for _data in crops for _c in _data)
         brightness = sorted((sum(_v for _v in _c), _c) for _c in colourset)
         if background == 'most-common':
@@ -224,19 +250,77 @@ if Image:
                 break
         return image
 
+    @container_loaders.register(name='imageset')
+    def load_imageset(
+            location,
+            background:str='most-common',
+            prefix:str='',
+            base:int=16,
+        ):
+        """
+        Extract font from per-glyph images.
+
+        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
+        prefix: part of the image file name before the codepoint
+        base: radix of numerals in file name representing code point
+        """
+        def _load_image_glyph(stream):
+            crop = Image.open(stream)
+            crop = crop.convert('RGB')
+            cp = int(Path(stream.name).stem.removeprefix(prefix), base)
+            # return codepoint, image pair to be parsed by convert_crops_to_font
+            return (cp, crop)
+
+        crops = loop_load(location, _load_image_glyph)
+        return convert_crops_to_font(crops, background, keep_empty=True)
+
+
+    @container_savers.register(linked=load_imageset)
+    def save_imageset(
+            fonts, location,
+            prefix:str='',
+            image_format:str='png',
+            paper:RGB=(0, 0, 0),
+            ink:RGB=(255, 255, 255),
+        ):
+        """
+        Export font to per-glyph images.
+
+        prefix: part of the image file name before the codepoint
+        image_format: image file format (default: png)
+        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        ink: foreground colour R,G,B 0--255 (default: 255,255,255)
+        """
+        font, *more = fonts
+        if more:
+            raise FileFormatError('Can only save one font to image set.')
+        width = len(f'{int(max(font.get_codepoints())):x}')
+        for glyph in font.glyphs:
+            cp = f'{int(glyph.codepoint):x}'.zfill(width)
+            name = f'{prefix}{cp}.{image_format}'
+            with location.open(name, 'w') as imgfile:
+                img = glyph_to_image(glyph, paper, ink)
+                try:
+                    img.save(imgfile, format=image_format or Path(outfile).suffix[1:])
+                except (KeyError, ValueError, TypeError):
+                    img.save(imgfile, format=DEFAULT_IMAGE_FORMAT)
+
+
+
+    ###########################################################################
 
     @savers.register(linked=load_image)
     def save_image(
             fonts, outfile, *,
-            image_format:str='',
+            image_format:str='png',
             columns:int=32,
             margin:Coord=Coord(0, 0),
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             order:str='row-major',
             direction:Coord=Coord(1, -1),
-            border:RGB=(32, 32, 32), paper:RGB=(0, 0, 0), ink:RGB=(255, 255, 255),
-            codepoint_range:Coord=None,
+            border:RGB=RGB(32, 32, 32), paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255),
+            codepoint_range:tuple[Codepoint]=None,
         ):
         """
         Export font to grid-based image.
@@ -251,13 +335,14 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
-        codepoint_range: first and last codepoint to include (includes bounds and undefined codepoints; default: all codepoints)
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
         """
         if len(fonts) > 1:
             raise FileFormatError('Can only save one font to image file.')
         font = fonts[0]
+        font = prepare_for_grid_map(font, columns, codepoint_range)
         font = font.stretch(*scale)
-        glyph_map = chart(font, columns, margin, padding, order, direction, codepoint_range)
+        glyph_map = grid_map(font, columns, margin, padding, order, direction)
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink, transparent=False
         )

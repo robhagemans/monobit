@@ -10,7 +10,8 @@ from pathlib import Path
 from fnmatch import fnmatch
 import re
 
-from .streams import get_name, DirectoryStream
+from .streams import get_name
+from ..base import FileFormatError
 
 
 # number of bytes to read to check if something looks like text
@@ -28,10 +29,6 @@ _NON_TEXT_BYTES = (
 )
 
 
-class FileFormatError(Exception):
-    """Incorrect file format."""
-
-
 def maybe_text(instream):
     """
     Check if a binary input stream looks a bit like it might hold utf-8 text.
@@ -47,7 +44,8 @@ def maybe_text(instream):
         return None
     if set(sample) & set(_NON_TEXT_BYTES):
         logging.debug(
-            'Found unexpected bytes: identifying unknown input stream as binary.'
+            'Found non-text-like bytes: '
+            f"input stream '{instream.name}' is likely binary."
         )
         return False
     try:
@@ -56,22 +54,25 @@ def maybe_text(instream):
         # need to ensure we ignore errors due to clipping inside a utf-8 sequence
         if err.reason != 'unexpected end of data':
             logging.debug(
-                'Found non-UTF8: identifying unknown input stream as binary.'
+                'Found non-UTF8 sequences:'
+                f"input stream '{instream.name}' is likely binary."
             )
             return False
-    logging.debug('Tentatively identifying unknown input stream as text.')
+    logging.debug(
+        f"input stream '{instream.name}' is likely text."
+    )
     return True
 
 
 class MagicRegistry:
     """Retrieve file converters through magic sequences and name patterns."""
 
-    def __init__(self, func_name, default_text='', default_binary=''):
+    def __init__(self, default_text='', default_binary=''):
         """Set up registry."""
         self._magic = []
         self._patterns = []
+        self._templates = []
         self._names = {}
-        self._func_name = func_name
         self._default_text = default_text
         self._default_binary = default_binary
 
@@ -84,9 +85,6 @@ class MagicRegistry:
         Get loader/saver function for this format.
         file must be a Stream or None
         """
-        if isinstance(file, DirectoryStream):
-            # directory 'stream'
-            return (self._names['dir'],)
         if format:
             try:
                 converter = (self._names[format],)
@@ -117,26 +115,51 @@ class MagicRegistry:
                     pass
         return converter
 
-    def register(
-            self, name='', magic=(), patterns=(),
-            funcwrapper=lambda _:_
-        ):
-        """Decorator to register converter for file type."""
+    def register(self, name='', magic=(), patterns=(), template=(), linked=None):
+        """
+        Decorator to register converter for file type.
+
+        name: unique name of the format
+        magic: magic sequences for this format (no effect for savers)
+        patterns: filename patterns for this format
+        template: template to generate filenames
+        linked: earlier registration to take information from
+        """
 
         def _decorator(converter):
-            if not name:
-                raise ValueError('No registration name given')
-            if name in self._names:
-                raise ValueError(f'Registration name `{name}` already in use for {self._names[name]}')
-            if not isinstance(magic, (list, tuple)):
-                raise TypeError('Registration parameter `magic` must be list or tuple')
-            if not isinstance(patterns, (list, tuple)):
-                raise TypeError('Registration parameter `patterns` must be list or tuple')
+
             converter.format = name
-            self._names[name] = converter
+            converter.magic = magic
+            converter.patterns = patterns
+            converter.template = template
+            if linked:
+                # take from linked registration
+                converter.format = converter.format or linked.format
+                converter.magic = converter.magic or linked.magic
+                converter.patterns = converter.patterns or linked.patterns
+                converter.template = converter.template or linked.template
+
+            if not converter.format:
+                raise ValueError('No registration name given')
+            if converter.format in self._names:
+                raise ValueError(
+                    f'Registration name `{converter.format}` '
+                    f'already in use for {self._names[converter.format]}'
+                )
+            if not isinstance(magic, (list, tuple)):
+                raise TypeError(
+                    'Registration parameter `magic` must be list or tuple'
+                )
+            if not isinstance(patterns, (list, tuple)):
+                raise TypeError(
+                    'Registration parameter `patterns` must be list or tuple'
+                )
+            self._names[converter.format] = converter
             ## magic signatures
-            for sequence in magic:
-                self._magic.append((Magic(sequence), converter))
+            for sequence in converter.magic:
+                if isinstance(sequence, bytes):
+                    sequence = Magic(sequence)
+                self._magic.append((sequence, converter))
             # sort the magic registry long to short to manage conflicts
             self._magic = list(sorted(
                     self._magic,
@@ -144,9 +167,13 @@ class MagicRegistry:
                 )
             )
             ## glob patterns
-            for pattern in (*patterns, f'*.{name}'):
+            # glob_patterns = tuple(set(
+            #     (*converter.patterns, f'*.{converter.format}')
+            # ))
+            for pattern in converter.patterns:
                 self._patterns.append((to_pattern(pattern), converter))
-            return funcwrapper(converter)
+            self._templates.append((converter.template, converter))
+            return converter
 
         return _decorator
 
@@ -178,6 +205,9 @@ class MagicRegistry:
 
     def get_template(self, format):
         """Get output filename template for format."""
+        for template, converter in self._templates:
+            if template and converter.format == format:
+                return template
         for pattern, converter in self._patterns:
             if converter.format == format:
                 template = pattern.generate('{name}')
@@ -187,7 +217,7 @@ class MagicRegistry:
 
 
 ###############################################################################
-# file format matchers
+# file signature matchers
 
 class Magic:
     """Match file contents against bytes mask."""
@@ -197,7 +227,7 @@ class Magic:
         if isinstance(value, Magic):
             self._mask = tuple(
                 (_item[0] + offset, _item[1])
-                for _item in  value._mask
+                for _item in value._mask
             )
         elif not isinstance(value, bytes):
             raise TypeError(
@@ -243,6 +273,31 @@ class Magic:
         """Represent offset in concatenated mask."""
         return cls(value=b'', offset=offset)
 
+
+class Sentinel:
+    """Match file contents against start-of-line sentinel."""
+
+    def __init__(self, value, length=256):
+        self._sentinel = value
+        self._peek_length = length
+
+    def __len__(self):
+        return len(self._sentinel)
+
+    def fits(self, instream):
+        """Binary stream has the sentinel."""
+        if instream.mode == 'w':
+            return False
+        buffer = instream.peek(self._peek_length)
+        return (
+            buffer.startswith(self._sentinel)
+            or b'\n' + self._sentinel in buffer
+            or b'\r' + self._sentinel in buffer
+        )
+
+
+###############################################################################
+# filename pattern matchers
 
 class Pattern:
     """Match filename against pattern."""

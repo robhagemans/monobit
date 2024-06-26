@@ -16,6 +16,7 @@ from monobit.base.binary import bytes_to_bits
 from monobit.base.struct import bitfield, big_endian as be, little_endian as le
 from monobit.core import Font, Glyph, KernTable, Char, Raster
 from monobit.storage import FileFormatError
+from monobit.storage import loaders, savers
 from monobit.encoding import EncodingName
 from monobit.base import Props
 from monobit.base import NOT_SET
@@ -24,11 +25,59 @@ from .fond import fixed_to_float
 from ..common import MAC_ENCODING
 
 
+@loaders.register(
+    name='nfnt',
+    # \x90\0 is not a formal signature, but the most common set of FONT_TYPE flags
+    # the \x80 sigs are LISA compressed NFNTs
+    magic=(b'\x90\0', b'\xb0\0', b'\x90\x80', b'\xb0\x80'),
+    patterns=('*.f',),
+)
+def load_nfnt(instream, offset:int=0):
+    """
+    Load font from a bare FONT/NFNT resource.
+
+    offset: starting offset in bytes of the NFNT record in the file (default 0)
+    """
+    instream.seek(offset)
+    data = instream.read()
+    fontdata = extract_nfnt(data, 0)
+    return convert_nfnt({}, **fontdata)
+
+
+@savers.register(linked=load_nfnt)
+def save_nfnt(
+        fonts, outstream,
+        create_width_table:bool=True,
+        create_height_table:bool=False,
+        resample_encoding:EncodingName=NOT_SET,
+    ):
+    """
+    Write font to a bare FONT/NFNT resource.
+
+    create_width_table: include a fractional glyph-width table in the resource (default: True)
+    create_height_table: include an image-height table in the resource (default: False)
+    resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
+    """
+    if len(fonts) > 1:
+        logging.warning('NFNT resource can only store one font.')
+    font = fonts[0]
+    data, _, _ = create_nfnt(
+        font, endian='big', ndescent_is_high=True,
+        create_width_table=create_width_table,
+        create_height_table=create_height_table,
+        resample_encoding=resample_encoding,
+    )
+    outstream.write(data)
+
+
+##############################################################################
+
 # normalised names so we can test with `in`
 MAC_ENCODING_NAMES = tuple(str(EncodingName(_name) for _name in MAC_ENCODING))
 
 # tag used for the 'missing' glyph
 MISSING_TAG = 'missing'
+
 
 ##############################################################################
 # NFNT/FONT resource
@@ -193,14 +242,17 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     HeightEntry = height_entry_struct(base)
     # font type override (for IIgs)
     if font_type is not None:
-        data = font_type + data[2:]
+        data = font_type + data[offset+2:]
+        offset = 0
     # this is not in the header documentation but is is mentioned here:
     # https://www.kreativekorp.com/swdownload/lisa/AppleLisaFontFormat.pdf
-    compressed = data[offset+1] & 0x80
+    compressed = endian == 'big' and data[offset+1] & 0x80
     if compressed:
+        logging.debug('Uncompressing NFNT resource')
         data = _uncompress_nfnt(data, offset)
         offset = 0
     fontrec = NFNTHeader.from_bytes(data, offset)
+    logging.debug('FONT/NFNT header: %s', fontrec)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         logging.debug('Empty FONT/NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)
