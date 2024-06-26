@@ -179,6 +179,7 @@ class FontProperties:
     # conversion metadata
     converter: str = ''
     source_name: str = ''
+    source_path: str = ''
     source_format: str = ''
     history: str = ''
 
