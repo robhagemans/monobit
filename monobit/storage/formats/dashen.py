@@ -13,7 +13,7 @@ from monobit.base import Props
 from monobit.storage import loaders, savers, Magic, FileFormatError
 from monobit.core import Font, Glyph, Raster
 
-from .pcl import load_hppcl
+from .softfont.pcl import load_hppcl
 
 
 @loaders.register(
