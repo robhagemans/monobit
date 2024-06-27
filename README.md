@@ -136,7 +136,7 @@ Supported bitmap formats
 | PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... |&check;|  |
 | Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|       |
 | PDF chart [R]         | `pdf`      | `.pdf`                      |       |&check;|
-| PILfont [P]           \ `pilfont`  | `.pil` + `.pbm`             |&check;|&check;|
+| PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;|
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       |
 | Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       |
@@ -159,9 +159,9 @@ Supported bitmap formats
 | monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;|
 
 
-[P] - requires **PIL**  
-[R] - requires **reportlab**  
-[F] - requires **fontTools**
+[P] requires **PIL**  
+[R] requires **reportlab**  
+[F] requires **fontTools**
 
 
 [*] Identifying raw binary files
@@ -276,10 +276,11 @@ archive, compression and encoding formats:
 | Pascal coded binary   | `pascal` | `.pas`                  |&check;|&check;|
 | BASIC coded binary    | `basic`  | `.bas`                  |&check;|&check;|
 
-[A] requires **libarchive**
-[C] requires **acefile**
-[Y] requires **python3-yenc**
-[Z] requires **ncompress**
+
+[A] requires **libarchive**  
+[C] requires **acefile**  
+[Y] requires **python3-yenc**  
+[Z] requires **ncompress**  
 
 _Note that many of these currently require reading the full archive into memory, which may
 not be practicable with e.g ISO9660 or WARC files which can hold whole filesystems._
