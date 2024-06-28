@@ -980,6 +980,16 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 96)
 
+    # GRASP / PCPaint old format
+
+    def test_export_grasp(self):
+        """Test exporting GRASP files."""
+        fnt_file = self.temp_path / '4x6.set'
+        monobit.save(self.fixed4x6, fnt_file, format='grasp')
+        font, *_ = monobit.load(fnt_file, format='grasp')
+        self.assertEqual(len(font.glyphs), 128)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # COM loaders
 
     def test_import_frapt(self):

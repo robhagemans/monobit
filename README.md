@@ -152,7 +152,7 @@ Character-cell formats
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       |
 | Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       |
-| PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|       |
+| PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;|
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;|
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;|
 | Extended Hex          | `pcbasic`  | `.hex`                      |&check;|&check;|

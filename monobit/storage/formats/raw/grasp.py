@@ -11,7 +11,9 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
-from .raw import load_bitmap
+from .raw import load_bitmap, save_bitmap
+
+from ..limitations import ensure_single, ensure_charcell
 
 
 ###############################################################################
@@ -64,10 +66,39 @@ def load_grasp_old(instream):
     font = load_bitmap(
         instream,
         width=header.width, height=header.height,
-        # note that often glyphsize != ceildiv(height*width, 8)
-        strike_bytes=header.glyphsize // header.height,
+        # strike_bytes=header.glyphsize // header.height,
+        strike_count=1,
         count=header.count,
         first_codepoint=header.first,
     )
     font = font.modify(source_format='Old-format GRASP font')
     return font
+
+
+@savers.register(linked=load_grasp_old)
+def save_grasp_old(fonts, outstream):
+    """
+    Save to GRASP/PCPaint character-cell "old format" font.
+    This is not the FONTRIX-based proportional "new format".
+    """
+    font = ensure_single(fonts)
+    # get contiguous codepoint range
+    font = font.label(codepoint_from=font.encoding)
+    min_char = int(min(font.get_codepoints()))
+    max_char = int(max(font.get_codepoints()))
+    max_char = min(0x7f, max_char)
+    font = font.resample(
+        codepoints=range(min_char, max_char+1),
+        missing=font.get_glyph(' '),
+    )
+    font = ensure_charcell(font)
+    header = _GRASP_HEADER(
+        count=max_char - min_char + 1,
+        first=min_char,
+        width=font.cell_size.x,
+        height=font.cell_size.y,
+        glyphsize=ceildiv(font.cell_size.x, 8) * font.cell_size.y,
+    )
+    header.filesize = header.count * header.glyphsize + _GRASP_HEADER.size
+    outstream.write(bytes(header))
+    save_bitmap(outstream, font)
