@@ -17,8 +17,6 @@ from .raw import load_bitmap
 
 ###############################################################################
 # font formats claiming descent from/compatibility with FONTRIX for IBM
-# I have only found FONTRIX and its fonts for the Apple II
-# and they are similar but incompatible (header offsets are different)
 
 # ChiWriter format
 # v3 http://jphdupre.chez-alice.fr/chiwriter/technic3/gcw3v01.html#pagev09
@@ -27,8 +25,6 @@ from .raw import load_bitmap
 
 # GRASP 'new' format
 # http://fileformats.archiveteam.org/wiki/GRASP_font
-
-# PC-PAINT
 
 # the header definition below is based on the ChiWriter v4 reference above
 _HEADER = le.Struct(
