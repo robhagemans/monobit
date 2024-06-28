@@ -42,7 +42,7 @@ def save_fontx(fonts, outstream, endianness:str='little'):
         raise FileFormatError('Can only save one font to fontx file.')
     font, = fonts
     endian = endianness[0].lower()
-    props, blocks,glyphs = _convert_to_fontx(font)
+    props, blocks, glyphs = _convert_to_fontx(font)
     logging.info('fontx properties:')
     for line in str(props).splitlines():
         logging.info('    ' + line)
