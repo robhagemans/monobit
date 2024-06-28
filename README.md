@@ -95,6 +95,7 @@ Proportional-spacing formats
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;|
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;|
+| FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.sft` `.pft` `.eft` ... |&check;|  |
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|       |
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       |
 | DosStart!             | `dosstart` | `.dsf`                      |&check;|       |
@@ -116,7 +117,6 @@ Proportional-spacing formats
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;|
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
-| FONTRIX (PC), PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... |&check;|  |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;|
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       |
@@ -151,6 +151,7 @@ Character-cell formats
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       |
 | Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       |
+| PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|       |
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;|
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;|
 | Extended Hex          | `pcbasic`  | `.hex`                      |&check;|&check;|
