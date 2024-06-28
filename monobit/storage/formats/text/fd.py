@@ -35,7 +35,7 @@ FD_CHAR_KEYS = {
 }
 
 @loaders.register(
-    name='mkwinfon',
+    name='mkwinfont',
     patterns=('*.fd',),
 )
 def load_mkwinfon(instream):
