@@ -112,6 +112,7 @@ Proportional-spacing formats
 | Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;|
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;|
+| MouseGraphics Toolkit | `mgtk`     |                             |&check;|       |
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|       |
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows)|
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;|
