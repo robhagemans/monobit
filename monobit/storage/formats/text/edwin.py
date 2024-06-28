@@ -25,19 +25,22 @@ from monobit.base.binary import ceildiv
 def load_edwin(instream):
     """Load font from EDWIN .FNT file."""
     header = instream.text.readline().strip()
-    first_cp, last_cp = (int(_v) for _v in header.split())
-    rasters = []
-    for line in instream.text:
-        elems = line.strip().split()
-        label = elems[0].rstrip(':')
-        height, width, *elems = (int(_v) for _v in elems[1:])
-        bytestr = b''.join(
-            _i.to_bytes(ceildiv(width, 8), 'big')
-            for _i in elems
-        )
-        rasters.append((label, Raster.from_bytes(
-            bytestr, height=height, width=width, align='right',
-        ).mirror()))
+    try:
+        first_cp, last_cp = (int(_v) for _v in header.split())
+        rasters = []
+        for line in instream.text:
+            elems = line.strip().split()
+            label = elems[0].rstrip(':')
+            height, width, *elems = (int(_v) for _v in elems[1:])
+            bytestr = b''.join(
+                _i.to_bytes(ceildiv(width, 8), 'big')
+                for _i in elems
+            )
+            rasters.append((label, Raster.from_bytes(
+                bytestr, height=height, width=width, align='right',
+            ).mirror()))
+    except ValueError as e:
+        raise FileFormatError('Not a well-formed EDWIN file.') from e
     max_height = max(_r.height for _, _r in rasters)
     glyphs = (
         Glyph(
