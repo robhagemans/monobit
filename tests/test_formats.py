@@ -917,6 +917,15 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 256)
 
+    def test_export_optiks(self):
+        """Test exporting Optiks PCR files."""
+        file = self.temp_path / '4x6.pcr'
+        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
+        monobit.save(font, file)
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # Write On!
 
     def test_import_writeon(self):

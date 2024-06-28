@@ -11,7 +11,7 @@ from monobit.base import Coord
 def ensure_single(fonts):
     font, *more = fonts
     if more:
-        raise FileFormatError('Can only save one font per file in this format.')
+        raise FileFormatError('This format can only store one font per file.')
     return font
 
 

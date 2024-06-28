@@ -159,7 +159,7 @@ Character-cell formats
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;|
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
-| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|       |
+| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;|
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check; (version 2) |
 | PSF2AMS PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
 | PSF2TXT               | `psf2txt`  | `.txt`                      |&check;|       |
