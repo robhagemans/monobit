@@ -15,6 +15,7 @@ from monobit.storage import FileFormatError, Regex, Glob
 from monobit.core import Font, Glyph, Raster
 from monobit.base import Coord, NOT_SET
 
+from ..limitations import ensure_charcell
 
 # patterns
 
@@ -228,7 +229,7 @@ def _extract_cells(
 
 
 def _extract_data_and_geometry_bit_aligned(
-            instream, width, height, count, padding, strike_count, strike_bytes,
+        instream, width, height, count, padding, strike_count, strike_bytes,
     ):
     if padding != 0:
         raise ValueError(
@@ -275,11 +276,7 @@ def save_bitmap(
     """
     Save character-cell font to binary bitmap.
     """
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'This format only supports character-cell fonts.'
-        )
-    font = font.equalise_horizontal()
+    font = ensure_charcell(font)
     # get pixel rasters
     rasters = (_g.pixels for _g in font.glyphs)
     if align == 'bit':

@@ -12,6 +12,7 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
+from ..limitations import ensure_single
 
 
 ###############################################################################
@@ -70,13 +71,7 @@ def load_xbin(instream):
 @savers.register(linked=load_xbin)
 def save_xbin(fonts, outstream):
     """Save an XBIN font."""
-    font, *extra = fonts
-    if extra:
-        raise ValueError('Can only save a single font to an XBIN file')
-    if font.spacing != 'character-cell' or font.cell_size.x != 8:
-        raise ValueError(
-            'This format can only store 8xN character-cell fonts'
-        )
+    font = ensure_single(fonts)
     codepoints = font.get_codepoints()
     if not codepoints:
         raise ValueError('No storable codepoints found in font.')

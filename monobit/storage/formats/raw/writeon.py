@@ -12,6 +12,7 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
+from ..limitations import ensure_single
 
 
 ###############################################################################
@@ -74,13 +75,7 @@ def load_writeon(instream):
 @savers.register(linked=load_writeon)
 def save_writeon(fonts, outstream):
     """Save a Write On! font."""
-    font, *extra = fonts
-    if extra:
-        raise ValueError('Can only save a single font to a Write On! file')
-    if font.spacing != 'character-cell':
-        raise ValueError(
-            'This format can only store character-cell fonts'
-        )
+    font = ensure_single(fonts)
     # get contiguous range of glyphs
     min_char = int(min(font.get_codepoints()))
     max_char = int(max(font.get_codepoints()))

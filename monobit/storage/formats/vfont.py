@@ -13,6 +13,8 @@ from monobit.base import Props
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
+from .limitations import ensure_single
+
 
 @loaders.register(
     name='vfont',
@@ -36,9 +38,7 @@ def load_vfont(instream, first_codepoint:int=0):
 @savers.register(linked=load_vfont)
 def save_vfont(fonts, outstream, endianness:str='little'):
     """Save font to vfont file."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to vfont file.')
-    font, = fonts
+    font = ensure_single(fonts)
     endian = endianness[0].lower()
     vfont_props, vfont_glyphs = _convert_to_vfont(font)
     logging.info('vfont properties:')

@@ -14,6 +14,8 @@ from monobit.core import Glyph, Raster, Font
 from monobit.base import Props, reverse_dict
 from monobit.encoding import EncodingName
 
+from ..limitations import ensure_single
+
 
 @loaders.register(
     name='hppcl',
@@ -45,9 +47,7 @@ def save_hppcl(fonts, outstream, orientation:str='portrait'):
 
     orientation: 'portrait' or 'landscape'
     """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to HP PCL file.')
-    font = fonts[0]
+    font = ensure_single(fonts)
     if orientation.lower().startswith('p'):
         orientation = 0
     elif orientation.lower().startswith('l'):

@@ -17,6 +17,8 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph, Raster
 from monobit.base.binary import ceildiv
 
+from ..limitations import ensure_single
+
 
 @loaders.register(
     name='edwin',
@@ -55,9 +57,7 @@ def load_edwin(instream):
 @savers.register(linked=load_edwin)
 def save_edwin(fonts, outstream):
     outstream = outstream.text
-    font, *too_many = fonts
-    if too_many:
-        raise FileFormatError('Can only save one font to EDWIN file.')
+    font = ensure_single(fonts)
     # we can only store ascii range
     font = font.subset(tuple(chr(_b) for _b in range(0x80)))
     min_cp, max_cp = int(min(font.get_codepoints())), int(max(font.get_codepoints()))

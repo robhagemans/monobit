@@ -19,6 +19,8 @@ from monobit.base.binary import ceildiv
 from monobit.base import Coord
 from monobit.base import reverse_dict
 
+from ..limitations import ensure_single, ensure_charcell
+
 
 @loaders.register(
     name='dec',
@@ -37,16 +39,8 @@ def load_dec_drcs(instream):
 @savers.register(linked=load_dec_drcs)
 def save_dec_drcs(fonts, outstream, *, use_8bit:bool=False):
     """Write font to a DEC DRCS file."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to dec-drcs file.')
-        # check if font is fixed-width and fixed-height
-    font, = fonts
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'This format only supports character-cell fonts.'
-        )
-    # fill out bearings and equalise heights
-    font = font.equalise_horizontal()
+    font = ensure_single(fonts)
+    font = ensure_charcell(font)
     # upper size limits vary by device, not enforced.
     # lower sizes would conflict with vt200 size values
     if font.raster_size.x < 5 or font.raster_size.y < 1:

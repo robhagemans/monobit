@@ -11,6 +11,8 @@ from monobit.base import Props
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
+from ..limitations import ensure_single, ensure_charcell
+
 
 _BBC_VDU = b'\x17'
 
@@ -28,9 +30,7 @@ def load_bbc(instream):
 @savers.register(linked=load_bbc)
 def save_bbc(fonts, outstream):
     """Save font to bbc file."""
-    if len(fonts) > 1:
-        raise FileFormatError('BBC font file can only store one font.')
-    font, = fonts
+    font = ensure_single(fonts)
     _write_bbc(outstream, font)
 
 
@@ -60,14 +60,9 @@ def _read_bbc(instream):
 
 def _write_bbc(outstream, font):
     """Write bbc glyphs to binary file."""
-    if font.cell_size != (8, 8):
-        raise FileFormatError(
-            'BBC font file can only store an 8x8 character-cell font.'
-        )
     font = font.label(codepoint_from=font.encoding)
     font = font.subset(_BBC_RANGE)
-    # expand into horizontal bearings, align vertically
-    font = font.equalise_horizontal()
+    font = ensure_charcell(font, cell_size=(8, 8))
     glyph_bytes = tuple(
         b''.join((_BBC_VDU, bytes(_g.codepoint), _g.as_bytes()))
         for _g in font.glyphs

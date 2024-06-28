@@ -13,6 +13,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
+from .limitations import ensure_single, ensure_charcell
 
 
 # PSF formats:
@@ -139,16 +140,8 @@ def _read_unicode_table(instream, separator, startseq, encoding):
 @savers.register(linked=load_psf)
 def save_psf(fonts, outstream):
     """Save character-cell font to PC Screen Font version 2 (.PSF) file."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to PSF file.')
-    font = fonts[0]
-    # check if font is fixed-width and fixed-height
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'This format only supports character-cell fonts.'
-        )
-    # fill out character cell including shifts, bearings and line height
-    font = font.equalise_horizontal()
+    font = ensure_single(fonts)
+    font = ensure_charcell(font)
     # ensure unicode labels exist if encoding is defined
     font = font.label()
     glyphs = font.glyphs

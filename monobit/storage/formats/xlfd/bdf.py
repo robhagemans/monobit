@@ -13,6 +13,7 @@ from monobit.base import Coord
 from monobit.core import Font, Raster, Glyph, Char, Codepoint, Tag
 from monobit.encoding import encodings, NotFoundError
 
+from ..limitations import ensure_single
 from .xlfd import parse_xlfd_properties, create_xlfd_properties
 from .xlfd import create_xlfd_name, CUSTOM_NAMESPACE
 
@@ -50,10 +51,7 @@ def save_bdf(fonts, outstream):
     """
     Save font to Adobe Glyph Bitmap Distribution Format (BDF) file.
     """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to BDF file.')
-    # ensure codepoint values are set
-    font = fonts[0]
+    font = ensure_single(fonts)
     try:
         font = font.label(codepoint_from=font.encoding)
     except NotFoundError:

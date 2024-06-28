@@ -14,6 +14,8 @@ from monobit.core import Font, Glyph, Tag, Char
 from monobit.encoding import encodings
 from monobit.base.binary import align
 
+from ..limitations import ensure_single
+
 
 ##############################################################################
 # hexdraw
@@ -52,9 +54,8 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-', unicode:bool=True
     paper: character to use for uninked/background pixels (default -)
     unicode: use unicode char labels for codepoints (default: True)
     """
-    if len(fonts) > 1:
-        raise FileFormatError("Can only save one font to hexdraw file.")
-    _save_draw(fonts[0], outstream.text, ink=ink, paper=paper, unicode=unicode)
+    font = ensure_single(fonts)
+    _save_draw(font, outstream.text, ink=ink, paper=paper, unicode=unicode)
 
 
 # read hexdraw file

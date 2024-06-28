@@ -15,6 +15,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
+from .limitations import ensure_single, ensure_charcell
 
 
 _FONTX_MAGIC = b'FONTX2'
@@ -38,9 +39,7 @@ def load_fontx(instream):
 @savers.register(linked=load_fontx)
 def save_fontx(fonts, outstream, endianness:str='little'):
     """Save font to fontx file."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to fontx file.')
-    font, = fonts
+    font = ensure_single(fonts)
     endian = endianness[0].lower()
     props, blocks, glyphs = _convert_to_fontx(font)
     logging.info('fontx properties:')
@@ -137,12 +136,7 @@ def _convert_from_fontx(fontx_props):
 
 def _convert_to_fontx(font):
     """Convert monobit font to fontx properties and glyphs."""
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'FONTX2 format can only store character-cell fonts.'
-        )
-    # inflate glyphs to fill positive horizontal bearings
-    font = font.equalise_horizontal()
+    font = ensure_charcell(font)
     blank = Glyph.blank(*font.raster_size)
     props = Props(
         code_flag=len(max(font.get_codepoints())) > 1,

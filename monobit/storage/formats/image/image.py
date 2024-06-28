@@ -25,6 +25,8 @@ from monobit.render import (
     prepare_for_grid_map, grid_map, grid_traverser, glyph_to_image
 )
 
+from ..limitations import ensure_single
+
 
 DEFAULT_IMAGE_FORMAT = 'png'
 
@@ -291,9 +293,7 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
-        font, *more = fonts
-        if more:
-            raise FileFormatError('Can only save one font to image set.')
+        font = ensure_single(fonts)
         width = len(f'{int(max(font.get_codepoints())):x}')
         for glyph in font.glyphs:
             cp = f'{int(glyph.codepoint):x}'.zfill(width)
@@ -337,9 +337,7 @@ if Image:
         border: border colour R,G,B 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
         """
-        if len(fonts) > 1:
-            raise FileFormatError('Can only save one font to image file.')
-        font = fonts[0]
+        font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
         font = font.stretch(*scale)
         glyph_map = grid_map(font, columns, margin, padding, order, direction)
