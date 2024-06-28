@@ -206,9 +206,9 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
-    def test_import_mkwinfon(self):
+    def test_import_mkwinfont(self):
         """Test importing mkwinfont .fd files."""
-        font, *_ = monobit.load(self.font_path / '6x13.fd', format='mkwinfon')
+        font, *_ = monobit.load(self.font_path / '6x13.fd', format='mkwinfont')
         self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 

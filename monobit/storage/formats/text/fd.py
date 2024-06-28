@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.fd - mkwinfon .fd format
+monobit.storage.formats.text.fd - mkwinfont .fd format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -38,14 +38,14 @@ FD_CHAR_KEYS = {
     name='mkwinfont',
     patterns=('*.fd',),
 )
-def load_mkwinfon(instream):
-    """Load font from a mkwinfon .fd file."""
-    properties, glyphs, comments = _read_mkwinfon(instream.text)
-    return _convert_mkwinfon(properties, glyphs, comments)
+def load_mkwinfont(instream):
+    """Load font from a mkwinfont .fd file."""
+    properties, glyphs, comments = _read_mkwinfont(instream.text)
+    return _convert_mkwinfont(properties, glyphs, comments)
 
 
-def _read_mkwinfon(text_stream):
-    """Read a mkwinfon file into a properties object."""
+def _read_mkwinfont(text_stream):
+    """Read a mkwinfont file into a properties object."""
     # this will be a list of tuples
     font_props = {_k: None for _k in FD_KEYS}
     font_comments = []
@@ -83,7 +83,7 @@ def _read_mkwinfon(text_stream):
     font_comments.extend(current_comment)
     return Props(**font_props), glyphs, font_comments
 
-def _convert_mkwinfon(props, glyphs, comments):
+def _convert_mkwinfont(props, glyphs, comments):
     mb_props = dict(
         name=props.facename,
         copyright=props.copyright,
