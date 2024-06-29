@@ -27,6 +27,7 @@ from ...common import (
     WEIGHT_MAP, WEIGHT_REVERSE_MAP,
     CHARSET_MAP, CHARSET_REVERSE_MAP
 )
+from ...limitations import make_contiguous
 
 
 FNT_MAGIC_1 = b'\0\1'
@@ -458,18 +459,11 @@ def _convert_win_props(data, win_props):
 ##############################################################################
 # windows .FNT writer
 
-
 def _make_contiguous(font):
     """Fill out a contiguous range of glyphs."""
-    # x_width should equal average width
-    # this is 0 for proportional fonts
-    pix_width = font.cell_size.x
-    # blank glyph of standard size
-    blank = Glyph.blank(pix_width, font.raster_size.y)
-    # char table; we need a contiguous range between the min and max codepoints
-    min_range = max(int(min(font.get_codepoints())), min(_FNT_RANGE))
-    max_range = min(int(max(font.get_codepoints())), max(_FNT_RANGE))
-    font = font.resample(codepoints=range(min_range, max_range+1), missing=blank)
+    # this width is 0 for proportional fonts
+    blank = Glyph.blank(font.cell_size.x, font.raster_size.y)
+    font = make_contiguous(font, supported_range=_FNT_RANGE, missing=blank)
     # add the guaranteed-blank glyph
     font = font.modify(font.glyphs + (blank,))
     return font

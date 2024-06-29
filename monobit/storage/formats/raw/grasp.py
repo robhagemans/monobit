@@ -13,7 +13,7 @@ from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 from .raw import load_bitmap, save_bitmap
 
-from ..limitations import ensure_single, ensure_charcell
+from ..limitations import ensure_single, ensure_charcell, make_contiguous
 
 
 ###############################################################################
@@ -82,19 +82,14 @@ def save_grasp_old(fonts, outstream):
     This is not the FONTRIX-based proportional "new format".
     """
     font = ensure_single(fonts)
-    # get contiguous codepoint range
-    font = font.label(codepoint_from=font.encoding)
-    min_char = int(min(font.get_codepoints()))
-    max_char = int(max(font.get_codepoints()))
-    max_char = min(0x7f, max_char)
-    font = font.resample(
-        codepoints=range(min_char, max_char+1),
-        missing=font.get_glyph(' '),
-    )
     font = ensure_charcell(font)
+    # header.count is a 1-byte field which limits us to 255 glyphs
+    font = make_contiguous(
+        font, supported_range=range(255), missing=font.get_glyph(' ')
+    )
     header = _GRASP_HEADER(
-        count=max_char - min_char + 1,
-        first=min_char,
+        count=len(font.glyphs),
+        first=int(min(font.get_codepoints())),
         width=font.cell_size.x,
         height=font.cell_size.y,
         glyphsize=ceildiv(font.cell_size.x, 8) * font.cell_size.y,

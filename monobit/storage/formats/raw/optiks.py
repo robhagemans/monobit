@@ -12,7 +12,7 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
-from ..limitations import ensure_single, ensure_charcell
+from ..limitations import ensure_single, ensure_charcell, make_contiguous
 
 
 ###############################################################################
@@ -54,13 +54,14 @@ def load_pcr(instream):
 def save_pcr(fonts, outstream):
     """Save an OPTIKS .PCR font."""
     font = ensure_single(fonts)
-    font = font.label(codepoint_from=font.encoding)
-    font = font.resample(codepoints=range(256), missing=font.get_glyph(' '))
     font = ensure_charcell(font)
     if font.cell_size.x != 8:
         raise FileFormatError(
             'This format only supports 8xN character-cell fonts.'
         )
+    font = make_contiguous(
+        font, full_range=range(256), missing=font.get_glyph(' ')
+    )
     header = _PCR_HEADER(
         magic=_PCR_MAGIC_2,
         height=font.cell_size.y,

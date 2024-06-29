@@ -12,7 +12,7 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
-from ..limitations import ensure_single
+from ..limitations import ensure_single, ensure_charcell, make_contiguous
 
 
 ###############################################################################
@@ -76,13 +76,9 @@ def load_writeon(instream):
 def save_writeon(fonts, outstream):
     """Save a Write On! font."""
     font = ensure_single(fonts)
-    # get contiguous range of glyphs
-    min_char = int(min(font.get_codepoints()))
-    max_char = int(max(font.get_codepoints()))
-    max_char = min(0x7f, max_char)
-    font = font.resample(
-        codepoints=range(min_char, max_char+1),
-        missing=font.get_glyph(' '),
+    font = ensure_charcell(font)
+    font = make_contiguous(
+        font, supported_range=range(128), missing=font.get_glyph(' ')
     )
     header = _WOF_HEADER(
         magic=le.uint8.array(4)(*_WOF_MAGIC),
@@ -91,8 +87,8 @@ def save_writeon(fonts, outstream):
         char_height=font.cell_size.y,
         # > Tile Height must always be 14 for Write On!
         tile_height=14,
-        min_char=min_char,
-        max_char=max_char,
+        min_char=int(min(font.get_codepoints())),
+        max_char=int(max(font.get_codepoints())),
         maybe_width_too=font.cell_size.x,
     )
     outstream.write(bytes(header))
