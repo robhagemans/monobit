@@ -59,9 +59,7 @@ def save_pcr(fonts, outstream):
         raise FileFormatError(
             'This format only supports 8xN character-cell fonts.'
         )
-    font = make_contiguous(
-        font, full_range=range(256), missing=font.get_glyph(' ')
-    )
+    font = make_contiguous(font, full_range=range(256), missing='space')
     header = _PCR_HEADER(
         magic=_PCR_MAGIC_2,
         height=font.cell_size.y,

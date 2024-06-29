@@ -883,6 +883,8 @@ class Font(HasProps):
                 if label == self.word_boundary:
                     return self.get_space_glyph()
                 return self.get_default_glyph()
+            if missing == 'space':
+                return self.get_space_glyph()
             if missing == 'empty':
                 return self.get_empty_glyph()
             if missing is None or isinstance(missing, Glyph):
@@ -931,6 +933,11 @@ class Font(HasProps):
     @cache
     def get_space_glyph(self):
         """Get blank glyph with advance width defined by word-space property."""
+        if self.glyphs and self.spacing in ('character-cell', 'multi-cell'):
+            return Glyph.blank(
+                width=self.cell_size.x, height=self.cell_size.y,
+                shift_up=self.glyphs[0].shift_up
+            )
         # pylint: disable=invalid-unary-operand-type
         return Glyph.blank(
             width=self.word_space, height=self.pixel_size,

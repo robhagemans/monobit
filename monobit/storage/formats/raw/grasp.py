@@ -84,9 +84,7 @@ def save_grasp_old(fonts, outstream):
     font = ensure_single(fonts)
     font = ensure_charcell(font)
     # header.count is a 1-byte field which limits us to 255 glyphs
-    font = make_contiguous(
-        font, supported_range=range(255), missing=font.get_glyph(' ')
-    )
+    font = make_contiguous(font, supported_range=range(255), missing='space')
     header = _GRASP_HEADER(
         count=len(font.glyphs),
         first=int(min(font.get_codepoints())),

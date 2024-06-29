@@ -77,9 +77,7 @@ def save_writeon(fonts, outstream):
     """Save a Write On! font."""
     font = ensure_single(fonts)
     font = ensure_charcell(font)
-    font = make_contiguous(
-        font, supported_range=range(128), missing=font.get_glyph(' ')
-    )
+    font = make_contiguous(font, supported_range=range(128), missing='space')
     header = _WOF_HEADER(
         magic=le.uint8.array(4)(*_WOF_MAGIC),
         size=_WOF_HEADER.size,
