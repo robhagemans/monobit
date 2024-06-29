@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.dosstart - DosStart! format
+monobit.storage.formats.text.dosstart - DosStart! format
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,7 +11,7 @@ from io import StringIO
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph, Raster, StrokePath
-from .limitations import ensure_single, make_contiguous
+from ..limitations import ensure_single, make_contiguous
 
 
 _DOSSTART_SIG = 'DosStartFont'
