@@ -160,7 +160,7 @@ Character-cell formats
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
 | Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;|
-| PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check; (version 2) |
+| PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check;|
 | psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
 | psf2txt               | `psf2txt`  | `.txt`                      |&check;|&check;|
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;|

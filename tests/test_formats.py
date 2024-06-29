@@ -251,6 +251,14 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_psf1(self):
+        """Test exporting psf version 1 files."""
+        psf_file = self.temp_path / '8x16.psf'
+        monobit.save(self.fixed8x16, psf_file, version=1, count=256)
+        font, *_ = monobit.load(psf_file)
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+
     # FZX
 
     def test_import_fzx(self):
