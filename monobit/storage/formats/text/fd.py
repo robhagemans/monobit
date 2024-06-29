@@ -12,8 +12,11 @@ from monobit.storage.base import loaders, savers
 from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph
 from monobit.base import Props
-from ..common import WEIGHT_MAP, CHARSET_MAP
+from ..common import (
+    WEIGHT_MAP, CHARSET_MAP, WEIGHT_REVERSE_MAP, CHARSET_REVERSE_MAP
+)
 from .draw import DrawComment, NonEmptyBlock, Empty, Unparsed, iter_blocks
+from ..limitations import ensure_single
 
 
 FD_KEYS = {
@@ -43,6 +46,16 @@ def load_mkwinfont(instream):
     properties, glyphs, comments = _read_mkwinfont(instream.text)
     return _convert_mkwinfont(properties, glyphs, comments)
 
+
+@savers.register(linked=load_mkwinfont)
+def save_mkwinfont(fonts, outstream):
+    font = ensure_single(fonts)
+    return _write_mkwinfont(font, outstream)
+
+
+
+###############################################################################
+# reader
 
 def _read_mkwinfont(text_stream):
     """Read a mkwinfont file into a properties object."""
@@ -90,6 +103,11 @@ def _convert_mkwinfont(props, glyphs, comments):
         descent=int(props.height)-int(props.ascent),
         ascent=props.ascent,
         point_size=props.pointsize,
+        slant='italic' if props.italic else '',
+        decoration=''.join((
+            ('strikethrough ' if props.strikeout else ''),
+            ('underline ' if props.underline else ''),
+        )).strip(),
         weight=(
             None if props.weight is None else
             WEIGHT_MAP.get(round(max(100, min(900, int(props.weight))), -2), None)
@@ -131,3 +149,63 @@ class MWFProperties(NonEmptyBlock):
 
 class MWFComment(DrawComment):
     pass
+
+
+###############################################################################
+# writer
+
+def _write_mkwinfont(font, outstream):
+    outstream = outstream.text
+    font = font.equalise_horizontal()
+    props = _convert_to_mkwinfont_props(font)
+
+    def _write_prop(key):
+        if props[key] is not None:
+            outstream.write(f'{key} {props[key]}\n')
+
+    if font.get_comment():
+        outstream.write('# ' + '\n# '.join(font.get_comment().splitlines()) + '\n\n')
+    _write_prop('facename')
+    _write_prop('copyright')
+    outstream.write('\n')
+    _write_prop('height')
+    _write_prop('ascent')
+    if props['height'] != props['pointsize']:
+        _write_prop('pointsize')
+    if props['italic']:
+        _write_prop('italic')
+    if props['underline']:
+        _write_prop('underline')
+    if props['strikeout']:
+        _write_prop('strikeout')
+    if props['weight'] != 400:
+        _write_prop('weight')
+    outstream.write('\n')
+    _write_prop('charset')
+    outstream.write('\n')
+    for codepoint in range(256):
+        try:
+            glyph = font.get_glyph(codepoint)
+        except KeyError:
+            pass
+        else:
+            outstream.write(f'char {codepoint}\n')
+            outstream.write(f'width {glyph.advance_width}\n')
+            outstream.write(glyph.as_text(paper='0', ink='1'))
+            outstream.write('\n')
+
+
+
+def _convert_to_mkwinfont_props(font):
+    return dict(
+        facename=font.name,
+        copyright=font.copyright,
+        height=font.pixel_size,
+        ascent=font.ascent,
+        pointsize=font.point_size,
+        italic=font.slant == 'italic',
+        strikeout='strikethrough' in font.decoration,
+        underline='underline' in font.decoration,
+        weight=WEIGHT_REVERSE_MAP.get(font.weight, None),
+        charset=CHARSET_REVERSE_MAP.get(font.encoding, None),
+    )

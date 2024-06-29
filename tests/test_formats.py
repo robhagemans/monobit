@@ -212,6 +212,14 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
+    def test_export_mkwinfont(self):
+        """Test exporting non-8x16 draw files with comments."""
+        draw_file = self.temp_path /'4x6.fd'
+        monobit.save(self.fixed4x6, draw_file, format='mkwinfont')
+        font, *_ = monobit.load(draw_file, format='mkwinfont')
+        self.assertEqual(len(font.glyphs), 192)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # PSF
 
     def test_import_psf(self):

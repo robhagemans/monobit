@@ -113,7 +113,7 @@ Proportional-spacing formats
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;|
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       |
-| mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|       |
+| mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;|
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows)|
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;|
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       |
