@@ -98,7 +98,7 @@ Proportional-spacing formats
 | FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.sft` `.pft` `.eft` ... |&check;|  |
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|       |
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       |
-| DosStart!             | `dosstart` | `.dsf`                      |&check;|       |
+| DosStart!             | `dosstart` | `.dsf`                      |&check;|&check;|
 | EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;|
 | Figlet font           | `figlet`   | `.flf`                      |&check;|&check;|
 | FZX font              | `fzx`      | `.fzx`                      |&check;|&check;|

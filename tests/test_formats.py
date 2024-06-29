@@ -1197,6 +1197,14 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 95)
 
+    def test_export_dosstart_bitmap(self):
+        """Test exporting DosStart bitmap files."""
+        fnt_file = self.temp_path / '4x6.dsf'
+        monobit.save(self.fixed4x6, fnt_file, format='dosstart')
+        font, *_ = monobit.load(fnt_file, format='dosstart')
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # bepf
 
     ohlfs = 'https://github.com/AlexHorovitz/Ohlfs-font-to-ttf-conversion/raw/master/Ohlfs.font/'
