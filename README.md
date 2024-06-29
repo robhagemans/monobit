@@ -96,7 +96,7 @@ Proportional-spacing formats
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;|
 | FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.sft` `.pft` `.eft` ... |&check;|  |
-| Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|       |
+| Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;|
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       |
 | DosStart!             | `dosstart` | `.dsf`                      |&check;|&check;|
 | EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;|

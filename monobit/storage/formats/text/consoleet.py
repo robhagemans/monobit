@@ -11,7 +11,9 @@ import logging
 from monobit.storage.base import container_loaders, container_savers
 from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph
-from ..image.image import loop_load
+
+from ..image.image import loop_load, loop_save
+from ..limitations import ensure_single
 
 
 @container_loaders.register(name='consoleet')
@@ -20,6 +22,17 @@ def load_clt(location):
     # this format consists of separate image files, without a manifest
     glyphs = loop_load(location, _read_clt_glyph)
     return Font(glyphs, source_name=location.path)
+
+
+@container_savers.register(linked=load_clt)
+def save_clt(fonts, location):
+    """
+    Save font to consoleet files.
+    """
+    loop_save(
+        fonts, location,
+        prefix='', suffix='txt', save_func=_write_clt_glyph,
+    )
 
 
 def _read_clt_glyph(instream):
@@ -36,3 +49,10 @@ def _read_clt_glyph(instream):
         # encoding is not specified by spec or file - can be unicode or codepage
         codepoint=f'0x{codepoint}'
     ).shrink(factor_x=2)
+
+
+def _write_clt_glyph(glyph, outstream):
+    text = outstream.text
+    text.write('PCLT\n')
+    text.write(f'{glyph.width} {glyph.height}\n')
+    text.write(glyph.as_text(paper='..', ink='##', end='\n'))

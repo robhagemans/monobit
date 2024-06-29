@@ -214,6 +214,14 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_clt(self):
+        """Test exporting consolet files."""
+        draw_loc = self.temp_path / '4x6'
+        monobit.save(self.fixed4x6, draw_loc, format='consoleet')
+        font, *_ = monobit.load(draw_loc, format='consoleet')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     def test_import_mkwinfont(self):
         """Test importing mkwinfont .fd files."""
         font, *_ = monobit.load(self.font_path / '6x13.fd', format='mkwinfont')

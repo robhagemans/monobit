@@ -41,15 +41,6 @@ DEFAULT_IMAGE_FORMAT = 'png'
 # top-left          use colour of top-left pixel in first cell
 
 
-def loop_load(location, load_func):
-    """Loop over per-glyph files in container."""
-    glyphs = []
-    for name in sorted(location.iter_sub('')):
-        with location.open(name, mode='r') as stream:
-            glyphs.append(load_func(stream))
-    return glyphs
-
-
 if Image:
     @loaders.register(
         name='image',
@@ -252,61 +243,6 @@ if Image:
                 break
         return image
 
-    @container_loaders.register(name='imageset')
-    def load_imageset(
-            location,
-            background:str='most-common',
-            prefix:str='',
-            base:int=16,
-        ):
-        """
-        Extract font from per-glyph images.
-
-        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
-        prefix: part of the image file name before the codepoint
-        base: radix of numerals in file name representing code point
-        """
-        def _load_image_glyph(stream):
-            crop = Image.open(stream)
-            crop = crop.convert('RGB')
-            cp = int(Path(stream.name).stem.removeprefix(prefix), base)
-            # return codepoint, image pair to be parsed by convert_crops_to_font
-            return (cp, crop)
-
-        crops = loop_load(location, _load_image_glyph)
-        return convert_crops_to_font(crops, background, keep_empty=True)
-
-
-    @container_savers.register(linked=load_imageset)
-    def save_imageset(
-            fonts, location,
-            prefix:str='',
-            image_format:str='png',
-            paper:RGB=(0, 0, 0),
-            ink:RGB=(255, 255, 255),
-        ):
-        """
-        Export font to per-glyph images.
-
-        prefix: part of the image file name before the codepoint
-        image_format: image file format (default: png)
-        paper: background colour R,G,B 0--255 (default: 0,0,0)
-        ink: foreground colour R,G,B 0--255 (default: 255,255,255)
-        """
-        font = ensure_single(fonts)
-        width = len(f'{int(max(font.get_codepoints())):x}')
-        for glyph in font.glyphs:
-            cp = f'{int(glyph.codepoint):x}'.zfill(width)
-            name = f'{prefix}{cp}.{image_format}'
-            with location.open(name, 'w') as imgfile:
-                img = glyph_to_image(glyph, paper, ink)
-                try:
-                    img.save(imgfile, format=image_format or Path(outfile).suffix[1:])
-                except (KeyError, ValueError, TypeError):
-                    img.save(imgfile, format=DEFAULT_IMAGE_FORMAT)
-
-
-
     ###########################################################################
 
     @savers.register(linked=load_image)
@@ -348,3 +284,84 @@ if Image:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
             img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
+
+
+    ###########################################################################
+    # image-set
+
+    @container_loaders.register(name='imageset')
+    def load_imageset(
+            location,
+            background:str='most-common',
+            prefix:str='',
+            base:int=16,
+        ):
+        """
+        Extract font from per-glyph images.
+
+        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
+        prefix: part of the image file name before the codepoint
+        base: radix of numerals in file name representing code point
+        """
+        def _load_image_glyph(stream):
+            crop = Image.open(stream)
+            crop = crop.convert('RGB')
+            cp = int(Path(stream.name).stem.removeprefix(prefix), base)
+            # return codepoint, image pair to be parsed by convert_crops_to_font
+            return (cp, crop)
+
+        crops = loop_load(location, _load_image_glyph)
+        return convert_crops_to_font(crops, background, keep_empty=True)
+
+
+    @container_savers.register(linked=load_imageset)
+    def save_imageset(
+            fonts, location,
+            prefix:str='',
+            image_format:str='png',
+            paper:RGB=(0, 0, 0),
+            ink:RGB=(255, 255, 255),
+        ):
+        """
+        Export font to per-glyph images.
+
+        prefix: part of the image file name before the codepoint
+        image_format: image file format (default: png)
+        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        ink: foreground colour R,G,B 0--255 (default: 255,255,255)
+        """
+        def _save_image_glyph(glyph, imgfile):
+            img = glyph_to_image(glyph, paper, ink)
+            try:
+                img.save(imgfile, format=image_format or Path(outfile).suffix[1:])
+            except (KeyError, ValueError, TypeError):
+                img.save(imgfile, format=DEFAULT_IMAGE_FORMAT)
+
+        loop_save(
+            fonts, location, prefix,
+            suffix=image_format, save_func=_save_image_glyph
+        )
+
+
+def loop_save(fonts, location, prefix, suffix, save_func):
+    """Loop over per-glyph files in container."""
+    font = ensure_single(fonts)
+    font = font.label(codepoint_from=font.encoding)
+    width = len(f'{int(max(font.get_codepoints())):x}')
+    for glyph in font.glyphs:
+        if not glyph.codepoint:
+            logging.warning('Cannot store glyph without codepoint label.')
+            continue
+        cp = f'{int(glyph.codepoint):x}'.zfill(width)
+        name = f'{prefix}{cp}.{suffix}'
+        with location.open(name, 'w') as imgfile:
+            save_func(glyph, imgfile)
+
+
+def loop_load(location, load_func):
+    """Loop over per-glyph files in container."""
+    glyphs = []
+    for name in sorted(location.iter_sub('')):
+        with location.open(name, mode='r') as stream:
+            glyphs.append(load_func(stream))
+    return glyphs
