@@ -14,6 +14,7 @@ from monobit.core import Font, Glyph, Char
 from monobit.base import Props
 
 from .draw import NonEmptyBlock, Empty, iter_blocks, equal_firsts
+from ..limitations import ensure_single, ensure_charcell
 
 
 ###############################################################################
@@ -31,9 +32,12 @@ PSFT_CHAR_KEYS = {
     'Unicode',
 }
 
+PSFT_SIG = '%PSF2'
+
+
 @loaders.register(
     name='psf2txt',
-    magic=(b'%PSF2',),
+    magic=(PSFT_SIG.encode('ascii'),),
     patterns=('*.txt',),
 )
 def load_psf2txt(instream):
@@ -41,6 +45,44 @@ def load_psf2txt(instream):
     properties, glyphs, comments = _read_psf2txt(instream.text)
     return _convert_psf2txt(properties, glyphs, comments)
 
+@savers.register(linked=load_psf2txt)
+def save_psf2txt(fonts, outstream):
+    """Save font to a psf2txt .txt file."""
+    font = ensure_single(fonts)
+    _write_psf2txt(font, outstream)
+
+
+###############################################################################
+# writer
+
+def _write_psf2txt(font, outstream):
+    font = ensure_charcell(font)
+    font = font.label()
+    outstream = outstream.text
+    outstream.write(PSFT_SIG)
+    outstream.write(f'\nVersion: {font.revision or 0}\n')
+    # flag 1 means has-unicode-table
+    outstream.write('Flags: 1\n')
+    outstream.write(f'Length: {len(font.glyphs)}\n')
+    outstream.write(f'Width: {font.cell_size.x}\n')
+    outstream.write(f'Height: {font.cell_size.y}\n')
+    for i, glyph in enumerate(font.glyphs):
+        outstream.write(f'%\n// Character {i}\n')
+        outstream.write('Bitmap: ')
+        outstream.write(
+            glyph.as_text(start='', end=' \\\n        ', paper='-', ink='#')
+            .rstrip(' \\\n        ')
+        )
+        outstream.write('\n')
+        if glyph.char:
+            outstream.write('Unicode: ')
+            for elem in glyph.char:
+                outstream.write(f'[{ord(elem):08x}];')
+            outstream.write('\n')
+
+
+###############################################################################
+# reader
 
 def _read_psf2txt(text_stream):
     """Read a psf2txt file into a properties object."""

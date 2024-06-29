@@ -200,6 +200,14 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_psf2txt(self):
+        """Test importing psf2txt files."""
+        draw_file = self.temp_path / '4x6.txt'
+        monobit.save(self.fixed4x6, draw_file, format='psf2txt')
+        font, *_ = monobit.load(draw_file, format='psf2txt')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
     def test_import_clt(self):
         """Test importing consoleet files."""
         font, *_ = monobit.load(self.font_path / '4x6.clt', format='consoleet')
@@ -213,8 +221,8 @@ class TestFormats(BaseTester):
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
     def test_export_mkwinfont(self):
-        """Test exporting non-8x16 draw files with comments."""
-        draw_file = self.temp_path /'4x6.fd'
+        """Test exporting mkwinfont .fd files."""
+        draw_file = self.temp_path / '4x6.fd'
         monobit.save(self.fixed4x6, draw_file, format='mkwinfont')
         font, *_ = monobit.load(draw_file, format='mkwinfont')
         self.assertEqual(len(font.glyphs), 192)

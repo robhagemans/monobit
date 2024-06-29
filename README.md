@@ -161,8 +161,8 @@ Character-cell formats
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
 | Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;|
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check; (version 2) |
-| PSF2AMS PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
-| PSF2TXT               | `psf2txt`  | `.txt`                      |&check;|       |
+| psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
+| psf2txt               | `psf2txt`  | `.txt`                      |&check;|&check;|
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;|
 | UDG loader            | `udg`      | `.com`                      |&check;|       |
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;|
