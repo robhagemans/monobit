@@ -13,6 +13,7 @@ from monobit.base import Props, reverse_dict, extend_string
 from monobit.core import Font, Glyph
 from monobit.encoding import encodings
 
+from ..limitations import ensure_single
 
 # note that we won't be able to use the "subcharacters" that are the defining feature of FIGlet
 # as we only work with monochrome bitmaps
@@ -41,9 +42,7 @@ def load_figlet(instream, *, ink:str=''):
 @savers.register(linked=load_figlet)
 def save_figlet(fonts, outstream):
     """Write fonts to a FIGlet .flf file."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to .flf file.')
-    font, = fonts
+    font = ensure_single(fonts)
     flf_glyphs, flf_props, comments = _convert_to_flf(font)
     logging.info('figlet properties:')
     for line in str(flf_props).splitlines():

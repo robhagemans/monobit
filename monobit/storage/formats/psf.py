@@ -13,6 +13,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
+from .limitations import ensure_single, ensure_charcell
 
 
 # PSF formats:
@@ -137,20 +138,29 @@ def _read_unicode_table(instream, separator, startseq, encoding):
 
 
 @savers.register(linked=load_psf)
-def save_psf(fonts, outstream):
-    """Save character-cell font to PC Screen Font version 2 (.PSF) file."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to PSF file.')
-    font = fonts[0]
-    # check if font is fixed-width and fixed-height
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'This format only supports character-cell fonts.'
-        )
-    # fill out character cell including shifts, bearings and line height
-    font = font.equalise_horizontal()
+def save_psf(fonts, outstream, *, version:int=2, count:int=256):
+    """
+    Save character-cell font to PC Screen Font (.PSF) file.
+
+    version: psf format version, 1 or 2 (default)
+    count: number of glyphs - version 1 only; 256 (default) or 512
+    """
+    font = ensure_single(fonts)
+    font = ensure_charcell(font)
     # ensure unicode labels exist if encoding is defined
     font = font.label()
+    if version == 2:
+        _write_psf2(font, outstream)
+    elif version == 1:
+        if count not in (256, 512):
+            raise ValueError(f'`count` should be 256 or 512, not {count}')
+        _write_psf1(font, outstream, count)
+    else:
+        raise ValueError(f'`version` should be 1 or 2, not {version}')
+
+
+def _write_psf2(font, outstream):
+    """Write a PSF version 2 file."""
     glyphs = font.glyphs
     psf_props = dict(
         width=font.raster_size.x,
@@ -167,7 +177,57 @@ def save_psf(fonts, outstream):
     for glyph in glyphs:
         outstream.write(glyph.as_bytes())
     unicode_seq = [_glyph.char for _glyph in glyphs]
-    _write_unicode_table(outstream, unicode_seq, _PSF2_SEPARATOR, _PSF2_STARTSEQ, 'utf-8')
+    _write_unicode_table(
+        outstream, unicode_seq, _PSF2_SEPARATOR, _PSF2_STARTSEQ, 'utf-8'
+    )
+    return font
+
+
+
+# # mode field
+# _PSF1_MODE = le.Struct(
+#     PSF1_MODE512=flag,
+#     PSF1_MODEHASTAB=flag,
+#     PSF1_MODEHASSEQ=flag,
+#     #unused=bitfield('uint8', 5),
+# )
+
+# PSF1 header
+_PSF1_MAGIC = b'\x36\x04'
+_PSF1_HEADER = le.Struct(
+    mode=_PSF1_MODE,
+    charsize='uint8',
+)
+
+
+def _write_psf1(font, outstream, count):
+    """Write a PSF version 1 file."""
+    if font.cell_size.x != 8:
+        raise FileFormatError(
+            f'This format only supports 8xN character-cell fonts.'
+        )
+    # we need exactly 256 or 512 glyphs
+    glyphs = font.glyphs[:count]
+    if len(glyphs) < count:
+        # need more glyphs
+        glyphs.extend([font.get_default_glyph()] * (count-len(glyphs)))
+    header = _PSF1_HEADER(
+        mode=_PSF1_MODE(
+            PSF1_MODE512=(count==512),
+            PSF1_MODEHASTAB=1,
+            # not sure what this flag is
+            PSF1_MODEHASSEQ=1,
+        ),
+        charsize=font.cell_size.y,
+    )
+    outstream.write(_PSF1_MAGIC)
+    outstream.write(bytes(header))
+    for glyph in glyphs:
+        outstream.write(glyph.as_bytes())
+    unicode_seq = [_glyph.char for _glyph in glyphs]
+    _write_unicode_table(
+        outstream, unicode_seq, _PSF1_SEPARATOR, _PSF1_STARTSEQ, 'utf-16'
+    )
     return font
 
 

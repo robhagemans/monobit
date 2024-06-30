@@ -95,9 +95,10 @@ Proportional-spacing formats
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;|
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;|
-| Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|       |
+| FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.sft` `.pft` `.eft` ... |&check;|  |
+| Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;|
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       |
-| DosStart!             | `dosstart` | `.dsf`                      |&check;|       |
+| DosStart!             | `dosstart` | `.dsf`                      |&check;|&check;|
 | EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;|
 | Figlet font           | `figlet`   | `.flf`                      |&check;|&check;|
 | FZX font              | `fzx`      | `.fzx`                      |&check;|&check;|
@@ -111,12 +112,12 @@ Proportional-spacing formats
 | Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;|
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       |
 | MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;|
-| mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|       |
+| MouseGraphics Toolkit | `mgtk`     |                             |&check;|       |
+| mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;|
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows)|
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;|
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
-| PCPaint, GRASP, ChiWriter | `pcpaint` | `.set` `.fnt`  `.sft` `.pft` `.eft` ... |&check;|  |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;|
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       |
@@ -151,16 +152,17 @@ Character-cell formats
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       |
 | Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       |
+| PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;|
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;|
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;|
 | Extended Hex          | `pcbasic`  | `.hex`                      |&check;|&check;|
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;|
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
-| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|       |
-| PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check; (version 2) |
-| PSF2AMS PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
-| PSF2TXT               | `psf2txt`  | `.txt`                      |&check;|       |
+| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;|
+| PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check;|
+| psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
+| psf2txt               | `psf2txt`  | `.txt`                      |&check;|&check;|
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;|
 | UDG loader            | `udg`      | `.com`                      |&check;|       |
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;|

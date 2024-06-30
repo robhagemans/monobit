@@ -17,6 +17,7 @@ from .bdf import read_props
 from .xlfd import parse_xlfd_properties, create_xlfd_properties, CUSTOM_NAMESPACE
 from .xlfd import create_xlfd_name
 from ..text.yaff import globalise_glyph_metrics
+from ..limitations import ensure_single, ensure_charcell
 
 
 @loaders.register(
@@ -59,10 +60,7 @@ def save_hbf(fonts, outstream, code_scheme:str=''):
 
     code_scheme: override HBF_CODE_SCHEME value (default: use encoding)
     """
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to HBF file.')
-    # ensure codepoint values are set
-    font = fonts[0]
+    font = ensure_single(fonts)
     _save_hbf(font, outstream.text, outstream.where, code_scheme)
 
 
@@ -348,14 +346,7 @@ def _convert_to_hbf(font, bitmap_name, code_scheme):
     # get ranges
     cps, cranges, b2ranges, b3ranges = _get_code_ranges(font)
     font = font.subset(cps)
-    # check if the remaining glyphs mae for a cell font
-    if font.spacing != 'character-cell':
-        raise FileFormatError(
-            'Only character-cell fonts can be stored in HBF format.'
-        )
-    # bring font to padded, equalised normal form
-    # then extract common bearings
-    font = font.equalise_horizontal()
+    font = ensure_charcell(font)
     padding = font.padding
     font = font.crop(*padding)
     # convert properties

@@ -6,6 +6,8 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from monobit.base import reverse_dict
+from monobit.encoding import EncodingName
+
 
 ###############################################################################
 # Windows charset values
@@ -129,6 +131,10 @@ CHARSET_REVERSE_MAP.update({
     # use OEM as fallback for undefined as "valid font files don't contain 0x01"
     '': 0xff,
 })
+CHARSET_REVERSE_MAP = {
+    EncodingName(_k): _v
+    for _k, _v in CHARSET_REVERSE_MAP.items()
+}
 
 
 ###############################################################################

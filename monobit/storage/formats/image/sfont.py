@@ -17,6 +17,8 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 from monobit.render import GlyphMap
 
+from ..limitations import ensure_single
+
 # see https://github.com/karlb/sfont
 
 
@@ -98,9 +100,7 @@ if Image:
 
         image_format: format of the image file. Default: `png`
         """
-        if len(fonts) > 1:
-            raise FileFormatError('Can only save one font to PILfont file.')
-        font, *_ = fonts
+        font = ensure_single(fonts)
         font = font.equalise_horizontal()
         # font = font.subset(codepoints=_SFONT_RANGE)
         glyphmap = GlyphMap()

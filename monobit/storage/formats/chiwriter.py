@@ -1,24 +1,20 @@
 """
-monobit.storage.formats.pcpaint - ChiWriter, GRASP, PCPaint, FONTRIX (for IBM) font files
+monobit.storage.formats.chiwriter - ChiWriter, GRASP, PCPaint, FONTRIX (for IBM)
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers, FileFormatError, Magic
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 
-from .raw import load_bitmap
-
 
 ###############################################################################
 # font formats claiming descent from/compatibility with FONTRIX for IBM
-# I have only found FONTRIX and its fonts for the Apple II
-# and they are similar but incompatible (header offsets are different)
 
 # ChiWriter format
 # v3 http://jphdupre.chez-alice.fr/chiwriter/technic3/gcw3v01.html#pagev09
@@ -28,11 +24,9 @@ from .raw import load_bitmap
 # GRASP 'new' format
 # http://fileformats.archiveteam.org/wiki/GRASP_font
 
-# PC-PAINT
-
 # the header definition below is based on the ChiWriter v4 reference above
 _HEADER = le.Struct(
-    # [0] 0x10 for pcpaint/grasp/cw3 files, 0x11 for cw4
+    # [0] 0x10 for fontrix/pcpaint/grasp/cw3 files, 0x11 for cw4
     filetype='uint8',
     # [1] 8.3 null-terminated
     filename='13s',
@@ -103,40 +97,51 @@ _BITMAP_OFFSET = 0x158 # 344
 
 
 @loaders.register(
-    name='pcpaint',
+    name='chiwriter',
     patterns=(
-        '*.set', '*.fnt',
+        '*.set',
         '*.[celmnpsx]ft',
     ),
-    # (maybe) 1-byte magics - a bit too generic
-    magic=(b'\x10', b'\x11'),
+    # maybe-magics
+    magic=(
+        b'\x10' + Magic.offset(13) + b'\xba',
+        b'\x10' + Magic.offset(13) + b'\x70',
+        # chiwriter v4 only
+        b'\x11' + Magic.offset(13) + b'\x00',
+    ),
 )
 def load_chiwriter(instream, filetype:int=None):
     """
-    Load a ChiWriter font.
+    Load a FONTRIX/GRASP/PCPaint/ChiWriter font.
 
-    filetype: override filetype. 0x10 for pcpaint, grasp, chiwriter v3. 0x11 for chiwriter v4. Use 0x00 for pcpaint/grasp old format.
+    filetype: override filetype. 0x10 for pcpaint, grasp, chiwriter v3. 0x11 for chiwriter v4.
     """
     data = instream.read()
     header = _HEADER.from_bytes(data)
     logging.debug(header)
     # apply filetype override
     if filetype is not None:
+        if filetype not in (0x10, 0x11):
+            raise ValueError(
+                f'`filetype` must be 0x10 or 0x11, not 0x{filetype:02x}'
+            )
         header.filetype = filetype
     elif any(_c not in range(32, 128) for _c in header.filename):
-        # not a DOS filename, which suggests the old version
+        # not a DOS filename, which suggests the GRASP old version (also .SET)
         header.filetype = 0
     # locate width table
     # the V3 format only has space for 94 widths as bitmaps start at 344
     # the V4 format files have the earlier offset even if they have <= 94 glyphs
     if header.filetype == 0x11 or header.numchars > 94:
         woffset = _WIDTH_OFFSET_V4 + 0x20 + header.firstchar
+        formatstr = f'ChiWriter v4'
+        chiwriter_version = 3
     elif header.filetype == 0x10:
         woffset = _WIDTH_OFFSET_V3
+        formatstr = f'FONTRIX / PCPaint / GRASP / ChiWriter v3'
     else:
         # other values => old format, where this is a size field
-        instream.seek(0)
-        return _load_grasp_old(instream)
+        raise FileFormatError('Not a new-format FONTRIX/GRASP/PCPaint/ChiWriter file')
     widths = le.uint8.array(header.numchars).from_bytes(data, woffset)
     logging.debug(widths)
     shift_up = -(header.vsize-header.baseline) if header.baseline else None
@@ -171,50 +176,9 @@ def load_chiwriter(instream, filetype:int=None):
         line_height = None
     font = Font(
         glyphs,
-        source_format=f'ChiWriter ({header.filetype:#02x})',
+        source_format=formatstr,
         name=header.filename.decode('latin-1').split('.')[0],
         font_id=header.filename.decode('latin-1'),
         line_height=line_height,
     )
-    return font
-
-
-###############################################################################
-# PCPaint / GRASP original format. Not used by ChiWriter.
-# suffix .SET or .FNT
-#
-# http://fileformats.archiveteam.org/wiki/GRASP_font
-# http://www.textfiles.com/programming/FORMATS/glformat.txt
-#
-# +-- Font Header
-# | length    (word)    length of the entire font file
-# | size      (byte)    number of glyphs in the font file
-# | first     (byte)    byte value represented by the first glyph
-# | width     (byte)    width of each glyph in pixels
-# | height    (byte)    height of each glyph in pixels
-# | glyphsize (byte)    number of bytes to encode each glyph
-# +-- Glyph Data
-
-_GRASP_HEADER = le.Struct(
-    filesize='uint16',
-    count='uint8',
-    first='uint8',
-    width='uint8',
-    height='uint8',
-    glyphsize='uint8',
-)
-
-def _load_grasp_old(instream):
-    """Load a GRASP font (original format)."""
-    header = _GRASP_HEADER.read_from(instream)
-    if not header.count or not header.glyphsize or not header.height:
-        raise FileFormatError('Bad geometry for GRASP font')
-    font = load_bitmap(
-        instream,
-        width=header.width, height=header.height,
-        strike_bytes=header.glyphsize // header.height,
-        count=header.count,
-        first_codepoint=header.first,
-    )
-    font = font.modify(source_format='GRASP .set (original)')
     return font

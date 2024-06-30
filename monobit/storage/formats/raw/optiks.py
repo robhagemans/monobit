@@ -12,6 +12,7 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
+from ..limitations import ensure_single, ensure_charcell, make_contiguous
 
 
 ###############################################################################
@@ -25,6 +26,8 @@ from .raw import load_bitmap, save_bitmap
 # > the font file.
 
 
+_PCR_MAGIC_1 = b'KPG\1\1\x20\1'
+_PCR_MAGIC_2 = b'KPG\1\2\x20\1'
 _PCR_HEADER = le.Struct(
     magic='7s',
     # maybe it's a be uint16 of the file size, followed by the same size as le
@@ -36,7 +39,7 @@ _PCR_HEADER = le.Struct(
 
 @loaders.register(
     name='pcr',
-    magic=(b'KPG\1\2\x20\1', b'KPG\1\1\x20\1'),
+    magic=(_PCR_MAGIC_2, _PCR_MAGIC_1),
     patterns=('*.pcr',),
 )
 def load_pcr(instream):
@@ -45,3 +48,22 @@ def load_pcr(instream):
     font = load_bitmap(instream, width=8, height=header.height, count=256)
     font = font.modify(source_format='Optiks PCR')
     return font
+
+
+@savers.register(linked=load_pcr)
+def save_pcr(fonts, outstream):
+    """Save an OPTIKS .PCR font."""
+    font = ensure_single(fonts)
+    font = ensure_charcell(font)
+    if font.cell_size.x != 8:
+        raise FileFormatError(
+            'This format only supports 8xN character-cell fonts.'
+        )
+    font = make_contiguous(font, full_range=range(256), missing='space')
+    header = _PCR_HEADER(
+        magic=_PCR_MAGIC_2,
+        height=font.cell_size.y,
+        bytesize=font.cell_size.y * 0x100,
+    )
+    outstream.write(bytes(header))
+    save_bitmap(outstream, font)

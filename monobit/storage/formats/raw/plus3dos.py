@@ -12,6 +12,7 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
+from ..limitations import ensure_single, ensure_charcell
 
 
 ###############################################################################
@@ -71,13 +72,7 @@ def load_plus3dos(instream):
 @savers.register(linked=load_plus3dos)
 def save_plus3dos(fonts, outstream):
     """Save a 768-byte raw font with +3DOS header."""
-    font, *extra = fonts
-    if extra:
-        raise ValueError('Can only save a single font to a +3DOS file')
-    if font.spacing != 'character-cell' or font.cell_size != (8, 8):
-        raise ValueError(
-            'This format can only store 8x8 character-cell fonts'
-        )
+    font = ensure_single(fonts)
     header = _PLUS3DOS_HEADER(
         signature=_PLUS3DOS_MAGIC,
         issue=1,

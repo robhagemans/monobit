@@ -25,6 +25,8 @@ from monobit.render import (
     prepare_for_grid_map, grid_map, grid_traverser, glyph_to_image
 )
 
+from ..limitations import ensure_single
+
 
 DEFAULT_IMAGE_FORMAT = 'png'
 
@@ -37,15 +39,6 @@ DEFAULT_IMAGE_FORMAT = 'png'
 # brightest         use brightest colour, by sum of RGB values
 # darkest           use darkest colour, by sum of RGB values
 # top-left          use colour of top-left pixel in first cell
-
-
-def loop_load(location, load_func):
-    """Loop over per-glyph files in container."""
-    glyphs = []
-    for name in sorted(location.iter_sub('')):
-        with location.open(name, mode='r') as stream:
-            glyphs.append(load_func(stream))
-    return glyphs
 
 
 if Image:
@@ -250,6 +243,52 @@ if Image:
                 break
         return image
 
+    ###########################################################################
+
+    @savers.register(linked=load_image)
+    def save_image(
+            fonts, outfile, *,
+            image_format:str='png',
+            columns:int=32,
+            margin:Coord=Coord(0, 0),
+            padding:Coord=Coord(1, 1),
+            scale:Coord=Coord(1, 1),
+            order:str='row-major',
+            direction:Coord=Coord(1, -1),
+            border:RGB=RGB(32, 32, 32), paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255),
+            codepoint_range:tuple[Codepoint]=None,
+        ):
+        """
+        Export font to grid-based image.
+
+        image_format: image file format (default: png)
+        columns: number of columns in glyph chart (default: 32)
+        margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
+        padding: number of pixels in X,Y direction between glyph (default: 1x1)
+        scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+        order: start with "r" for row-major order (default), "c" for column-major order
+        direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
+        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        ink: foreground colour R,G,B 0--255 (default: 255,255,255)
+        border: border colour R,G,B 0--255 (default 32,32,32)
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+        """
+        font = ensure_single(fonts)
+        font = prepare_for_grid_map(font, columns, codepoint_range)
+        font = font.stretch(*scale)
+        glyph_map = grid_map(font, columns, margin, padding, order, direction)
+        img, = glyph_map.to_images(
+            border=border, paper=paper, ink=ink, transparent=False
+        )
+        try:
+            img.save(outfile, format=image_format or Path(outfile).suffix[1:])
+        except (KeyError, ValueError, TypeError):
+            img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
+
+
+    ###########################################################################
+    # image-set
+
     @container_loaders.register(name='imageset')
     def load_imageset(
             location,
@@ -291,62 +330,38 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
-        font, *more = fonts
-        if more:
-            raise FileFormatError('Can only save one font to image set.')
-        width = len(f'{int(max(font.get_codepoints())):x}')
-        for glyph in font.glyphs:
-            cp = f'{int(glyph.codepoint):x}'.zfill(width)
-            name = f'{prefix}{cp}.{image_format}'
-            with location.open(name, 'w') as imgfile:
-                img = glyph_to_image(glyph, paper, ink)
-                try:
-                    img.save(imgfile, format=image_format or Path(outfile).suffix[1:])
-                except (KeyError, ValueError, TypeError):
-                    img.save(imgfile, format=DEFAULT_IMAGE_FORMAT)
+        def _save_image_glyph(glyph, imgfile):
+            img = glyph_to_image(glyph, paper, ink)
+            try:
+                img.save(imgfile, format=image_format or Path(outfile).suffix[1:])
+            except (KeyError, ValueError, TypeError):
+                img.save(imgfile, format=DEFAULT_IMAGE_FORMAT)
 
-
-
-    ###########################################################################
-
-    @savers.register(linked=load_image)
-    def save_image(
-            fonts, outfile, *,
-            image_format:str='png',
-            columns:int=32,
-            margin:Coord=Coord(0, 0),
-            padding:Coord=Coord(1, 1),
-            scale:Coord=Coord(1, 1),
-            order:str='row-major',
-            direction:Coord=Coord(1, -1),
-            border:RGB=RGB(32, 32, 32), paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255),
-            codepoint_range:tuple[Codepoint]=None,
-        ):
-        """
-        Export font to grid-based image.
-
-        image_format: image file format (default: png)
-        columns: number of columns in glyph chart (default: 32)
-        margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
-        padding: number of pixels in X,Y direction between glyph (default: 1x1)
-        scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
-        order: start with "r" for row-major order (default), "c" for column-major order
-        direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
-        paper: background colour R,G,B 0--255 (default: 0,0,0)
-        ink: foreground colour R,G,B 0--255 (default: 255,255,255)
-        border: border colour R,G,B 0--255 (default 32,32,32)
-        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
-        """
-        if len(fonts) > 1:
-            raise FileFormatError('Can only save one font to image file.')
-        font = fonts[0]
-        font = prepare_for_grid_map(font, columns, codepoint_range)
-        font = font.stretch(*scale)
-        glyph_map = grid_map(font, columns, margin, padding, order, direction)
-        img, = glyph_map.to_images(
-            border=border, paper=paper, ink=ink, transparent=False
+        loop_save(
+            fonts, location, prefix,
+            suffix=image_format, save_func=_save_image_glyph
         )
-        try:
-            img.save(outfile, format=image_format or Path(outfile).suffix[1:])
-        except (KeyError, ValueError, TypeError):
-            img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
+
+
+def loop_save(fonts, location, prefix, suffix, save_func):
+    """Loop over per-glyph files in container."""
+    font = ensure_single(fonts)
+    font = font.label(codepoint_from=font.encoding)
+    width = len(f'{int(max(font.get_codepoints())):x}')
+    for glyph in font.glyphs:
+        if not glyph.codepoint:
+            logging.warning('Cannot store glyph without codepoint label.')
+            continue
+        cp = f'{int(glyph.codepoint):x}'.zfill(width)
+        name = f'{prefix}{cp}.{suffix}'
+        with location.open(name, 'w') as imgfile:
+            save_func(glyph, imgfile)
+
+
+def loop_load(location, load_func):
+    """Loop over per-glyph files in container."""
+    glyphs = []
+    for name in sorted(location.iter_sub('')):
+        with location.open(name, mode='r') as stream:
+            glyphs.append(load_func(stream))
+    return glyphs

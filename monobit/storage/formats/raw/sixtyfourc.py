@@ -12,7 +12,7 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
-
+from ..limitations import ensure_single
 
 
 ###############################################################################
@@ -51,13 +51,7 @@ def load_64c(instream, charset:str='upper'):
 @savers.register(linked=load_64c)
 def save_64c(fonts, outstream):
     """Save a 64C font."""
-    font, *extra = fonts
-    if extra:
-        raise ValueError('Can only save a single font to a 64c file')
-    if font.spacing != 'character-cell' or font.cell_size != (8, 8):
-        raise ValueError(
-            'This format can only store 8x8 character-cell fonts'
-        )
+    font = ensure_single(fonts)
     # not an actual magic sequence. we also see \0\x20 \0\x30 \0\x48 \0\xc8
     outstream.write(b'\x00\x38')
     save_bitmap(outstream, font)

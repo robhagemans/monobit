@@ -1,8 +1,8 @@
 """
 monobit.storage.formats.fon.windows.mz - DOS MZ executable header
 
-(c) 2019--2023 Rob Hagemans
-with code from `mkwinfon`, copyright 2001 Simon Tatham. All rights reserved.
+(c) 2019--2024 Rob Hagemans
+with code from `mkwinfont`, copyright 2001 Simon Tatham. All rights reserved.
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -12,7 +12,7 @@ from monobit.base.binary import ceildiv, align
 
 _STUB_MSG = b'This is a Windows font file.\r\n'
 
-# stub 16-bit DOS executable from `mkwinfon`
+# stub 16-bit DOS executable from `mkwinfont`
 _STUB_CODE = bytes((
     0xBA, 0x0E, 0x00, # mov dx,0xe
     0x0E,             # push cs

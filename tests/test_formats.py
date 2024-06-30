@@ -200,17 +200,41 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_psf2txt(self):
+        """Test importing psf2txt files."""
+        draw_file = self.temp_path / '4x6.txt'
+        monobit.save(self.fixed4x6, draw_file, format='psf2txt')
+        font, *_ = monobit.load(draw_file, format='psf2txt')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
     def test_import_clt(self):
         """Test importing consoleet files."""
         font, *_ = monobit.load(self.font_path / '4x6.clt', format='consoleet')
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
-    def test_import_mkwinfon(self):
+    def test_export_clt(self):
+        """Test exporting consolet files."""
+        draw_loc = self.temp_path / '4x6'
+        monobit.save(self.fixed4x6, draw_loc, format='consoleet')
+        font, *_ = monobit.load(draw_loc, format='consoleet')
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_mkwinfont(self):
         """Test importing mkwinfont .fd files."""
-        font, *_ = monobit.load(self.font_path / '6x13.fd', format='mkwinfon')
+        font, *_ = monobit.load(self.font_path / '6x13.fd', format='mkwinfont')
         self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
+
+    def test_export_mkwinfont(self):
+        """Test exporting mkwinfont .fd files."""
+        draw_file = self.temp_path / '4x6.fd'
+        monobit.save(self.fixed4x6, draw_file, format='mkwinfont')
+        font, *_ = monobit.load(draw_file, format='mkwinfont')
+        self.assertEqual(len(font.glyphs), 192)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # PSF
 
@@ -226,6 +250,14 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(psf_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_psf1(self):
+        """Test exporting psf version 1 files."""
+        psf_file = self.temp_path / '8x16.psf'
+        monobit.save(self.fixed8x16, psf_file, version=1, count=256)
+        font, *_ = monobit.load(psf_file)
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
     # FZX
 
@@ -917,6 +949,15 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 256)
 
+    def test_export_optiks(self):
+        """Test exporting Optiks PCR files."""
+        file = self.temp_path / '4x6.pcr'
+        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
+        monobit.save(font, file)
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # Write On!
 
     def test_import_writeon(self):
@@ -970,6 +1011,16 @@ class TestFormats(BaseTester):
         monobit.save(font, fnt_file, format='plus3dos')
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 96)
+
+    # GRASP / PCPaint old format
+
+    def test_export_grasp(self):
+        """Test exporting GRASP files."""
+        fnt_file = self.temp_path / '4x6.set'
+        monobit.save(self.fixed4x6, fnt_file, format='grasp')
+        font, *_ = monobit.load(fnt_file, format='grasp')
+        self.assertEqual(len(font.glyphs), 255)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # COM loaders
 
@@ -1177,6 +1228,14 @@ class TestFormats(BaseTester):
         file = ensure_asset(self.dosstart, 'COUR.DSF')
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 95)
+
+    def test_export_dosstart_bitmap(self):
+        """Test exporting DosStart bitmap files."""
+        fnt_file = self.temp_path / '4x6.dsf'
+        monobit.save(self.fixed4x6, fnt_file, format='dosstart')
+        font, *_ = monobit.load(fnt_file, format='dosstart')
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # bepf
 

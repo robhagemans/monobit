@@ -27,10 +27,11 @@ from monobit.base import Props, reverse_dict
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
 from monobit.render import GlyphMap, grid_map
+from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
+from ..limitations import ensure_single
 
-from monobit.storage.location import Location
 
 # text/xml/binary format: https://www.angelcode.com/products/bmfont/doc/file_format.html
 # json format: https://github.com/Jam3/load-bmfont/blob/master/json-spec.md
@@ -83,10 +84,9 @@ if Image:
         padding: left, top, right, bottom unused spacing around edges (default: 0,0,0,0)
         descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
         """
-        if len(fonts) > 1:
-            raise FileFormatError("Can only save one font to BMFont file.")
+        font = ensure_single(fonts)
         _create_bmfont(
-            outfile, fonts[0],
+            outfile, font,
             size=image_size, packed=packed, grid=grid,
             spacing=spacing, padding=padding,
             image_format=image_format, descriptor=descriptor

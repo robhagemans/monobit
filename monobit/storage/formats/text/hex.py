@@ -15,6 +15,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
 from .draw import load_draw, DrawGlyph, DrawComment, Empty
+from ..limitations import ensure_single
 
 
 @loaders.register(name='pcbasic',)
@@ -76,19 +77,17 @@ class HexGlyph(DrawGlyph):
 
 def _validate(fonts):
     """Check if font fits in file format."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only save one font to hex file.')
-    font, = fonts
+    font = ensure_single(fonts)
     if font.spacing not in ('character-cell', 'multi-cell'):
         raise FileFormatError(
             'This format only supports character-cell or multi-cell fonts.'
         )
+    # fill out character cell including shifts, bearings and line height
+    font = font.equalise_horizontal()
     return font
 
 def _save_hex(font, outstream, fits):
     """Save 8x16 multi-cell font to Unifont or PC-BASIC Extended .HEX file."""
-    # fill out character cell including shifts, bearings and line height
-    font = font.equalise_horizontal()
     # global comment
     if font.get_comment():
         outstream.write(_format_comment(font.get_comment(), comm_char='#') + '\n\n')

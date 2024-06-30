@@ -14,7 +14,11 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Raster, Glyph
 from monobit.base import Coord
 
+from ..limitations import ensure_single, ensure_charcell
+
+
 _WYSE_ESC_SEQ = b'\x1bcA'
+
 
 @loaders.register(
     name='wyse',
@@ -64,14 +68,9 @@ def _read_wyse_glyph(instream):
 @savers.register(linked=load_wyse)
 def save_wyse(fonts, outstream):
     """Save character-cell fonts to Wyse-60 soft font file."""
-    font, *extra = fonts
-    if extra:
-        raise ValueError('Can only save a single font to a Write On! file')
-    # we should deal with 10-column fonts with last three cols repeating
-    if (
-            font.spacing != 'character-cell'
-            or font.cell_size.x > 8 or font.cell_size.y > 16
-        ):
+    font = ensure_single(fonts)
+    font = ensure_charcell(font)
+    if (font.cell_size.x > 8 or font.cell_size.y > 16):
         raise ValueError(
             'This format can only store character-cell fonts '
             'of cell-size 8x16 or smaller.'
