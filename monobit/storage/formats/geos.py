@@ -1,17 +1,19 @@
 """
 monobit.storage.formats.geos - C64 GEOS font files
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from itertools import count
+from itertools import count, accumulate
 
 from monobit.storage import loaders, savers, Stream, Magic
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv, align
+
+from .limitations import ensure_single, make_contiguous
 
 
 @loaders.register(
@@ -24,6 +26,7 @@ from monobit.base.binary import ceildiv, align
 def load_geos(instream, merge_mega:bool=True):
     """Load fonts from a GEOS ConVerT container."""
     return _load_geos_cvt(instream, merge_mega)
+
 
 @loaders.register(
     name='vlir',
@@ -38,6 +41,15 @@ def load_geos_vlir(instream, offset:int=0):
     return _load_geos_vlir(instream)
 
 
+@savers.register(linked=load_geos_vlir)
+def save_geos_vlir(fonts, outstream):
+    """
+    Save font to a bare GEOS font VLIR.
+    """
+    font = ensure_single(fonts)
+    _save_geos_vlir(font, outstream)
+
+
 ###############################################################################
 # GEOS font VLIR
 # https://www.lyonlabs.org/commodore/onrequest/geos/geos-fonts.html
@@ -50,8 +62,11 @@ _HEADER = le.Struct(
     bitstream_offset='uint16',
 )
 
-# characters 0x20 - 0x7f
-# do we get plus one for the offset to the end?
+# characters 0x20 - 0x7e. while docs suggest - 0x7f
+# but we have 96 fenceposts defining 95 sectors
+# if 0x7f were included we would expect one more offset
+# however, for sample files, the value there doesn't apper to be a valid offset
+# nor is there a coherent image in the strike past offset[95]
 _OFFSETS = le.uint16.array(96)
 
 
@@ -80,8 +95,37 @@ def _load_geos_vlir(instream):
     props = dict(
         descent=header.height-header.baseline-1,
         ascent=header.baseline+1,
+        encoding='ascii',
     )
-    return Font(glyphs, **props)
+    return Font(glyphs, **props).label()
+
+
+def _save_geos_vlir(font, outstream):
+    """Save to a bare GEOS font VLIR."""
+    font = font.label(codepoint_from=font.encoding)
+    # are we going to 7e or 7f?
+    font = make_contiguous(font, full_range=range(32, 127), missing='empty')
+    font = font.equalise_horizontal()
+    # generate strike
+    offsets = (0, *accumulate(_g.width for _g in font.glyphs))
+    stride = ceildiv(offsets[-1], 8)
+    rasters = [_g.pixels for _g in font.glyphs]
+    rasters.append(
+        Raster.blank(width=stride*8 - offsets[-1], height=rasters[0].height)
+    )
+    strike = Raster.concatenate(*rasters)
+    offset_table = _OFFSETS(*offsets)
+    header = _HEADER(
+        baseline=font.pixel_size-font.descent-1,
+        stride=stride,
+        height=font.pixel_size,
+        index_offset=_HEADER.size,
+        bitstream_offset=_HEADER.size + _OFFSETS.size,
+    )
+    outstream.write(bytes(header))
+    outstream.write(bytes(offset_table))
+    outstream.write(strike.as_bytes())
+
 
 
 ###############################################################################

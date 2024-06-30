@@ -129,7 +129,7 @@ Proportional-spacing formats
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | Mu US SB MB Ke Ve CA |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2) | binary | Mu US SB MB Ke Ve CA |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | -        |
-| Bare GEOS resource    | `vlir`     |                             |&check;|       | binary | -        |
+| Bare GEOS resource    | `vlir`     |                             |&check;|&check;| binary | -        |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
 | monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | Mu US SB MB Ke Ve |
 
