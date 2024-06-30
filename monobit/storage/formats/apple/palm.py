@@ -28,6 +28,7 @@ def load_palm(instream):
     fonts = _convert_palm(palm_data)
     return fonts
 
+
 @loaders.register(
     name='palm-prc',
     patterns=('*.prc',),

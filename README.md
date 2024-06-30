@@ -87,87 +87,103 @@ Check `monobit-banner --help` for usage.
 Proportional-spacing formats
 ----------------------------
 
-| Format                | Short Name | Typical Extension           | Read  | Write |
-|-----------------------|------------|-----------------------------|-------|-------|
-| Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       |
-| Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       |
-| Amiga font            | `amiga`    |                             |&check;|       |
-| X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;|
-| Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       |
-| AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;|
-| FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.sft` `.pft` `.eft` ... |&check;|  |
-| Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;|
-| Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       |
-| DosStart!             | `dosstart` | `.dsf`                      |&check;|&check;|
-| EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;|
-| Figlet font           | `figlet`   | `.flf`                      |&check;|&check;|
-| FZX font              | `fzx`      | `.fzx`                      |&check;|&check;|
-| OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       |
-| C64 GEOS ConVerT      | `geos`     | `.cvt`                      |&check;|       |
-| Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;|
-| hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;|
-| HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;|
-| Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;|
-| Bitmap image [P]      | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;|
-| Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;|
-| LISA font library     | `lisa`     | `.bin`                      |&check;|       |
-| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;|
-| MouseGraphics Toolkit | `mgtk`     |                             |&check;|       |
-| mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;|
-| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;|&check; (16-bit Windows)|
-| Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;|
-| Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       |
-| X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;|
-| PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;|
-| TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       |
-| Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       |
-| Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       |
-| The Print Shop        | `printshop`| `.pnf`                      |&check;|       |
-| Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       |
-| SFont                 | `sfont`    |                             |&check;|&check;|
-| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;|&check; (OTB) |
-| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;|&check; (OTB) |
-| vfont                 | `vfont`    |                             |&check;|&check;|
-| Bare GEOS resource    | `vlir`     |                             |&check;|       |
-| Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;|
-| monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;|
+| Format                | Short Name | Typical Extension           | Read  | Write | Type   | Features |
+|-----------------------|------------|-----------------------------|-------|-------|--------|----------|
+| Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       | binary | -        |
+| Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       | binary | Mu       |
+| Amiga font            | `amiga`    |                             |&check;|       | binary | -        |
+| X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;| coded  | U SB MB Ve |
+| Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | -        |
+| AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | Mu U SB MB Ke CA |
+| FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.[specx]ft` |&check;| | binary | -   |
+| Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;| visual | -        |
+| Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       | binary | -        |
+| DosStart!             | `dosstart` | `.dsf`                      |&check;|&check;| coded  | -        |
+| EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;| coded  | -        |
+| Figlet font           | `figlet`   | `.flf`                      |&check;|&check;| visual | CA       |
+| FZX font              | `fzx`      | `.fzx`                      |&check;|&check;| binary | -        |
+| OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB (MB Ke - unsupported) |
+| C64 GEOS ConVerT      | `geos`     | `.cvt`                      |&check;|       | binary | Mu; see `vlir` |
+| Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | -        |
+| hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
+| HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB    |
+| Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;| binary | see `nfnt` |
+| Bitmap image [P]      | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | -        |
+| Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | -        |
+| LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | Mu; see `nfnt` |
+| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | Mu; see `nfnt` |
+| MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
+| mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
+| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | Mu; see `win`, `gpi` |
+| Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB Ke CA |
+| Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       | binary | Mu; see `nfnt` |
+| Palm OS PRC (v1/NFNT) | `palm-prc` | `.prc`                      |&check;|       | binary | Mu; see `nfnt` |
+| X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB  |
+| PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | -        |
+| TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       | binary | -        |
+| Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | (Ve CA - unsupported) |
+| Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       | binary | -        |
+| The Print Shop        | `printshop`| `.pnf`                      |&check;|       | binary | -        |
+| Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
+| SFont                 | `sfont`    |                             |&check;|&check;| image  | -        |
+| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | Mu US SB MB Ke Ve CA |
+| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2) | binary | Mu US SB MB Ke Ve CA |
+| vfont                 | `vfont`    |                             |&check;|&check;| binary | -        |
+| Bare GEOS resource    | `vlir`     |                             |&check;|       | binary | -        |
+| Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
+| monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | Mu US SB MB Ke Ve |
 
 [P] requires **PIL**  
 [F] requires **fontTools**  
+
+(1) 16-bit Windows NE container with FNT resource only  
+(2) Bitmap only (OTB)  
+
+Mu multiple-font container  
+U  Unicode  
+US Unicode, multi-codepoint sequences  
+SB Single-byte character sets  
+MB Multi-byte character sets  
+Ke Kerning  
+Ve Vertical metrics  
+CA Colour / Anti-aliasing (not supported by `monobit`)  
 
 
 Character-cell formats
 ----------------------
 
-| Format                | Short Name | Typical Extension           | Read  | Write |
-|-----------------------|------------|-----------------------------|-------|-------|
-| 64C                   | `64c`      | `.64c`                      |&check;|&check;|
-| +3DOS                 | `plus3dos` |                             |&check;|&check;|
-| BBC soft font         | `bbc`      |                             |&check;|&check;|
-| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;|
-| Dashen                | `dashen`   | `.pft`                      |&check;|       |
-| DEC DRCS soft font    | `dec`      |                             |&check;|&check;|
-| Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       |
-| FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;|
-| FONTEDIT              | `fontedit` | `.com`                      |&check;|       |
-| Fontraption           | `frapt`    | `.com`                      |&check;|       |
-| Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       |
-| PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;|
-| Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;|
-| GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;|
-| Extended Hex          | `pcbasic`  | `.hex`                      |&check;|&check;|
-| Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;|
-| LETAFONT loader       | `letafont` | `.com`                      |&check;|       |
-| REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       |
-| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;|
-| PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check;|
-| psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       |
-| psf2txt               | `psf2txt`  | `.txt`                      |&check;|&check;|
-| Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;|
-| UDG loader            | `udg`      | `.com`                      |&check;|       |
-| Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;|
-| Wyse-60 soft font     | `wyse`     |                             |&check;|&check;|
-| XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;|
+| Format                | Short Name | Typical Extension           | Read  | Write | Type   | Cell | Features |
+|-----------------------|------------|-----------------------------|-------|-------|--------|------|----------|
+| 64C                   | `64c`      | `.64c`                      |&check;|&check;| binary | 8x8  | -        |
+| +3DOS                 | `plus3dos` |                             |&check;|&check;| binary | 8x8  | -        |
+| BBC soft font         | `bbc`      |                             |&check;|&check;| esc    | 8x8  | -        |
+| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;| binary | 8xN  | Mu SB    |
+| Dashen                | `dashen`   | `.pft`                      |&check;|       | binary | any  | -        |
+| DEC DRCS soft font    | `dec`      |                             |&check;|&check;| esc    | >4xN | -        |
+| Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       | binary | any  | -        |
+| FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;| binary | any  | MB       |
+| FONTEDIT              | `fontedit` | `.com`                      |&check;|       | binary | 8xN  | -        |
+| Fontraption           | `frapt`    | `.com`                      |&check;|       | binary | 8xN  | -        |
+| Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       | binary | 8xN  | -        |
+| PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;| binary | any  | -        |
+| Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;| binary | any  | SB MB    |
+| GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| hex    | 8x16 | MC U     |
+| Extended Hex          | `pcbasic`  | `.hex`                      |&check;|&check;| hex    | 8xN  | MC US    |
+| Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
+| LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
+| REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       | binary | 8xN  | -        |
+| Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;| binary | 8xN  | -        |
+| PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check;| binary | any (v2) 8xN (v1) | US  |
+| psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       | binary | 8x8, 8x16 | -   |
+| psf2txt               | `psf2txt`  | `.txt`                      |&check;|&check;| visual | any  | US       |
+| Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;| binary | -    | -        |
+| UDG loader            | `udg`      | `.com`                      |&check;|       | binary | 8x8  | -        |
+| Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;| binary | 8x14 multiples | - |
+| Wyse-60 soft font     | `wyse`     |                             |&check;|&check;| esc    | 8x16 | -        |
+| XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;| binary | any  | -        |
+
+
+MC multi-cell glyphs
 
 
 Charts (write only)
@@ -293,36 +309,6 @@ Some of the other font tools linked below do have rasterising features.
 
 `monobit` can experimentally output OpenType Bitmap (`.otb`) files, a bitmap-only
 file format supported by Linux desktops.
-
-
-Font format features
---------------------
-
-Here is a comparison of what you can and cannot store in selected formats supported by `monobit`.
-
-| Format        | Unicode | Unicode sequences | Encoding | MBCS | Multiple fonts | Cell size | Proportional | Kerning | Colour/antialiasing | Glyph representation
-|---------------|-------|-------|-------|-------|-------|------|-------|-------|-------|--------------
-| `yaff`        |&check;|&check;|&check;|&check;|&check;| any  |&check;|&check;|       | visual text
-| `sfnt`        |&check;|&check;|&check;|&check;|&check;| any  |&check;|&check;|&check;| binary
-| `bmfont`      |&check;|       |&check;|&check;|       | any  |&check;|&check;|&check;| image
-| `mac`         |       |       |&check;|       |       | any  |&check;|&check;|&check;| binary
-| `bdf`         |&check;|       |&check;|&check;|       | any  |&check;|       |       | hex
-| `win`         |       |       |&check;|       |&check;| any  |&check;|       |       | binary
-| `hexdraw`     |&check;|       |       |       |       | any  |&check;|       |       | visual text
-| `amiga`       |       |       |       |       |&check;| any  |&check;|       |&check;| binary
-| `gdos`        |       |       |       |       |       | any  |&check;|       |       | binary
-| `fzx`         |       |       |       |       |       | any  |&check;|       |       | binary
-| `figlet`      |&check;|       |       |       |       | any  |&check;|       |&check;| visual text
-| `vfont`       |       |       |       |       |       | any  |&check;|       |       | binary
-| `pcbasic`     |&check;|&check;|       |       |       | 8xN  | multi-cell |  |       | hex
-| `unifont`     |&check;|       |       |       |       | 8x16 | multi-cell |  |       | hex
-| `hbf`         |       |       |&check;|&check;|       | any  |       |       |       | binary
-| `psf` (v2)    |&check;|&check;|       |       |       | any  |       |       |       | binary
-| `psf` (v1)    |&check;|       |       |       |       | 8xN  |       |       |       | binary
-| `fontx`       |       |       |       |&check;|       | any  |       |       |       | binary
-| `cpi`         |       |       |&check;|       |&check;| 8xN  |       |       |       | binary
-| `dec`         |       |       |       |       |       | >4xN |       |       |       | binary
-| `bbc`         |       |       |       |       |       | 8x8  |       |       |       | binary
 
 
 Dependencies
