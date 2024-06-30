@@ -95,7 +95,7 @@ Proportional-spacing formats
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;| coded  | U SB MB Ve |
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | -        |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | Mu U SB MB Ke CA |
-| FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.[s|p|e|c|x]ft` |&check;| | binary | - |
+| FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.[specx]ft` |&check;| | binary | -   |
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;| visual | -        |
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       | binary | -        |
 | DosStart!             | `dosstart` | `.dsf`                      |&check;|&check;| coded  | -        |
