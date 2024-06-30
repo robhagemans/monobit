@@ -16,42 +16,8 @@ from monobit.base.binary import ceildiv, align
 from .limitations import ensure_single, make_contiguous
 
 
-@loaders.register(
-    name='geos',
-    patterns=('*.cvt',),
-    magic=(
-        Magic.offset(34) + b'formatted GEOS file',
-    ),
-)
-def load_geos(instream, merge_mega:bool=True):
-    """Load fonts from a GEOS ConVerT container."""
-    return _load_geos_cvt(instream, merge_mega)
-
-
-@loaders.register(
-    name='vlir',
-)
-def load_geos_vlir(instream, offset:int=0):
-    """
-    Load a bare GEOS font VLIR.
-
-    offset: starting offset in bytes of the VLIR record in the file (default 0)
-    """
-    instream.seek(offset)
-    return _load_geos_vlir(instream)
-
-
-@savers.register(linked=load_geos_vlir)
-def save_geos_vlir(fonts, outstream):
-    """
-    Save font to a bare GEOS font VLIR.
-    """
-    font = ensure_single(fonts)
-    _save_geos_vlir(font, outstream)
-
-
 ###############################################################################
-# GEOS font VLIR
+# Font record in GEOS VLIR file
 # https://www.lyonlabs.org/commodore/onrequest/geos/geos-fonts.html
 
 _HEADER = le.Struct(
@@ -70,7 +36,10 @@ _HEADER = le.Struct(
 _OFFSETS = le.uint16.array(96)
 
 
-def _load_geos_vlir(instream):
+@loaders.register(
+    name='vlir',
+)
+def load_geos_vlir_record(instream):
     """Load a bare GEOS font VLIR."""
     header = _HEADER.read_from(instream)
     logging.debug(header)
@@ -100,8 +69,16 @@ def _load_geos_vlir(instream):
     return Font(glyphs, **props).label()
 
 
-def _save_geos_vlir(font, outstream):
-    """Save to a bare GEOS font VLIR."""
+
+@savers.register(linked=load_geos_vlir_record)
+def save_geos_vlir_record(fonts, outstream):
+    """Save font to a bare GEOS font VLIR."""
+    font = ensure_single(fonts)
+    _save_geos_vlir_record(font, outstream)
+
+
+def _save_geos_vlir_record(font, outstream):
+    """Save font to a bare GEOS font VLIR."""
     font = font.label(codepoint_from=font.encoding)
     # are we going to 7e or 7f?
     font = make_contiguous(font, full_range=range(32, 127), missing='empty')
@@ -129,7 +106,7 @@ def _save_geos_vlir(font, outstream):
 
 
 ###############################################################################
-# CVT container
+# GEOS VLIR file in CONVERT (CVT) container
 # https://ist.uwaterloo.ca/~schepers/formats/GEOS.TXT
 # https://ist.uwaterloo.ca/~schepers/formats/CVT.TXT
 
@@ -337,8 +314,15 @@ _RECORD_ENTRY = le.Struct(
 _RECORD_BLOCK = _RECORD_ENTRY.array(127)
 
 
-def _load_geos_cvt(instream, merge_mega):
-    """Load a GEOS ConVerT container."""
+@loaders.register(
+    name='geos',
+    patterns=('*.cvt',),
+    magic=(
+        Magic.offset(34) + b'formatted GEOS file',
+    ),
+)
+def load_geos(instream, merge_mega:bool=True):
+    """Load fonts from a GEOS ConVerT container."""
     dir_entry = _DIR_BLOCK.read_from(instream)
     sig_block = _SIG_BLOCK.read_from(instream)
     logging.debug(
@@ -386,7 +370,7 @@ def _load_geos_cvt(instream, merge_mega):
         logging.debug('Loading font id %d height %d', font_id, height)
         anchor = instream.tell()
         try:
-            font = _load_geos_vlir(Stream(instream, mode='r'))
+            font = load_geos_vlir_record(Stream(instream, mode='r'))
         except ValueError as e:
             logging.warning(
                 'Could not load font id %d size %d: %s', font_id, height, e
