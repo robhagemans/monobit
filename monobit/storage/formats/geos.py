@@ -315,11 +315,16 @@ _RECORD_ENTRY = le.Struct(
 _RECORD_BLOCK = _RECORD_ENTRY.array(127)
 
 
+_SEQ_SIGNATURE = b'SEQ formatted GEOS file V1.0'
+_PRG_SIGNATURE = b'PRG formatted GEOS file V1.0'
+
+
 @loaders.register(
     name='geos',
     patterns=('*.cvt',),
     magic=(
-        Magic.offset(34) + b'formatted GEOS file',
+        Magic.offset(30) + _SEQ_SIGNATURE,
+        Magic.offset(30) + _PRG_SIGNATURE,
     ),
 )
 def load_geos(instream, merge_mega:bool=True):
@@ -413,20 +418,22 @@ def load_geos(instream, merge_mega:bool=True):
         fonts = (fonts[0].modify(glyphs=selected),)
     return fonts
 
+
 @savers.register(linked=load_geos)
 def save_geos(fonts, outstream):
     # fonts should have same family and different pixel sizes
-    # at most 15
+    # at most 15 fonts
+    font_id = int(fonts[0].font_id)
 
     dir_block = _DIR_BLOCK(
-        # C64 USR file
+        # C64 USR file (0x03), closed (0x80)
         filetype=0x83,
         # no idea if this is a legal value
         sector=0x100,
         filename=fonts[0].family.encode('ascii').ljust(16, b'\xa0'),
         # sems to be always one less in the hi byte than 'sector' above
         info_sector=0,
-        # VLIR structure
+        # VLIR structure (Sequential is 0x00)
         geos_structure=0x01,
         # > GEOS filetype
         geos_filetype=_GEOS_FONT_TYPE,
@@ -436,49 +443,58 @@ def save_geos(fonts, outstream):
         day=1,
         hour=0,
         minute=0,
-        # info block + record block + data blocks
-        # 2 + ceildiv(len(data), 254)
         # filesize='uint16',
     )
     sig_block = _SIG_BLOCK(
-        signature=b'SEQ formatted GEOS file V1.0',
+        # "SEQ" also happens, but "PRG" is more common (yet filetype is USR)
+        signature=_PRG_SIGNATURE,
         # notes field is "usually $00"
     )
     # create the VLIR records
     records = tuple(_create_geos_vlir_record(_f) for _f in fonts)
     # create the info block
     icon = Glyph.from_vector(_FONT_ICON, stride=25, width=24, _0='.', _1='@')
+    # ptsize is (font_id << 6) + point_size
+    ghptsizes = ((font_id << 6) + _f.pixel_size for _f in fonts)
     info_block = _INFO_BLOCK(
         id_bytes=b'\x03\x15\xBF',
         # > Icon bitmap (sprite format, 63 bytes)
         icon=(le.uint8 * 63)(*icon.as_bytes()),
-        filetype=0x81,
-        geos_filetype=_GEOS_FONT_TYPE,
-        geos_structure=0x01,
-        # > Program load address
-        # load_address='uint16',
-        # # > Program end address (only with accessories)
-        # end_address='uint16',
-        # # > Program start address
-        # start_address='uint16',
+        filetype=dir_block.filetype,
+        geos_filetype=dir_block.geos_filetype,
+        geos_structure=dir_block.geos_structure,
+        # 3 addresses based on sample file
+        load_address=0,
+        end_address=0xffff,
+        start_address=0,
         class_text=make_classtext(fonts),
-        O_GHFONTID=int(fonts[0].font_id),
-        O_GHPTSIZES=(le.uint16 * 15)(*(_f.pixel_size for _f in fonts)),
+        O_GHFONTID=font_id,
+        O_GHPTSIZES=(le.uint16 * 15)(*ghptsizes),
         # the size in bytes of the corresponding VLIR record when loaded
+        # FIXME needs to match point size location, also 1 byte too small
         O_GHSETLEN=(le.uint16 * 15)(*(len(_r) for _r in records)),
         description=make_description(fonts),
     )
-    record_block = _RECORD_BLOCK(*(
+    # create the record block
+    entries = [
         _RECORD_ENTRY(
             sector_count=ceildiv(len(_rec), 254),
             last_size=len(_rec) % 254,
         )
         for _rec in records
-    ))
+    ]
+    empty = _RECORD_ENTRY(sector_count=0, last_size=0xff,)
+    entries += [empty] * (127 - len(records))
+    record_block = _RECORD_BLOCK(*entries)
+    # info block + record block + data blocks
+    dir_block.filesize = 2 + sum(_e.sector_count for _e in entries)
+    # write out
     outstream.write(bytes(dir_block))
     outstream.write(bytes(sig_block))
     outstream.write(bytes(info_block))
     outstream.write(bytes(record_block))
+    #FIXME -should be at the right point size in the table
+    # also, last_size is structurally 1 shorter than in the original
     for rec, rb in zip(records, record_block):
         outstream.write(rec.ljust(254 * rb.sector_count, b'\0'))
 
