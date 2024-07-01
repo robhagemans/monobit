@@ -331,10 +331,14 @@ def load_geos(instream, merge_mega:bool=True):
     family = dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace')
     class_text = info_block.class_text.decode('ascii')
     if class_text.startswith(family):
-        _, _, revision = class_text.partition('V')
+        name, _, revision = class_text.partition('V')
+        if name.strip() == family:
+            class_text = None
+    else:
+        revision = None
     props = dict(
         family=family,
-        revision=revision or None,
+        revision=revision,
         # display icon in comment
         comment=Raster.from_bytes(tuple(info_block.icon), width=24).as_text(),
         notice=info_block.description.decode('ascii', 'replace'),
