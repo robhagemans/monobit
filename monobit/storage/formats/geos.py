@@ -102,6 +102,7 @@ def _create_geos_vlir_record(font):
         bytes(header),
         bytes(offset_table),
         strike.as_bytes(),
+        b'\0',
     ))
 
 
@@ -421,10 +422,18 @@ def load_geos(instream, merge_mega:bool=True):
 
 @savers.register(linked=load_geos)
 def save_geos(fonts, outstream):
-    # fonts should have same family and different pixel sizes
+    # FIXME:fonts should have same family and different pixel sizes
     # at most 15 fonts
-    font_id = int(fonts[0].font_id)
+    # maximum point size of 63 and a maximum font ID of 1023.
 
+    font_id = int(fonts[0].font_id)
+    # sort in ascending order of pixel size
+    fonts = tuple(sorted(fonts, key=lambda _f: _f.pixel_size))
+    # create the VLIR records
+    records = {
+        _f.pixel_size: _create_geos_vlir_record(_f)
+        for _f in fonts
+    }
     dir_block = _DIR_BLOCK(
         # C64 USR file (0x03), closed (0x80)
         filetype=0x83,
@@ -450,12 +459,8 @@ def save_geos(fonts, outstream):
         signature=_PRG_SIGNATURE,
         # notes field is "usually $00"
     )
-    # create the VLIR records
-    records = tuple(_create_geos_vlir_record(_f) for _f in fonts)
     # create the info block
     icon = Glyph.from_vector(_FONT_ICON, stride=25, width=24, _0='.', _1='@')
-    # ptsize is (font_id << 6) + point_size
-    ghptsizes = ((font_id << 6) + _f.pixel_size for _f in fonts)
     info_block = _INFO_BLOCK(
         id_bytes=b'\x03\x15\xBF',
         # > Icon bitmap (sprite format, 63 bytes)
@@ -469,22 +474,21 @@ def save_geos(fonts, outstream):
         start_address=0,
         class_text=make_classtext(fonts),
         O_GHFONTID=font_id,
-        O_GHPTSIZES=(le.uint16 * 15)(*ghptsizes),
+        # ptsize is (font_id << 6) + point_size
+        O_GHPTSIZES=(le.uint16 * 15)(*((font_id << 6) + _r for _r in records)),
         # the size in bytes of the corresponding VLIR record when loaded
-        # FIXME needs to match point size location, also 1 byte too small
-        O_GHSETLEN=(le.uint16 * 15)(*(len(_r) for _r in records)),
+        O_GHSETLEN=(le.uint16 * 15)(*(len(_r) for _r in records.values())),
         description=make_description(fonts),
     )
     # create the record block
-    entries = [
-        _RECORD_ENTRY(
-            sector_count=ceildiv(len(_rec), 254),
-            last_size=len(_rec) % 254,
-        )
-        for _rec in records
-    ]
     empty = _RECORD_ENTRY(sector_count=0, last_size=0xff,)
-    entries += [empty] * (127 - len(records))
+    entries = [empty] * 127
+    # entry index corresponds with font's pixel size
+    for pixel_size, rec in records.items():
+        entries[pixel_size] = _RECORD_ENTRY(
+            sector_count=ceildiv(len(rec), 254),
+            last_size=len(rec) % 254,
+        )
     record_block = _RECORD_BLOCK(*entries)
     # info block + record block + data blocks
     dir_block.filesize = 2 + sum(_e.sector_count for _e in entries)
@@ -493,10 +497,9 @@ def save_geos(fonts, outstream):
     outstream.write(bytes(sig_block))
     outstream.write(bytes(info_block))
     outstream.write(bytes(record_block))
-    #FIXME -should be at the right point size in the table
-    # also, last_size is structurally 1 shorter than in the original
-    for rec, rb in zip(records, record_block):
-        outstream.write(rec.ljust(254 * rb.sector_count, b'\0'))
+    for rec in records.values():
+        outstream.write(rec)
+        outstream.write(bytes((254 - len(rec)) % 254))
 
 
 def make_description(fonts):
