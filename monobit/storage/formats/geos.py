@@ -422,10 +422,22 @@ def load_geos(instream, merge_mega:bool=True):
 
 @savers.register(linked=load_geos)
 def save_geos(fonts, outstream):
-    # FIXME:fonts should have same family and different pixel sizes
-    # at most 15 fonts
-    # maximum point size of 63 and a maximum font ID of 1023.
-
+    if len(set(_f.family for _f in fonts)) > 1:
+        raise FileFormatError(
+            'GEOS font file can only store fonts from one family.'
+        )
+    if len(set(_f.pixel_size for _f in fonts)) != len(fonts):
+        raise FileFormatError(
+            'GEOS font file can only store fonts with distinct pixel sizes.'
+        )
+    if len(fonts) > 15:
+        raise FileFormatError(
+            'GEOS font file can only store at most 15 pixel sizes.'
+        )
+    if max(_f.pixel_size for _f in fonts) > 63:
+        raise FileFormatError(
+            'GEOS font file can only store fonts of up to 63 pixels tall.'
+        )
     family = fonts[0].family[:15]
     revision = fonts[0].revision
     try:
