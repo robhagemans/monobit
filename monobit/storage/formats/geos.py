@@ -305,7 +305,11 @@ _PRG_SIGNATURE = b'PRG formatted GEOS file V1.0'
     ),
 )
 def load_geos(instream, merge_mega:bool=True):
-    """Load fonts from a GEOS ConVerT container."""
+    """
+    Load fonts from a GEOS ConVerT container.
+
+    merge_mega: merge to mega font, if detected (default: True)
+    """
     dir_entry = _DIR_BLOCK.read_from(instream)
     logging.debug('directory entry: %s',  dir_entry)
     sig_block = _SIG_BLOCK.read_from(instream)
@@ -381,6 +385,13 @@ def load_geos(instream, merge_mega:bool=True):
         if font is not None:
             font = font.modify(font_id=font_id, **props)
             fonts.append(font)
+    if merge_mega and _is_mega(fonts):
+        fonts = _merge_mega(fonts)
+    return fonts
+
+
+def _is_mega(fonts):
+    """Check if extracted fonts represent one mega font."""
     # mega fonts: glyphs are divided over multiple strikes
     # undefined glyphs are given as 1-pixel-wide
     # last strike contains only empty or blank glyphs
@@ -389,14 +400,18 @@ def load_geos(instream, merge_mega:bool=True):
     # sometimes the last (empty) strike has a different height
     id_sizes = set((_f.font_id, _f.pixel_size) for _f in fonts[:-1])
     # if all strikes have the same id and pixel_size, assume this is a mega font
-    if merge_mega and len(id_sizes) == 1 and last_empty:
-        logging.info('Mega font detected, merging.')
-        # take glyph of maximum width from each strike
-        selected = (
-            max(glyphs, key=lambda _g: _g.width)
-            for glyphs in zip(*(_f.glyphs for _f in fonts))
-        )
-        fonts = (fonts[0].modify(glyphs=selected),)
+    return len(id_sizes) == 1 and last_empty
+
+
+def _merge_mega(fonts):
+    """Merge fonts to mega font."""
+    logging.info('Mega font detected, merging.')
+    # take glyph of maximum width from each strike
+    selected = (
+        max(glyphs, key=lambda _g: _g.width)
+        for glyphs in zip(*(_f.glyphs for _f in fonts))
+    )
+    fonts = (fonts[0].modify(glyphs=selected),)
     return fonts
 
 
