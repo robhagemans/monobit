@@ -28,12 +28,10 @@ _HEADER = le.Struct(
     bitstream_offset='uint16',
 )
 
-# characters 0x20 - 0x7e. while docs suggest - 0x7f
-# but we have 96 fenceposts defining 95 sectors
-# if 0x7f were included we would expect one more offset
+# characters 0x20 - 0x7f
 # however, for sample files, the value there doesn't apper to be a valid offset
 # nor is there a coherent image in the strike past offset[95]
-_OFFSETS = le.uint16.array(96)
+_OFFSETS = le.uint16.array(97)
 
 
 @loaders.register(
@@ -61,6 +59,8 @@ def load_geos_vlir_record(instream):
         )
         for _offset, _next, _cp in zip(offsets, offsets[1:], count(0x20))
     )
+    # drop glyph 0x7f (DEL) as it's never used and often garbage
+    # glyphs = glyphs[:-1]
     props = dict(
         descent=header.height-header.baseline-1,
         ascent=header.baseline+1,
@@ -69,19 +69,18 @@ def load_geos_vlir_record(instream):
     return Font(glyphs, **props).label()
 
 
-
 @savers.register(linked=load_geos_vlir_record)
 def save_geos_vlir_record(fonts, outstream):
     """Save font to a bare GEOS font VLIR."""
     font = ensure_single(fonts)
-    _save_geos_vlir_record(font, outstream)
+    outstream.write(_create_geos_vlir_record(font))
 
 
-def _save_geos_vlir_record(font, outstream):
+def _create_geos_vlir_record(font):
     """Save font to a bare GEOS font VLIR."""
     font = font.label(codepoint_from=font.encoding)
     # are we going to 7e or 7f?
-    font = make_contiguous(font, full_range=range(32, 127), missing='empty')
+    font = make_contiguous(font, full_range=range(32, 128), missing='empty')
     font = font.equalise_horizontal()
     # generate strike
     offsets = (0, *accumulate(_g.width for _g in font.glyphs))
@@ -99,9 +98,11 @@ def _save_geos_vlir_record(font, outstream):
         index_offset=_HEADER.size,
         bitstream_offset=_HEADER.size + _OFFSETS.size,
     )
-    outstream.write(bytes(header))
-    outstream.write(bytes(offset_table))
-    outstream.write(strike.as_bytes())
+    return b''.join((
+        bytes(header),
+        bytes(offset_table),
+        strike.as_bytes(),
+    ))
 
 
 
@@ -411,3 +412,118 @@ def load_geos(instream, merge_mega:bool=True):
         )
         fonts = (fonts[0].modify(glyphs=selected),)
     return fonts
+
+@savers.register(linked=load_geos)
+def save_geos(fonts, outstream):
+    # fonts should have same family and different pixel sizes
+    # at most 15
+
+    dir_block = _DIR_BLOCK(
+        # C64 USR file
+        filetype=0x83,
+        # no idea if this is a legal value
+        sector=0x100,
+        filename=fonts[0].family.encode('ascii').ljust(16, b'\xa0'),
+        # sems to be always one less in the hi byte than 'sector' above
+        info_sector=0,
+        # VLIR structure
+        geos_structure=0x01,
+        # > GEOS filetype
+        geos_filetype=_GEOS_FONT_TYPE,
+        # use 1900-01-01 00:00 as timestamp. maybe user override or use now()
+        year=0,
+        month=1,
+        day=1,
+        hour=0,
+        minute=0,
+        # info block + record block + data blocks
+        # 2 + ceildiv(len(data), 254)
+        # filesize='uint16',
+    )
+    sig_block = _SIG_BLOCK(
+        signature=b'SEQ formatted GEOS file V1.0',
+        # notes field is "usually $00"
+    )
+    # create the VLIR records
+    records = tuple(_create_geos_vlir_record(_f) for _f in fonts)
+    # create the info block
+    icon = Glyph.from_vector(_FONT_ICON, stride=25, width=24, _0='.', _1='@')
+    info_block = _INFO_BLOCK(
+        id_bytes=b'\x03\x15\xBF',
+        # > Icon bitmap (sprite format, 63 bytes)
+        icon=(le.uint8 * 63)(*icon.as_bytes()),
+        filetype=0x81,
+        geos_filetype=_GEOS_FONT_TYPE,
+        geos_structure=0x01,
+        # > Program load address
+        # load_address='uint16',
+        # # > Program end address (only with accessories)
+        # end_address='uint16',
+        # # > Program start address
+        # start_address='uint16',
+        class_text=make_classtext(fonts),
+        O_GHFONTID=int(fonts[0].font_id),
+        O_GHPTSIZES=(le.uint16 * 15)(*(_f.pixel_size for _f in fonts)),
+        # the size in bytes of the corresponding VLIR record when loaded
+        O_GHSETLEN=(le.uint16 * 15)(*(len(_r) for _r in records)),
+        description=make_description(fonts),
+    )
+    record_block = _RECORD_BLOCK(*(
+        _RECORD_ENTRY(
+            sector_count=ceildiv(len(_rec), 254),
+            last_size=len(_rec) % 254,
+        )
+        for _rec in records
+    ))
+    outstream.write(bytes(dir_block))
+    outstream.write(bytes(sig_block))
+    outstream.write(bytes(info_block))
+    outstream.write(bytes(record_block))
+    for rec, rb in zip(records, record_block):
+        outstream.write(rec.ljust(254 * rb.sector_count, b'\0'))
+
+
+def make_description(fonts):
+    # actually pixels not points
+    pointlist = ', '.join(str(_font.pixel_size) for _font in fonts[:-1])
+    if pointlist:
+        pointlist += ' and '
+    pointlist += str(fonts[-1].pixel_size)
+    description = f'Available in {pointlist} point.'
+    return description.encode('ascii')
+
+def make_classtext(fonts):
+    font = fonts[0]
+    # 20 bytes, with null terminator
+    if font.revision != '0':
+        length = len(font.revision) + 2
+        text = f'{font.family[:19-length]} V{font.revision}'
+    else:
+        text = f'{font.family[:19]}'
+    return text.encode('ascii')
+
+
+
+_FONT_ICON = """\
+@@@@@@@@@@@@@@@@@@@@@@@@
+@......................@
+@......................@
+@......................@
+@.@@@@@@@..............@
+@..@@...@...........@..@
+@..@@..............@@..@
+@..@@..............@@..@
+@..@@@@...........@@@@.@
+@..@@...@@@..@@@@..@@..@
+@..@@..@@.@@.@@.@@.@@..@
+@..@@..@@.@@.@@.@@.@@..@
+@..@@..@@.@@.@@.@@.@@..@
+@.@@@@..@@@..@@.@@..@@.@
+@......................@
+@......................@
+@......................@
+@......................@
+@......................@
+@......................@
+@@@@@@@@@@@@@@@@@@@@@@@@
+"""
