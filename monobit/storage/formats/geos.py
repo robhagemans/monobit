@@ -79,7 +79,6 @@ def save_geos_vlir_record(fonts, outstream):
 def _create_geos_vlir_record(font):
     """Save font to a bare GEOS font VLIR."""
     font = font.label(codepoint_from=font.encoding)
-    # are we going to 7e or 7f?
     font = make_contiguous(font, full_range=range(32, 128), missing='empty')
     font = font.equalise_horizontal()
     # generate strike
@@ -120,14 +119,8 @@ def _create_geos_vlir_record(font):
 
 # https://ist.uwaterloo.ca/~schepers/formats/D64.TXT
 # > File Type
-# > $00 - Scratched (deleted file entry)
-# >  80 - DEL
-# >  81 - SEQ
-# >  82 - PRG
-# >  83 - USR
-# >  84 - REL
 _C64_FILETYPES = {
-    0x00: 'Scratched',
+    0x00: 'Scratched (deleted file entry)',
     0x80: 'DEL',
     0x81: 'SEQ',
     0x82: 'PRG',
@@ -136,31 +129,13 @@ _C64_FILETYPES = {
 }
 
 # > GEOS file structure
-# >   $00 - Sequential
-# >    01 - VLIR file
 _GEOS_STRUCTURES = {
     0x00: 'Sequential',
-    0x01: 'VLIR',
+    0x01: 'VLIR file',
 }
 # > GEOS filetype
-# >    $00 - Non-GEOS (normal C64 file)
-# >     01 - BASIC
-# >     02 - Assembler
-# >     03 - Data file
-# >     04 - System File
-# >     05 - Desk Accessory
-# >     06 - Application
-# >     07 - Application Data (user-created documents)
-# >     08 - Font File
-# >     09 - Printer Driver
-# >     0A - Input Driver
-# >     0B - Disk Driver (or Disk Device)
-# >     0C - System Boot File
-# >     0D - Temporary
-# >     0E - Auto-Execute File
-# >  0F-FF - Undefined
 _GEOS_FILETYPES = {
-    0x00: 'Non-GEOS',
+    0x00: 'Non-GEOS (normal C64 file)',
     0x01: 'BASIC',
     0x02: 'Assembler',
     0x03: 'Data file',
@@ -175,6 +150,7 @@ _GEOS_FILETYPES = {
     0x0C: 'System Boot File',
     0x0D: 'Temporary',
     0x0E: 'Auto-Execute File',
+    # >  0F-FF - Undefined
 }
 
 _GEOS_FONT_TYPE = 0x08
@@ -541,7 +517,6 @@ def make_classtext(family, revision):
     else:
         text = f'{family}'
     return text.encode('ascii')
-
 
 
 _FONT_ICON = """\
