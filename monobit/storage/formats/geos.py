@@ -331,40 +331,44 @@ _PRG_SIGNATURE = b'PRG formatted GEOS file V1.0'
 def load_geos(instream, merge_mega:bool=True):
     """Load fonts from a GEOS ConVerT container."""
     dir_entry = _DIR_BLOCK.read_from(instream)
+    logging.debug('directory entry: %s',  dir_entry)
     sig_block = _SIG_BLOCK.read_from(instream)
-    logging.debug(
-        'filetype: %s',
-        _C64_FILETYPES.get(dir_entry.filetype, dir_entry.filetype)
-    )
-    logging.debug(
-        'GEOS structure: %s',
-        _GEOS_STRUCTURES.get(dir_entry.geos_structure, dir_entry.geos_structure)
-    )
-    logging.debug(
-        'GEOS filetype: %s',
-        _GEOS_FILETYPES.get(dir_entry.geos_filetype, dir_entry.geos_filetype)
-    )
-    logging.debug(
-        'timestamp: %02d-%02d-%02d %02d:%02d',
-        dir_entry.year, dir_entry.month, dir_entry.day,
-        dir_entry.hour, dir_entry.minute
-    )
-    logging.debug('signature: %s', bytes(sig_block.signature).decode('ascii', 'replace'))
-    info_block = _INFO_BLOCK.read_from(instream)
-    logging.debug('class: %s', info_block.class_text.decode('ascii', 'replace'))
-    icon = Raster.from_bytes(tuple(info_block.icon), width=24)
-    record_block = _RECORD_BLOCK.read_from(instream)
-    logging.debug(info_block)
-    logging.debug(list(x for x in record_block if not bytes(x) == b'\0\xff'))
-    if dir_entry.geos_filetype != _GEOS_FONT_TYPE:
-        logging.warning(
-            'Not a GEOS font file: incorrect filetype %x.',
-            dir_entry.geos_filetype
+    logging.debug('signature: %s', sig_block)
+    if sig_block.signature not in (_SEQ_SIGNATURE, _PRG_SIGNATURE):
+        raise FileFormatError(
+            'Not a GEOS font file: incorrect signature '
+            f'{sig_block.signature.decode("latin-1")}'
         )
-    comment = '\n\n'.join((
-        info_block.description.decode('ascii', 'replace').replace('\r', '\n'),
-        icon.as_text(),
-    ))
+    info_block = _INFO_BLOCK.read_from(instream)
+    logging.debug('info block', info_block)
+    record_block = _RECORD_BLOCK.read_from(instream)
+    logging.debug(
+        'record block',
+        list(x for x in record_block if not bytes(x) == b'\0\xff')
+    )
+    if dir_entry.geos_filetype != _GEOS_FONT_TYPE:
+        raise FileFormatError(
+            'Not a GEOS font file: incorrect filetype '
+            f'{dir_entry.geos_filetype:02x}'
+        )
+    # properties which don't change within the family
+    family = dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace')
+    class_text = info_block.class_text.decode('ascii')
+    if class_text.startswith(family):
+        _, _, revision = class_text.partition('V')
+    props = dict(
+        family=family,
+        revision=revision or None,
+        # display icon in comment
+        comment=Raster.from_bytes(tuple(info_block.icon), width=24).as_text(),
+        notice=info_block.description.decode('ascii', 'replace'),
+    )
+    props['geos.class_text'] = class_text
+    props['geos.timestamp'] = (
+        f'{dir_entry.year+1900:04d}-{dir_entry.month:02d}-{dir_entry.day:02d} '
+        f'{dir_entry.hour:02d}:{dir_entry.minute:02d}'
+    )
+    # create fonts
     fonts = []
     for data_size, ghptsize in zip(
             info_block.O_GHSETLEN,
@@ -395,11 +399,7 @@ def load_geos(instream, merge_mega:bool=True):
         nxt = ceildiv(true_data_size, 254) * 254
         instream.seek(anchor + nxt)
         if font is not None:
-            font = font.modify(
-                family=dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace'),
-                comment=comment,
-                font_id=font_id,
-            )
+            font = font.modify(font_id=font_id, **props)
             fonts.append(font)
     # mega fonts: glyphs are divided over multiple strikes
     # undefined glyphs are given as 1-pixel-wide
@@ -426,7 +426,14 @@ def save_geos(fonts, outstream):
     # at most 15 fonts
     # maximum point size of 63 and a maximum font ID of 1023.
 
-    font_id = int(fonts[0].font_id)
+    family = fonts[0].family[:15]
+    revision = fonts[0].revision
+    try:
+        font_id = int(fonts[0].font_id)
+    except ValueError:
+        font_id = 1023
+    if 0 > font_id > 1023:
+        font_id = 1023
     # sort in ascending order of pixel size
     fonts = tuple(sorted(fonts, key=lambda _f: _f.pixel_size))
     # create the VLIR records
@@ -439,7 +446,7 @@ def save_geos(fonts, outstream):
         filetype=0x83,
         # no idea if this is a legal value
         sector=0x100,
-        filename=fonts[0].family.encode('ascii').ljust(16, b'\xa0'),
+        filename=family.encode('ascii').ljust(16, b'\xa0'),
         # sems to be always one less in the hi byte than 'sector' above
         info_sector=0,
         # VLIR structure (Sequential is 0x00)
@@ -472,7 +479,7 @@ def save_geos(fonts, outstream):
         load_address=0,
         end_address=0xffff,
         start_address=0,
-        class_text=make_classtext(fonts),
+        class_text=make_classtext(family, revision),
         O_GHFONTID=font_id,
         # ptsize is (font_id << 6) + point_size
         O_GHPTSIZES=(le.uint16 * 15)(*((font_id << 6) + _r for _r in records)),
@@ -503,22 +510,24 @@ def save_geos(fonts, outstream):
 
 
 def make_description(fonts):
+    if fonts[0].notice:
+        return fonts[0].notice.encode('ascii', 'replace')[:95]
     # actually pixels not points
     pointlist = ', '.join(str(_font.pixel_size) for _font in fonts[:-1])
     if pointlist:
         pointlist += ' and '
     pointlist += str(fonts[-1].pixel_size)
     description = f'Available in {pointlist} point.'
-    return description.encode('ascii')
+    return description.encode('ascii')[:95]
 
-def make_classtext(fonts):
-    font = fonts[0]
+
+def make_classtext(family, revision):
     # 20 bytes, with null terminator
-    if font.revision != '0':
-        length = len(font.revision) + 2
-        text = f'{font.family[:19-length]} V{font.revision}'
+    if revision != '0':
+        revision = revision[:3]
+        text = f'{family.ljust(11)} V{revision.ljust(3)}'
     else:
-        text = f'{font.family[:19]}'
+        text = f'{family}'
     return text.encode('ascii')
 
 
