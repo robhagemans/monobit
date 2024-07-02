@@ -103,7 +103,7 @@ Proportional-spacing formats
 | Figlet font           | `figlet`   | `.flf`                      |&check;|&check;| visual | CA       |
 | FZX font              | `fzx`      | `.fzx`                      |&check;|&check;| binary | -        |
 | OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB (MB Ke - unsupported) |
-| GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|       | binary | Mu; see `vlir` |
+| GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|&check;| binary | Mu; see `vlir` |
 | Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | -        |
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
 | HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB    |
