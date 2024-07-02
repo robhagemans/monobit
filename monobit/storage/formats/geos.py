@@ -340,8 +340,8 @@ def load_geos(instream, merge_mega:bool=True):
             f'{dir_entry.geos_filetype:02x}'
         )
     # properties which don't change within the family
-    family = dir_entry.filename.rstrip(b'\xa0').decode('ascii', 'replace')
-    class_text = info_block.class_text.decode('ascii')
+    family = _str_from_geos(dir_entry.filename.rstrip(b'\xa0'))
+    class_text = _str_from_geos(info_block.class_text)
     if class_text.startswith(family):
         name, _, revision = class_text.partition('V')
         if name.strip() == family:
@@ -353,7 +353,7 @@ def load_geos(instream, merge_mega:bool=True):
         revision=revision,
         # display icon in comment
         comment=Raster.from_bytes(tuple(info_block.icon), width=24).as_text(),
-        notice=info_block.description.decode('ascii', 'replace'),
+        notice=_str_from_geos(info_block.description),
     )
     props['geos.class_text'] = class_text
     props['geos.timestamp'] = (
@@ -432,6 +432,13 @@ def _merge_mega(fonts):
     return fonts
 
 
+def _str_from_geos(text):
+    """Convert string from GEOS format."""
+    return text.decode('ascii', 'replace').replace('\r', '\n')
+
+
+###############################################################################
+
 @savers.register(linked=load_geos)
 def save_geos(fonts, outstream, *, mega:bool=False):
     """
@@ -458,7 +465,7 @@ def _write_geos(subfonts, outstream, family, revision, font_id, notice):
         filetype=0x83,
         # no idea if this is a legal value
         sector=0x100,
-        filename=family.encode('ascii').ljust(16, b'\xa0'),
+        filename=_str_to_geos(family).ljust(16, b'\xa0'),
         # sems to be always one less in the hi byte than 'sector' above
         info_sector=0,
         # VLIR structure (Sequential is 0x00)
@@ -496,10 +503,7 @@ def _write_geos(subfonts, outstream, family, revision, font_id, notice):
         O_GHPTSIZES=(le.uint16 * 15)(*((font_id << 6) + _r for _r in records)),
         # the size in bytes of the corresponding VLIR record when loaded
         O_GHSETLEN=(le.uint16 * 15)(*(len(_r) for _r in records.values())),
-        description=(
-            notice.encode('ascii', 'replace')
-            or _make_description(subfonts.keys())
-        ),
+        description=(_str_to_geos(notice) or _make_description(subfonts.keys())),
     )
     # create the record block
     empty = _RECORD_ENTRY(sector_count=0, last_size=0xff,)
@@ -610,6 +614,11 @@ def _get_metadata(font):
     )
 
 
+def _str_to_geos(text):
+    """Convert string to GEOS format."""
+    return text.replace('\n', '\r').encode('ascii', 'replace')
+
+
 def _make_description(sizes):
     """Create standard description string."""
     sizes = tuple(sizes)
@@ -619,7 +628,7 @@ def _make_description(sizes):
         pointlist += ' and '
     pointlist += str(sizes[-1])
     description = f'Available in {pointlist} point.'
-    return description.encode('ascii')[:95]
+    return _str_to_geos(description)[:95]
 
 
 def _make_classtext(family, revision):
@@ -630,7 +639,7 @@ def _make_classtext(family, revision):
         text = f'{family.ljust(11)} V{revision.ljust(3)}'
     else:
         text = f'{family}'
-    return text.encode('ascii')
+    return _str_to_geos(text)
 
 
 _FONT_ICON = """\
