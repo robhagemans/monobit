@@ -1170,6 +1170,23 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 96)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_export_geos(self):
+        """Test exporting GEOS convert files."""
+        fnt_file = self.temp_path / '4x6.cvt'
+        monobit.save(self.fixed4x6, fnt_file, format='geos')
+        font, *_ = monobit.load(fnt_file, format='geos')
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_geos_mega(self):
+        """Test exporting GEOS convert files inn mega format."""
+        fnt_file = self.temp_path / '4x6.cvt'
+        monobit.save(self.fixed4x6, fnt_file, format='geos', mega=True)
+        font, *_ = monobit.load(fnt_file, format='geos')
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+
     # palm
 
     def test_import_palm(self):
