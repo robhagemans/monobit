@@ -433,7 +433,7 @@ def _merge_mega(fonts):
 
 
 @savers.register(linked=load_geos)
-def save_geos(fonts, outstream, mega:bool=False):
+def save_geos(fonts, outstream, *, mega:bool=False):
     """
     Save fonts to a GEOS ConVerT container.
 
@@ -612,6 +612,7 @@ def _get_metadata(font):
 
 def _make_description(sizes):
     """Create standard description string."""
+    sizes = tuple(sizes)
     # actually pixels not points
     pointlist = ', '.join(str(_size) for _size in sizes[:-1])
     if pointlist:
