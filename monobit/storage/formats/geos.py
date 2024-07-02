@@ -111,9 +111,7 @@ def _create_geos_vlir_record(font):
         bytes(header),
         bytes(offset_table),
         strike.as_bytes(),
-        b'\0',
     ))
-
 
 
 ###############################################################################
@@ -519,8 +517,8 @@ def save_geos(fonts, outstream):
     # entry index corresponds with font's pixel size
     for pixel_size, rec in records.items():
         entries[pixel_size] = _RECORD_ENTRY(
-            sector_count=ceildiv(len(rec), 254),
-            last_size=len(rec) % 254,
+            sector_count=ceildiv(len(rec)+1, 254),
+            last_size=(len(rec)+1) % 254,
         )
     record_block = _RECORD_BLOCK(*entries)
     # info block + record block + data blocks
