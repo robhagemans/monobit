@@ -45,7 +45,7 @@ def load_geos_vlir_record(instream, *, extract_del:bool=False):
     extract_del: extract the unused DEL glyph 0x7f (defauult: False)
     """
     header = _HEADER.read_from(instream)
-    logging.debug(header)
+    logging.debug('header: %s', header)
     instream.seek(header.index_offset)
     offsets = _OFFSETS.read_from(instream)
     instream.seek(header.bitstream_offset)
@@ -95,24 +95,29 @@ def _prepare_font_for_geos_vlir_record(font):
     font = font.equalise_horizontal()
     return font
 
+
 def _create_geos_vlir_record(font):
     """Save font to a bare GEOS font VLIR record."""
     # generate strike
     offsets = (0, *accumulate(_g.width for _g in font.glyphs))
     stride = ceildiv(offsets[-1], 8)
     rasters = [_g.pixels for _g in font.glyphs]
+    # glyphs have been equalised so we can refer to the first one
+    height = rasters[0].height
+    baseline = height + font.glyphs[0].shift_up - 1
     rasters.append(
-        Raster.blank(width=stride*8 - offsets[-1], height=rasters[0].height)
+        Raster.blank(width=stride*8 - offsets[-1], height=height)
     )
     strike = Raster.concatenate(*rasters)
     offset_table = _OFFSETS(*offsets)
     header = _HEADER(
-        baseline=font.pixel_size-font.descent-1,
+        baseline=baseline,
         stride=stride,
-        height=font.pixel_size,
+        height=height,
         index_offset=_HEADER.size,
         bitstream_offset=_HEADER.size + _OFFSETS.size,
     )
+    logging.debug('header: %s', header)
     return b''.join((
         bytes(header),
         bytes(offset_table),
@@ -377,7 +382,7 @@ def load_geos(instream, merge_mega:bool=True, extract_del:bool=False):
             continue
         # ptsize is (font_id << 6) + point_size
         font_id, height = divmod(ghptsize, 1<<6)
-        logging.debug('Loading font id %d height %d', font_id, height)
+        logging.debug('Loading font id %d index %d', font_id, height)
         anchor = instream.tell()
         try:
             font = load_geos_vlir_record(
@@ -433,10 +438,14 @@ def _merge_mega(fonts):
             'Last strike in mega font is not empty: glyphs will be discarded.'
         )
     # take glyph of maximum width from each strike
-    selected = (
+    selected = tuple(
         max(glyphs, key=lambda _g: _g.width)
         for glyphs in zip(*(_f.glyphs for _f in fonts))
     )
+    if len(set(_g.height for _g in selected)) > 1:
+        logging.warning('Mega font strikes differ in height')
+    if len(set(_g.shift_up for _g in selected)) > 1:
+        logging.warning('Mega font strikes differ in baseline')
     fonts = (fonts[0].modify(glyphs=selected),)
     return fonts
 
@@ -457,8 +466,10 @@ def save_geos(fonts, outstream, *, mega:bool=False):
     """
     fonts = tuple(_prepare_font_for_geos_vlir_record(_f) for _f in fonts)
     if not mega:
+        logging.debug('Creating GEOS regular font.')
         subfonts, common_props = _prepare_geos(fonts)
     else:
+        logging.debug('Creating GEOS mega font.')
         subfonts, common_props = _split_mega(fonts)
     _write_geos(subfonts, outstream, **common_props)
 
@@ -600,7 +611,7 @@ def _split_mega(fonts):
     # > the point sizes containing partial character sets contain proper
     # > bitstream indices for each character they contain, but an offset of
     # > one pixel for the characters that do not appear in that record.
-    placeholder = Glyph.blank(width=1, height=font.pixel_size)
+    placeholder = Glyph.blank(width=1, height=font.glyphs[0].height, shift_up=font.glyphs[0].shift_up)
     subfonts = {
         _index: _subfont.resample(codepoints=_GEOS_RANGE, missing=placeholder)
         for _index, _subfont in subfonts.items()
