@@ -73,14 +73,24 @@ def load_geos_vlir_record(instream):
 def save_geos_vlir_record(fonts, outstream):
     """Save font to a bare GEOS font VLIR."""
     font = ensure_single(fonts)
+    font = _prepare_font_for_geos_vlir_record(font)
     outstream.write(_create_geos_vlir_record(font))
 
 
-def _create_geos_vlir_record(font):
-    """Save font to a bare GEOS font VLIR."""
-    font = font.label(codepoint_from=font.encoding)
-    font = make_contiguous(font, full_range=range(32, 128), missing='empty')
+def _prepare_font_for_geos_vlir_record(font):
+    """Prepare a font to be stored in a geos VLIR record."""
+    font = font.label(match_graphical=False, match_whitespace=False)
+    font = font.subset(chars=(chr(_c) for _c in _GEOS_RANGE))
+    font = font.label(
+        codepoint_from='ascii', overwrite=True,
+        match_graphical=False, match_whitespace=False,
+    )
+    font = make_contiguous(font, full_range=_GEOS_RANGE, missing='empty')
     font = font.equalise_horizontal()
+    return font
+
+def _create_geos_vlir_record(font):
+    """Save font to a bare GEOS font VLIR record."""
     # generate strike
     offsets = (0, *accumulate(_g.width for _g in font.glyphs))
     stride = ceildiv(offsets[-1], 8)
