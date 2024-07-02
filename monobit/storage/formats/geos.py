@@ -433,37 +433,25 @@ def _merge_mega(fonts):
 
 
 @savers.register(linked=load_geos)
-def save_geos(fonts, outstream):
-    if len(set(_f.family for _f in fonts)) > 1:
-        raise FileFormatError(
-            'GEOS font file can only store fonts from one family.'
-        )
-    if len(set(_f.pixel_size for _f in fonts)) != len(fonts):
-        raise FileFormatError(
-            'GEOS font file can only store fonts with distinct pixel sizes.'
-        )
-    if len(fonts) > 15:
-        raise FileFormatError(
-            'GEOS font file can only store at most 15 pixel sizes.'
-        )
-    if max(_f.pixel_size for _f in fonts) > 63:
-        raise FileFormatError(
-            'GEOS font file can only store fonts of up to 63 pixels tall.'
-        )
-    family = fonts[0].family[:15]
-    revision = fonts[0].revision
-    try:
-        font_id = int(fonts[0].font_id)
-    except ValueError:
-        font_id = 1023
-    if 0 > font_id > 1023:
-        font_id = 1023
-    # sort in ascending order of pixel size
-    fonts = tuple(sorted(fonts, key=lambda _f: _f.pixel_size))
-    # create the VLIR records
+def save_geos(fonts, outstream, mega:bool=False):
+    """
+    Save fonts to a GEOS ConVerT container.
+
+    mega: save in mega font format (single font only; default: False)
+    """
+    fonts = tuple(_prepare_font_for_geos_vlir_record(_f) for _f in fonts)
+    if not mega:
+        subfonts, common_props = _prepare_geos(fonts)
+    else:
+        subfonts, common_props = _split_mega(fonts)
+    _write_geos(subfonts, outstream, **common_props)
+
+
+def _write_geos(subfonts, outstream, family, revision, font_id, notice):
+    """Write out prepared fonts to GEOS format."""
     records = {
-        _f.pixel_size: _create_geos_vlir_record(_f)
-        for _f in fonts
+        _index: _create_geos_vlir_record(_f)
+        for _index, _f in subfonts.items()
     }
     dir_block = _DIR_BLOCK(
         # C64 USR file (0x03), closed (0x80)
@@ -491,11 +479,10 @@ def save_geos(fonts, outstream):
         # notes field is "usually $00"
     )
     # create the info block
-    icon = Glyph.from_vector(_FONT_ICON, stride=25, width=24, _0='.', _1='@')
     info_block = _INFO_BLOCK(
         id_bytes=b'\x03\x15\xBF',
         # > Icon bitmap (sprite format, 63 bytes)
-        icon=(le.uint8 * 63)(*icon.as_bytes()),
+        icon=(le.uint8 * 63)(*_make_icon()),
         filetype=dir_block.filetype,
         geos_filetype=dir_block.geos_filetype,
         geos_structure=dir_block.geos_structure,
@@ -503,13 +490,16 @@ def save_geos(fonts, outstream):
         load_address=0,
         end_address=0xffff,
         start_address=0,
-        class_text=make_classtext(family, revision),
+        class_text=_make_classtext(family, revision),
         O_GHFONTID=font_id,
         # ptsize is (font_id << 6) + point_size
         O_GHPTSIZES=(le.uint16 * 15)(*((font_id << 6) + _r for _r in records)),
         # the size in bytes of the corresponding VLIR record when loaded
         O_GHSETLEN=(le.uint16 * 15)(*(len(_r) for _r in records.values())),
-        description=make_description(fonts),
+        description=(
+            notice.encode('ascii', 'replace')
+            or _make_description(subfonts.keys())
+        ),
     )
     # create the record block
     empty = _RECORD_ENTRY(sector_count=0, last_size=0xff,)
@@ -533,19 +523,106 @@ def save_geos(fonts, outstream):
         outstream.write(bytes((254 - len(rec)) % 254))
 
 
-def make_description(fonts):
-    if fonts[0].notice:
-        return fonts[0].notice.encode('ascii', 'replace')[:95]
+def _prepare_geos(fonts):
+    """Validate fonts for storing in GEOS convert format; extract metadata."""
+    if len(set(_f.family for _f in fonts)) > 1:
+        raise FileFormatError(
+            'GEOS font file can only store fonts from one family.'
+        )
+    if len(set(_f.pixel_size for _f in fonts)) != len(fonts):
+        raise FileFormatError(
+            'GEOS font file can only store fonts with distinct pixel sizes.'
+        )
+    if len(fonts) > 15:
+        raise FileFormatError(
+            'GEOS font file can only store at most 15 pixel sizes.'
+        )
+    if max(_f.pixel_size for _f in fonts) > 63:
+        raise FileFormatError(
+            'GEOS font file can only store fonts of up to 63 pixels tall.'
+        )
+    common_props = _get_metadata(fonts[0])
+    # sort in ascending order of pixel size
+    fonts = tuple(sorted(fonts, key=lambda _f: _f.pixel_size))
+    # index fonts by size
+    subfonts = {_f.pixel_size: _f for _f in fonts}
+    return subfonts, common_props
+
+
+# https://www.lyonlabs.org/commodore/onrequest/geos/geos-fonts.html
+# > 48: $20-$2f (blank to '/')
+# > 49: $30-$3f ('0' to '?')
+# > 50: $40-$4f ('@' to 'O')
+# > 51: $50-$5f ('P' to '_')
+# > 52: $60-$6f ('`' to 'o')
+# > 53: $70-$7f ('p' to DEL)
+_MEGA_SUBSETS = {
+    48: range(0x20, 0x30),
+    49: range(0x30, 0x40),
+    50: range(0x40, 0x50),
+    51: range(0x50, 0x60),
+    52: range(0x60, 0x70),
+    53: range(0x70, 0x80),
+}
+
+_GEOS_RANGE = range(0x20, 0x80)
+
+
+def _split_mega(fonts):
+    """Prepare font for storing in mega format."""
+    font = ensure_single(fonts)
+    common_props = _get_metadata(font)
+    subfonts = {
+        _index: font.subset(codepoints=_subrange)
+        for _index, _subrange in _MEGA_SUBSETS.items()
+    }
+    # > the point sizes containing partial character sets contain proper
+    # > bitstream indices for each character they contain, but an offset of
+    # > one pixel for the characters that do not appear in that record.
+    placeholder = Glyph.blank(width=1, height=font.pixel_size)
+    subfonts = {
+        _index: _subfont.resample(codepoints=_GEOS_RANGE, missing=placeholder)
+        for _index, _subfont in subfonts.items()
+    }
+    # > There is also a 54-point record, which contains a complete bitstream
+    # > index for every character (e.g. the indices for '0' to '?' are the same
+    # > as those in record 49), but no bitstream data
+    subfonts[54] = Font(Glyph(codepoint=_c) for _c in _GEOS_RANGE)
+    return subfonts, common_props
+
+
+def _get_metadata(font):
+    """Get font family metadata."""
+    family = font.family[:15]
+    revision = font.revision
+    try:
+        font_id = int(font.font_id)
+    except ValueError:
+        font_id = 1023
+    if 0 > font_id > 1023:
+        font_id = 1023
+    notice = font.notice[:95]
+    return dict(
+        family=family,
+        revision=revision,
+        font_id=font_id,
+        notice=notice,
+    )
+
+
+def _make_description(sizes):
+    """Create standard description string."""
     # actually pixels not points
-    pointlist = ', '.join(str(_font.pixel_size) for _font in fonts[:-1])
+    pointlist = ', '.join(str(_size) for _size in sizes[:-1])
     if pointlist:
         pointlist += ' and '
-    pointlist += str(fonts[-1].pixel_size)
+    pointlist += str(sizes[-1])
     description = f'Available in {pointlist} point.'
     return description.encode('ascii')[:95]
 
 
-def make_classtext(family, revision):
+def _make_classtext(family, revision):
+    """Create standard class text."""
     # 20 bytes, with null terminator
     if revision != '0':
         revision = revision[:3]
@@ -578,3 +655,8 @@ _FONT_ICON = """\
 @......................@
 @@@@@@@@@@@@@@@@@@@@@@@@
 """
+
+def _make_icon():
+    """Create standard icon."""
+    icon = Glyph.from_vector(_FONT_ICON, stride=25, width=24, _0='.', _1='@')
+    return icon.as_bytes()
