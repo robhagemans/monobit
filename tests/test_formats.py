@@ -1150,7 +1150,7 @@ class TestFormats(BaseTester):
     def test_import_geos(self):
         """Test importing GEOS fonts."""
         font, *_ = monobit.load(self.font_path / 'SHILLING.cvt.gz')
-        self.assertEqual(len(font.glyphs), 95)
+        self.assertEqual(len(font.glyphs), 96)
         self.assertEqual(font.get_glyph(b'\x2a').reduce().as_text(), """\
 .@@@.
 .@@@.
@@ -1167,7 +1167,7 @@ class TestFormats(BaseTester):
         fnt_file = self.temp_path / '4x6.vlir'
         monobit.save(self.fixed4x6, fnt_file, format='vlir')
         font, *_ = monobit.load(fnt_file, format='vlir')
-        self.assertEqual(len(font.glyphs), 95)
+        self.assertEqual(len(font.glyphs), 96)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     # palm
