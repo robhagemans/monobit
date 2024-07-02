@@ -320,10 +320,10 @@ def load_geos(instream, merge_mega:bool=True):
             f'{sig_block.signature.decode("latin-1")}'
         )
     info_block = _INFO_BLOCK.read_from(instream)
-    logging.debug('info block', info_block)
+    logging.debug('info block: %s', info_block)
     record_block = _RECORD_BLOCK.read_from(instream)
     logging.debug(
-        'record block',
+        'record block: %s',
         list(x for x in record_block if not bytes(x) == b'\0\xff')
     )
     if dir_entry.geos_filetype != _GEOS_FONT_TYPE:
