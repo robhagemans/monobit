@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from datetime import datetime
 from itertools import count, accumulate
 
 from monobit.storage import loaders, savers, Stream, Magic, FileFormatError
@@ -462,12 +463,21 @@ def save_geos(fonts, outstream, *, mega:bool=False):
     _write_geos(subfonts, outstream, **common_props)
 
 
-def _write_geos(subfonts, outstream, family, revision, font_id, notice):
+def _write_geos(
+        subfonts, outstream,
+        family, revision, font_id,
+        notice, class_text, timestamp
+    ):
     """Write out prepared fonts to GEOS format."""
     records = {
         _index: _create_geos_vlir_record(_f)
         for _index, _f in subfonts.items()
     }
+    if timestamp:
+        dt = datetime.fromisoformat(timestamp)
+        year, month, day, hour, min, *_ = dt.timetuple()
+    else:
+        year, month, day, hour, min = 1900, 1, 1, 0, 0
     dir_block = _DIR_BLOCK(
         # C64 USR file (0x03), closed (0x80)
         filetype=0x83,
@@ -480,12 +490,11 @@ def _write_geos(subfonts, outstream, family, revision, font_id, notice):
         geos_structure=0x01,
         # > GEOS filetype
         geos_filetype=_GEOS_FONT_TYPE,
-        # use 1900-01-01 00:00 as timestamp. maybe user override or use now()
-        year=0,
-        month=1,
-        day=1,
-        hour=0,
-        minute=0,
+        year=year-1900,
+        month=month,
+        day=day,
+        hour=hour,
+        minute=min,
         # filesize='uint16',
     )
     sig_block = _SIG_BLOCK(
@@ -505,7 +514,7 @@ def _write_geos(subfonts, outstream, family, revision, font_id, notice):
         load_address=0,
         end_address=0xffff,
         start_address=0,
-        class_text=_make_classtext(family, revision),
+        class_text=_str_to_geos(class_text) or _make_classtext(family, revision),
         O_GHFONTID=font_id,
         # ptsize is (font_id << 6) + point_size
         O_GHPTSIZES=(le.uint16 * 15)(*((font_id << 6) + _r for _r in records)),
@@ -618,7 +627,9 @@ def _get_metadata(font):
         family=family,
         revision=revision,
         font_id=font_id,
-        notice=notice,
+        notice=notice or '',
+        class_text=font.get_property('geos.class_text') or '',
+        timestamp=font.get_property('geos.timestamp'),
     )
 
 
