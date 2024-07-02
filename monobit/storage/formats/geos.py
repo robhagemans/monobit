@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import count, accumulate
 
-from monobit.storage import loaders, savers, Stream, Magic
+from monobit.storage import loaders, savers, Stream, Magic, FileFormatError
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv, align
@@ -37,8 +37,12 @@ _OFFSETS = le.uint16.array(97)
 @loaders.register(
     name='vlir',
 )
-def load_geos_vlir_record(instream):
-    """Load a bare GEOS font VLIR."""
+def load_geos_vlir_record(instream, *, extract_del:bool=False):
+    """
+    Load a bare GEOS font VLIR.
+
+    extract_del: extract the unused DEL glyph 0x7f (defauult: False)
+    """
     header = _HEADER.read_from(instream)
     logging.debug(header)
     instream.seek(header.index_offset)
@@ -60,7 +64,8 @@ def load_geos_vlir_record(instream):
         for _offset, _next, _cp in zip(offsets, offsets[1:], count(0x20))
     )
     # drop glyph 0x7f (DEL) as it's never used and often garbage
-    # glyphs = glyphs[:-1]
+    if not extract_del:
+        glyphs = glyphs[:-1]
     props = dict(
         descent=header.height-header.baseline-1,
         ascent=header.baseline+1,
@@ -312,10 +317,11 @@ _PRG_SIGNATURE = b'PRG formatted GEOS file V1.0'
         Magic.offset(30) + _PRG_SIGNATURE,
     ),
 )
-def load_geos(instream, merge_mega:bool=True):
+def load_geos(instream, merge_mega:bool=True, extract_del:bool=False):
     """
     Load fonts from a GEOS ConVerT container.
 
+    extract_del: extract the unused DEL glyph 0x7f (defauult: False)
     merge_mega: merge to mega font, if detected (default: True)
     """
     dir_entry = _DIR_BLOCK.read_from(instream)
@@ -373,7 +379,9 @@ def load_geos(instream, merge_mega:bool=True):
         logging.debug('Loading font id %d height %d', font_id, height)
         anchor = instream.tell()
         try:
-            font = load_geos_vlir_record(Stream(instream, mode='r'))
+            font = load_geos_vlir_record(
+                Stream(instream, mode='r'), extract_del=extract_del
+            )
         except ValueError as e:
             logging.warning(
                 'Could not load font id %d size %d: %s', font_id, height, e
