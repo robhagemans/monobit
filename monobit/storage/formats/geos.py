@@ -353,7 +353,7 @@ def load_geos(instream, merge_mega:bool=True):
         f'{dir_entry.hour:02d}:{dir_entry.minute:02d}'
     )
     # create fonts
-    fonts = []
+    fonts = {}
     for data_size, ghptsize in zip(
             info_block.O_GHSETLEN,
             info_block.O_GHPTSIZES
@@ -384,28 +384,37 @@ def load_geos(instream, merge_mega:bool=True):
         instream.seek(anchor + nxt)
         if font is not None:
             font = font.modify(font_id=font_id, **props)
-            fonts.append(font)
+            fonts[height] = font
     if merge_mega and _is_mega(fonts):
-        fonts = _merge_mega(fonts)
-    return fonts
+        return _merge_mega(fonts)
+    else:
+        return tuple(fonts.values())
 
 
 def _is_mega(fonts):
     """Check if extracted fonts represent one mega font."""
     # mega fonts: glyphs are divided over multiple strikes
     # undefined glyphs are given as 1-pixel-wide
-    # last strike contains only empty or blank glyphs
-    last_empty = all(_g.is_blank() for _g in fonts[-1].glyphs)
     # GHPTSIZE differs between strikes but actual pixel-size is the same
     # sometimes the last (empty) strike has a different height
-    id_sizes = set((_f.font_id, _f.pixel_size) for _f in fonts[:-1])
-    # if all strikes have the same id and pixel_size, assume this is a mega font
-    return len(id_sizes) == 1 and last_empty
+    id_sizes = set(
+        (_f.font_id, _f.pixel_size)
+        for _index, _f in fonts.items() if _index != 54
+    )
+    # if 7 strikes exist and 6 have the same id and pixel_size, assume mega font
+    return len(id_sizes) == 1 and tuple(fonts.keys()) == tuple(range(48, 55))
 
 
 def _merge_mega(fonts):
     """Merge fonts to mega font."""
     logging.info('Mega font detected, merging.')
+    fonts = tuple(fonts.values())
+    # last strike should contain only empty or blank glyphs
+    last_empty = all(_g.is_blank() for _g in fonts[-1].glyphs)
+    if not last_empty:
+        logging.warning(
+            'Last strike in mega font is not empty: glyphs will be discarded.'
+        )
     # take glyph of maximum width from each strike
     selected = (
         max(glyphs, key=lambda _g: _g.width)
