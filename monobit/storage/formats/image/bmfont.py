@@ -397,7 +397,10 @@ def _parse_json(data):
 
 def _parse_text_dict(line):
     """Parse space separated key=value pairs."""
-    textdict = dict(_item.split('=') for _item in shlex.split(line) if _item)
+    try:
+        textdict = dict(_item.split('=') for _item in shlex.split(line) if _item)
+    except ValueError as e:
+        raise FileFormatError(f'Malformed BMFont file: {e}') from e
     return {
         _key: _value
         for _key, _value in textdict.items()
