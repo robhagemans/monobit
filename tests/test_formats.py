@@ -1149,8 +1149,8 @@ class TestFormats(BaseTester):
 
     def test_import_geos(self):
         """Test importing GEOS fonts."""
-        font, *_ = monobit.load(self.font_path / 'SHILLING.cvt.gz')
-        self.assertEqual(len(font.glyphs), 95)
+        font, *_ = monobit.load(self.font_path / 'SHILLING.cvt.gz', extract_del=True)
+        self.assertEqual(len(font.glyphs), 96)
         self.assertEqual(font.get_glyph(b'\x2a').reduce().as_text(), """\
 .@@@.
 .@@@.
@@ -1161,6 +1161,31 @@ class TestFormats(BaseTester):
 .@@@.
 ..@..
 """)
+
+    def test_export_vlir(self):
+        """Test exporting GEOS VLIR resources."""
+        fnt_file = self.temp_path / '4x6.vlir'
+        monobit.save(self.fixed4x6, fnt_file, format='vlir')
+        font, *_ = monobit.load(fnt_file, format='vlir', extract_del=True)
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_geos(self):
+        """Test exporting GEOS convert files."""
+        fnt_file = self.temp_path / '4x6.cvt'
+        monobit.save(self.fixed4x6, fnt_file, format='geos')
+        font, *_ = monobit.load(fnt_file, format='geos', extract_del=True)
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_geos_mega(self):
+        """Test exporting GEOS convert files inn mega format."""
+        fnt_file = self.temp_path / '4x6.cvt'
+        monobit.save(self.fixed4x6, fnt_file, format='geos', mega=True)
+        font, *_ = monobit.load(fnt_file, format='geos', extract_del=True)
+        self.assertEqual(len(font.glyphs), 96)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
 
     # palm
 
