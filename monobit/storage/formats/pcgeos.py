@@ -236,12 +236,28 @@ def load_pcgeos(instream):
             charbytes = instream.read(byte_size)
             glyph = Glyph.from_bytes(
                 charbytes, width=char_data.CD_pictureWidth,
-                shift_up=char_data.CD_numRows-char_data.CD_yoff,
+                shift_up=font_buf.FB_baselinePos.int-(char_data.CD_numRows+char_data.CD_yoff),
                 left_bearing=char_data.CD_xoff,
                 right_bearing=char_table_entry.CTE_width.int-char_data.CD_pictureWidth,
                 codepoint=cp,
             )
             glyphs.append(glyph)
-        font = Font(glyphs)
+        font = Font(
+            glyphs,
+            family=font_info.FI_faceName.decode('ascii', 'replace'),
+            font_id=font_info.FI_fontID,
+            average_width=font_buf.FB_avgwidth.int,
+            max_width=font_buf.FB_maxwidth.int,
+            # FB_heightAdjust=font_buf.FB_heightAdjust,
+            x_height=font_buf.FB_mean.int,
+            # FB_baseAdjust=font_buf.FB_baseAdjust,
+            ascent=font_buf.FB_height.int-font_buf.FB_accent.int-font_buf.FB_descent.int,
+            descent=font_buf.FB_descent.int,
+            line_height=font_buf.FB_height.int + font_buf.FB_extLeading.int + font_buf.FB_heightAdjust.int,
+            default_char=font_buf.FB_defaultChar,
+            underline_descent=font_buf.FB_underPos.int,
+            underline_thickness=font_buf.FB_underThickness.int,
+            # strikethrough_ascent=font_buf.FB_strikePos,
+        )
         fonts.append(font)
     return fonts
