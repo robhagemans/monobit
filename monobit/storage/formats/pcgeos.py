@@ -87,6 +87,11 @@ _WBFixed = le.Struct(
     int='word',
 )
 
+def _wbfixed_to_float(wbfixed_value):
+    """Convert WBFixed value to float."""
+    return wbfixed_value.int + wbfixed_value.frac / 256
+
+
 _FontBuf = le.Struct(
     # > actual size of data (bytes)
     FB_dataSize='word',
@@ -236,9 +241,15 @@ def load_pcgeos(instream):
             charbytes = instream.read(byte_size)
             glyph = Glyph.from_bytes(
                 charbytes, width=char_data.CD_pictureWidth,
-                shift_up=font_buf.FB_baselinePos.int-(char_data.CD_numRows+char_data.CD_yoff),
+                shift_up=(
+                    _wbfixed_to_float(font_buf.FB_baselinePos)
+                    - (char_data.CD_numRows+char_data.CD_yoff)
+                ),
                 left_bearing=char_data.CD_xoff,
-                right_bearing=char_table_entry.CTE_width.int-char_data.CD_pictureWidth,
+                right_bearing=(
+                    _wbfixed_to_float(char_table_entry.CTE_width)
+                    - char_data.CD_pictureWidth
+                ),
                 codepoint=cp,
             )
             glyphs.append(glyph)
@@ -246,17 +257,25 @@ def load_pcgeos(instream):
             glyphs,
             family=font_info.FI_faceName.decode('ascii', 'replace'),
             font_id=font_info.FI_fontID,
-            average_width=font_buf.FB_avgwidth.int,
-            max_width=font_buf.FB_maxwidth.int,
+            average_width=_wbfixed_to_float(font_buf.FB_avgwidth),
+            max_width=_wbfixed_to_float(font_buf.FB_maxwidth),
             # FB_heightAdjust=font_buf.FB_heightAdjust,
-            x_height=font_buf.FB_mean.int,
+            x_height=_wbfixed_to_float(font_buf.FB_mean),
             # FB_baseAdjust=font_buf.FB_baseAdjust,
-            ascent=font_buf.FB_height.int-font_buf.FB_accent.int-font_buf.FB_descent.int,
-            descent=font_buf.FB_descent.int,
-            line_height=font_buf.FB_height.int + font_buf.FB_extLeading.int + font_buf.FB_heightAdjust.int,
+            ascent=(
+                _wbfixed_to_float(font_buf.FB_height)
+                - _wbfixed_to_float(font_buf.FB_accent)
+                - _wbfixed_to_float(font_buf.FB_descent)
+            ),
+            descent=_wbfixed_to_float(font_buf.FB_descent),
+            line_height=(
+                _wbfixed_to_float(font_buf.FB_height)
+                + _wbfixed_to_float(font_buf.FB_extLeading)
+                + _wbfixed_to_float(font_buf.FB_heightAdjust)
+            ),
             default_char=font_buf.FB_defaultChar,
-            underline_descent=font_buf.FB_underPos.int,
-            underline_thickness=font_buf.FB_underThickness.int,
+            underline_descent=_wbfixed_to_float(font_buf.FB_underPos),
+            underline_thickness=_wbfixed_to_float(font_buf.FB_underThickness),
             # strikethrough_ascent=font_buf.FB_strikePos,
         )
         fonts.append(font)
