@@ -203,6 +203,7 @@ _CharData = le.Struct(
     # CD_data
 )
 
+
 @loaders.register(
     name='pcgeos',
     magic=(_BSWF_SIG,),
@@ -210,7 +211,9 @@ _CharData = le.Struct(
 )
 def load_pcgeos(instream):
     font_file_info = _FontFileInfo.read_from(instream)
+    logging.debug('FontFileInfo: %s', font_file_info)
     font_info = _FontInfo.read_from(instream)
+    logging.debug('FontInfo: %s', font_info)
     # the +7 offset is strange, as the FFI header is 8 bytes long
     instream.seek(font_info.FI_pointSizeTab + 7)
     n_entries = (font_info.FI_pointSizeEnd - font_info.FI_pointSizeTab) //_PointSizeEntry.size
@@ -219,8 +222,10 @@ def load_pcgeos(instream):
     # i.e. it overwrites the unused padding byte in the last entry
     fonts = []
     for point_size_entry in point_size_table:
+        logging.debug('PointSizeEntry: %s', point_size_entry)
         instream.seek(point_size_entry.PSE_dataPos)
         font_buf = _FontBuf.read_from(instream)
+        logging.debug('FontBuf: %s', font_buf)
         n_chars = font_buf.FB_lastChar - font_buf.FB_firstChar + 1
         char_table = (_CharTableEntry * n_chars).read_from(instream)
         glyphs = []
