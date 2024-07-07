@@ -251,6 +251,9 @@ def load_pcgeos(instream):
         for cp, char_table_entry in enumerate(
                 char_table[:-1], font_buf.FB_firstChar
             ):
+            # this appears to be necessary
+            if char_table_entry.CTE_dataOffset == 0:
+                continue
             try:
                 char_data = _CharData.read_from(instream)
             except StructError:
