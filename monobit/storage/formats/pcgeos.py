@@ -30,6 +30,31 @@ _FontFileInfo = le.Struct(
     FFI_headerSize='word',
 )
 
+# typedef ByteFlags FontAttrs;
+#define FA_USEFUL       0x80
+#define FA_FIXED_WIDTH  0x40
+#define FA_ORIENT       0x20
+#define FA_OUTLINE      0x10
+#define FA_FAMILY       0x0f
+#define FA_FAMILY_OFFSET 0
+
+# typedef byte FontFamily;
+#define FF_NON_PORTABLE 0x0007
+#define FF_SPECIAL 0x0006
+#define FF_MONO 0x0005
+#define FF_SYMBOL 0x0004
+#define FF_ORNAMENT 0x0003
+#define FF_SCRIPT 0x0002
+#define FF_SANS_SERIF 0x0001
+#define FF_SERIF 0x0000
+_FontAttrs = le.Struct(
+    FA_FAMILY=bitfield('uint8', 4),
+    FA_OUTLINE = bitfield('uint8', 1),
+    FA_ORIENT = bitfield('uint8', 1),
+    FA_FIXED_WIDTH = bitfield('uint8', 1),
+    FA_USEFUL = bitfield('uint8', 1),
+)
+
 _FontInfo = le.Struct(
     # > font ID
     FI_fontID='word',
@@ -37,8 +62,7 @@ _FontInfo = le.Struct(
     # this is more of a "which vendor's format" field - for bitmap it is 0
     FI_maker='word',
     # > font family, etc.
-    # TODO: flags - not fully understood yet
-    FI_family='byte',
+    FI_family=_FontAttrs,
     # > typeface name
     FI_faceName='20s',
     # > start of table of point sizes
