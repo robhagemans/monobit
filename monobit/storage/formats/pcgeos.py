@@ -81,10 +81,41 @@ _FontInfo = le.Struct(
     unused='byte',
 )
 
+
+# typedef ByteFlags TextStyle;
+#define TS_OUTLINE				0x40
+#define TS_BOLD 				0x20
+#define TS_ITALIC 				0x10
+#define TS_SUPERSCRIPT 				0x08
+#define TS_SUBSCRIPT 				0x04
+#define TS_STRIKE_THRU 				0x02
+#define TS_UNDERLINE 				0x01
+_TextStyle = le.Struct(
+    TS_UNDERLINE=flag,
+    TS_STRIKE_THRU=flag,
+    TS_SUBSCRIPT=flag,
+    TS_SUPERSCRIPT=flag,
+    TS_ITALIC=flag,
+    TS_BOLD=flag,
+    TS_OUTLINE=flag,
+    unknown=flag,
+)
+
+def _style_to_decoration(style):
+    return ' '.join(_deco for _deco in (
+        'underline' if style.TS_UNDERLINE else '',
+        'strikethrough' if style.TS_STRIKE_THRU else '',
+        'subscript' if style.TS_SUBSCRIPT else '',
+        'superscript' if style.TS_SUPERSCRIPT else '',
+        'italic' if style.TS_ITALIC else '',
+        'bold' if style.TS_BOLD else '',
+        'outline' if style.TS_OUTLINE else '',
+    ) if _deco)
+
+
 _PointSizeEntry = le.Struct(
     # > style of face
-    # TODO: flags, not yet understood
-    PSE_style='byte',
+    PSE_style=_TextStyle,
     # note that there are different versions of this struct
     # the DBCS_PCGEOS version has this, instead of below WBFixed field
         # PSE_pointSize       sbyte                   ;integer point size <128
@@ -334,6 +365,7 @@ def load_pcgeos(instream):
             underline_descent=_wbfixed_to_float(font_buf.FB_underPos),
             underline_thickness=_wbfixed_to_float(font_buf.FB_underThickness),
             # strikethrough_ascent=font_buf.FB_strikePos,
+            decoration=_style_to_decoration(point_size_entry.PSE_style),
         )
         fonts.append(font)
     return fonts
