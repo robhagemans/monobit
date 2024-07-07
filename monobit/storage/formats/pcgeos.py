@@ -147,6 +147,25 @@ def _wbfixed_to_float(wbfixed_value):
     return wbfixed_value.int + wbfixed_value.frac / 256
 
 
+# typedef ByteFlags FontBufFlags;
+#define FBF_DEFAULT_FONT    0x80
+#define FBF_MAPPED_FONT     0x40
+#define FBF_IS_OUTLINE      0x10
+#define FBF_IS_REGION       0x08
+#define FBF_IS_COMPLEX      0x04
+#define FBF_IS_INVALID      0x02
+_FontBufFlags = le.Struct(
+    unknown_0x01=flag,
+    FBF_IS_INVALID=flag,
+    FBF_IS_COMPLEX=flag,
+    FBF_IS_REGION=flag,
+    FBF_IS_OUTLINE=flag,
+    unknown_0x20=flag,
+    FBF_MAPPED_FONT=flag,
+    FBF_DEFAULT_FONT=flag,
+)
+
+
 _FontBuf = le.Struct(
     # > actual size of data (bytes)
     FB_dataSize='word',
@@ -223,9 +242,7 @@ _FontBuf = le.Struct(
     # > height of font (invalid for rotation)
     FB_pixHeight='word',
     # > special flags
-    # > FontBufFlags
-    # TODO: byte flags, not yet understood
-    FB_flags='byte',
+    FB_flags=_FontBufFlags,
     # > usage counter for this font
     FB_heapCount='word',
     # FB_charTable        CharTableEntry <>
