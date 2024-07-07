@@ -9,7 +9,7 @@ import logging
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
-from monobit.base.struct import StructError, little_endian as le
+from monobit.base.struct import StructError, bitfield, flag, little_endian as le
 from monobit.base.binary import ceildiv, align
 
 
@@ -176,6 +176,25 @@ _FontBuf = le.Struct(
     # FB_charTable        CharTableEntry <>
 )
 
+
+_CharTableFlags = le.Struct(
+    # > pad to a BYTE only
+    # . TRUE if negative left-side bearing
+    CTF_NEGATIVE_LSB=flag,
+    # > TRUE if very tall
+    CTF_ABOVE_ASCENT=flag,
+    # > TRUE if very low
+    CTF_BELOW_DESCENT=flag,
+    # > TRUE if no data
+    CTF_NO_DATA=flag,
+    # > TRUE if first of a kern pair
+    CTF_IS_FIRST_KERN=flag,
+    # > TRUE if second of a kern pair
+    CTF_IS_SECOND_KERN=flag,
+    # > TRUE if character normally invisible
+    CTF_NOT_VISIBLE=flag,
+)
+
 _CharTableEntry = le.Struct(
     # > Offset to data
     # > nptr.CharData
@@ -183,12 +202,11 @@ _CharTableEntry = le.Struct(
     # > character width
     CTE_width=_WBFixed,
     # > flags
-    # > CharTableFlags
-    # TODO byte flags
-    CTE_flags='byte',
+    CTE_flags=_CharTableFlags,
     # > LRU count
     CTE_usage='word',
 )
+
 
 _CharData = le.Struct(
     # > width of picture data in bits
@@ -239,11 +257,14 @@ def load_pcgeos(instream):
                 if not glyph:
                     raise
                 break
-            byte_width = ceildiv(char_data.CD_pictureWidth, 8)
-            byte_size = char_data.CD_numRows * byte_width
-            # blank glyph still has one null row
-            byte_size = max(1, byte_size)
-            charbytes = instream.read(byte_size)
+            if char_table_entry.CTE_flags.CTF_NO_DATA:
+                charbytes = b''
+            else:
+                byte_width = ceildiv(char_data.CD_pictureWidth, 8)
+                byte_size = char_data.CD_numRows * byte_width
+                # blank glyph still has one null row
+                byte_size = max(1, byte_size)
+                charbytes = instream.read(byte_size)
             glyph = Glyph.from_bytes(
                 charbytes, width=char_data.CD_pictureWidth,
                 shift_up=(
