@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.pcgeos - PC-GEOS / GeoWorks Ensemble / BreadBox Ensemble
+monobit.storage.formats.pcgeos - PC/GEOS 2.0+ (aka GeoWorks, NewDeal, BreadBox)
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
