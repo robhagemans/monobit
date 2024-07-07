@@ -119,6 +119,7 @@ Proportional-spacing formats
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       | binary | Mu; see `nfnt` |
 | Palm OS PRC (v1/NFNT) | `palm-prc` | `.prc`                      |&check;|       | binary | Mu; see `nfnt` |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB  |
+| PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|       | binary | -        |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | -        |
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       | binary | -        |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | (Ve CA - unsupported) |
