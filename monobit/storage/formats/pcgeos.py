@@ -254,6 +254,10 @@ def load_pcgeos(instream):
             # this appears to be necessary
             if char_table_entry.CTE_dataOffset == 0:
                 continue
+            # this is usually (?) a no-op at this point
+            instream.seek(
+                point_size_entry.PSE_dataPos + char_table_entry.CTE_dataOffset
+            )
             try:
                 char_data = _CharData.read_from(instream)
             except StructError:
