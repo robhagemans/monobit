@@ -300,10 +300,22 @@ _CharData = le.Struct(
     patterns=('*.fnt',),
 )
 def load_pcgeos(instream):
+    """Load a PC/GEOS v2.0+ bitmap font file."""
     font_file_info = _FontFileInfo.read_from(instream)
     logging.debug('FontFileInfo: %s', font_file_info)
+    if font_file_info.FFI_signature != _BSWF_SIG:
+        if font_file_info.FFI_signature[:2] == b'\xEF\xBE':
+            raise FileFormatError('PC/GEOS v1.2 fonts not supported.')
+        if font_file_info.FFI_signature[:2] == b'\x80\x10':
+            raise FileFormatError('PC/GEOS v1.0 fonts not supported.')
+        raise FileformatError('Not a PC-GEOS font file: incorrect signature')
     font_info = _FontInfo.read_from(instream)
     logging.debug('FontInfo: %s', font_info)
+    if font_info.FI_maker != 0:
+        logging.warning(
+            'Non-bitmap PC/GEOS font file; '
+            'will try to extract bitmap glyphs, if any.'
+        )
     # the +7 offset is strange, as the FFI header is 8 bytes long
     instream.seek(font_info.FI_pointSizeTab + 7)
     n_entries = (font_info.FI_pointSizeEnd - font_info.FI_pointSizeTab) //_PointSizeEntry.size
