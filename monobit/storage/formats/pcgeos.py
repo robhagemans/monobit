@@ -396,5 +396,6 @@ def load_pcgeos(instream):
             # strikethrough_ascent=font_buf.FB_strikePos,
             decoration=_style_to_decoration(point_size_entry.PSE_style),
         )
+        font = font.label(char_from='pc-geos')
         fonts.append(font)
     return fonts
