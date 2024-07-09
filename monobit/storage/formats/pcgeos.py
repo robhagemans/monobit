@@ -24,9 +24,7 @@ _FontFileInfo = le.Struct(
     # > major version (1)
     FFI_majorVer='byte',
     # > size of font info section
-    # i.e. size of FontFileInfo + FontInfo
-    # perhaps this tells us whether it's a DBCS_PCGEOS font
-    # whose header is 2 bytes longer
+    # i.e. size of FontInfo + PointSizeTable, minus 1  (?)
     FFI_headerSize='word',
 )
 
@@ -38,6 +36,14 @@ _FontFileInfo = le.Struct(
 #define FA_FAMILY       0x0f
 #define FA_FAMILY_OFFSET 0
 
+_FontAttrs = le.Struct(
+    FA_FAMILY=bitfield('uint8', 4),
+    FA_OUTLINE=bitfield('uint8', 1),
+    FA_ORIENT=bitfield('uint8', 1),
+    FA_FIXED_WIDTH=bitfield('uint8', 1),
+    FA_USEFUL=bitfield('uint8', 1),
+)
+
 # typedef byte FontFamily;
 #define FF_NON_PORTABLE 0x0007
 #define FF_SPECIAL 0x0006
@@ -47,13 +53,13 @@ _FontFileInfo = le.Struct(
 #define FF_SCRIPT 0x0002
 #define FF_SANS_SERIF 0x0001
 #define FF_SERIF 0x0000
-_FontAttrs = le.Struct(
-    FA_FAMILY=bitfield('uint8', 4),
-    FA_OUTLINE = bitfield('uint8', 1),
-    FA_ORIENT = bitfield('uint8', 1),
-    FA_FIXED_WIDTH = bitfield('uint8', 1),
-    FA_USEFUL = bitfield('uint8', 1),
-)
+_FAMILY_TO_STYLE = {
+    0x0004: 'symbol',
+    0x0002: 'script',
+    0x0001: 'sans serif',
+    0x0000: 'serif',
+}
+
 
 _FontInfo = le.Struct(
     # > font ID
@@ -124,8 +130,8 @@ _PointSizeEntry = le.Struct(
     # > PSE_pointSize       WBFixed                 ;point size
     # "WBFixed" format - assume byte fractional part, byte integer part
     # though elsewhere I seem to need byte + word for WBFixed??
-    PSE_pointSize_frac='uint8',
     PSE_pointSize_int='int8',
+    PSE_pointSize_frac='uint8',
     # > size of data
     PSE_dataSize='word',
     # > position in file
@@ -164,6 +170,18 @@ _FontBufFlags = le.Struct(
     FBF_MAPPED_FONT=flag,
     FBF_DEFAULT_FONT=flag,
 )
+
+
+# typedef word FontMaker;
+#define FM_PRINTER                              0xf000
+#define FM_MICROLOGIC                           0xe000
+#define FM_ATECH                                0xd000
+#define FM_PUBLIC                               0xc000
+#define FM_AGFA                                 0x4000
+#define FM_BITSTREAM                            0x3000
+#define FM_ADOBE                                0x2000
+#define FM_NIMBUSQ                              0x1000
+#define FM_BITMAP                               0x0000
 
 
 _FontBuf = le.Struct(
@@ -395,6 +413,7 @@ def load_pcgeos(instream):
             underline_thickness=_wbfixed_to_float(font_buf.FB_underThickness),
             # strikethrough_ascent=font_buf.FB_strikePos,
             decoration=_style_to_decoration(point_size_entry.PSE_style),
+            style=_FAMILY_TO_STYLE.get(font_info.FI_family.FA_FAMILY, ''),
         )
         font = font.label(char_from='pc-geos')
         fonts.append(font)
