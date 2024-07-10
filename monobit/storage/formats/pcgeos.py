@@ -158,6 +158,14 @@ def _wbfixed_to_float(wbfixed_value):
     return wbfixed_value.int + wbfixed_value.frac / 256
 
 
+def _float_to_wbfixed(float_value):
+    """Convert float value to WBFixed."""
+    return _WBFixed(
+        frac=int((float_value-int(float_value)) * 256),
+        int=int(float_value),
+    )
+
+
 # typedef ByteFlags FontBufFlags;
 #define FBF_DEFAULT_FONT    0x80
 #define FBF_MAPPED_FONT     0x40
@@ -500,29 +508,13 @@ def save_pcgeos(fonts, outstream):
 
 
 def _create_pcgeos_font_section(font, data_offset):
-    #
-    # _CharData = le.Struct(
-    #     # > width of picture data in bits
-    #     CD_pictureWidth='byte',
-    #     # > number of rows of data
-    #     CD_numRows='byte',
-    #     # > (signed) offset to first row
-    #     CD_yoff='int8',
-    #     # > (signed) offset to first column
-    #     CD_xoff='int8',
-    #     # > data for character
-    #     # CD_data
-    # )
+    """Create pcgeos font section for one font."""
     baseline = font.raster_size.y + min(_g.shift_up for _g in font.glyphs)
     glyphbytes = tuple(
         bytes(_CharData(
-            # > width of picture data in bits
             CD_pictureWidth=_g.width,
-            # > number of rows of data
             CD_numRows=_g.height,
-            # # > (signed) offset to first row
             CD_yoff=(baseline - _g.height - _g.shift_up),
-            # # > (signed) offset to first column
             CD_xoff=_g.left_bearing,
         ))
         # empty glyph still stores one byte of zeros
@@ -618,17 +610,14 @@ def _create_pcgeos_font_section(font, data_offset):
     )
     char_table = (_CharTableEntry * n_chars)(*(
         _CharTableEntry(
-            # # > Offset to data
-            # # > nptr.CharData
             CTE_dataOffset=data_offset + _FontBuf.size + (_CharTableEntry * n_chars).size + _ofs,
-            # # > character width
-            # CTE_width=_WBFixed,
+            CTE_width=_float_to_wbfixed(_glyph.advance_width),
             # # > flags
             # CTE_flags=_CharTableFlags,
             # # > LRU count
             # CTE_usage='word',
         )
-        for _ofs in glyph_offsets
+        for _glyph, _ofs in zip(font.glyphs, glyph_offsets)
     ))
 
     return b''.join((
