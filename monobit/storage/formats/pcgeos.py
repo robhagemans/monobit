@@ -647,13 +647,7 @@ def _prepare_pcgeos(fonts):
         raise FileFormatError(
             'PC-GEOS font file can only store fonts from one family.'
         )
-    if len(set(_f.pixel_size for _f in fonts)) != len(fonts):
-        raise FileFormatError(
-            'PC-GEOS font file can only store fonts with distinct pixel sizes.'
-        )
     common_props = _get_metadata(fonts[0])
-    # sort in ascending order of pixel size
-    fonts = tuple(sorted(fonts, key=lambda _f: _f.pixel_size))
     return fonts, common_props
 
 
