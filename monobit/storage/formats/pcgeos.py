@@ -513,9 +513,20 @@ def _create_pcgeos_font_section(font, data_offset):
     #     # > data for character
     #     # CD_data
     # )
-
+    baseline = font.raster_size.y + min(_g.shift_up for _g in font.glyphs)
     glyphbytes = tuple(
-        bytes(_CharData()) + (_g.as_bytes() or b'\0')
+        bytes(_CharData(
+            # > width of picture data in bits
+            CD_pictureWidth=_g.width,
+            # > number of rows of data
+            CD_numRows=_g.height,
+            # # > (signed) offset to first row
+            CD_yoff=(baseline - _g.height - _g.shift_up),
+            # # > (signed) offset to first column
+            CD_xoff=_g.left_bearing,
+        ))
+        # empty glyph still stores one byte of zeros
+        + (_g.as_bytes() or b'\0')
         # add empty at the end
         for _g in list(font.glyphs) + [Glyph()]
     )
