@@ -462,153 +462,30 @@ def save_pcgeos(fonts, outstream):
     )
     print(font_info)
 
-    data_sizes = []
+    data_offset = 0
     font_data = []
+    point_size_table = []
     for font in fonts:
-        #
-        # _CharData = le.Struct(
-        #     # > width of picture data in bits
-        #     CD_pictureWidth='byte',
-        #     # > number of rows of data
-        #     CD_numRows='byte',
-        #     # > (signed) offset to first row
-        #     CD_yoff='int8',
-        #     # > (signed) offset to first column
-        #     CD_xoff='int8',
-        #     # > data for character
-        #     # CD_data
-        # )
-
-        glyphbytes = tuple(
-            bytes(_CharData()) + _g.as_bytes()
-            # add empty at the end
-            for _g in list(font.glyphs) + [Glyph()]
-        )
-        data = b''.join(glyphbytes)
-        glyph_offsets = accumulate(
-            (len(_b) for _b in glyphbytes[:-1]),
-            initial=0
-        )
-
-
-        first_char = int(min(font.get_codepoints()))
-        # we add an empty at the end
-        last_char = int(max(font.get_codepoints())) + 1
-        n_chars = last_char - first_char + 1
-
-        data_sizes.append(
-            len(data) + _FontBuf.size + (_CharTableEntry * n_chars).size
-        )
-
-        font_buf = _FontBuf(
-            FB_dataSize=data_sizes[-1],
-            FB_maker=0,
-            # FIXME - metrics
-            # > average character width
-            # FB_avgwidth=_WBFixed,
-            # > width of widest character
-            # FB_maxwidth=_WBFixed,
-            # > offset to top of font box
-            # FB_heightAdjust=_WBFixed,
-            # > height of characters
-            # FB_height=_WBFixed,
-            # > height of accent portion.
-            # FB_accent=_WBFixed,
-            # > top of lower case character boxes.
-            # FB_mean=_WBFixed,
-            # > offset to top of ascent
-            # FB_baseAdjust=_WBFixed,
-            # > position of baseline from top of font
-            # FB_baselinePos=_WBFixed,
-            # > maximum descent (from baseline)
-            # FB_descent=_WBFixed,
-            # > recommended external leading
-            # FB_extLeading=_WBFixed,
-            # >   line spacing = FB_height +
-            # >                  FB_extLeading +
-            # >                  FB_heightAdjust
-            # > number of kerning pairs
-            FB_kernCount=0,
-            # > offset to kerning pair table
-            # > nptr.KernPair
-            FB_kernPairPtr=0,
-            # > offset to kerning value table
-            # > nptr.BBFixed
-            FB_kernValuePtr=0,
-            # > first char defined
-            FB_firstChar=first_char,
-            # > last char defined
-            FB_lastChar=last_char,
-            # > default character
-            FB_defaultChar=int(font.get_default_glyph().codepoint),
-
-            # > underline position (from baseline)
-            # FB_underPos=_WBFixed,
-            # > underline thickness
-            # FB_underThickness=_WBFixed,
-            # > position of the strike-thru
-            # FB_strikePos=_WBFixed,
-            # > maximum above font box
-            # FB_aboveBox=_WBFixed,
-            # > maximum below font box
-            # FB_belowBox=_WBFixed,
-            # > Bounds are signed integers, in device coords, and are
-            # > measured from the upper left of the font box where
-            # > character drawing starts from.
-            #
-            # > minimum left side bearing
-            # FB_minLSB='int16',
-            # # ; minimum top side bound
-            # FB_minTSB='int16',
-            # # > maximum bottom side bound
-            # FB_maxBSB='int16',
-            # # ; maximum right side bound
-            # FB_maxRSB='int16',
-            # > height of font (invalid for rotation)
-            # FB_pixHeight='word',
-            # # > special flags
-            # FB_flags=_FontBufFlags,
-            # # > usage counter for this font
-            # FB_heapCount='word',
-            # FB_charTable        CharTableEntry <>
-        )
-        char_table = (_CharTableEntry * n_chars)(*(
-            _CharTableEntry(
-                # # > Offset to data
-                # # > nptr.CharData
-                CTE_dataOffset=_ofs,
-                # # > character width
-                # CTE_width=_WBFixed,
-                # # > flags
-                # CTE_flags=_CharTableFlags,
-                # # > LRU count
-                # CTE_usage='word',
-            )
-            for _ofs in glyph_offsets
-        ))
-
-        font_data.append(b''.join((
-            bytes(font_buf),
-            bytes(char_table),
-            data,
-        )))
-
-
-    point_size_table = (_PointSizeEntry * n_sizes)(*(
-        _PointSizeEntry(
+        data = _create_pcgeos_font_section(font, data_offset)
+        font_data.append(data)
+        point_size_table.append(_PointSizeEntry(
             # TODO TextStyle
             PSE_style=_TextStyle(),
-            PSE_pointSize_int=_f.pixel_size,
+            PSE_pointSize_int=font.pixel_size,
             PSE_pointSize_frac=0,
-            PSE_dataSize=_datasize,
-            # -1 as we will clip off the last byte
-            PSE_dataPos=_FontFileInfo.size + _FontInfo.size + (_PointSizeEntry * n_sizes).size + _offset -1,
-        )
-        for _f, _datasize, _offset in zip(
-            fonts, data_sizes, accumulate(data_sizes, initial=0)
-        )
-    ))
+            PSE_dataSize=len(data),
+            PSE_dataPos=data_offset + (
+                _FontFileInfo.size + _FontInfo.size
+                # -1 as we will clip off the last byte
+                + (_PointSizeEntry * n_sizes).size - 1
+            ),
+        ))
+        data_offset += len(data)
+
+    point_size_table = (_PointSizeEntry * n_sizes)(*point_size_table)
     print(point_size_table)
+
+    # write out pcgeos file
     outstream.write(bytes(font_file_info))
     outstream.write(bytes(font_info))
     # note that we clip off the final null byte
@@ -617,8 +494,139 @@ def save_pcgeos(fonts, outstream):
     print(outstream.tell())
 
     for data in font_data:
-        print(outstream.tell(), len(data), _CharTableEntry.size, n_chars, _FontBuf.size)
+        print(outstream.tell(), len(data))
         outstream.write(data)
+
+
+
+def _create_pcgeos_font_section(font, data_offset):
+    #
+    # _CharData = le.Struct(
+    #     # > width of picture data in bits
+    #     CD_pictureWidth='byte',
+    #     # > number of rows of data
+    #     CD_numRows='byte',
+    #     # > (signed) offset to first row
+    #     CD_yoff='int8',
+    #     # > (signed) offset to first column
+    #     CD_xoff='int8',
+    #     # > data for character
+    #     # CD_data
+    # )
+
+    glyphbytes = tuple(
+        bytes(_CharData()) + (_g.as_bytes() or b'\0')
+        # add empty at the end
+        for _g in list(font.glyphs) + [Glyph()]
+    )
+    glyphdata = b''.join(glyphbytes)
+    glyph_offsets = accumulate(
+        (len(_b) for _b in glyphbytes[:-1]),
+        initial=0
+    )
+
+    first_char = int(min(font.get_codepoints()))
+    # we add an empty at the end
+    last_char = int(max(font.get_codepoints())) + 1
+    n_chars = last_char - first_char + 1
+
+    font_buf = _FontBuf(
+        FB_dataSize=(
+            len(glyphdata) + _FontBuf.size
+            + (_CharTableEntry * n_chars).size
+        ),
+        FB_maker=0,
+        # FIXME - metrics
+        # > average character width
+        # FB_avgwidth=_WBFixed,
+        # > width of widest character
+        # FB_maxwidth=_WBFixed,
+        # > offset to top of font box
+        # FB_heightAdjust=_WBFixed,
+        # > height of characters
+        # FB_height=_WBFixed,
+        # > height of accent portion.
+        # FB_accent=_WBFixed,
+        # > top of lower case character boxes.
+        # FB_mean=_WBFixed,
+        # > offset to top of ascent
+        # FB_baseAdjust=_WBFixed,
+        # > position of baseline from top of font
+        # FB_baselinePos=_WBFixed,
+        # > maximum descent (from baseline)
+        # FB_descent=_WBFixed,
+        # > recommended external leading
+        # FB_extLeading=_WBFixed,
+        # >   line spacing = FB_height +
+        # >                  FB_extLeading +
+        # >                  FB_heightAdjust
+        # > number of kerning pairs
+        FB_kernCount=0,
+        # > offset to kerning pair table
+        # > nptr.KernPair
+        FB_kernPairPtr=0,
+        # > offset to kerning value table
+        # > nptr.BBFixed
+        FB_kernValuePtr=0,
+        # > first char defined
+        FB_firstChar=first_char,
+        # > last char defined
+        FB_lastChar=last_char,
+        # > default character
+        FB_defaultChar=int(font.get_default_glyph().codepoint),
+
+        # > underline position (from baseline)
+        # FB_underPos=_WBFixed,
+        # > underline thickness
+        # FB_underThickness=_WBFixed,
+        # > position of the strike-thru
+        # FB_strikePos=_WBFixed,
+        # > maximum above font box
+        # FB_aboveBox=_WBFixed,
+        # > maximum below font box
+        # FB_belowBox=_WBFixed,
+        # > Bounds are signed integers, in device coords, and are
+        # > measured from the upper left of the font box where
+        # > character drawing starts from.
+        #
+        # > minimum left side bearing
+        # FB_minLSB='int16',
+        # # ; minimum top side bound
+        # FB_minTSB='int16',
+        # # > maximum bottom side bound
+        # FB_maxBSB='int16',
+        # # ; maximum right side bound
+        # FB_maxRSB='int16',
+        # > height of font (invalid for rotation)
+        # FB_pixHeight='word',
+        # # > special flags
+        # FB_flags=_FontBufFlags,
+        # # > usage counter for this font
+        FB_heapCount=0xffff,
+        # FB_charTable        CharTableEntry <>
+    )
+    char_table = (_CharTableEntry * n_chars)(*(
+        _CharTableEntry(
+            # # > Offset to data
+            # # > nptr.CharData
+            CTE_dataOffset=data_offset + _FontBuf.size + (_CharTableEntry * n_chars).size + _ofs,
+            # # > character width
+            # CTE_width=_WBFixed,
+            # # > flags
+            # CTE_flags=_CharTableFlags,
+            # # > LRU count
+            # CTE_usage='word',
+        )
+        for _ofs in glyph_offsets
+    ))
+
+    return b''.join((
+        bytes(font_buf),
+        bytes(char_table),
+        glyphdata,
+    ))
+
+
 
 
 
