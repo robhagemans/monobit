@@ -11,7 +11,7 @@ from itertools import accumulate
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
-from monobit.base import Props
+from monobit.base import Props, reverse_dict
 from monobit.base.struct import StructError, bitfield, flag, little_endian as le
 from monobit.base.binary import ceildiv, align
 
@@ -49,6 +49,7 @@ _FontAttrs = le.Struct(
     FA_USEFUL=bitfield('uint8', 1),
 )
 
+
 # typedef byte FontFamily;
 #define FF_NON_PORTABLE 0x0007
 #define FF_SPECIAL 0x0006
@@ -64,6 +65,7 @@ _FAMILY_TO_STYLE = {
     0x0001: 'sans serif',
     0x0000: 'serif',
 }
+_STYLE_TO_FAMILY = reverse_dict(_FAMILY_TO_STYLE)
 
 
 _FontInfo = le.Struct(
@@ -468,8 +470,10 @@ def save_pcgeos(fonts, outstream):
         FI_fontID=int(common_props.font_id),
         FI_maker=0,
         FI_family=_FontAttrs(
-            # TODO STYLE_TO_FAMILY
-            FA_FAMILY=(5 if common_props.fixed_width else 0),
+            FA_FAMILY=(
+                5 if common_props.fixed_width
+                else _STYLE_TO_FAMILY.get(common_props.style, 0)
+            ),
             FA_FIXED_WIDTH=common_props.fixed_width,
             FA_USEFUL=1,
         ),
@@ -616,4 +620,5 @@ def _get_metadata(font):
         font_id=font_id,
         family=font.family.encode('ascii', 'replace'),
         fixed_width=font.spacing in ('character-cell', 'monospace'),
+        style=font.style,
     )
