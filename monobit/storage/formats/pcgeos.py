@@ -120,10 +120,20 @@ def _style_to_decoration(style):
         'strikethrough' if style.TS_STRIKE_THRU else '',
         'subscript' if style.TS_SUBSCRIPT else '',
         'superscript' if style.TS_SUPERSCRIPT else '',
-        'italic' if style.TS_ITALIC else '',
-        'bold' if style.TS_BOLD else '',
         'outline' if style.TS_OUTLINE else '',
     ) if _deco)
+
+
+def _to_text_style(font):
+    return _TextStyle(
+        TS_UNDERLINE='underline' in font.decoration,
+        TS_STRIKE_THRU='strikethrough' in font.decoration,
+        TS_SUBSCRIPT='subscript' in font.decoration,
+        TS_SUPERSCRIPT='superscript' in font.decoration,
+        TS_ITALIC=font.slant == 'italic',
+        TS_BOLD=font.weight == 'bold',
+        TS_OUTLINE='outline' in font.decoration,
+    )
 
 
 _PointSizeEntry = le.Struct(
@@ -375,14 +385,12 @@ def load_pcgeos(instream):
             instream.seek(
                 point_size_entry.PSE_dataPos + char_table_entry.CTE_dataOffset
             )
-            # logging.debug(instream.tell())
             try:
                 char_data = _CharData.read_from(instream)
             except StructError:
                 if not glyph:
                     raise
                 break
-            # logging.debug(char_data)
             if char_table_entry.CTE_flags.CTF_NO_DATA:
                 charbytes = b''
             else:
@@ -439,7 +447,9 @@ def load_pcgeos(instream):
                 - _wbfixed_to_float(font_buf.FB_strikePos) + 1
             ),
             decoration=_style_to_decoration(point_size_entry.PSE_style),
-            style=_FAMILY_TO_STYLE.get(font_info.FI_family.FA_FAMILY, ''),
+            slant='italic' if point_size_entry.PSE_style.TS_ITALIC else None,
+            weight='bold' if point_size_entry.PSE_style.TS_BOLD else None,
+            style=_FAMILY_TO_STYLE.get(font_info.FI_family.FA_FAMILY, None),
         )
         font = font.label(char_from='pc-geos')
         fonts.append(font)
@@ -489,8 +499,7 @@ def save_pcgeos(fonts, outstream):
         data = _create_pcgeos_font_section(font, data_offset)
         font_data.append(data)
         point_size_table.append(_PointSizeEntry(
-            # TODO TextStyle
-            PSE_style=_TextStyle(),
+            PSE_style=_to_text_style(font),
             PSE_pointSize_int=int(font.point_size),
             PSE_pointSize_frac=int(256*(font.point_size-int(font.point_size))),
             PSE_dataSize=len(data),
