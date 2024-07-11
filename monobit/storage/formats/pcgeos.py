@@ -543,13 +543,11 @@ def _create_pcgeos_font_section(font, data_offset):
             + (_CharTableEntry * n_chars).size
         ),
         FB_maker=0xffff,
-        # FIXME - metrics
         FB_avgwidth=_float_to_wbfixed(font.average_width),
         FB_maxwidth=_float_to_wbfixed(font.max_width),
         # > offset to top of font box
         # FB_heightAdjust=_WBFixed,
         FB_height=_float_to_wbfixed(font.raster_size.y),
-        # FB_height = ascent + descent + FB_accent
         FB_accent=_float_to_wbfixed(font.raster_size.y - font.pixel_size),
         # > top of lower case character boxes.
         FB_mean=_float_to_wbfixed(font.x_height),
@@ -558,9 +556,6 @@ def _create_pcgeos_font_section(font, data_offset):
         FB_baselinePos=_float_to_wbfixed(baseline),
         FB_descent=_float_to_wbfixed(font.descent),
         FB_extLeading=_float_to_wbfixed(font.line_height - font.raster_size.y),
-        # >   line spacing = FB_height +
-        # >                  FB_extLeading +
-        # >                  FB_heightAdjust
         # I don't know how kerning works in this format and have no samples
         FB_kernCount=0,
         FB_kernPairPtr=base_offset,
@@ -576,25 +571,15 @@ def _create_pcgeos_font_section(font, data_offset):
         # FB_aboveBox=_WBFixed,
         # > maximum below font box
         # FB_belowBox=_WBFixed,
-        # > Bounds are signed integers, in device coords, and are
-        # > measured from the upper left of the font box where
-        # > character drawing starts from.
-        #
-        # > minimum left side bearing
-        # FB_minLSB='int16',
-        # # ; minimum top side bound
-        # FB_minTSB='int16',
-        # # > maximum bottom side bound
-        # FB_maxBSB='int16',
-        # # ; maximum right side bound
-        # FB_maxRSB='int16',
-        # > height of font (invalid for rotation)
+        FB_minLSB=min(_g.left_bearing for _g in font.glyphs),
+        FB_minTSB=0,
+        FB_maxBSB=font.raster_size.y,
+        FB_maxRSB=max(_g.advance_width for _g in font.glyphs),
         FB_pixHeight=font.line_height,
         # # > special flags
         # FB_flags=_FontBufFlags,
         # # > usage counter for this font
         FB_heapCount=0xffff,
-        # FB_charTable        CharTableEntry <>
     )
     char_table = (_CharTableEntry * n_chars)(*(
         _CharTableEntry(
