@@ -590,7 +590,7 @@ def _create_pcgeos_font_section(font, data_offset):
     )
     char_table = (_CharTableEntry * n_chars)(*(
         _CharTableEntry(
-            CTE_dataOffset=data_offset + _FontBuf.size + (_CharTableEntry * n_chars).size + _ofs,
+            CTE_dataOffset=_FontBuf.size + (_CharTableEntry * n_chars).size + _ofs,
             CTE_width=_float_to_wbfixed(_glyph.advance_width),
             # # > flags
             # CTE_flags=_CharTableFlags,
