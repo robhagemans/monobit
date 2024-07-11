@@ -361,7 +361,6 @@ def load_pcgeos(instream):
         logging.debug('FontBuf: %s', font_buf)
         n_chars = font_buf.FB_lastChar - font_buf.FB_firstChar + 1
         char_table = (_CharTableEntry * n_chars).read_from(instream)
-        logging.debug(char_table)
         glyphs = []
         # last char is garbage, not sure why
         for cp, char_table_entry in enumerate(
@@ -455,15 +454,16 @@ def save_pcgeos(fonts, outstream):
         for _f in fonts
     )
     n_sizes = len(fonts)
+    # FontFileInfo header
     font_file_info = _FontFileInfo(
         FFI_signature=_BSWF_SIG,
         FFI_minorVer=0,
         FFI_majorVer=1,
         FFI_headerSize=_FontInfo.size - 1 + _PointSizeEntry.size * n_sizes,
     )
-    print(font_file_info)
     # strange 7 byte offset
     point_size_tab_offset = _FontFileInfo.size + _FontInfo.size - 7
+    # FontInfo header
     font_info = _FontInfo(
         FI_fontID=int(common_props.font_id),
         FI_maker=0,
@@ -477,8 +477,7 @@ def save_pcgeos(fonts, outstream):
         FI_pointSizeTab=point_size_tab_offset,
         FI_pointSizeEnd=point_size_tab_offset + _PointSizeEntry.size * n_sizes,
     )
-    print(font_info)
-
+    # per-font sections
     data_offset = 0
     font_data = []
     point_size_table = []
@@ -498,20 +497,13 @@ def save_pcgeos(fonts, outstream):
             ),
         ))
         data_offset += len(data)
-
     point_size_table = (_PointSizeEntry * n_sizes)(*point_size_table)
-    print(point_size_table)
-
     # write out pcgeos file
     outstream.write(bytes(font_file_info))
     outstream.write(bytes(font_info))
     # note that we clip off the final null byte
     outstream.write(bytes(point_size_table)[:-1])
-
-    print(outstream.tell())
-
     for data in font_data:
-        print(outstream.tell(), len(data))
         outstream.write(data)
 
 
@@ -536,14 +528,11 @@ def _create_pcgeos_font_section(font, data_offset):
         (len(_b) for _b in glyphbytes[:-1]),
         initial=0
     )
-
     first_char = int(min(font.get_codepoints()))
     # we add an empty at the end
     last_char = int(max(font.get_codepoints())) + 1
     n_chars = last_char - first_char + 1
-
     base_offset = data_offset + _FontBuf.size + (_CharTableEntry * n_chars).size
-
     font_buf = _FontBuf(
         FB_dataSize=(
             len(glyphdata) + _FontBuf.size
