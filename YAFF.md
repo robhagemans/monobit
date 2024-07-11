@@ -14,8 +14,8 @@
     .@@......@@..........................@@.
 
 
-The `yaff` font file format, version 1.0
-========================================
+The `yaff` font file format, version 1.0.1
+==========================================
 
 Design aims
 -----------
@@ -333,6 +333,8 @@ _Rendering hints_ affect the way decorations and transformations are applied. Th
 - `outline-thickness`: number of pixels in a generated outline
 - `underline-thickness`: number of pixels in a generated underline
 - `underline-descent`: location of underline in pixels below the baseline
+- `strikethrough-thickness`: number of pixels in a generated strikethrough
+- `strikethrough-ascent`: top of strikethrough in pixels above the baseline
 - `superscript-size`: pixel size of superscript font to use
 - `superscript-offset`: Horizontal (in direction of writing), upward offset for a superscript
 - `subscript-size`: pixel size of subscript font to use

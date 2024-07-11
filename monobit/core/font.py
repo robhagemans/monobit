@@ -158,8 +158,12 @@ class FontProperties:
     # number of pixels in underline
     # we don't implement the XLFD calculation based on average stem width
     underline_thickness: int = 1
+    # number of pixels in strikethrough
+    strikethrough_thickness: int = 1
     # position of underline below baseline. 0 means underline rests on baseline itself, 1 is one line below
     underline_descent: int
+    # position of strikethorugh above baseline. 1 means strikethrough rests on baseline
+    strikethrough_ascent: int
     # recommended superscript size in pixels.
     superscript_size: int
     # recommended subscript size in pixels.

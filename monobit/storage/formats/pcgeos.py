@@ -429,7 +429,10 @@ def load_pcgeos(instream):
                 _wbfixed_to_float(font_buf.FB_underPos) - _wbfixed_to_float(font_buf.FB_baselinePos)
             ),
             underline_thickness=_wbfixed_to_float(font_buf.FB_underThickness),
-            # strikethrough_ascent=font_buf.FB_strikePos,
+            strikethrough_ascent=(
+                _wbfixed_to_float(font_buf.FB_baselinePos)
+                - _wbfixed_to_float(font_buf.FB_strikePos) + 1
+            ),
             decoration=_style_to_decoration(point_size_entry.PSE_style),
             style=_FAMILY_TO_STYLE.get(font_info.FI_family.FA_FAMILY, ''),
         )
@@ -566,7 +569,7 @@ def _create_pcgeos_font_section(font, data_offset):
         FB_underPos=_float_to_wbfixed(baseline + font.underline_descent),
         FB_underThickness=_float_to_wbfixed(font.underline_thickness),
         # > position of the strike-thru
-        # FB_strikePos=_WBFixed,
+        FB_strikePos=_float_to_wbfixed(baseline - font.strikethrough_ascent + 1),
         # > maximum above font box
         # FB_aboveBox=_WBFixed,
         # > maximum below font box
