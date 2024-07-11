@@ -533,55 +533,45 @@ def _create_pcgeos_font_section(font, data_offset):
     last_char = int(max(font.get_codepoints())) + 1
     n_chars = last_char - first_char + 1
 
+    base_offset = data_offset + _FontBuf.size + (_CharTableEntry * n_chars).size
+
     font_buf = _FontBuf(
         FB_dataSize=(
             len(glyphdata) + _FontBuf.size
             + (_CharTableEntry * n_chars).size
         ),
-        FB_maker=0,
+        FB_maker=0xffff,
         # FIXME - metrics
-        # > average character width
-        # FB_avgwidth=_WBFixed,
-        # > width of widest character
-        # FB_maxwidth=_WBFixed,
+        FB_avgwidth=_float_to_wbfixed(font.average_width),
+        FB_maxwidth=_float_to_wbfixed(font.max_width),
         # > offset to top of font box
         # FB_heightAdjust=_WBFixed,
         # > height of characters
-        # FB_height=_WBFixed,
+        FB_height=_float_to_wbfixed(font.raster_size.y),
         # > height of accent portion.
         # FB_accent=_WBFixed,
         # > top of lower case character boxes.
-        # FB_mean=_WBFixed,
+        FB_mean=_float_to_wbfixed(font.x_height),
         # > offset to top of ascent
         # FB_baseAdjust=_WBFixed,
-        # > position of baseline from top of font
-        # FB_baselinePos=_WBFixed,
-        # > maximum descent (from baseline)
-        # FB_descent=_WBFixed,
-        # > recommended external leading
-        # FB_extLeading=_WBFixed,
+        FB_baselinePos=_float_to_wbfixed(baseline),
+        FB_descent=_float_to_wbfixed(font.descent),
+        FB_extLeading=_float_to_wbfixed(font.leading),
         # >   line spacing = FB_height +
         # >                  FB_extLeading +
         # >                  FB_heightAdjust
-        # > number of kerning pairs
+        # I don't know how kerning works in this format and have no samples
         FB_kernCount=0,
-        # > offset to kerning pair table
-        # > nptr.KernPair
-        FB_kernPairPtr=0,
-        # > offset to kerning value table
-        # > nptr.BBFixed
-        FB_kernValuePtr=0,
-        # > first char defined
+        FB_kernPairPtr=base_offset,
+        FB_kernValuePtr=base_offset,
         FB_firstChar=first_char,
-        # > last char defined
         FB_lastChar=last_char,
-        # > default character
         FB_defaultChar=int(font.get_default_glyph().codepoint),
 
         # > underline position (from baseline)
         # FB_underPos=_WBFixed,
         # > underline thickness
-        # FB_underThickness=_WBFixed,
+        FB_underThickness=_float_to_wbfixed(font.underline_thickness),
         # > position of the strike-thru
         # FB_strikePos=_WBFixed,
         # > maximum above font box
@@ -601,7 +591,7 @@ def _create_pcgeos_font_section(font, data_offset):
         # # ; maximum right side bound
         # FB_maxRSB='int16',
         # > height of font (invalid for rotation)
-        # FB_pixHeight='word',
+        FB_pixHeight=font.line_height,
         # # > special flags
         # FB_flags=_FontBufFlags,
         # # > usage counter for this font
