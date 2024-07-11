@@ -425,7 +425,9 @@ def load_pcgeos(instream):
                 + _wbfixed_to_float(font_buf.FB_heightAdjust)
             ),
             default_char=font_buf.FB_defaultChar,
-            underline_descent=_wbfixed_to_float(font_buf.FB_underPos),
+            underline_descent=(
+                _wbfixed_to_float(font_buf.FB_underPos) - _wbfixed_to_float(font_buf.FB_baselinePos)
+            ),
             underline_thickness=_wbfixed_to_float(font_buf.FB_underThickness),
             # strikethrough_ascent=font_buf.FB_strikePos,
             decoration=_style_to_decoration(point_size_entry.PSE_style),
@@ -546,17 +548,16 @@ def _create_pcgeos_font_section(font, data_offset):
         FB_maxwidth=_float_to_wbfixed(font.max_width),
         # > offset to top of font box
         # FB_heightAdjust=_WBFixed,
-        # > height of characters
         FB_height=_float_to_wbfixed(font.raster_size.y),
-        # > height of accent portion.
-        # FB_accent=_WBFixed,
+        # FB_height = ascent + descent + FB_accent
+        FB_accent=_float_to_wbfixed(font.raster_size.y - font.pixel_size),
         # > top of lower case character boxes.
         FB_mean=_float_to_wbfixed(font.x_height),
         # > offset to top of ascent
         # FB_baseAdjust=_WBFixed,
         FB_baselinePos=_float_to_wbfixed(baseline),
         FB_descent=_float_to_wbfixed(font.descent),
-        FB_extLeading=_float_to_wbfixed(font.leading),
+        FB_extLeading=_float_to_wbfixed(font.line_height - font.raster_size.y),
         # >   line spacing = FB_height +
         # >                  FB_extLeading +
         # >                  FB_heightAdjust
@@ -567,10 +568,7 @@ def _create_pcgeos_font_section(font, data_offset):
         FB_firstChar=first_char,
         FB_lastChar=last_char,
         FB_defaultChar=int(font.get_default_glyph().codepoint),
-
-        # > underline position (from baseline)
-        # FB_underPos=_WBFixed,
-        # > underline thickness
+        FB_underPos=_float_to_wbfixed(baseline + font.underline_descent),
         FB_underThickness=_float_to_wbfixed(font.underline_thickness),
         # > position of the strike-thru
         # FB_strikePos=_WBFixed,
