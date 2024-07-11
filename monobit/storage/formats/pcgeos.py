@@ -507,7 +507,6 @@ def save_pcgeos(fonts, outstream):
         outstream.write(data)
 
 
-
 def _create_pcgeos_font_section(font, data_offset):
     """Create pcgeos font section for one font."""
     baseline = font.raster_size.y + min(_g.shift_up for _g in font.glyphs)
@@ -538,7 +537,7 @@ def _create_pcgeos_font_section(font, data_offset):
             len(glyphdata) + _FontBuf.size
             + (_CharTableEntry * n_chars).size
         ),
-        FB_maker=0xffff,
+        FB_maker=0,
         FB_avgwidth=_float_to_wbfixed(font.average_width),
         FB_maxwidth=_float_to_wbfixed(font.max_width),
         # > offset to top of font box
@@ -574,8 +573,7 @@ def _create_pcgeos_font_section(font, data_offset):
         FB_pixHeight=font.line_height,
         # # > special flags
         # FB_flags=_FontBufFlags,
-        # # > usage counter for this font
-        FB_heapCount=0xffff,
+        FB_heapCount=0x29a,
     )
     char_table = (_CharTableEntry * n_chars)(*(
         _CharTableEntry(
