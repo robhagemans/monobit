@@ -408,6 +408,10 @@ def load_pcgeos(instream):
             glyphs,
             family=font_info.FI_faceName.decode('ascii', 'replace'),
             font_id=font_info.FI_fontID,
+            point_size=(
+                point_size_entry.PSE_pointSize_int +
+                point_size_entry.PSE_pointSize_frac / 256
+            ),
             average_width=_wbfixed_to_float(font_buf.FB_avgwidth),
             max_width=_wbfixed_to_float(font_buf.FB_maxwidth),
             # FB_heightAdjust=font_buf.FB_heightAdjust,
@@ -484,8 +488,8 @@ def save_pcgeos(fonts, outstream):
         point_size_table.append(_PointSizeEntry(
             # TODO TextStyle
             PSE_style=_TextStyle(),
-            PSE_pointSize_int=font.pixel_size,
-            PSE_pointSize_frac=0,
+            PSE_pointSize_int=int(font.point_size),
+            PSE_pointSize_frac=int(256*(font.point_size-int(font.point_size))),
             PSE_dataSize=len(data),
             PSE_dataPos=data_offset + (
                 _FontFileInfo.size + _FontInfo.size
