@@ -451,7 +451,7 @@ def save_pcgeos(fonts, outstream):
     fonts = tuple(
         # 255 only as we add an empty glyph at the end
         make_contiguous(_f, missing='empty', supported_range=range(255))
-        for _f in fonts
+        for _f in fonts if _f.glyphs
     )
     n_sizes = len(fonts)
     # FontFileInfo header
