@@ -577,7 +577,7 @@ def _create_pcgeos_font_section(font):
         FB_kernValuePtr=header_size,
         FB_firstChar=first_char,
         FB_lastChar=last_char,
-        FB_defaultChar=int(font.get_default_glyph().codepoint),
+        FB_defaultChar=int(font.get_default_glyph().codepoint or first_char),
         FB_underPos=_float_to_wbfixed(baseline + font.underline_descent),
         FB_underThickness=_float_to_wbfixed(font.underline_thickness),
         # > position of the strike-thru
