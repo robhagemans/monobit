@@ -550,7 +550,7 @@ def _create_pcgeos_font_section(font, data_offset):
         (len(_b) for _b in glyphbytes[:-1]),
         initial=0
     )
-    base_offset = data_offset + _FontBuf.size + (_CharTableEntry * n_chars).size
+    header_size = _FontBuf.size + (_CharTableEntry * n_chars).size
     font_buf = _FontBuf(
         FB_dataSize=(
             len(glyphdata) + _FontBuf.size
@@ -572,8 +572,9 @@ def _create_pcgeos_font_section(font, data_offset):
         FB_extLeading=_float_to_wbfixed(font.line_height - font.raster_size.y),
         # I don't know how kerning works in this format and have no samples
         FB_kernCount=0,
-        FB_kernPairPtr=base_offset,
-        FB_kernValuePtr=base_offset,
+        # pointer values as in Berkeley.fnt
+        FB_kernPairPtr=header_size,
+        FB_kernValuePtr=header_size,
         FB_firstChar=first_char,
         FB_lastChar=last_char,
         FB_defaultChar=int(font.get_default_glyph().codepoint),
@@ -589,13 +590,19 @@ def _create_pcgeos_font_section(font, data_offset):
         FB_minTSB=0,
         FB_maxBSB=font.raster_size.y,
         FB_maxRSB=max(_g.advance_width for _g in font.glyphs),
-        FB_pixHeight=font.line_height,
+        FB_pixHeight=font.raster_size.y,
         # # > special flags
         # FB_flags=_FontBufFlags,
+        # this is the value used in font samples - perhaps a sentinel? 666 dec
         FB_heapCount=0x29a,
     )
     char_table = (_CharTableEntry * n_chars)(*(
-        _CharTableEntry() if _glyph is None else
+        _CharTableEntry(
+            CTE_dataOffset=0,
+            CTE_flags=_CharTableFlags(
+                CTF_NO_DATA=True,
+            )
+        ) if _glyph is None else
         _CharTableEntry(
             CTE_dataOffset=_FontBuf.size + (_CharTableEntry * n_chars).size + _ofs,
             CTE_width=_float_to_wbfixed(_glyph.advance_width),
