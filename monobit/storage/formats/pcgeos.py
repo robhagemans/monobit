@@ -463,7 +463,7 @@ def save_pcgeos(fonts, outstream):
     fonts, common_props = _prepare_pcgeos(fonts)
     fonts = tuple(
         # 255 only as we add an empty glyph at the end
-        make_contiguous(_f, missing='empty', supported_range=range(255))
+        _f.label(codepoint_from=_f.encoding).subset(codepoints=range(255))
         for _f in fonts if _f.glyphs
     )
     n_sizes = len(fonts)
@@ -524,26 +524,35 @@ def save_pcgeos(fonts, outstream):
 def _create_pcgeos_font_section(font, data_offset):
     """Create pcgeos font section for one font."""
     baseline = font.raster_size.y + min(_g.shift_up for _g in font.glyphs)
-    glyphbytes = tuple(
-        bytes(_CharData(
-            CD_pictureWidth=_g.width,
-            CD_numRows=_g.height,
-            CD_yoff=(baseline - _g.height - _g.shift_up),
-            CD_xoff=_g.left_bearing,
-        ))
-        # empty glyph still stores one byte of zeros
-        + (_g.as_bytes() or b'\0')
+    first_char = int(min(font.get_codepoints()))
+    # we add an empty at the end
+    last_char = int(max(font.get_codepoints())) + 1
+    glyphs = [
+        font.get_glyph(_cp, missing=None)
+        for _cp in range(first_char, last_char)
         # add empty at the end
-        for _g in list(font.glyphs) + [Glyph()]
+    ] + [Glyph()]
+    glyphbytes = tuple(
+        (
+            bytes(_CharData(
+                CD_pictureWidth=_g.width,
+                CD_numRows=_g.height,
+                CD_yoff=(baseline - _g.height - _g.shift_up),
+                CD_xoff=_g.left_bearing,
+            ))
+            # empty glyph still stores one byte of zeros
+            + (_g.as_bytes() or b'\0')
+        ) if _g is not None else (
+            # missing glyph omitted altogether, but needs a record in CharTable
+            b''
+        )
+        for _g in glyphs
     )
     glyphdata = b''.join(glyphbytes)
     glyph_offsets = accumulate(
         (len(_b) for _b in glyphbytes[:-1]),
         initial=0
     )
-    first_char = int(min(font.get_codepoints()))
-    # we add an empty at the end
-    last_char = int(max(font.get_codepoints())) + 1
     n_chars = last_char - first_char + 1
     base_offset = data_offset + _FontBuf.size + (_CharTableEntry * n_chars).size
     font_buf = _FontBuf(
@@ -590,6 +599,7 @@ def _create_pcgeos_font_section(font, data_offset):
         FB_heapCount=0x29a,
     )
     char_table = (_CharTableEntry * n_chars)(*(
+        _CharTableEntry() if _glyph is None else
         _CharTableEntry(
             CTE_dataOffset=_FontBuf.size + (_CharTableEntry * n_chars).size + _ofs,
             CTE_width=_float_to_wbfixed(_glyph.advance_width),
@@ -607,9 +617,8 @@ def _create_pcgeos_font_section(font, data_offset):
             ),
             CTE_usage=0,
         )
-        for _glyph, _ofs in zip(font.glyphs, glyph_offsets)
+        for _glyph, _ofs in zip(glyphs, glyph_offsets)
     ))
-
     return b''.join((
         bytes(font_buf),
         bytes(char_table),
