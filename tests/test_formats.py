@@ -1196,7 +1196,7 @@ class TestFormats(BaseTester):
         file = ensure_asset(self.bison_fnt, 'Bison.fnt')
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 4)
-        self.assertEqual(len(fonts[0].glyphs), 250)
+        self.assertEqual(len(fonts[0].glyphs), 251)
         self.assertEqual(fonts[0].get_glyph(b'A').reduce().as_text(), """\
 .@@@.
 @...@
