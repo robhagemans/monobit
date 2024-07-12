@@ -409,6 +409,7 @@ def load_pcgeos(instream):
                 right_bearing=(
                     _wbfixed_to_float(char_table_entry.CTE_width)
                     - char_data.CD_pictureWidth
+                    - char_data.CD_xoff
                 ),
                 codepoint=cp,
             )
