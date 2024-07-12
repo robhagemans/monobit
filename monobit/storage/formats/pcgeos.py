@@ -495,7 +495,7 @@ def save_pcgeos(fonts, outstream):
     font_data = []
     point_size_table = []
     for font in fonts:
-        data = _create_pcgeos_font_section(font, data_offset)
+        data = _create_pcgeos_font_section(font)
         font_data.append(data)
         point_size_table.append(_PointSizeEntry(
             PSE_style=_to_text_style(font),
@@ -519,7 +519,7 @@ def save_pcgeos(fonts, outstream):
         outstream.write(data)
 
 
-def _create_pcgeos_font_section(font, data_offset):
+def _create_pcgeos_font_section(font):
     """Create pcgeos font section for one font."""
     baseline = font.raster_size.y + min(_g.shift_up for _g in font.glyphs)
     first_char = int(min(font.get_codepoints()))
