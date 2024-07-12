@@ -592,10 +592,19 @@ def _create_pcgeos_font_section(font, data_offset):
         _CharTableEntry(
             CTE_dataOffset=_FontBuf.size + (_CharTableEntry * n_chars).size + _ofs,
             CTE_width=_float_to_wbfixed(_glyph.advance_width),
-            # # > flags
-            # CTE_flags=_CharTableFlags,
-            # # > LRU count
-            # CTE_usage='word',
+            CTE_flags=_CharTableFlags(
+                CTF_NEGATIVE_LSB=(_glyph.left_bearing < 0),
+                # > TRUE if very tall
+                # CTF_ABOVE_ASCENT=flag,
+                # > TRUE if very low
+                # CTF_BELOW_DESCENT=flag,
+                # if we set this, omit the 1-byte placeholder for glyph data
+                # CTF_NO_DATA=flag,
+                CTF_IS_FIRST_KERN=False,
+                CTF_IS_SECOND_KERN=False,
+                # CTF_NOT_VISIBLE=flag,
+            ),
+            CTE_usage=0,
         )
         for _glyph, _ofs in zip(font.glyphs, glyph_offsets)
     ))
@@ -605,9 +614,6 @@ def _create_pcgeos_font_section(font, data_offset):
         bytes(char_table),
         glyphdata,
     ))
-
-
-
 
 
 def _prepare_pcgeos(fonts):
