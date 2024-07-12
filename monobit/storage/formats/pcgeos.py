@@ -374,9 +374,8 @@ def load_pcgeos(instream):
         n_chars = font_buf.FB_lastChar - font_buf.FB_firstChar + 1
         char_table = (_CharTableEntry * n_chars).read_from(instream)
         glyphs = []
-        # last char is garbage, not sure why
         for cp, char_table_entry in enumerate(
-                char_table[:-1], font_buf.FB_firstChar
+                char_table, font_buf.FB_firstChar
             ):
             # this appears to be necessary
             if char_table_entry.CTE_dataOffset == 0:
@@ -462,8 +461,7 @@ def save_pcgeos(fonts, outstream):
     """Save to a PC/GEOS v2.0+ bitmap font file."""
     fonts, common_props = _prepare_pcgeos(fonts)
     fonts = tuple(
-        # 255 only as we add an empty glyph at the end
-        _f.label(codepoint_from=_f.encoding).subset(codepoints=range(255))
+        _f.label(codepoint_from=_f.encoding).subset(codepoints=range(256))
         for _f in fonts if _f.glyphs
     )
     n_sizes = len(fonts)
@@ -525,13 +523,12 @@ def _create_pcgeos_font_section(font, data_offset):
     """Create pcgeos font section for one font."""
     baseline = font.raster_size.y + min(_g.shift_up for _g in font.glyphs)
     first_char = int(min(font.get_codepoints()))
-    # we add an empty at the end
-    last_char = int(max(font.get_codepoints())) + 1
-    glyphs = [
+    last_char = int(max(font.get_codepoints()))
+    glyphs = tuple(
         font.get_glyph(_cp, missing=None)
-        for _cp in range(first_char, last_char)
-        # add empty at the end
-    ] + [Glyph()]
+        for _cp in range(first_char, last_char + 1)
+    )
+    n_chars = len(glyphs)
     glyphbytes = tuple(
         (
             bytes(_CharData(
@@ -553,7 +550,6 @@ def _create_pcgeos_font_section(font, data_offset):
         (len(_b) for _b in glyphbytes[:-1]),
         initial=0
     )
-    n_chars = last_char - first_char + 1
     base_offset = data_offset + _FontBuf.size + (_CharTableEntry * n_chars).size
     font_buf = _FontBuf(
         FB_dataSize=(
