@@ -573,6 +573,15 @@ class Font(HasProps):
         # they may meam something else with the 'top of the baseline'?
         return 1 + ceildiv(max_descent, 2)
 
+
+    @writable_property
+    def strikethrough_ascent(self):
+        """
+        Position of strikethrough above baseline.
+        1 means strikethrough on baseline itself.
+        """
+        return self.x_height // 2
+
     @writable_property
     def superscript_size(self):
         """Recommended superscript size in pixels."""
