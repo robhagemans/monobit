@@ -10,9 +10,12 @@ import logging
 from monobit.storage import loaders, savers, Magic, FileFormatError
 from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
+from monobit.base.binary import ceildiv
+from monobit.base import reverse_dict
+from monobit.encoding import EncodingName
 
 from .raw import load_bitmap, save_bitmap
-from ..limitations import ensure_single
+from ..limitations import ensure_single, make_contiguous, ensure_charcell
 
 
 # https://ftp.iij.ad.jp/pub/NetBSD/NetBSD-release-10/xsrc/local/programs/bdfload/bdfload.c
@@ -43,13 +46,14 @@ _WSF_HEADER = le.Struct(
 #define WSDISPLAY_FONTORDER_R2L 2
 
 _WSF_ENCODING = {
-    0: 'iso-8859-1',
-    1: 'cp437',
-    2: '',
-    3: 'iso-8859-7',
-    4: 'iso-8859-2',
-    5: 'koi8-r',
+    0: EncodingName('iso-8859-1'),
+    1: EncodingName('cp437'),
+    2: None,
+    3: EncodingName('iso-8859-7'),
+    4: EncodingName('iso-8859-2'),
+    5: EncodingName('koi8-r'),
 }
+_TO_WSF_ENCODING = reverse_dict(_WSF_ENCODING)
 
 
 @loaders.register(
@@ -82,4 +86,32 @@ def load_wsfont(instream):
     encoding = _WSF_ENCODING.get(header.encoding, '')
     if encoding:
         font = font.label(char_from=encoding)
+    font = font.modify(name=header.name.decode('ascii', 'replace'))
     return font
+
+
+@savers.register(linked=load_wsfont)
+def save_wsfont(fonts, outstream):
+    font = ensure_single(fonts)
+    font = make_contiguous(font, missing='blank')
+    font = ensure_charcell(font)
+    codepoints = font.get_codepoints()
+    min_cp = min(int(_cp) for _cp in codepoints)
+    max_cp = max(int(_cp) for _cp in codepoints)
+    if not codepoints:
+        raise ValueError('No storable codepoints found in font.')
+    header = _WSF_HEADER(
+        magic=_WSF_MAGIC,
+        name=font.name.encode('ascii', 'replace'),
+        firstchar=min(int(_cp) for _cp in codepoints),
+        numchars=len(codepoints),
+        # TODO fix encoding if not found
+        encoding=_TO_WSF_ENCODING.get(font.encoding, 0),
+        fontwidth=font.cell_size.x,
+        fontheight=font.cell_size.y,
+        stride=ceildiv(font.cell_size.x, 8),
+        bitorder=1,
+        byteorder=1,
+    )
+    outstream.write(bytes(header))
+    return save_bitmap(outstream, font)
