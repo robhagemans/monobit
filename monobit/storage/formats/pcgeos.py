@@ -6,11 +6,16 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import accumulate
+
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
+from monobit.base import Props, reverse_dict
 from monobit.base.struct import StructError, bitfield, flag, little_endian as le
 from monobit.base.binary import ceildiv, align
+
+from .limitations import make_contiguous
 
 
 _BSWF_SIG = b'BSWF'
@@ -24,9 +29,7 @@ _FontFileInfo = le.Struct(
     # > major version (1)
     FFI_majorVer='byte',
     # > size of font info section
-    # i.e. size of FontFileInfo + FontInfo
-    # perhaps this tells us whether it's a DBCS_PCGEOS font
-    # whose header is 2 bytes longer
+    # i.e. size of FontInfo + PointSizeTable, minus 1  (?)
     FFI_headerSize='word',
 )
 
@@ -38,6 +41,15 @@ _FontFileInfo = le.Struct(
 #define FA_FAMILY       0x0f
 #define FA_FAMILY_OFFSET 0
 
+_FontAttrs = le.Struct(
+    FA_FAMILY=bitfield('uint8', 4),
+    FA_OUTLINE=bitfield('uint8', 1),
+    FA_ORIENT=bitfield('uint8', 1),
+    FA_FIXED_WIDTH=bitfield('uint8', 1),
+    FA_USEFUL=bitfield('uint8', 1),
+)
+
+
 # typedef byte FontFamily;
 #define FF_NON_PORTABLE 0x0007
 #define FF_SPECIAL 0x0006
@@ -47,13 +59,14 @@ _FontFileInfo = le.Struct(
 #define FF_SCRIPT 0x0002
 #define FF_SANS_SERIF 0x0001
 #define FF_SERIF 0x0000
-_FontAttrs = le.Struct(
-    FA_FAMILY=bitfield('uint8', 4),
-    FA_OUTLINE = bitfield('uint8', 1),
-    FA_ORIENT = bitfield('uint8', 1),
-    FA_FIXED_WIDTH = bitfield('uint8', 1),
-    FA_USEFUL = bitfield('uint8', 1),
-)
+_FAMILY_TO_STYLE = {
+    0x0004: 'symbol',
+    0x0002: 'script',
+    0x0001: 'sans serif',
+    0x0000: 'serif',
+}
+_STYLE_TO_FAMILY = reverse_dict(_FAMILY_TO_STYLE)
+
 
 _FontInfo = le.Struct(
     # > font ID
@@ -107,10 +120,20 @@ def _style_to_decoration(style):
         'strikethrough' if style.TS_STRIKE_THRU else '',
         'subscript' if style.TS_SUBSCRIPT else '',
         'superscript' if style.TS_SUPERSCRIPT else '',
-        'italic' if style.TS_ITALIC else '',
-        'bold' if style.TS_BOLD else '',
         'outline' if style.TS_OUTLINE else '',
     ) if _deco)
+
+
+def _to_text_style(font):
+    return _TextStyle(
+        TS_UNDERLINE='underline' in font.decoration,
+        TS_STRIKE_THRU='strikethrough' in font.decoration,
+        TS_SUBSCRIPT='subscript' in font.decoration,
+        TS_SUPERSCRIPT='superscript' in font.decoration,
+        TS_ITALIC=font.slant == 'italic',
+        TS_BOLD=font.weight == 'bold',
+        TS_OUTLINE='outline' in font.decoration,
+    )
 
 
 _PointSizeEntry = le.Struct(
@@ -124,8 +147,8 @@ _PointSizeEntry = le.Struct(
     # > PSE_pointSize       WBFixed                 ;point size
     # "WBFixed" format - assume byte fractional part, byte integer part
     # though elsewhere I seem to need byte + word for WBFixed??
-    PSE_pointSize_frac='uint8',
     PSE_pointSize_int='int8',
+    PSE_pointSize_frac='uint8',
     # > size of data
     PSE_dataSize='word',
     # > position in file
@@ -147,6 +170,14 @@ def _wbfixed_to_float(wbfixed_value):
     return wbfixed_value.int + wbfixed_value.frac / 256
 
 
+def _float_to_wbfixed(float_value):
+    """Convert float value to WBFixed."""
+    return _WBFixed(
+        frac=int((float_value-int(float_value)) * 256),
+        int=int(float_value),
+    )
+
+
 # typedef ByteFlags FontBufFlags;
 #define FBF_DEFAULT_FONT    0x80
 #define FBF_MAPPED_FONT     0x40
@@ -164,6 +195,18 @@ _FontBufFlags = le.Struct(
     FBF_MAPPED_FONT=flag,
     FBF_DEFAULT_FONT=flag,
 )
+
+
+# typedef word FontMaker;
+#define FM_PRINTER                              0xf000
+#define FM_MICROLOGIC                           0xe000
+#define FM_ATECH                                0xd000
+#define FM_PUBLIC                               0xc000
+#define FM_AGFA                                 0x4000
+#define FM_BITSTREAM                            0x3000
+#define FM_ADOBE                                0x2000
+#define FM_NIMBUSQ                              0x1000
+#define FM_BITMAP                               0x0000
 
 
 _FontBuf = le.Struct(
@@ -331,9 +374,8 @@ def load_pcgeos(instream):
         n_chars = font_buf.FB_lastChar - font_buf.FB_firstChar + 1
         char_table = (_CharTableEntry * n_chars).read_from(instream)
         glyphs = []
-        # last char is garbage, not sure why
         for cp, char_table_entry in enumerate(
-                char_table[:-1], font_buf.FB_firstChar
+                char_table, font_buf.FB_firstChar
             ):
             # this appears to be necessary
             if char_table_entry.CTE_dataOffset == 0:
@@ -366,6 +408,7 @@ def load_pcgeos(instream):
                 right_bearing=(
                     _wbfixed_to_float(char_table_entry.CTE_width)
                     - char_data.CD_pictureWidth
+                    - char_data.CD_xoff
                 ),
                 codepoint=cp,
             )
@@ -374,6 +417,10 @@ def load_pcgeos(instream):
             glyphs,
             family=font_info.FI_faceName.decode('ascii', 'replace'),
             font_id=font_info.FI_fontID,
+            point_size=(
+                point_size_entry.PSE_pointSize_int +
+                point_size_entry.PSE_pointSize_frac / 256
+            ),
             average_width=_wbfixed_to_float(font_buf.FB_avgwidth),
             max_width=_wbfixed_to_float(font_buf.FB_maxwidth),
             # FB_heightAdjust=font_buf.FB_heightAdjust,
@@ -391,11 +438,215 @@ def load_pcgeos(instream):
                 + _wbfixed_to_float(font_buf.FB_heightAdjust)
             ),
             default_char=font_buf.FB_defaultChar,
-            underline_descent=_wbfixed_to_float(font_buf.FB_underPos),
+            underline_descent=(
+                _wbfixed_to_float(font_buf.FB_underPos) - _wbfixed_to_float(font_buf.FB_baselinePos)
+            ),
             underline_thickness=_wbfixed_to_float(font_buf.FB_underThickness),
-            # strikethrough_ascent=font_buf.FB_strikePos,
+            strikethrough_ascent=(
+                _wbfixed_to_float(font_buf.FB_baselinePos)
+                - _wbfixed_to_float(font_buf.FB_strikePos) + 1
+            ),
             decoration=_style_to_decoration(point_size_entry.PSE_style),
+            slant='italic' if point_size_entry.PSE_style.TS_ITALIC else None,
+            weight='bold' if point_size_entry.PSE_style.TS_BOLD else None,
+            style=_FAMILY_TO_STYLE.get(font_info.FI_family.FA_FAMILY, None),
         )
         font = font.label(char_from='pc-geos')
         fonts.append(font)
     return fonts
+
+
+@savers.register(linked=load_pcgeos)
+def save_pcgeos(fonts, outstream):
+    """Save to a PC/GEOS v2.0+ bitmap font file."""
+    fonts, common_props = _prepare_pcgeos(fonts)
+    fonts = tuple(
+        _f.label(codepoint_from=_f.encoding).subset(codepoints=range(256))
+        for _f in fonts if _f.glyphs
+    )
+    n_sizes = len(fonts)
+    # FontFileInfo header
+    font_file_info = _FontFileInfo(
+        FFI_signature=_BSWF_SIG,
+        FFI_minorVer=0,
+        FFI_majorVer=1,
+        FFI_headerSize=_FontInfo.size - 1 + _PointSizeEntry.size * n_sizes,
+    )
+    # strange 7 byte offset
+    point_size_tab_offset = _FontFileInfo.size + _FontInfo.size - 7
+    # FontInfo header
+    font_info = _FontInfo(
+        FI_fontID=int(common_props.font_id),
+        FI_maker=0,
+        FI_family=_FontAttrs(
+            FA_FAMILY=(
+                5 if common_props.fixed_width
+                else _STYLE_TO_FAMILY.get(common_props.style, 0)
+            ),
+            FA_FIXED_WIDTH=common_props.fixed_width,
+            FA_USEFUL=1,
+        ),
+        FI_faceName=common_props.family,
+        FI_pointSizeTab=point_size_tab_offset,
+        FI_pointSizeEnd=point_size_tab_offset + _PointSizeEntry.size * n_sizes,
+    )
+    # per-font sections
+    data_offset = 0
+    font_data = []
+    point_size_table = []
+    for font in fonts:
+        data = _create_pcgeos_font_section(font)
+        font_data.append(data)
+        point_size_table.append(_PointSizeEntry(
+            PSE_style=_to_text_style(font),
+            PSE_pointSize_int=int(font.point_size),
+            PSE_pointSize_frac=int(256*(font.point_size-int(font.point_size))),
+            PSE_dataSize=len(data),
+            PSE_dataPos=data_offset + (
+                _FontFileInfo.size + _FontInfo.size
+                # -1 as we will clip off the last byte
+                + (_PointSizeEntry * n_sizes).size - 1
+            ),
+        ))
+        data_offset += len(data)
+    point_size_table = (_PointSizeEntry * n_sizes)(*point_size_table)
+    # write out pcgeos file
+    outstream.write(bytes(font_file_info))
+    outstream.write(bytes(font_info))
+    # note that we clip off the final null byte
+    outstream.write(bytes(point_size_table)[:-1])
+    for data in font_data:
+        outstream.write(data)
+
+
+def _create_pcgeos_font_section(font):
+    """Create pcgeos font section for one font."""
+    baseline = font.raster_size.y + min(_g.shift_up for _g in font.glyphs)
+    first_char = int(min(font.get_codepoints()))
+    last_char = int(max(font.get_codepoints()))
+    glyphs = tuple(
+        font.get_glyph(_cp, missing=None)
+        for _cp in range(first_char, last_char + 1)
+    )
+    n_chars = len(glyphs)
+    glyphbytes = tuple(
+        (
+            bytes(_CharData(
+                CD_pictureWidth=_g.width,
+                CD_numRows=_g.height,
+                CD_yoff=(baseline - _g.height - _g.shift_up),
+                CD_xoff=_g.left_bearing,
+            ))
+            # empty glyph still stores one byte of zeros
+            + (_g.as_bytes() or b'\0')
+        ) if _g is not None else (
+            # missing glyph omitted altogether, but needs a record in CharTable
+            b''
+        )
+        for _g in glyphs
+    )
+    glyphdata = b''.join(glyphbytes)
+    glyph_offsets = accumulate(
+        (len(_b) for _b in glyphbytes[:-1]),
+        initial=0
+    )
+    header_size = _FontBuf.size + (_CharTableEntry * n_chars).size
+    font_buf = _FontBuf(
+        FB_dataSize=(
+            len(glyphdata) + _FontBuf.size
+            + (_CharTableEntry * n_chars).size
+        ),
+        FB_maker=0,
+        FB_avgwidth=_float_to_wbfixed(font.average_width),
+        FB_maxwidth=_float_to_wbfixed(font.max_width),
+        # > offset to top of font box
+        # FB_heightAdjust=_WBFixed,
+        FB_height=_float_to_wbfixed(font.raster_size.y),
+        FB_accent=_float_to_wbfixed(font.raster_size.y - font.pixel_size),
+        # > top of lower case character boxes.
+        FB_mean=_float_to_wbfixed(font.x_height),
+        # > offset to top of ascent
+        # FB_baseAdjust=_WBFixed,
+        FB_baselinePos=_float_to_wbfixed(baseline),
+        FB_descent=_float_to_wbfixed(font.descent),
+        FB_extLeading=_float_to_wbfixed(font.line_height - font.raster_size.y),
+        # I don't know how kerning works in this format and have no samples
+        FB_kernCount=0,
+        # pointer values as in Berkeley.fnt
+        FB_kernPairPtr=header_size,
+        FB_kernValuePtr=header_size,
+        FB_firstChar=first_char,
+        FB_lastChar=last_char,
+        FB_defaultChar=int(font.get_default_glyph().codepoint or first_char),
+        FB_underPos=_float_to_wbfixed(baseline + font.underline_descent),
+        FB_underThickness=_float_to_wbfixed(font.underline_thickness),
+        # > position of the strike-thru
+        FB_strikePos=_float_to_wbfixed(baseline - font.strikethrough_ascent + 1),
+        # > maximum above font box
+        # FB_aboveBox=_WBFixed,
+        # > maximum below font box
+        # FB_belowBox=_WBFixed,
+        FB_minLSB=min(_g.left_bearing for _g in font.glyphs),
+        FB_minTSB=0,
+        FB_maxBSB=font.raster_size.y,
+        FB_maxRSB=max(_g.advance_width for _g in font.glyphs),
+        FB_pixHeight=font.raster_size.y,
+        # # > special flags
+        # FB_flags=_FontBufFlags,
+        # this is the value used in font samples - perhaps a sentinel? 666 dec
+        FB_heapCount=0x29a,
+    )
+    char_table = (_CharTableEntry * n_chars)(*(
+        _CharTableEntry(
+            CTE_dataOffset=0,
+            CTE_flags=_CharTableFlags(
+                CTF_NO_DATA=True,
+            )
+        ) if _glyph is None else
+        _CharTableEntry(
+            CTE_dataOffset=_FontBuf.size + (_CharTableEntry * n_chars).size + _ofs,
+            CTE_width=_float_to_wbfixed(_glyph.advance_width),
+            CTE_flags=_CharTableFlags(
+                CTF_NEGATIVE_LSB=(_glyph.left_bearing < 0),
+                # > TRUE if very tall
+                # CTF_ABOVE_ASCENT=flag,
+                # > TRUE if very low
+                # CTF_BELOW_DESCENT=flag,
+                # if we set this, omit the 1-byte placeholder for glyph data
+                # CTF_NO_DATA=flag,
+                CTF_IS_FIRST_KERN=False,
+                CTF_IS_SECOND_KERN=False,
+                # CTF_NOT_VISIBLE=flag,
+            ),
+            CTE_usage=0,
+        )
+        for _glyph, _ofs in zip(glyphs, glyph_offsets)
+    ))
+    return b''.join((
+        bytes(font_buf),
+        bytes(char_table),
+        glyphdata,
+    ))
+
+
+def _prepare_pcgeos(fonts):
+    """Validate fonts for storing in PC-GEOS format; extract metadata."""
+    if len(set(_f.family for _f in fonts)) > 1:
+        raise FileFormatError(
+            'PC-GEOS font file can only store fonts from one family.'
+        )
+    common_props = _get_metadata(fonts[0])
+    return fonts, common_props
+
+
+def _get_metadata(font):
+    try:
+        font_id = int(font.font_id)
+    except ValueError:
+        font_id = 0
+    return Props(
+        font_id=font_id,
+        family=font.family.encode('ascii', 'replace'),
+        fixed_width=font.spacing in ('character-cell', 'monospace'),
+        style=font.style,
+    )
