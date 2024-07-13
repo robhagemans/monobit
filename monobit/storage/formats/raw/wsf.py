@@ -30,6 +30,9 @@ _WSF_HEADER = le.Struct(
     encoding='uint32',
     fontwidth='uint32',
     fontheight='uint32',
+    # should be strike width given in bytes
+    # but in NetBSD kernel header files this is *sometimes* the pixel width
+    # so the field may well be ignored by the kernel
     stride='uint32',
     bitorder='uint32',
     byteorder='uint32',
@@ -68,21 +71,23 @@ def load_wsfont(instream):
         raise FileFormatError(
             f'Not a .wsf file: incorrect signature {header.magic}'
         )
-    if header.stride == header.fontwidth:
-        # should be given in bytes, but often this is the pixel width
-        strike_bytes = -1
-    else:
-        strike_bytes = header.stride
+    # if header.stride == header.fontwidth:
+
+    #     header.stride = ceildiv(header.fontwidth, 8)
     font = load_bitmap(
         instream,
         width=header.fontwidth, height=header.fontheight,
         count=header.numchars,
-        # TODO: if byteorder and bitorder don't match
         align=('right' if header.bitorder == 2 else 'left'),
-        strike_bytes=strike_bytes,
+        strike_bytes=header.stride,
         strike_count=1,
         first_codepoint=header.firstchar,
         msb=('right' if header.bitorder == 2 else 'left'),
+        byte_swap=(
+            header.stride
+            if header.byteorder and header.byteorder != header.bitorder
+            else 0
+        ),
     )
     encoding = _WSF_ENCODING.get(header.encoding, '')
     if encoding:
@@ -94,18 +99,20 @@ def load_wsfont(instream):
 @savers.register(linked=load_wsfont)
 def save_wsfont(
         fonts, outstream, *,
-        # byte_order:str='left',
+        byte_order:str=None,
         bit_order:str='left',
     ):
     """
     Save to a wsfont .wsf font.
 
     bit_order: 'left' for most significant bit left (default), or 'right'
+    byte_order: 'left' or 'right'; default: same as bit-order
     """
-    byte_order = bit_order
+    if not byte_order:
+        byte_order = bit_order
     font = ensure_single(fonts)
     font = ensure_charcell(font)
-    if font.encoding not in _TO_WSF_ENCODING:
+    if font.encoding not in _TO_WSF_ENCODING and font.get_chars():
         # standard encoding is latin-1 in this format
         font = font.label(codepoint_from='latin-1', overwrite=True)
     font = make_contiguous(font, missing='space')
@@ -126,5 +133,7 @@ def save_wsfont(
     )
     outstream.write(bytes(header))
     return save_bitmap(
-        outstream, font, align=bit_order, msb=bit_order,
+        outstream, font,
+        align=bit_order, msb=bit_order,
+        byte_swap=(header.stride if byte_order != bit_order else 0),
     )
