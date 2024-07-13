@@ -174,8 +174,11 @@ def _extract_data_and_geometry(
             strike_bytes = len(data) // height
         else:
             strike_bytes = ceildiv(strike_count*width, 8)
-    else:
-        strike_count = -1
+    # we should not force recalculation of strike count
+    # as that stops us from having a too-wide strike.
+    # E.g. 4-pixel wide glyph, one per 1-byte row
+    # else:
+    #     strike_count = -1
     # determine number of cells per strike row
     if strike_count <= 0:
         strike_count = (strike_bytes * 8) // width

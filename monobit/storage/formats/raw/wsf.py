@@ -80,6 +80,7 @@ def load_wsfont(instream):
         # TODO: if byteorder and bitorder don't match
         align=('right' if header.bitorder == 2 else 'left'),
         strike_bytes=strike_bytes,
+        strike_count=1,
         first_codepoint=header.firstchar,
         msb=('right' if header.bitorder == 2 else 'left'),
     )
