@@ -1024,6 +1024,21 @@ class TestFormats(BaseTester):
 
     # wsfont
 
+    def test_import_wsfont(self):
+        """Test importing wsfont files."""
+        font, *_ = monobit.load(self.font_path / 'ter-i12n.wsf')
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), """\
+.@@@.
+@...@
+@...@
+@...@
+@@@@@
+@...@
+@...@
+@...@
+""")
+
     def test_export_wsfont(self):
         """Test exporting wsfont files."""
         fnt_file = self.temp_path / '4x6.wsf'
