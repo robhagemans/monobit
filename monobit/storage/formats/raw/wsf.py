@@ -93,11 +93,12 @@ def load_wsfont(instream):
 @savers.register(linked=load_wsfont)
 def save_wsfont(fonts, outstream):
     font = ensure_single(fonts)
-    font = make_contiguous(font, missing='blank')
     font = ensure_charcell(font)
+    if font.encoding not in _TO_WSF_ENCODING:
+        # standard encoding is latin-1 in this format
+        font = font.label(codepoint_from='latin-1', overwrite=True)
+    font = make_contiguous(font, missing='space')
     codepoints = font.get_codepoints()
-    min_cp = min(int(_cp) for _cp in codepoints)
-    max_cp = max(int(_cp) for _cp in codepoints)
     if not codepoints:
         raise ValueError('No storable codepoints found in font.')
     header = _WSF_HEADER(
@@ -105,7 +106,6 @@ def save_wsfont(fonts, outstream):
         name=font.name.encode('ascii', 'replace'),
         firstchar=min(int(_cp) for _cp in codepoints),
         numchars=len(codepoints),
-        # TODO fix encoding if not found
         encoding=_TO_WSF_ENCODING.get(font.encoding, 0),
         fontwidth=font.cell_size.x,
         fontheight=font.cell_size.y,
