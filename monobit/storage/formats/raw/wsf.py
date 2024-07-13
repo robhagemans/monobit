@@ -92,7 +92,17 @@ def load_wsfont(instream):
 
 
 @savers.register(linked=load_wsfont)
-def save_wsfont(fonts, outstream):
+def save_wsfont(
+        fonts, outstream, *,
+        # byte_order:str='left',
+        bit_order:str='left',
+    ):
+    """
+    Save to a wsfont .wsf font.
+
+    bit_order: 'left' for most significant bit left (default), or 'right'
+    """
+    byte_order = bit_order
     font = ensure_single(fonts)
     font = ensure_charcell(font)
     if font.encoding not in _TO_WSF_ENCODING:
@@ -111,8 +121,10 @@ def save_wsfont(fonts, outstream):
         fontwidth=font.cell_size.x,
         fontheight=font.cell_size.y,
         stride=ceildiv(font.cell_size.x, 8),
-        bitorder=1,
-        byteorder=1,
+        bitorder=2 if bit_order.startswith('r') else 1,
+        byteorder=2 if byte_order.startswith('r') else 1,
     )
     outstream.write(bytes(header))
-    return save_bitmap(outstream, font)
+    return save_bitmap(
+        outstream, font, align=bit_order, msb=bit_order,
+    )
