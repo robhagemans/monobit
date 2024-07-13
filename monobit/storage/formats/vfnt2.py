@@ -70,36 +70,50 @@ def load_vfnt(instream):
     # > VFNT_MAP_NORMAL_RIGHT,  /* Normal font right hand. */
     # > VFNT_MAP_BOLD,          /* Bold font. */
     # > VFNT_MAP_BOLD_RIGHT,    /* Bold font right hand. */
-    mapses = (
+    rle_maps = (
         (_VFNT_MAP * header.fh_map_count[_i]).read_from(instream)
         for _i in range(4)
     )
     # label glyph halves
-    glyphses = {}, {}, {}, {}
-    for glyphs, map in zip(glyphses, mapses):
+    expanded_maps = {}, {}, {}, {}
+    for map, exp_map in zip(rle_maps, expanded_maps):
         for entry in map:
             for offset in range(entry.vfm_len+1):
                 char = Char(chr(entry.vfm_src + offset))
                 index = entry.vfm_dst + offset
-                glyph = raw_glyphs[index]
-                glyphs[index] = glyph.modify(
-                    labels=list(glyph.get_labels()) + [char]
-                )
-    # merge left- and right-hand halves
+                exp_map[char] = index
+    # construct dict to hold original and merged rasters
+    rasters = {
+        _index: _glyph.pixels
+        for _index, _glyph in enumerate(raw_glyphs)
+    }
     for map_index in (0, 2):
-        try:
-            default = glyphses[map_index][0]
-        except KeyError:
-            continue
-        for index, rh_glyph in glyphses[map_index+1].items():
-            lh_glyph = glyphses[map_index].get(index, default)
-            glyphses[map_index][index] = Glyph(
-                Raster.concatenate(lh_glyph.pixels, rh_glyph.pixels),
-                labels=rh_glyph.get_labels()
-            )
-    # get sorted lists of glyphs
-    normal_glyphs = tuple(glyphses[0][_i] for _i in sorted(glyphses[0].keys()))
-    bold_glyphs = tuple(glyphses[2][_i] for _i in sorted(glyphses[2].keys()))
+        # merge left- and right-hand halves
+        for char, rh_index in expanded_maps[map_index+1].items():
+            # use index 0 as default (per comments in the source)
+            lh_index = expanded_maps[map_index].get(char, 0)
+            expanded_maps[map_index][char] = (lh_index, rh_index)
+            if (lh_index, rh_index) not in rasters:
+                rasters[(lh_index, rh_index)] = Raster.concatenate(
+                    rasters[lh_index], rasters[rh_index]
+                )
+    # create index-to-label maps
+    index_to_labels = {0: {}, 2: {}}
+    for map_index in (0, 2):
+        for char, indices in expanded_maps[map_index].items():
+            if indices in index_to_labels[map_index]:
+                index_to_labels[map_index][indices].append(char)
+            else:
+                index_to_labels[map_index][indices] = [char]
+    # create labelled glyphs
+    normal_glyphs = tuple(
+        Glyph(rasters[_index], labels=_labels)
+        for _index, _labels in index_to_labels[0].items()
+    )
+    bold_glyphs = tuple(
+        Glyph(rasters[_index], labels=_labels)
+        for _index, _labels in index_to_labels[2].items()
+    )
     # create fonts for normal and bold, if present
     fonts = tuple(
         Font(_g, weight=_w)
