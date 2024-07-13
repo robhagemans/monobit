@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.wsf - BSD wsfont .wsf file
+monobit.storage.formats.raw.wsf - NetBSD wsfont .wsf file
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,7 @@ import logging
 
 from monobit.storage import loaders, savers, Magic, FileFormatError
 from monobit.core import Glyph, Font, Char
-from monobit.base.struct import little_endian as le, bitfield
+from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 from monobit.base import reverse_dict
 from monobit.encoding import EncodingName
@@ -34,20 +34,26 @@ _WSF_HEADER = le.Struct(
     # but in NetBSD kernel header files this is *sometimes* the pixel width
     # so the field may well be ignored by the kernel
     stride='uint32',
+    #define WSDISPLAY_FONTORDER_KNOWN 0     /* i.e, no need to convert */
+    #define WSDISPLAY_FONTORDER_L2R 1
+    #define WSDISPLAY_FONTORDER_R2L 2
     bitorder='uint32',
     byteorder='uint32',
 )
-#define WSDISPLAY_FONTENC_ISO 0
-#define WSDISPLAY_FONTENC_IBM 1
-#define WSDISPLAY_FONTENC_PCVT 2
-#define WSDISPLAY_FONTENC_ISO7 3 /* greek */
-#define WSDISPLAY_FONTENC_ISO2 4 /* east european */
-#define WSDISPLAY_FONTENC_KOI8_R 5 /* russian */
-#define WSDISPLAY_MAXFONTSZ     (512*1024)
-#define WSDISPLAY_FONTORDER_KNOWN 0     /* i.e, no need to convert */
-#define WSDISPLAY_FONTORDER_L2R 1
-#define WSDISPLAY_FONTORDER_R2L 2
 
+# > ISO-8859-1 encoding
+#define WSDISPLAY_FONTENC_ISO 0
+# > IBM CP437 encoding
+#define WSDISPLAY_FONTENC_IBM 1
+# > the custom encoding of the supplemental
+# > fonts which came with the BSD ``pcvt'' console driver
+#define WSDISPLAY_FONTENC_PCVT 2
+# > ISO-8859-7 (Greek) encoding
+#define WSDISPLAY_FONTENC_ISO7 3 /* greek */
+# > ISO-8859-2 (Eastern European) encoding
+#define WSDISPLAY_FONTENC_ISO2 4 /* east european */
+# > KOI8-R (Russian) encoding
+#define WSDISPLAY_FONTENC_KOI8_R 5 /* russian */
 _WSF_ENCODING = {
     0: EncodingName('iso-8859-1'),
     1: EncodingName('cp437'),

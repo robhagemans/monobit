@@ -180,7 +180,7 @@ Character-cell formats
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;| binary | -    | -        |
 | UDG loader            | `udg`      | `.com`                      |&check;|       | binary | 8x8  | -        |
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;| binary | 8x14 multiples | - |
-| BSD wsfont binary     | `wsfont`   | `.wsf`                      |&check;|&check;| binary | any  | SB       |
+| NetBSD wsfont binary  | `wsfont`   | `.wsf`                      |&check;|&check;| binary | any  | SB       |
 | Wyse-60 soft font     | `wyse`     |                             |&check;|&check;| esc    | 8x16 | -        |
 | XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;| binary | any  | -        |
 
