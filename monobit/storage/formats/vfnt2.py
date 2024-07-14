@@ -127,43 +127,59 @@ def load_vfnt(instream):
 @savers.register(linked=load_vfnt)
 def save_vfnt(fonts, outstream):
     # TODO: allow 2 fonts same family same size, bold/normal
-    font = ensure_single(fonts)
-    font = font.label()
+    if len(fonts) > 2 or len(fonts) == 2 and (
+            fonts[0].cell_size != fonts[1].cell_size
+        ):
+        raise ValueError(
+            'This format can store only two fonts (regular and bold weight) '
+            'of matching cell size.'
+        )
+    fonts = tuple(ensure_charcell(_f) for _f in fonts)
     # select glyphs with char labels only
-    font = font.subset(chars=font.get_chars())
-    # generate char ranges
-    # use first char label initially, assumption is that these are likely contiguous
-    ucps = [
-        # skip unicode sequences
-        (_i, deque(ord(_c) for _c in _g.chars if len(_c) == 1))
-        for _i, _g in enumerate(font.glyphs)
-    ]
-    map = []
-    while ucps:
-        last_char = -2
-        current_entry = None
-        for index, chardeq in ucps:
-            char = chardeq.popleft()
-            if char != last_char + 1 or current_entry is None:
-                if current_entry is not None:
-                    map.append(current_entry)
-                current_entry = _VFNT_MAP(vfm_src=char, vfm_dst=index, vfm_len=0)
-            else:
-                current_entry.vfm_len += 1
-            last_char = char
-        map.append(current_entry)
-        # drop entries for which we have used all chars
-        ucps = [(_i, _deq) for (_i, _deq) in ucps if _deq]
+    fonts = tuple(_f.label().subset(chars=_f.get_chars()) for _f in fonts)
+    maps = []
+    base_index = 0
+    for font in fonts:
+        # generate char ranges
+        # use first char label initially, assumption is that these are likely contiguous
+        ucps = [
+            # skip unicode sequences
+            (_i, deque(ord(_c) for _c in _g.chars if len(_c) == 1))
+            for _i, _g in enumerate(font.glyphs, base_index)
+        ]
+        map = []
+        while ucps:
+            last_char = -2
+            current_entry = None
+            for index, chardeq in ucps:
+                char = chardeq.popleft()
+                if char != last_char + 1 or current_entry is None:
+                    if current_entry is not None:
+                        map.append(current_entry)
+                    current_entry = _VFNT_MAP(vfm_src=char, vfm_dst=index, vfm_len=0)
+                else:
+                    current_entry.vfm_len += 1
+                last_char = char
+            map.append(current_entry)
+            # drop entries for which we have used all chars
+            ucps = [(_i, _deq) for (_i, _deq) in ucps if _deq]
+        maps.append(map)
+        # TODO: rhs part of double-width glyphs
+        maps.append([])
+        base_index += len(font.glyphs)
     # generate header
     header = _VFNT_HEADER(
         fh_magic=_VFNT_MAGIC,
-        fh_width=font.cell_size.x,
-        fh_height=font.cell_size.y,
+        fh_width=fonts[0].cell_size.x,
+        fh_height=fonts[0].cell_size.y,
         fh_pad=0,
-        fh_glyph_count=len(font.glyphs),
-        fh_map_count=(len(map), 0, 0, 0),
+        fh_glyph_count=sum(len(_f.glyphs) for _f in fonts),
+        fh_map_count=tuple(len(_m) for _m in maps),
     )
-    map = (_VFNT_MAP * len(map))(*map)
+    print(header)
     outstream.write(bytes(header))
-    save_bitmap(outstream, font)
-    outstream.write(bytes(map))
+    for font in fonts:
+        save_bitmap(outstream, font)
+    for map in maps:
+        map = (_VFNT_MAP * len(map))(*map)
+        outstream.write(bytes(map))
