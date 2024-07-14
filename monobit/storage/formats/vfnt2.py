@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from collections import deque
 
 from monobit.storage import loaders, savers, Magic, FileFormatError
 from monobit.core import Glyph, Font, Char
@@ -121,3 +122,48 @@ def load_vfnt(instream):
         if _g
     )
     return fonts
+
+
+@savers.register(linked=load_vfnt)
+def save_vfnt(fonts, outstream):
+    # TODO: allow 2 fonts same family same size, bold/normal
+    font = ensure_single(fonts)
+    font = font.label()
+    # select glyphs with char labels only
+    font = font.subset(chars=font.get_chars())
+    # generate char ranges
+    # use first char label initially, assumption is that these are likely contiguous
+    ucps = [
+        # skip unicode sequences
+        (_i, deque(ord(_c) for _c in _g.chars if len(_c) == 1))
+        for _i, _g in enumerate(font.glyphs)
+    ]
+    map = []
+    while ucps:
+        last_char = -2
+        current_entry = None
+        for index, chardeq in ucps:
+            char = chardeq.popleft()
+            if char != last_char + 1 or current_entry is None:
+                if current_entry is not None:
+                    map.append(current_entry)
+                current_entry = _VFNT_MAP(vfm_src=char, vfm_dst=index, vfm_len=0)
+            else:
+                current_entry.vfm_len += 1
+            last_char = char
+        map.append(current_entry)
+        # drop entries for which we have used all chars
+        ucps = [(_i, _deq) for (_i, _deq) in ucps if _deq]
+    # generate header
+    header = _VFNT_HEADER(
+        fh_magic=_VFNT_MAGIC,
+        fh_width=font.cell_size.x,
+        fh_height=font.cell_size.y,
+        fh_pad=0,
+        fh_glyph_count=len(font.glyphs),
+        fh_map_count=(len(map), 0, 0, 0),
+    )
+    map = (_VFNT_MAP * len(map))(*map)
+    outstream.write(bytes(header))
+    save_bitmap(outstream, font)
+    outstream.write(bytes(map))
