@@ -9,7 +9,7 @@ import logging
 from collections import deque
 
 from monobit.storage import loaders, savers, Magic, FileFormatError
-from monobit.core import Glyph, Font, Char
+from monobit.core import Glyph, Font, Char, Raster
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import ceildiv
 
@@ -126,7 +126,6 @@ def load_vfnt(instream):
 
 @savers.register(linked=load_vfnt)
 def save_vfnt(fonts, outstream):
-    # TODO: allow 2 fonts same family same size, bold/normal
     if len(fonts) > 2 or len(fonts) == 2 and (
             fonts[0].cell_size != fonts[1].cell_size
         ):
@@ -134,9 +133,35 @@ def save_vfnt(fonts, outstream):
             'This format can store only two fonts (regular and bold weight) '
             'of matching cell size.'
         )
-    fonts = tuple(ensure_charcell(_f) for _f in fonts)
+    # don't enforce different weights, but if they do have them, put in order
+    if fonts[0].weight == 'bold' and fonts[1].weight == 'regular':
+        fonts = reversed(fonts)
     # select glyphs with char labels only
     fonts = tuple(_f.label().subset(chars=_f.get_chars()) for _f in fonts)
+    # split double-width glyphs
+    split_fonts = []
+    for font in fonts:
+        font = font.equalise_horizontal()
+        if font.spacing == 'multi-cell':
+            left = Font(
+                _g if _g.width == font.cell_size.x
+                else _g.crop(right=font.cell_size.x, adjust_metrics=False)
+                for _g in font.glyphs
+                if _g.width <= font.cell_size.x * 2
+            )
+            right = Font(
+                _g.crop(left=font.cell_size.x, adjust_metrics=False)
+                for _g in font.glyphs
+                if _g.width == font.cell_size.x * 2
+            )
+            split_fonts.extend((left, right))
+        elif font.spacing == 'character-cell':
+            split_fonts.extend((font, Font()))
+        else:
+            raise ValueError(
+                'This format only supports character-cell and multi-cell fonts.'
+            )
+    fonts = split_fonts
     maps = []
     base_index = 0
     for font in fonts:
@@ -165,8 +190,6 @@ def save_vfnt(fonts, outstream):
                 last_char = char
             map.append(current_entry)
         maps.append(map)
-        # TODO: rhs part of double-width glyphs
-        maps.append([])
         base_index += len(font.glyphs)
     # generate header
     header = _VFNT_HEADER(
@@ -177,7 +200,6 @@ def save_vfnt(fonts, outstream):
         fh_glyph_count=sum(len(_f.glyphs) for _f in fonts),
         fh_map_count=tuple(len(_m) for _m in maps),
     )
-    print(header)
     outstream.write(bytes(header))
     for font in fonts:
         save_bitmap(outstream, font)
