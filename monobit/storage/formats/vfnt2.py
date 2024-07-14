@@ -148,10 +148,13 @@ def save_vfnt(fonts, outstream):
             for _i, _g in enumerate(font.glyphs, base_index)
         ]
         map = []
-        while ucps:
+        while any(_deq for _i, _deq in ucps):
             last_char = -2
             current_entry = None
             for index, chardeq in ucps:
+                if not chardeq:
+                    last_char = -2
+                    continue
                 char = chardeq.popleft()
                 if char != last_char + 1 or current_entry is None:
                     if current_entry is not None:
@@ -161,8 +164,6 @@ def save_vfnt(fonts, outstream):
                     current_entry.vfm_len += 1
                 last_char = char
             map.append(current_entry)
-            # drop entries for which we have used all chars
-            ucps = [(_i, _deq) for (_i, _deq) in ucps if _deq]
         maps.append(map)
         # TODO: rhs part of double-width glyphs
         maps.append([])
