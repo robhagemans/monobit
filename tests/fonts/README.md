@@ -54,11 +54,11 @@ Original sources:
    - see e.g. https://www.galleyrack.com/hershey/additional-fonts-for-VARKON/hershey/index.html
    - The Hershey Fonts were originally created by Dr. A. V. Hershey
    - See README for conditions
-*  `ter-i12n.wsf`
-  - https://ftp.netbsd.org/pub/NetBSD/NetBSD-current/src/share/wscons/fonts/ter-112n.wsf.uue
-  - Copyright 1979, 1980, 1983, 1986, 1988, 1989, 1991, 1992, 1993, 1994
-	The Regents of the University of California.  All rights reserved
-  - BSD 3-clause licence see https://ftp.netbsd.org/pub/NetBSD/NetBSD-current/src/share/legal/COPYRIGHT
+* Terminus Font, `ter-i12n.wsf` and `ter-u28.fnt`
+  - Copyright (c) 2019 Dimitar Toshkov Zhekov
+    Terminus Font is licensed under the SIL Open Font License, Version 1.1
+  - wsfont conversion at https://ftp.netbsd.org/pub/NetBSD/NetBSD-current/src/share/wscons/fonts/ter-112n.wsf.uue
+  - freebsd conversion at https://github.com/LionyxML/freebsd-terminus/
 
 
 ### Derivatives of `4x6`

@@ -1047,6 +1047,41 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    # freebsd vtfont
+
+    def test_import_vfnt2(self):
+        """Test importing freebsd vtfont files."""
+        font, *_ = monobit.load(self.font_path / 'ter-u28.fnt')
+        self.assertEqual(len(font.glyphs), 1185)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), """\
+..@@@@@@@..
+.@@.....@@.
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@@@@@@@@@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+""")
+
+    def test_export_vfnt2(self):
+        """Test exporting freebsd vt font files."""
+        fnt_file = self.temp_path / '4x6.fnt'
+        monobit.save(self.fixed4x6, fnt_file, format='vfnt2')
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
     # COM loaders
 
     def test_import_frapt(self):
