@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.vfnt2 - FreeBSD vfnt2 file
+monobit.storage.formats.vtfont - FreeBSD vt consolve font file
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -53,12 +53,12 @@ _VFNT_MAP = be.Struct(
 
 
 @loaders.register(
-    name='vfnt2',
+    name='vtfont',
     magic=(_VFNT_MAGIC,),
     patterns=('*.fnt',),
 )
 def load_vfnt(instream):
-    """Load a vfnt2 font."""
+    """Load a vtfont font."""
     header = _VFNT_HEADER.read_from(instream)
     glyphs = load_bitmap(
         instream,

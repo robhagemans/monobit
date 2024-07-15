@@ -179,7 +179,7 @@ Character-cell formats
 | psf2txt               | `psf2txt`  | `.txt`                      |&check;|&check;| visual | any  | US       |
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;| binary | -    | -        |
 | UDG loader            | `udg`      | `.com`                      |&check;|       | binary | 8x8  | -        |
-| FreeBSD vt font       | `vfnt2`    | `.fnt`                      |&check;|&check;| binary | any  | MC U     |
+| FreeBSD console font  | `vtfont`   | `.fnt`                      |&check;|&check;| binary | any  | MC U     |
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;| binary | 8x14 multiples | - |
 | NetBSD wsfont binary  | `wsfont`   | `.wsf`                      |&check;|&check;| binary | any  | SB       |
 | Wyse-60 soft font     | `wyse`     |                             |&check;|&check;| esc    | 8x16 | -        |
