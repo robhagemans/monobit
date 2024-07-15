@@ -168,8 +168,8 @@ Character-cell formats
 | Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       | binary | 8xN  | -        |
 | PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;| binary | any  | -        |
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;| binary | any  | SB MB    |
-| GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| hex    | 8x16 | MC U     |
-| Extended Hex          | `pcbasic`  | `.hex`                      |&check;|&check;| hex    | 8xN  | MC US    |
+| GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| coded  | 8x16 | MC U     |
+| Extended Hex          | `pcbasic`  | `.hex`                      |&check;|&check;| coded  | 8xN  | MC US    |
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       | binary | 8xN  | -        |
@@ -179,7 +179,9 @@ Character-cell formats
 | psf2txt               | `psf2txt`  | `.txt`                      |&check;|&check;| visual | any  | US       |
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;| binary | -    | -        |
 | UDG loader            | `udg`      | `.com`                      |&check;|       | binary | 8x8  | -        |
+| FreeBSD console font  | `vtfont`   | `.fnt`                      |&check;|&check;| binary | any  | MC U     |
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;| binary | 8x14 multiples | - |
+| NetBSD wsfont binary  | `wsfont`   | `.wsf`                      |&check;|&check;| binary | any  | SB       |
 | Wyse-60 soft font     | `wyse`     |                             |&check;|&check;| esc    | 8x16 | -        |
 | XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;| binary | any  | -        |
 

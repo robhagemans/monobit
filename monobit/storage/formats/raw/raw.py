@@ -52,7 +52,7 @@ def load_binary(
         cell:Coord=NOT_SET, count:int=-1, offset:int=0, padding:int=0,
         align:str='left', byte_order:str='row-major',
         strike_count:int=1, strike_bytes:int=-1,
-        first_codepoint:int=0, ink:int=1, msb:str='left',
+        first_codepoint:int=0, ink:int=1, msb:str='left', byte_swap:int=0,
     ):
     """
     Load character-cell font from binary bitmap.
@@ -68,6 +68,7 @@ def load_binary(
     first_codepoint: first code point in bitmap (default: 0)
     ink: bit-value to interpret as ink (0 or 1; default: 1)
     msb: position of most-significant bit ('left' or 'right', default: 'left')
+    byte_swap: reverse byte order in units of n bytes (default: no swap)
     """
     # determine cell size from filename, if not given
     encoding = None
@@ -96,7 +97,7 @@ def load_binary(
     font = load_bitmap(
         instream, width, height, count, padding, align,
         strike_count, strike_bytes, first_codepoint,
-        byte_order=byte_order, ink=ink, msb=msb,
+        byte_order=byte_order, ink=ink, msb=msb, byte_swap=byte_swap,
     )
     if encoding:
         font = font.label(char_from=encoding)
@@ -106,7 +107,7 @@ def load_binary(
 def save_binary(
         fonts, outstream, *,
         strike_count:int=1, align:str='left', padding:int=0,
-        ink:int=1, msb:str='left',
+        ink:int=1, msb:str='left', byte_swap:int=0,
     ):
     """
     Save character-cell fonts to binary bitmap. Multiple fonts will be saved consecutively.
@@ -116,6 +117,7 @@ def save_binary(
     padding: number of bytes between encoded glyph rows (default: 0)
     ink: bit-value to interpret as ink (0 or 1; default: 1)
     msb: position of most-significant bit ('left' or 'right', default: 'left')
+    byte_swap: reverse byte order in units of n bytes (default: no swap)
     """
     for font in fonts:
         save_bitmap(
@@ -132,20 +134,21 @@ def load_bitmap(
         instream, width, height, count=-1, padding=0, align='left',
         strike_count=1, strike_bytes=-1, first_codepoint=0, *,
         byte_order='row-major', ink=1, msb='left',
+        byte_swap:int=0,
     ):
     """Load fixed-width font from bitmap."""
     if align == 'bit':
         data, count = _extract_data_and_geometry_bit_aligned(
             instream, width, height, count, padding, strike_count, strike_bytes,
         )
-        cells = _extract_cells_bit_aligned(data, width, height, count)
+        cells = _extract_cells_bit_aligned(data, width, height, count, byte_swap)
     else:
         data, count, cells_per_row, bytes_per_row, nrows = _extract_data_and_geometry(
             instream, width, height, count, padding, strike_count, strike_bytes,
         )
         cells = _extract_cells(
             data, width, height, align, cells_per_row, bytes_per_row, nrows,
-            byte_order=byte_order,
+            byte_order=byte_order, byte_swap=byte_swap,
         )
     # reduce to given count, if exceeded
     cells = cells[:count]
@@ -174,8 +177,11 @@ def _extract_data_and_geometry(
             strike_bytes = len(data) // height
         else:
             strike_bytes = ceildiv(strike_count*width, 8)
-    else:
-        strike_count = -1
+    # we should not force recalculation of strike count
+    # as that stops us from having a too-wide strike.
+    # E.g. 4-pixel wide glyph, one per 1-byte row
+    # else:
+    #     strike_count = -1
     # determine number of cells per strike row
     if strike_count <= 0:
         strike_count = (strike_bytes * 8) // width
@@ -203,7 +209,7 @@ def _extract_data_and_geometry(
 
 def _extract_cells(
         data, width, height, align, cells_per_row, bytes_per_row, nrows, *,
-        byte_order='row-major',
+        byte_order='row-major', byte_swap=0,
     ):
     """Extract glyphs from bitmap strike with given geometry."""
     # extract one strike row at a time
@@ -213,6 +219,7 @@ def _extract_cells(
             data[_i*bytes_per_row : (_i+1)*bytes_per_row],
             width*cells_per_row, height,
             align=align, byte_order=byte_order,
+            byte_swap=byte_swap,
         )
         for _i in range(nrows)
     )
@@ -251,9 +258,9 @@ def _extract_data_and_geometry_bit_aligned(
     return data, count
 
 
-def _extract_cells_bit_aligned(data, width, height, count):
+def _extract_cells_bit_aligned(data, width, height, count, byte_swap):
     """Extract glyphs from bit-aligned bitmap strike."""
-    bitmap = Raster.from_bytes(data, width, align='bit')
+    bitmap = Raster.from_bytes(data, width, align='bit', byte_swap=byte_swap)
     # clip out glyphs
     cells = tuple(
         bitmap.crop(
@@ -271,7 +278,7 @@ def _extract_cells_bit_aligned(data, width, height, count):
 def save_bitmap(
         outstream, font, *,
         strike_count:int=1, align:str='left', padding:int=0,
-        ink:int=1, msb:str='left',
+        ink:int=1, msb:str='left', byte_swap:int=0,
     ):
     """
     Save character-cell font to binary bitmap.
@@ -305,5 +312,5 @@ def save_bitmap(
             glyphrow = glyphrow.invert()
         if msb.lower().startswith('r'):
             glyphrow = glyphrow.mirror()
-        outstream.write(glyphrow.as_bytes(align=align))
+        outstream.write(glyphrow.as_bytes(align=align, byte_swap=byte_swap))
         outstream.write(b'\0' * padding)
