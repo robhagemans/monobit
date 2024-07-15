@@ -1051,7 +1051,7 @@ class TestFormats(BaseTester):
 
     def test_import_vfnt2(self):
         """Test importing freebsd vtfont files."""
-        font, *_ = monobit.load(self.font_path / 'ter-u28.fnt')
+        font, boldfont = monobit.load(self.font_path / 'ter-u28.fnt')
         self.assertEqual(len(font.glyphs), 1185)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), """\
 ..@@@@@@@..
@@ -1073,6 +1073,26 @@ class TestFormats(BaseTester):
 @@.......@@
 @@.......@@
 """)
+        self.assertEqual(boldfont.get_glyph('A').reduce().as_text(), """\
+..@@@@@@@..
+.@@@@@@@@@.
+@@@.....@@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@@@@@@@@@@
+@@@@@@@@@@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+@@.......@@
+""")
 
     def test_export_vfnt2(self):
         """Test exporting freebsd vt font files."""
@@ -1081,6 +1101,41 @@ class TestFormats(BaseTester):
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_export_vfnt2_multicell(self):
+        """Test exporting freebsd vt font files with two-cell glyphs."""
+        unscii_16 = monobit.load(self.font_path / 'unscii-16.hex')
+        fnt_file = self.temp_path / 'unscii-16.fnt'
+        monobit.save(unscii_16, fnt_file, format='vfnt2')
+        font, *_ = monobit.load(fnt_file)
+        self.assertEqual(len(font.glyphs), 3240)
+        self.assertEqual(font.spacing, 'multi-cell')
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), """\
+..@@..
+.@@@@.
+@@..@@
+@@..@@
+@@..@@
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+""")
+        self.assertEqual(font.get_glyph('\uFF21').reduce().as_text(), """\
+....@@@@....
+..@@@@@@@@..
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@@@@@@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+""")
 
     # COM loaders
 
