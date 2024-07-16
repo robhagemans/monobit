@@ -34,12 +34,19 @@ _WSF_HEADER = le.Struct(
     # but in NetBSD kernel header files this is *sometimes* the pixel width
     # so the field may well be ignored by the kernel
     stride='uint32',
-    #define WSDISPLAY_FONTORDER_KNOWN 0     /* i.e, no need to convert */
-    #define WSDISPLAY_FONTORDER_L2R 1
-    #define WSDISPLAY_FONTORDER_R2L 2
     bitorder='uint32',
     byteorder='uint32',
 )
+
+#define WSDISPLAY_FONTORDER_KNOWN 0     /* i.e, no need to convert */
+#define WSDISPLAY_FONTORDER_L2R 1
+#define WSDISPLAY_FONTORDER_R2L 2
+_WSF_ORDER = {
+    0: 'left',
+    1: 'left',
+    2: 'right',
+}
+
 
 # > ISO-8859-1 encoding
 #define WSDISPLAY_FONTENC_ISO 0
@@ -77,18 +84,22 @@ def load_wsfont(instream):
         raise FileFormatError(
             f'Not a .wsf file: incorrect signature {header.magic}'
         )
-    # if header.stride == header.fontwidth:
+    return load_wsfont_bitmap(instream, header)
 
+
+def load_wsfont_bitmap(instream, header):
+    """Load bitmap font with geometry defined by wsfont header."""
+    # if header.stride == header.fontwidth:
     #     header.stride = ceildiv(header.fontwidth, 8)
     font = load_bitmap(
         instream,
         width=header.fontwidth, height=header.fontheight,
         count=header.numchars,
-        align=('right' if header.bitorder == 2 else 'left'),
+        align=_WSF_ORDER[header.bitorder],
         strike_bytes=header.stride,
         strike_count=1,
         first_codepoint=header.firstchar,
-        msb=('right' if header.bitorder == 2 else 'left'),
+        msb=_WSF_ORDER[header.bitorder],
         byte_swap=(
             header.stride
             if header.byteorder and header.byteorder != header.bitorder

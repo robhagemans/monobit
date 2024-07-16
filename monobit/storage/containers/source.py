@@ -83,17 +83,18 @@ class _CodedBinaryContainer(FlatFilterContainer):
         found_identifier = ''
         data = {}
         for line in instream:
-            line = _strip_line(line, comment, block_comment)
+            line = strip_line_comments(line, comment, block_comment)
             if assign in line:
                 found_identifier, _, _ = line.partition(assign)
                 logging.debug('Found assignment to `%s`', found_identifier)
-                found_identifier = _clean_identifier(found_identifier)
+                found_identifier = clean_identifier(found_identifier)
             if found_identifier and start in line:
                 _, line = line.split(start)
-                decoded_data = _get_payload(
+                coded_data = read_array(
                     instream, line, start, end,
-                    comment, block_comment, int_conv
+                    comment, block_comment,
                 )
+                decoded_data = decode_array(coded_data, int_conv)
                 data[found_identifier] = decoded_data
                 if not decoded_data:
                     logging.warning(
@@ -173,7 +174,7 @@ class _CodedBinaryContainer(FlatFilterContainer):
 ###############################################################################
 # helper functions for reader
 
-def _strip_line(line, comment, block_comment):
+def strip_line_comments(line, comment, block_comment):
     """Strip comments. Handles inline but not multiline block comments."""
     if comment:
         line, _, _ = line.partition(comment)
@@ -182,12 +183,12 @@ def _strip_line(line, comment, block_comment):
             before, _, after = line.partition(block_comment[0])
             _, _, after = after.partition(block_comment[1])
             line = before + after
-    line = line.strip(' \r\n')
+    line = line.strip(' \r\n\t')
     return line
 
 
-def _get_payload(instream, line, start, end, comment, block_comment, int_conv):
-    """Retrieve coded array as string."""
+def read_array(instream, line, start, end, comment, block_comment):
+    """Retrieve coded array as list of strings."""
     # special case: whole array in one line
     if end in line:
         line, _ = line.split(end, 1)
@@ -195,7 +196,7 @@ def _get_payload(instream, line, start, end, comment, block_comment, int_conv):
     # multi-line array
     payload = [line]
     for line in instream:
-        line = _strip_line(line, comment, block_comment)
+        line = strip_line_comments(line, comment, block_comment)
         if start in line:
             _, line = line.split(start, 1)
         if end in line:
@@ -204,15 +205,20 @@ def _get_payload(instream, line, start, end, comment, block_comment, int_conv):
             break
         if line:
             payload.append(line)
+    return ''.join(payload).split(',')
+
+
+def decode_array(payload, int_conv):
+    """Decode coded array to bytes."""
     try:
         return bytes(
-            int_conv(_s) for _s in ''.join(payload).split(',') if _s.strip()
+            int_conv(_s) for _s in payload if _s.strip()
         )
     except ValueError:
         return b''
 
 
-def _clean_identifier(found_identifier):
+def clean_identifier(found_identifier):
     """clean up identifier found in source code."""
     # take last element separated by whitespace e.g. char foo[123] -> foo[123]
     *_, found_identifier = found_identifier.strip().split()
@@ -227,9 +233,12 @@ def _clean_identifier(found_identifier):
 ###############################################################################
 # C
 
-def _int_from_c(cvalue):
+def int_from_c(cvalue):
     """Parse integer from C/Python/JS code."""
     cvalue = cvalue.strip()
+    # char value is also int in C
+    if len(cvalue) == 3 and cvalue[0] == cvalue[-1] == "'":
+        return ord(cvalue[1])
     # C suffixes
     while cvalue[-1:].lower() in ('u', 'l'):
         cvalue = cvalue[:-1]
@@ -249,7 +258,7 @@ class _CodedBinary(_CodedBinaryContainer):
     delimiters = '{}'
     comment = '//'
     assign = '='
-    int_conv = _int_from_c
+    int_conv = int_from_c
     conv_int = _int_to_c
     block_comment = ()
     separator = '\n\n'
