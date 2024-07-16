@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from io import BytesIO
 
 from monobit.storage import loaders, savers, Magic, FileFormatError
 from monobit.core import Glyph, Font, Char
@@ -125,9 +126,15 @@ def save_wsfont(
     bit_order: 'left' for most significant bit left (default), or 'right'
     byte_order: 'left' or 'right'; default: same as bit-order
     """
+    font = ensure_single(fonts)
+    header, data = convert_to_wsfont(font, byte_order, bit_order)
+    outstream.write(bytes(header))
+    outstream.write(data)
+
+
+def convert_to_wsfont(font, byte_order, bit_order):
     if not byte_order:
         byte_order = bit_order
-    font = ensure_single(fonts)
     font = ensure_charcell(font)
     if font.encoding not in _TO_WSF_ENCODING and font.get_chars():
         # standard encoding is latin-1 in this format
@@ -148,9 +155,10 @@ def save_wsfont(
         bitorder=2 if bit_order.startswith('r') else 1,
         byteorder=2 if byte_order.startswith('r') else 1,
     )
-    outstream.write(bytes(header))
-    return save_bitmap(
-        outstream, font,
+    stream = BytesIO()
+    save_bitmap(
+        stream, font,
         align=bit_order, msb=bit_order,
         byte_swap=(header.stride if byte_order != bit_order else 0),
     )
+    return header, stream.getvalue()

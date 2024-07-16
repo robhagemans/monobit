@@ -144,31 +144,15 @@ class _CodedBinaryContainer(FlatFilterContainer):
         """
         if len(delimiters) < 2:
             raise ValueError('A start and end delimiter must be given. E.g. []')
-        start_delimiter, end_delimiter = delimiters
         # remove non-ascii
         identifier = name.encode('ascii', 'ignore').decode('ascii')
-        identifier = ''.join(_c if _c.isalnum() else '_' for _c in identifier)
+        identifier = to_identifier(identifier)
         assign = assign_template.format(
             identifier=identifier, bytesize=len(rawbytes)
         )
-        # emit code
-        outstream.write(f'{assign}{start_delimiter}\n')
-        # grouper
-        args = [iter(rawbytes)] * bytes_per_line
-        groups = zip(*args)
-        lines = [
-            ', '.join(conv_int(_b) for _b in _group)
-            for _group in groups
-        ]
-        rem = len(rawbytes) % bytes_per_line
-        if rem:
-            lines.append(', '.join(conv_int(_b) for _b in rawbytes[-rem:]))
-        for i, line in enumerate(lines):
-            outstream.write(f'  {line}')
-            if i < len(lines) - 1:
-                outstream.write(',')
-            outstream.write('\n')
-        outstream.write(end_delimiter)
+        array = encode_array(rawbytes, delimiters, bytes_per_line, conv_int)
+        outstream.write(assign)
+        outstream.write(array)
 
 
 ###############################################################################
@@ -219,7 +203,7 @@ def decode_array(payload, int_conv):
 
 
 def clean_identifier(found_identifier):
-    """clean up identifier found in source code."""
+    """Clean up identifier found in source code."""
     # take last element separated by whitespace e.g. char foo[123] -> foo[123]
     *_, found_identifier = found_identifier.strip().split()
     # strip non-alnum at either end (e.g. "abc" -> abc)s
@@ -228,6 +212,38 @@ def clean_identifier(found_identifier):
     found_identifier, *_ = re.split(r"\W+", found_identifier)
     return found_identifier
 
+
+###############################################################################
+# helper functions for writer
+
+def to_identifier(identifier):
+    """Convert name to C identifier."""
+    return ''.join(_c.lower() if _c.isalnum() else '_' for _c in identifier)
+
+
+def encode_array(rawbytes, delimiters, bytes_per_line, conv_int):
+    """Encode bytes to array."""
+    start_delimiter, end_delimiter = delimiters
+    outstrs = []
+    # emit code
+    outstrs.append(f'{start_delimiter}\n')
+    # grouper
+    args = [iter(rawbytes)] * bytes_per_line
+    groups = zip(*args)
+    lines = [
+        ', '.join(conv_int(_b) for _b in _group)
+        for _group in groups
+    ]
+    rem = len(rawbytes) % bytes_per_line
+    if rem:
+        lines.append(', '.join(conv_int(_b) for _b in rawbytes[-rem:]))
+    for i, line in enumerate(lines):
+        outstrs.append(f'  {line}')
+        if i < len(lines) - 1:
+            outstrs.append(',')
+        outstrs.append('\n')
+    outstrs.append(end_delimiter)
+    return ''.join(outstrs)
 
 
 ###############################################################################
@@ -248,7 +264,7 @@ def int_from_c(cvalue):
     # 0x, 0b, decimals - like Python
     return int(cvalue, 0)
 
-def _int_to_c(value):
+def int_to_c(value):
     """Output hex number in C format."""
     return f'0x{value:02x}'
 
@@ -259,7 +275,7 @@ class _CodedBinary(_CodedBinaryContainer):
     comment = '//'
     assign = '='
     int_conv = int_from_c
-    conv_int = _int_to_c
+    conv_int = int_to_c
     block_comment = ()
     separator = '\n\n'
 

@@ -10,13 +10,14 @@ from io import BytesIO
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Glyph, Font
-from monobit.base import Props
+from monobit.base import Props, reverse_dict
 
 from ..containers.source import (
     CCodedBinary, strip_line_comments, read_array, decode_array, int_from_c,
-    clean_identifier
+    clean_identifier, to_identifier, encode_array, int_to_c
 )
-from .raw.wsf import load_wsfont_bitmap
+from .raw.wsf import load_wsfont_bitmap, convert_to_wsfont
+from .limitations import ensure_single
 
 
 _KEY_TYPE = 'wsdisplay_font'
@@ -56,7 +57,7 @@ _ENCODING_CONST = {
     name='netbsd',
     patterns=('*.h',),
 )
-def read_netbsd(instream):
+def load_netbsd(instream):
     """Load font from NetBSD wsfont C header."""
     instream = instream.text
     start, end = CCodedBinary.delimiters
@@ -126,3 +127,43 @@ def decode_struct(payload, assign, fields):
         _key: _field.rpartition(assign)[-1].strip()
         for _key, _field in zip(fields, payload)
     })
+
+
+
+@savers.register(linked=load_netbsd)
+def save_netbsd(
+        fonts, outstream, *,
+        byte_order:str=None,
+        bit_order:str='left',
+    ):
+    """
+    Save to a netBSD wsfont header.
+
+    bit_order: 'left' for most significant bit left (default), or 'right'
+    byte_order: 'left' or 'right'; default: same as bit-order
+    """
+    font = ensure_single(fonts)
+    identifier = to_identifier(font.name)
+    header, data = convert_to_wsfont(font, byte_order, bit_order)
+    header = Props(**vars(header))
+    header.name = '"' + header.name.decode('ascii', 'replace') + '"'
+    header.data = f'{identifier}_data'
+    header.encoding = reverse_dict(_ENCODING_CONST)[header.encoding]
+    header.bitorder = reverse_dict(_ORDER_CONST)[header.bitorder]
+    header.byteorder = reverse_dict(_ORDER_CONST)[header.byteorder]
+    headerstr = encode_struct(header, _HEADER_FIELDS)
+    arraystr = encode_array(
+        data, CCodedBinary.delimiters, header.stride * header.fontheight, int_to_c
+    )
+    outstream = outstream.text
+    outstream.write(f'static u_char {header.data}[];\n\n')
+    outstream.write(f'struct wsdisplay_font {identifier} = {headerstr};\n\n')
+    outstream.write(f'static u_char {header.data}[] = {arraystr};\n')
+
+
+def encode_struct(header, fields):
+    fields = ',\n'.join(
+        f'\t.{_name} = {getattr(header, _name)}'
+        for _name in fields
+    )
+    return '{\n' + fields + '\n}'
