@@ -77,7 +77,10 @@ class CodeWriter:
     @classmethod
     def to_identifier(cls, identifier):
         """Convert name to C identifier."""
-        return ''.join(_c.lower() if _c.isalnum() else '_' for _c in identifier)
+        identifier = ''.join(_c.lower() if _c.isalnum() else '_' for _c in identifier)
+        if not identifier[:1].isalpha():
+            identifier = 'data_' + identifier
+        return identifier
 
     @classmethod
     def encode_array(cls, data, bytes_per_line):
