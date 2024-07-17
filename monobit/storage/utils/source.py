@@ -8,6 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import re
 import string
 
+from monobit.base import Props
+
 
 ###############################################################################
 # helper functions for reader
@@ -122,6 +124,24 @@ def int_from_c(cvalue):
 def int_to_c(value):
     """Output hex number in C format."""
     return f'0x{value:02x}'
+
+
+def decode_struct(payload, assign, fields):
+    """Decode struct value from list."""
+    return Props(**{
+        # may be `.name = 0` or just `0`
+        _key: _field.rpartition(assign)[-1].strip()
+        for _key, _field in zip(fields, payload)
+    })
+
+
+def encode_struct(header, fields):
+    """Encode namespace class as struct."""
+    fields = ',\n'.join(
+        f'\t.{_name} = {getattr(header, _name)}'
+        for _name in fields
+    )
+    return '{\n' + fields + '\n}'
 
 
 class CCode:

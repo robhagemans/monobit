@@ -17,7 +17,8 @@ from monobit.encoding import EncodingName
 
 from ..utils.source import (
     CCode, strip_line_comments, read_array, decode_array, int_from_c,
-    clean_identifier, to_identifier, encode_array, int_to_c
+    clean_identifier, to_identifier, encode_array, int_to_c,
+    encode_struct, decode_struct
 )
 from .raw import load_bitmap, save_bitmap
 from monobit.storage.utils.limitations import ensure_single, make_contiguous, ensure_charcell
@@ -216,26 +217,6 @@ def _write_netbsd(font, outstream, byte_order, bit_order):
     outstream.write(f'static u_char {header.data}[];\n\n')
     outstream.write(f'struct wsdisplay_font {identifier} = {headerstr};\n\n')
     outstream.write(f'static u_char {header.data}[] = {arraystr};\n')
-
-###############################################################################
-# C source code utilities
-
-def decode_struct(payload, assign, fields):
-    """Decode struct value from list."""
-    return Props(**{
-        # may be `.name = 0` or just `0`
-        _key: _field.rpartition(assign)[-1].strip()
-        for _key, _field in zip(fields, payload)
-    })
-
-
-def encode_struct(header, fields):
-    """Encode namespace class as struct."""
-    fields = ',\n'.join(
-        f'\t.{_name} = {getattr(header, _name)}'
-        for _name in fields
-    )
-    return '{\n' + fields + '\n}'
 
 
 ###############################################################################
