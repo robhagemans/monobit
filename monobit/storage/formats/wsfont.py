@@ -15,8 +15,8 @@ from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 from monobit.encoding import EncodingName
 
-from ..containers.source import (
-    CCodedBinary, strip_line_comments, read_array, decode_array, int_from_c,
+from ..utils.source import (
+    CCode, strip_line_comments, read_array, decode_array, int_from_c,
     clean_identifier, to_identifier, encode_array, int_to_c
 )
 from .raw import load_bitmap, save_bitmap
@@ -118,16 +118,16 @@ _ENCODING_CONST = {
 def load_netbsd(instream):
     """Load font from NetBSD wsfont C header."""
     instream = instream.text
-    start, end = CCodedBinary.delimiters
+    start, end = CCode.delimiters
     found_identifier = ''
     data = {}
     headers = []
     for line in instream:
         line = strip_line_comments(
-            line, CCodedBinary.comment, CCodedBinary.block_comment
+            line, CCode.comment, CCode.block_comment
         )
-        if CCodedBinary.assign in line:
-            found_identifier, _, _ = line.partition(CCodedBinary.assign)
+        if CCode.assign in line:
+            found_identifier, _, _ = line.partition(CCode.assign)
             logging.debug('Found assignment to `%s`', found_identifier)
             if _KEY_TYPE in found_identifier:
                 headers.append(_read_header(line, instream))
@@ -136,7 +136,7 @@ def load_netbsd(instream):
                 _, line = line.split(start)
                 coded_data = read_array(
                     instream, line, start, end,
-                    CCodedBinary.comment, CCodedBinary.block_comment
+                    CCode.comment, CCode.block_comment
                 )
                 data[found_identifier] = decode_array(coded_data, int_from_c)
     return tuple(
@@ -147,16 +147,16 @@ def load_netbsd(instream):
 
 def _read_header(line, instream):
     """Read the wsfont header from a c file."""
-    start, end = CCodedBinary.delimiters
+    start, end = CCode.delimiters
     _, line = line.split(start)
     headerlist = read_array(
         instream, line,
         start, end,
-        comment=CCodedBinary.comment,
-        block_comment=CCodedBinary.block_comment,
+        comment=CCode.comment,
+        block_comment=CCode.block_comment,
     )
     header = decode_struct(
-        headerlist, CCodedBinary.assign, _HEADER_FIELDS
+        headerlist, CCode.assign, _HEADER_FIELDS
     )
     header.name = header.name.strip('"').encode('ascii', 'replace')
     header.firstchar = int_from_c(header.firstchar)
@@ -209,7 +209,7 @@ def _write_netbsd(font, outstream, byte_order, bit_order):
     header.byteorder = reverse_dict(_ORDER_CONST)[header.byteorder]
     headerstr = encode_struct(header, _HEADER_FIELDS)
     arraystr = encode_array(
-        data, CCodedBinary.delimiters, header.stride * header.fontheight, int_to_c
+        data, CCode.delimiters, header.stride * header.fontheight, int_to_c
     )
     outstream = outstream.text
     outstream.write('\n\n')
