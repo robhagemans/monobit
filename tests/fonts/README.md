@@ -58,12 +58,16 @@ Original sources:
   - Copyright (c) 2019 Dimitar Toshkov Zhekov
     Terminus Font is licensed under the SIL Open Font License, Version 1.1
   - wsfont conversion at https://ftp.netbsd.org/pub/NetBSD/NetBSD-current/src/share/wscons/fonts/ter-112n.wsf.uue
-  - freebsd conversion at https://github.com/LionyxML/freebsd-terminus/
-* UNSCII 2.1 `unscii-16.hex`
+  - vtfont conversion at https://github.com/LionyxML/freebsd-terminus/
+* UNSCII 2.1, `unscii-16.hex`
   - https://github.com/viznut/unscii
   - Licensing: You can consider it Public Domain (or CC-0) except for the files
     derived from or containing parts of Roman Czyborra's Unifont project
     (`unifont.hex`, `hex2bdf.pl`, `unscii-16-full.*`) which fall under GPL.
+* Spleen Font, `spleen5x8.h`
+   - https://github.com/NetBSD/src/blob/trunk/sys/dev/wsfont/spleen5x8.h
+   - Copyright (c) 2018-2021 Frederic Cambus <fcambus@openbsd.org>
+   - BSD 2-clause licence
 
 
 ### Derivatives of `4x6`
