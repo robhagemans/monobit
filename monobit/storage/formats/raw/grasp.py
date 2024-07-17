@@ -13,7 +13,7 @@ from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 from .raw import load_bitmap, save_bitmap
 
-from ..limitations import ensure_single, ensure_charcell, make_contiguous
+from monobit.storage.utils.limitations import ensure_single, ensure_charcell, make_contiguous
 
 
 ###############################################################################

@@ -20,7 +20,7 @@ from ..utils.source import (
     clean_identifier, to_identifier, encode_array, int_to_c
 )
 from .raw import load_bitmap, save_bitmap
-from .limitations import ensure_single, make_contiguous, ensure_charcell
+from monobit.storage.utils.limitations import ensure_single, make_contiguous, ensure_charcell
 
 
 # https://ftp.iij.ad.jp/pub/NetBSD/NetBSD-release-10/xsrc/local/programs/bdfload/bdfload.c

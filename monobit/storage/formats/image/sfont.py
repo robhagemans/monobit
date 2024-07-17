@@ -17,7 +17,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 from monobit.render import GlyphMap
 
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 # see https://github.com/karlb/sfont
 

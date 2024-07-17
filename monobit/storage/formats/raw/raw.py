@@ -14,8 +14,7 @@ from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError, Regex, Glob
 from monobit.core import Font, Glyph, Raster
 from monobit.base import Coord, NOT_SET
-
-from ..limitations import ensure_charcell
+from monobit.storage.utils.limitations import ensure_charcell
 
 # patterns
 

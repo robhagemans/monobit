@@ -18,7 +18,7 @@ from monobit.core import Font, Glyph
 from monobit.base.struct import big_endian as be
 from monobit.render import GlyphMap
 
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 _PIL_METRICS = be.Struct(

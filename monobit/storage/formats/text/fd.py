@@ -16,7 +16,7 @@ from ..common import (
     WEIGHT_MAP, CHARSET_MAP, WEIGHT_REVERSE_MAP, CHARSET_REVERSE_MAP
 )
 from .draw import DrawComment, NonEmptyBlock, Empty, Unparsed, iter_blocks
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 FD_KEYS = {

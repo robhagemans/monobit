@@ -14,7 +14,7 @@ from monobit.base import Props
 from monobit.storage import loaders, savers, FileFormatError, Magic
 from monobit.core import Font, Glyph, Raster
 
-from .limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 @loaders.register(

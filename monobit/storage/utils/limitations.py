@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.limitations - deal with font format limitations
+monobit.storage.utils.limitations - deal with font format limitations
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

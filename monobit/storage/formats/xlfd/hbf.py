@@ -12,12 +12,12 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.base import Coord
 from monobit.core import Font, Glyph
 from monobit.base.binary import ceildiv
+from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 
 from .bdf import read_props
 from .xlfd import parse_xlfd_properties, create_xlfd_properties, CUSTOM_NAMESPACE
 from .xlfd import create_xlfd_name
 from ..text.yaff import globalise_glyph_metrics
-from ..limitations import ensure_single, ensure_charcell
 
 
 @loaders.register(

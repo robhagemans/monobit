@@ -30,7 +30,7 @@ from monobit.render import GlyphMap, grid_map
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 # text/xml/binary format: https://www.angelcode.com/products/bmfont/doc/file_format.html

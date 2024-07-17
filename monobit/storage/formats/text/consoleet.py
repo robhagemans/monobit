@@ -13,7 +13,7 @@ from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph
 
 from ..image.image import loop_load, loop_save
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 @container_loaders.register(name='consoleet')

@@ -14,7 +14,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Raster, Glyph
 from monobit.base import Coord
 
-from ..limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 
 
 _WYSE_ESC_SEQ = b'\x1bcA'

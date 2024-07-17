@@ -16,7 +16,7 @@ from monobit.storage import FileFormatError
 from .fnt import create_fnt
 from .fnt import convert_win_fnt_resource, FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3
 
-from ...limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 @loaders.register(

@@ -13,7 +13,7 @@ from monobit.base import Props
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
-from .limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 @loaders.register(

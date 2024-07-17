@@ -14,7 +14,7 @@ from monobit.base.struct import big_endian as be
 from monobit.base.binary import ceildiv
 
 from .raw import load_bitmap, save_bitmap
-from .limitations import ensure_single, make_contiguous, ensure_charcell
+from monobit.storage.utils.limitations import ensure_single, make_contiguous, ensure_charcell
 
 
 # https://codeberg.org/FreeBSD/freebsd-src/src/branch/main/sys/sys/font.h

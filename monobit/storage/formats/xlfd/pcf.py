@@ -13,8 +13,8 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.base import Props
 from monobit.core import Font, Glyph, Raster, Tag, Codepoint
 from monobit.base.binary import align, ceildiv
+from monobit.storage.utils.limitations import ensure_single
 
-from ..limitations import ensure_single
 from .bdf import swidth_to_pixel, pixel_to_swidth
 from .xlfd import (
     parse_xlfd_properties, create_xlfd_properties, create_xlfd_name,

@@ -27,7 +27,7 @@ from ...common import (
     WEIGHT_MAP, WEIGHT_REVERSE_MAP,
     CHARSET_MAP, CHARSET_REVERSE_MAP
 )
-from ...limitations import make_contiguous
+from monobit.storage.utils.limitations import make_contiguous
 
 
 FNT_MAGIC_1 = b'\0\1'
