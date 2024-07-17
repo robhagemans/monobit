@@ -47,25 +47,25 @@ class _CodedBinaryContainer(FlatFilterContainer):
         """Generator to decode all identifiers with payload."""
         instream = instream.text
         start, end = cls.reader.delimiters
-        found_identifier = ''
+        identifier = ''
         data = {}
         for line in instream:
             line = cls.reader.strip_line_comments(line)
             if cls.reader.assign in line:
-                found_identifier, _, _ = line.partition(cls.reader.assign)
-                logging.debug('Found assignment to `%s`', found_identifier)
-                found_identifier = cls.reader.clean_identifier(found_identifier)
-            if found_identifier and start in line:
+                identifier, _, _ = line.partition(cls.reader.assign)
+                logging.debug('Found assignment to `%s`', identifier)
+                identifier = cls.reader.clean_identifier(identifier)
+            if identifier and start in line:
                 _, line = line.split(start)
                 coded_data = cls.reader.read_array(instream, line)
                 decoded_data = cls.reader.decode_array(coded_data)
-                data[found_identifier] = decoded_data
+                data[identifier] = decoded_data
                 if not decoded_data:
                     logging.warning(
                         "Could not decode data for identifier '%s'",
-                        found_identifier
+                        identifier
                     )
-                found_identifier = ''
+                identifier = ''
         return data
 
     ###############################################################################

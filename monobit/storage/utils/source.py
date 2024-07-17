@@ -36,37 +36,37 @@ class CodeReader:
             line, _ = line.split(end, 1)
             return line
         # multi-line array
-        payload = [line]
+        coded_data = [line]
         for line in instream:
             line = cls.strip_line_comments(line)
             if start in line:
                 _, line = line.split(start, 1)
             if end in line:
                 line, _ = line.split(end, 1)
-                payload.append(line)
+                coded_data.append(line)
                 break
             if line:
-                payload.append(line)
-        return ''.join(payload).split(',')
+                coded_data.append(line)
+        return ''.join(coded_data).split(',')
 
     @classmethod
-    def decode_array(cls, payload):
+    def decode_array(cls, coded_data):
         """Decode coded array to bytes."""
         try:
-            return bytes(cls.decode_int(_s) for _s in payload if _s.strip())
+            return bytes(cls.decode_int(_s) for _s in coded_data if _s.strip())
         except ValueError:
             return b''
 
     @classmethod
-    def clean_identifier(cls, found_identifier):
+    def clean_identifier(cls, identifier):
         """Clean up identifier found in source code."""
         # take last element separated by whitespace e.g. char foo[123] -> foo[123]
-        *_, found_identifier = found_identifier.strip().split()
+        *_, identifier = identifier.strip().split()
         # strip non-alnum at either end (e.g. "abc" -> abc)s
-        found_identifier = re.sub(r"^\W+|\W+$", "", found_identifier)
+        identifier = re.sub(r"^\W+|\W+$", "", identifier)
         # take first alphanum part (e.g. name[123 -> name)
-        found_identifier, *_ = re.split(r"\W+", found_identifier)
-        return found_identifier
+        identifier, *_ = re.split(r"\W+", identifier)
+        return identifier
 
 
 ###############################################################################
@@ -80,23 +80,23 @@ class CodeWriter:
         return ''.join(_c.lower() if _c.isalnum() else '_' for _c in identifier)
 
     @classmethod
-    def encode_array(cls, rawbytes, bytes_per_line):
+    def encode_array(cls, data, bytes_per_line):
         """Encode bytes to array."""
         start_delimiter, end_delimiter = cls.delimiters
         outstrs = []
         # emit code
         outstrs.append(f'{start_delimiter}\n')
         # grouper
-        args = [iter(rawbytes)] * bytes_per_line
+        args = [iter(data)] * bytes_per_line
         groups = zip(*args)
         lines = [
             ', '.join(cls.encode_int(_b) for _b in _group)
             for _group in groups
         ]
-        rem = len(rawbytes) % bytes_per_line
+        rem = len(data) % bytes_per_line
         if rem:
             lines.append(', '.join(
-                cls.encode_int(_b) for _b in rawbytes[-rem:])
+                cls.encode_int(_b) for _b in data[-rem:])
             )
         for i, line in enumerate(lines):
             outstrs.append(f'  {line}')
@@ -142,12 +142,12 @@ class CCodeReader(CodeReader, CCode):
         return int(cvalue, 0)
 
     @classmethod
-    def decode_struct(cls, payload, fields):
+    def decode_struct(cls, coded_data, fields):
         """Decode struct value from list."""
         return Props(**{
             # may be `.name = 0` or just `0`
             _key: _field.rpartition(cls.assign)[-1].strip()
-            for _key, _field in zip(fields, payload)
+            for _key, _field in zip(fields, coded_data)
         })
 
 

@@ -116,21 +116,21 @@ _ENCODING_CONST = {
 def load_netbsd(instream):
     """Load font from NetBSD wsfont C header."""
     instream = instream.text
-    found_identifier = ''
+    identifier = ''
     data = {}
     headers = []
     for line in instream:
         line = CCodeReader.strip_line_comments(line)
         if CCodeReader.assign in line:
-            found_identifier, _, _ = line.partition(CCodeReader.assign)
-            logging.debug('Found assignment to `%s`', found_identifier)
-            if _KEY_TYPE in found_identifier:
+            identifier, _, _ = line.partition(CCodeReader.assign)
+            logging.debug('Found assignment to `%s`', identifier)
+            if _KEY_TYPE in identifier:
                 headers.append(_read_header(line, instream))
             elif CCodeReader.delimiters[0] in line:
-                found_identifier = CCodeReader.clean_identifier(found_identifier)
+                identifier = CCodeReader.clean_identifier(identifier)
                 _, line = line.split(CCodeReader.delimiters[0])
                 coded_data = CCodeReader.read_array(instream, line)
-                data[found_identifier] = CCodeReader.decode_array(coded_data)
+                data[identifier] = CCodeReader.decode_array(coded_data)
     return tuple(
         load_wsfont_bitmap(BytesIO(data[_header.data]), _header)
         for _header in headers
