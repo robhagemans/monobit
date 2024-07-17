@@ -99,7 +99,7 @@ class CodeWriter:
                 cls.encode_int(_b) for _b in data[-rem:])
             )
         for i, line in enumerate(lines):
-            outstrs.append(f'  {line}')
+            outstrs.append(f'{cls.indent}{line}')
             if i < len(lines) - 1:
                 outstrs.append(',')
             outstrs.append('\n')
@@ -118,6 +118,7 @@ class CCode:
     block_comment = ('/*', '*/')
     separator = ';\n\n'
 
+    indent = '\t'
     assign_template = 'char {identifier}[{bytesize}] = '
     pre = ''
     post = separator
@@ -162,7 +163,7 @@ class CCodeWriter(CodeWriter, CCode):
     def encode_struct(cls, header, fields):
         """Encode namespace class as struct."""
         fields = ',\n'.join(
-            f'\t.{_name} = {getattr(header, _name)}'
+            f'{cls.indent}.{_name} = {getattr(header, _name)}'
             for _name in fields
         )
         return '{\n' + fields + '\n}'
@@ -182,6 +183,7 @@ class JSONCode:
     assign = ':'
     block_comment = ()
 
+    indent = ' ' * 2
     assign_template = '"{identifier}": '
     pre = '{\n'
     post = '\n}\n'
@@ -205,6 +207,7 @@ class PythonCode:
     block_comment = ()
     separator = '\n\n'
 
+    indent = ' ' * 4
     assign_template = '{identifier} = '
     pre = ''
     post = separator
@@ -240,6 +243,7 @@ class PascalCode:
     block_comment = ('{','}')
     separator = ';\n\n'
 
+    indent = ' ' * 2
     assign_template = '{identifier}: Array[1..{bytesize}] of Integer = '
     pre = 'const\n\n'
     post = separator
