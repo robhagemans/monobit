@@ -63,7 +63,7 @@ def load_netbsd(instream):
     start, end = CCodedBinary.delimiters
     found_identifier = ''
     data = {}
-    header = None
+    headers = []
     for line in instream:
         line = strip_line_comments(
             line, CCodedBinary.comment, CCodedBinary.block_comment
@@ -72,7 +72,7 @@ def load_netbsd(instream):
             found_identifier, _, _ = line.partition(CCodedBinary.assign)
             logging.debug('Found assignment to `%s`', found_identifier)
             if _KEY_TYPE in found_identifier:
-                header = _read_header(line, instream)
+                headers.append(_read_header(line, instream))
             elif start in line:
                 found_identifier = clean_identifier(found_identifier)
                 _, line = line.split(start)
@@ -81,8 +81,10 @@ def load_netbsd(instream):
                     CCodedBinary.comment, CCodedBinary.block_comment
                 )
                 data[found_identifier] = decode_array(coded_data, int_from_c)
-    stream = BytesIO(data[header.data])
-    return load_wsfont_bitmap(stream, header)
+    return tuple(
+        load_wsfont_bitmap(BytesIO(data[_header.data]), _header)
+        for _header in headers
+    )
 
 
 def _read_header(line, instream):
@@ -121,15 +123,6 @@ def _read_header(line, instream):
     return header
 
 
-def decode_struct(payload, assign, fields):
-    """Decode struct value from list."""
-    return Props(**{
-        _key: _field.rpartition(assign)[-1].strip()
-        for _key, _field in zip(fields, payload)
-    })
-
-
-
 @savers.register(linked=load_netbsd)
 def save_netbsd(
         fonts, outstream, *,
@@ -137,12 +130,17 @@ def save_netbsd(
         bit_order:str='left',
     ):
     """
-    Save to a netBSD wsfont header.
+    Save to a NetBSD wsfont header.
 
     bit_order: 'left' for most significant bit left (default), or 'right'
     byte_order: 'left' or 'right'; default: same as bit-order
     """
-    font = ensure_single(fonts)
+    for font in fonts:
+        _write_netbsd(font, outstream, byte_order, bit_order)
+
+
+def _write_netbsd(font, outstream, byte_order, bit_order):
+    """Write single NetBSD wsfont header."""
     identifier = to_identifier(font.name)
     header, data = convert_to_wsfont(font, byte_order, bit_order)
     header = Props(**vars(header))
@@ -156,12 +154,24 @@ def save_netbsd(
         data, CCodedBinary.delimiters, header.stride * header.fontheight, int_to_c
     )
     outstream = outstream.text
+    outstream.write('\n\n')
     outstream.write(f'static u_char {header.data}[];\n\n')
     outstream.write(f'struct wsdisplay_font {identifier} = {headerstr};\n\n')
     outstream.write(f'static u_char {header.data}[] = {arraystr};\n')
 
+###############################################################################
+
+def decode_struct(payload, assign, fields):
+    """Decode struct value from list."""
+    return Props(**{
+        # may be `.name = 0` or just `0`
+        _key: _field.rpartition(assign)[-1].strip()
+        for _key, _field in zip(fields, payload)
+    })
+
 
 def encode_struct(header, fields):
+    """Encode namespace class as struct."""
     fields = ',\n'.join(
         f'\t.{_name} = {getattr(header, _name)}'
         for _name in fields
