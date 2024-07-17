@@ -173,6 +173,7 @@ Character-cell formats
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       | binary | 8xN  | -        |
+| NetBSD wsfont C header| `netbsd`   | `.h`                        |&check;|&check;| coded  | any  | Mu SB    |
 | Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;| binary | 8xN  | -        |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check;| binary | any (v2) 8xN (v1) | US  |
 | psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       | binary | 8x8, 8x16 | -   |
