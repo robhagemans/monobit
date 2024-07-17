@@ -15,13 +15,10 @@ from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 from monobit.encoding import EncodingName
 
-from ..utils.source import (
-    CCode, strip_line_comments, read_array, decode_array, int_from_c,
-    clean_identifier, to_identifier, encode_array, int_to_c,
-    encode_struct, decode_struct
-)
-from .raw import load_bitmap, save_bitmap
+from monobit.storage.utils.source import CCodeReader, CCodeWriter
 from monobit.storage.utils.limitations import ensure_single, make_contiguous, ensure_charcell
+
+from .raw import load_bitmap, save_bitmap
 
 
 # https://ftp.iij.ad.jp/pub/NetBSD/NetBSD-release-10/xsrc/local/programs/bdfload/bdfload.c
@@ -119,27 +116,21 @@ _ENCODING_CONST = {
 def load_netbsd(instream):
     """Load font from NetBSD wsfont C header."""
     instream = instream.text
-    start, end = CCode.delimiters
     found_identifier = ''
     data = {}
     headers = []
     for line in instream:
-        line = strip_line_comments(
-            line, CCode.comment, CCode.block_comment
-        )
-        if CCode.assign in line:
-            found_identifier, _, _ = line.partition(CCode.assign)
+        line = CCodeReader.strip_line_comments(line)
+        if CCodeReader.assign in line:
+            found_identifier, _, _ = line.partition(CCodeReader.assign)
             logging.debug('Found assignment to `%s`', found_identifier)
             if _KEY_TYPE in found_identifier:
                 headers.append(_read_header(line, instream))
-            elif start in line:
-                found_identifier = clean_identifier(found_identifier)
-                _, line = line.split(start)
-                coded_data = read_array(
-                    instream, line, start, end,
-                    CCode.comment, CCode.block_comment
-                )
-                data[found_identifier] = decode_array(coded_data, int_from_c)
+            elif CCodeReader.delimiters[0] in line:
+                found_identifier = CCodeReader.clean_identifier(found_identifier)
+                _, line = line.split(CCodeReader.delimiters[0])
+                coded_data = CCodeReader.read_array(instream, line)
+                data[found_identifier] = CCodeReader.decode_array(coded_data)
     return tuple(
         load_wsfont_bitmap(BytesIO(data[_header.data]), _header)
         for _header in headers
@@ -148,37 +139,29 @@ def load_netbsd(instream):
 
 def _read_header(line, instream):
     """Read the wsfont header from a c file."""
-    start, end = CCode.delimiters
-    _, line = line.split(start)
-    headerlist = read_array(
-        instream, line,
-        start, end,
-        comment=CCode.comment,
-        block_comment=CCode.block_comment,
-    )
-    header = decode_struct(
-        headerlist, CCode.assign, _HEADER_FIELDS
-    )
+    _, line = line.split(CCodeReader.delimiters[0])
+    headerlist = CCodeReader.read_array(instream, line)
+    header = CCodeReader.decode_struct(headerlist, _HEADER_FIELDS)
     header.name = header.name.strip('"').encode('ascii', 'replace')
-    header.firstchar = int_from_c(header.firstchar)
+    header.firstchar = CCodeReader.decode_int(header.firstchar)
     # ignore numchars - it is often an expression
     # and we can work it out anyway
     header.numchars = None
-    header.fontwidth = int_from_c(header.fontwidth)
-    header.fontheight = int_from_c(header.fontheight)
-    header.stride = int_from_c(header.stride)
+    header.fontwidth = CCodeReader.decode_int(header.fontwidth)
+    header.fontheight = CCodeReader.decode_int(header.fontheight)
+    header.stride = CCodeReader.decode_int(header.stride)
     try:
         header.encoding = _ENCODING_CONST[header.encoding]
     except KeyError:
-        header.encoding = int_from_c(header.encoding)
+        header.encoding = CCodeReader.decode_int(header.encoding)
     try:
         header.bitorder = _ORDER_CONST[header.bitorder]
     except KeyError:
-        header.bitorder = int_from_c(header.bitorder)
+        header.bitorder = CCodeReader.decode_int(header.bitorder)
     try:
         header.byteorder = _ORDER_CONST[header.byteorder]
     except KeyError:
-        header.byteorder = int_from_c(header.byteorder)
+        header.byteorder = CCodeReader.decode_int(header.byteorder)
     return header
 
 
@@ -200,7 +183,7 @@ def save_netbsd(
 
 def _write_netbsd(font, outstream, byte_order, bit_order):
     """Write single NetBSD wsfont header."""
-    identifier = to_identifier(font.name)
+    identifier = CCodeWriter.to_identifier(font.name)
     header, data = convert_to_wsfont(font, byte_order, bit_order)
     header = Props(**vars(header))
     header.name = '"' + header.name.decode('ascii', 'replace') + '"'
@@ -208,10 +191,8 @@ def _write_netbsd(font, outstream, byte_order, bit_order):
     header.encoding = reverse_dict(_ENCODING_CONST)[header.encoding]
     header.bitorder = reverse_dict(_ORDER_CONST)[header.bitorder]
     header.byteorder = reverse_dict(_ORDER_CONST)[header.byteorder]
-    headerstr = encode_struct(header, _HEADER_FIELDS)
-    arraystr = encode_array(
-        data, CCode.delimiters, header.stride * header.fontheight, int_to_c
-    )
+    headerstr = CCodeWriter.encode_struct(header, _HEADER_FIELDS)
+    arraystr = CCodeWriter.encode_array(data, header.stride * header.fontheight)
     outstream = outstream.text
     outstream.write('\n\n')
     outstream.write(f'static u_char {header.data}[];\n\n')
