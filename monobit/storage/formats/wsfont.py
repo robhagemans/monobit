@@ -195,6 +195,8 @@ def _write_netbsd(font, outstream, byte_order, bit_order):
     arraystr = CCodeWriter.encode_array(data, header.stride * header.fontheight)
     outstream = outstream.text
     outstream.write('\n\n')
+    if font.get_comment():
+        outstream.write(f'/*\n{font.get_comment()}\n*/\n\n')
     outstream.write(f'static u_char {header.data}[];\n\n')
     outstream.write(f'struct wsdisplay_font {identifier} = {headerstr};\n\n')
     outstream.write(f'static u_char {header.data}[] = {arraystr};\n')
