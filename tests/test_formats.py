@@ -1049,7 +1049,7 @@ class TestFormats(BaseTester):
 
     def test_import_netbsd(self):
         """Test importing wsfont header files."""
-        font, *_ = monobit.load(self.font_path / 'spleen5x8.h', format='netbsd', container_format='none')
+        font, *_ = monobit.load(self.font_path / 'spleen5x8.h', format='netbsd')
         self.assertEqual(len(font.glyphs), 96)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), """\
 .@@.
@@ -1063,8 +1063,8 @@ class TestFormats(BaseTester):
     def test_export_netbsd(self):
         """Test exporting netbsd files."""
         fnt_file = self.temp_path / '4x6.h'
-        monobit.save(self.fixed4x6, fnt_file, format='netbsd', container_format='none')
-        font, *_ = monobit.load(fnt_file, format='netbsd', container_format='none')
+        monobit.save(self.fixed4x6, fnt_file, format='netbsd')
+        font, *_ = monobit.load(fnt_file, format='netbsd')
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 

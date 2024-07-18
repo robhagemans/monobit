@@ -107,7 +107,8 @@ class _CodedBinaryContainer(FlatFilterContainer):
 
 @containers.register(
     name='c',
-    patterns=('*.c', '*.cc', '*.cpp', '*.h')
+    # don't provide patterns to avoid capturing other source-coded formats
+    # patterns=('*.c', '*.cc', '*.cpp', '*.h')
 )
 class CCodedBinary(_CodedBinaryContainer):
     """C source code wrapper."""
@@ -117,7 +118,7 @@ class CCodedBinary(_CodedBinaryContainer):
 
 @containers.register(
     name='json',
-    patterns=('*.js', '*.json',),
+    # patterns=('*.js', '*.json',),
 )
 class JSONCodedBinary(_CodedBinaryContainer):
     """JSON wrapper."""
@@ -137,7 +138,7 @@ class PythonCodedBinary(_CodedBinaryContainer):
 
 @containers.register(
     name='python-tuple',
-    patterns=('*.py',),
+    # patterns=('*.py',),
 )
 class PythonTupleCodedBinary(_CodedBinaryContainer):
     """Python source code wrapper, using tuples."""
@@ -147,7 +148,7 @@ class PythonTupleCodedBinary(_CodedBinaryContainer):
 
 @containers.register(
     name='pascal',
-    patterns=('*.pas',),
+    # patterns=('*.pas',),
 )
 class PascalCodedBinary(_CodedBinaryContainer):
     """Pascal source code wrapper."""
