@@ -7,8 +7,10 @@ licence: https://opensource.org/licenses/MIT
 
 import re
 import string
+from itertools import zip_longest
 
 from monobit.base import Props
+from monobit.core import Raster
 
 
 class CodeReader:
@@ -83,7 +85,9 @@ class CodeWriter:
         return identifier
 
     @classmethod
-    def encode_array(cls, data, bytes_per_line):
+    def encode_array(
+            cls, data, bytes_per_line, lines_per_block=0, add_visuals=False
+        ):
         """Encode bytes to array."""
         start_delimiter, end_delimiter = cls.delimiters
         outstrs = []
@@ -91,20 +95,33 @@ class CodeWriter:
         outstrs.append(f'{start_delimiter}\n')
         # grouper
         args = [iter(data)] * bytes_per_line
-        groups = zip(*args)
+        groups = list(zip(*args))
         lines = [
             ', '.join(cls.encode_int(_b) for _b in _group)
             for _group in groups
         ]
+        if add_visuals:
+            visuals = [
+                Raster
+                    .from_bytes(_group, height=1)
+                    .as_text(start='/* ', end=' */')
+                for _group in groups
+            ]
+        else:
+            visuals = []
         rem = len(data) % bytes_per_line
         if rem:
             lines.append(', '.join(
                 cls.encode_int(_b) for _b in data[-rem:])
             )
-        for i, line in enumerate(lines):
+        for i, (line, visual) in enumerate(zip_longest(lines, visuals)):
+            if lines_per_block and i and (i % lines_per_block == 0):
+                outstrs.append('\n')
             outstrs.append(f'{cls.indent}{line}')
             if i < len(lines) - 1:
                 outstrs.append(',')
+            if add_visuals:
+                outstrs.append(f'{cls.indent}{visual}')
             outstrs.append('\n')
         outstrs.append(end_delimiter)
         return ''.join(outstrs)

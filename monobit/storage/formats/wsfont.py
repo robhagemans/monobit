@@ -170,18 +170,20 @@ def save_netbsd(
         fonts, outstream, *,
         byte_order:str=None,
         bit_order:str='left',
+        add_visuals:bool=True,
     ):
     """
     Save to a NetBSD wsfont header.
 
     bit_order: 'left' for most significant bit left (default), or 'right'
     byte_order: 'left' or 'right'; default: same as bit-order
+    add_visuals: add comments with visual representation of glyphs (default: True)
     """
     for font in fonts:
-        _write_netbsd(font, outstream, byte_order, bit_order)
+        _write_netbsd(font, outstream, byte_order, bit_order, add_visuals)
 
 
-def _write_netbsd(font, outstream, byte_order, bit_order):
+def _write_netbsd(font, outstream, byte_order, bit_order, add_visuals):
     """Write single NetBSD wsfont header."""
     identifier = CCodeWriter.to_identifier(font.name)
     header, data = convert_to_wsfont(font, byte_order, bit_order)
@@ -192,7 +194,17 @@ def _write_netbsd(font, outstream, byte_order, bit_order):
     header.bitorder = reverse_dict(_ORDER_CONST)[header.bitorder]
     header.byteorder = reverse_dict(_ORDER_CONST)[header.byteorder]
     headerstr = CCodeWriter.encode_struct(header, _HEADER_FIELDS)
-    arraystr = CCodeWriter.encode_array(data, header.stride * header.fontheight)
+    if add_visuals:
+        arraystr = CCodeWriter.encode_array(
+            data, bytes_per_line=header.stride,
+            lines_per_block=header.fontheight,
+            add_visuals=True,
+        )
+    else:
+        # compact format
+        arraystr = CCodeWriter.encode_array(
+            data, bytes_per_line=header.stride * header.fontheight,
+        )
     outstream = outstream.text
     outstream.write('\n\n')
     if font.get_comment():
