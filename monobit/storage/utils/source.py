@@ -86,7 +86,8 @@ class CodeWriter:
 
     @classmethod
     def encode_array(
-            cls, data, bytes_per_line, lines_per_block=0, add_visuals=False
+            cls, data, bytes_per_line, lines_per_block=0, add_visuals=False,
+            index=None,
         ):
         """Encode bytes to array."""
         start_delimiter, end_delimiter = cls.delimiters
@@ -100,11 +101,14 @@ class CodeWriter:
             ', '.join(cls.encode_int(_b) for _b in _group)
             for _group in groups
         ]
-        if add_visuals:
+        if add_visuals and cls.block_comment:
             visuals = [
                 Raster
                     .from_bytes(_group, height=1)
-                    .as_text(start='/* ', end=' */')
+                    .as_text(
+                        start=cls.block_comment[0] + ' ',
+                        end=' ' + cls.block_comment[1],
+                    )
                 for _group in groups
             ]
         else:
@@ -115,8 +119,16 @@ class CodeWriter:
                 cls.encode_int(_b) for _b in data[-rem:])
             )
         for i, (line, visual) in enumerate(zip_longest(lines, visuals)):
-            if lines_per_block and i and (i % lines_per_block == 0):
-                outstrs.append('\n')
+            if lines_per_block:
+                if (i % lines_per_block == 0):
+                    # if i:
+                    outstrs.append('\n')
+                    if index is not None:
+                        outstrs.append(
+                            cls.indent + cls.block_comment[0] + ' '
+                            + cls.encode_int(index+i//lines_per_block)
+                            + ' ' + cls.block_comment[1] + '\n'
+                        )
             outstrs.append(f'{cls.indent}{line}')
             if i < len(lines) - 1:
                 outstrs.append(',')

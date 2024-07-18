@@ -198,7 +198,7 @@ def _write_netbsd(font, outstream, byte_order, bit_order, add_visuals):
         arraystr = CCodeWriter.encode_array(
             data, bytes_per_line=header.stride,
             lines_per_block=header.fontheight,
-            add_visuals=True,
+            add_visuals=True, index=header.firstchar,
         )
     else:
         # compact format
