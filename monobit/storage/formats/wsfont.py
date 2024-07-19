@@ -120,7 +120,7 @@ def load_netbsd(instream):
     data = {}
     headers = []
     for line in instream:
-        line = CCodeReader.strip_line_comments(line)
+        line = CCodeReader.strip_line_comments(line, instream)
         if CCodeReader.assign in line:
             identifier, _, _ = line.partition(CCodeReader.assign)
             logging.debug('Found assignment to `%s`', identifier)
@@ -128,7 +128,6 @@ def load_netbsd(instream):
                 headers.append(_read_header(line, instream))
             elif CCodeReader.delimiters[0] in line:
                 identifier = CCodeReader.clean_identifier(identifier)
-                _, line = line.split(CCodeReader.delimiters[0])
                 coded_data = CCodeReader.read_array(instream, line)
                 data[identifier] = CCodeReader.decode_array(coded_data)
     return tuple(
@@ -139,7 +138,6 @@ def load_netbsd(instream):
 
 def _read_header(line, instream):
     """Read the wsfont header from a c file."""
-    _, line = line.split(CCodeReader.delimiters[0])
     headerlist = CCodeReader.read_array(instream, line)
     header = CCodeReader.decode_struct(headerlist, _HEADER_FIELDS)
     header.name = header.name.strip('"').encode('ascii', 'replace')

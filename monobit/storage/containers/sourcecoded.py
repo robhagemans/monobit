@@ -50,13 +50,12 @@ class _CodedBinaryContainer(FlatFilterContainer):
         identifier = ''
         data = {}
         for line in instream:
-            line = cls.reader.strip_line_comments(line)
+            line = cls.reader.strip_line_comments(line, instream)
             if cls.reader.assign in line:
                 identifier, _, _ = line.partition(cls.reader.assign)
                 logging.debug('Found assignment to `%s`', identifier)
                 identifier = cls.reader.clean_identifier(identifier)
             if identifier and start in line:
-                _, line = line.split(start)
                 coded_data = cls.reader.read_array(instream, line)
                 decoded_data = cls.reader.decode_array(coded_data)
                 data[identifier] = decoded_data

@@ -16,23 +16,32 @@ from monobit.core import Raster
 class CodeReader:
 
     @classmethod
-    def strip_line_comments(cls, line):
+    def strip_line_comments(cls, line, instream):
         """Strip comments. Handles inline but not multiline block comments."""
         if cls.comment:
             line, _, _ = line.partition(cls.comment)
         if cls.block_comment:
             start, end = cls.block_comment
+            closed = True
             while start in line:
                 before, _, after = line.partition(start)
-                _, _, after = after.partition(end)
+                _, closed, after = after.partition(end)
                 line = before + after
+            if not closed:
+                for new_line in instream:
+                    _, closed, after = new_line.partition(end)
+                    if closed:
+                        line += after
+                        break
         line = line.strip(' \r\n\t')
         return line
 
     @classmethod
     def read_array(cls, instream, line):
-        """Retrieve coded array as list of strings."""
+        """Retrieve coded array as list of strings. Flattens nested arrays."""
         start, end = cls.delimiters
+        _, line = line.split(start)
+        depth = 1
         # special case: whole array in one line
         if end in line:
             line, _ = line.split(end, 1)
@@ -40,15 +49,21 @@ class CodeReader:
         # multi-line array
         coded_data = [line]
         for line in instream:
-            line = cls.strip_line_comments(line)
+            line = cls.strip_line_comments(line, instream)
             if start in line:
-                _, line = line.split(start, 1)
+                pre, line = line.split(start, 1)
+                if depth:
+                    line = pre + line
+                depth += 1
             if end in line:
-                line, _ = line.split(end, 1)
-                coded_data.append(line)
-                break
-            if line:
-                coded_data.append(line)
+                line, post = line.split(end, 1)
+                depth = max(depth - 1, 0)
+                if depth:
+                    line += post
+                else:
+                    coded_data.append(line)
+                    break
+            coded_data.append(line)
         return ''.join(coded_data).split(',')
 
     @classmethod
