@@ -293,7 +293,8 @@ class TestWrappers(BaseTester):
         """Test importing c source files."""
         font, *_ = monobit.load(
             self.font_path / '4x6.c' / 'font_Fixed_Medium_6',
-            cell=(4, 6)
+            cell=(4, 6),
+            container_format='c',
         )
         self.assertEqual(len(font.glyphs), 919)
 
@@ -337,27 +338,31 @@ class TestWrappers(BaseTester):
 
     def test_export_c(self):
         """Test exporting c source files."""
-        self._test_export_textbin(suffix='c')
+        self._test_export_textbin(suffix='c', container_format='c')
 
     def test_export_py(self):
         """Test exporting Python source files."""
-        self._test_export_textbin(suffix='py')
+        self._test_export_textbin(suffix='py', container_format='python')
+
+    def test_export_py_tuple(self):
+        """Test exporting Python source files."""
+        self._test_export_textbin(suffix='py', container_format='python-tuple')
 
     def test_export_json(self):
         """Test exporting JSON source files."""
-        self._test_export_textbin(suffix='json')
+        self._test_export_textbin(suffix='json', container_format='json')
 
     def test_export_pas(self):
         """Test exporting Pascal source files."""
-        self._test_export_textbin(suffix='pas')
+        self._test_export_textbin(suffix='pas', container_format='pascal')
 
     def test_export_bas(self):
         """Test exporting BASIC source files."""
-        self._test_export_textbin(suffix='bas')
+        self._test_export_textbin(suffix='bas', container_format='basic')
 
     def test_export_intel(self):
         """Test exporting Intel Hex files."""
-        self._test_export_textbin(suffix='ihex')
+        self._test_export_textbin(suffix='ihex', container_format='intel')
 
     def test_export_base64(self):
         """Test exporting base64 files."""
