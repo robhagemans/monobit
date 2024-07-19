@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import re
 import string
-from itertools import zip_longest
+from itertools import zip_longest, cycle
 
 from monobit.base import Props
 from monobit.core import Raster
@@ -197,6 +197,19 @@ class CCodeReader(CodeReader, CCode):
             _key: _field.rpartition(cls.assign)[-1].strip()
             for _key, _field in zip(fields, coded_data)
         })
+
+    @classmethod
+    def decode_struct_array(cls, coded_data, fields):
+        """Decode struct value from list."""
+        array_len = len(coded_data) // len(fields)
+        iterators = [iter(coded_data)] * len(fields)
+        return tuple(
+            Props(**{
+                _key: _field.rpartition(cls.assign)[-1].strip()
+                for _key, _field in zip(fields, _chunk)
+            })
+            for _chunk in zip(*iterators)
+        )
 
 
 class CCodeWriter(CodeWriter, CCode):
