@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import re
 import string
-from itertools import zip_longest, cycle
+from itertools import zip_longest, cycle, chain
 
 from monobit.base import Props
 from monobit.core import Raster
@@ -40,30 +40,23 @@ class CodeReader:
     def read_array(cls, instream, line):
         """Retrieve coded array as list of strings. Flattens nested arrays."""
         start, end = cls.delimiters
-        _, line = line.split(start)
-        depth = 1
-        # special case: whole array in one line
-        if end in line:
-            line, _ = line.split(end, 1)
-            return line
-        # multi-line array
-        coded_data = [line]
-        for line in instream:
+        depth = 0
+        coded_data = []
+        for line in chain((line,), instream):
             line = cls.strip_line_comments(line, instream)
-            if start in line:
+            while start in line:
                 pre, line = line.split(start, 1)
                 if depth:
                     line = pre + line
                 depth += 1
-            if end in line:
+            while end in line:
                 line, post = line.split(end, 1)
                 depth = max(depth - 1, 0)
                 if depth:
                     line += post
-                else:
-                    coded_data.append(line)
-                    break
             coded_data.append(line)
+            if not depth:
+                break
         return ''.join(coded_data).split(',')
 
     @classmethod
