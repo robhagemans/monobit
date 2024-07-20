@@ -20,7 +20,7 @@ from monobit.base import extend_string
 from monobit.base import HasProps, writable_property, checked_property
 
 from .labels import Tag, Char, Codepoint, Label, to_label
-from .glyph import Glyph
+from .glyph import Glyph, KernTable
 from .raster import turn_method
 
 
@@ -1076,15 +1076,19 @@ class Font(HasProps):
             if isinstance(_v, Label)
         }
         left_kerning = (
-            {_update_label(_k): _v for _k, _v in _glyph.left_kerning.items()}
+            KernTable({
+                _update_label(_k): _v for _k, _v in _glyph.left_kerning.items()
+            })
             for _glyph in glyphs
         )
         right_kerning = (
-            {_update_label(_k): _v for _k, _v in _glyph.right_kerning.items()}
+            KernTable({
+                _update_label(_k): _v for _k, _v in _glyph.right_kerning.items()
+            })
             for _glyph in glyphs
         )
         glyphs = tuple(
-            _g.modify(left_kerning=_l, right_kerning=_r)
+            _g.modify(left_kerning=_l or None, right_kerning=_r or None)
             for _g, _l, _r in zip(glyphs, left_kerning, right_kerning)
         )
         return glyphs, references
