@@ -59,16 +59,16 @@ def load_gfxfont(
             if CCodeReader.delimiters[0] in line:
                 identifier = CCodeReader.clean_identifier(identifier.strip().removesuffix(' PROGMEM'))
                 coded_data = CCodeReader.read_array(instream, line)
-                if bitmap_type in line:
-                    data[identifier] = CCodeReader.decode_array(coded_data)
+                if font_type in line:
+                    font_metrics[identifier] = CCodeReader.decode_struct(
+                        coded_data, _FONT_FIELDS
+                    )
                 elif glyph_type in line:
                     glyph_metrics[identifier] = CCodeReader.decode_struct_array(
                         coded_data, _GLYPH_FIELDS
                     )
-                elif font_type in line:
-                    font_metrics[identifier] = CCodeReader.decode_struct(
-                        coded_data, _FONT_FIELDS
-                    )
+                elif bitmap_type in line:
+                    data[identifier] = CCodeReader.decode_array(coded_data)
     fonts = []
     for name, metrics in font_metrics.items():
         glyphs = []
