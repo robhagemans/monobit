@@ -105,6 +105,7 @@ Proportional-spacing formats
 | OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB (MB Ke - unsupported) |
 | GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|&check;| binary | Mu; see `vlir` |
 | Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | -        |
+| Adafruit GFX font     | `gfxfont`  | `.h`                        |&check;|&check;| coded  | -        |
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
 | HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB    |
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;| binary | see `nfnt` |

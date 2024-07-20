@@ -1022,6 +1022,37 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 255)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
+    # adafruit gfxfont
+
+    def test_import_gfxfont(self):
+        """Test importing gfxfont header files."""
+        font, *_ = monobit.load(self.font_path / 'FreeSans9pt7b.h', format='gfxfont')
+        self.assertEqual(len(font.glyphs), 95)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), """\
+.....@@.....
+....@@@@....
+....@@@@....
+....@..@....
+...@@..@@...
+...@@..@@...
+...@....@...
+..@@....@@..
+..@@@@@@@@..
+..@......@..
+.@@......@@.
+.@@......@@.
+@@........@@
+""")
+
+    def test_export_gfxfont(self):
+        """Test exporting gfxfont header files."""
+        fnt_file = self.temp_path / '4x6.h'
+        monobit.save(self.fixed4x6.subset(codepoints=range(256)), fnt_file, format='gfxfont')
+        font, *_ = monobit.load(fnt_file, format='gfxfont')
+        self.assertEqual(len(font.glyphs), 256)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+
     # wsfont
 
     def test_import_wsfont(self):

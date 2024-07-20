@@ -68,6 +68,12 @@ Original sources:
    - https://github.com/NetBSD/src/blob/trunk/sys/dev/wsfont/spleen5x8.h
    - Copyright (c) 2018-2021 Frederic Cambus <fcambus@openbsd.org>
    - BSD 2-clause licence
+* Free Sans `FreeSans9pt7b.h` - GNU FreeFont
+   - Original font https://www.gnu.org/software/freefont
+   - GNU General Public licence v3, with font exception
+   - Header file https://github.com/adafruit/Adafruit-GFX-Library/
+   - Copyright (c) 2012 Adafruit Industries.  All rights reserved.
+   - BSD 2-clause licence
 
 
 ### Derivatives of `4x6`
