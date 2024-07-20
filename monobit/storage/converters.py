@@ -214,10 +214,12 @@ def save(
         sys.stdout.reconfigure(errors='replace')
     if not pack:
         raise ValueError('No fonts to save')
+    make_dir = format in container_savers.get_formats()
     with open_location(
             outfile, mode='w', overwrite=overwrite,
             container_format=container_format,
             argdict=kwargs,
+            make_dir=make_dir,
         ) as location:
         if location.is_dir():
             _save_container(

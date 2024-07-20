@@ -20,7 +20,7 @@ from .containers.directory import Directory
 
 def open_location(
         stream_or_location, mode='r', overwrite=False, match_case=False,
-        container_format='', argdict=None,
+        container_format='', argdict=None, make_dir=False,
     ):
     """Point to given location; may include nested containers and wrappers."""
     if mode not in ('r', 'w'):
@@ -32,6 +32,7 @@ def open_location(
             stream_or_location, mode=mode,
             overwrite=overwrite, match_case=match_case,
             container_format=container_format, argdict=argdict,
+            make_dir=make_dir,
         )
     # assume stream_or_location is a file-like object
     return Location.from_stream(
@@ -46,7 +47,7 @@ class Location:
     def __init__(
             self, *,
             root=None, path='', mode='r', overwrite=False, match_case=False,
-            container_format='', argdict=None,
+            container_format='', argdict=None, make_dir=False,
         ):
         self.path = Path(path)
         self.mode = mode
@@ -68,6 +69,7 @@ class Location:
         self._leafpath = self.path
         # format parameters
         self._container_format = container_format.split('.')
+        self._make_dir = make_dir
         self.argdict = argdict
 
     def __repr__(self):
@@ -256,7 +258,7 @@ class Location:
         if isinstance(self._leaf, StreamBase):
             self._resolve_wrappers()
         if isinstance(self._leaf, Container):
-            self._resolve_container()
+            self._resolve_subpath()
 
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
@@ -303,7 +305,8 @@ class Location:
             self._stream_objects = []
             self._container_subpath = self._leafpath
 
-    def _resolve_container(self):
+    def _resolve_subpath(self):
+        """Resolve subpath on a container object."""
         container = self._leaf
         # find the innermost existing file (if reading)
         # or file name with suffix (if writing)
@@ -311,7 +314,10 @@ class Location:
         if self.mode == 'r':
             is_dir = container.is_dir(head)
         else:
-            is_dir = not head.suffixes
+            is_dir = (
+                self._make_dir
+                or not head.suffixes
+            )
         if is_dir:
             # innermost existing/creatable is a subdirectory
             if Path(tail) == Path('.'):
