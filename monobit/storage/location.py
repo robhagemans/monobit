@@ -327,7 +327,7 @@ class Location:
                 # tail subpath does not exist
                 if self.mode == 'r':
                     raise FileNotFoundError(
-                        f"Subpath '{tail}' not found on container {container}."
+                        f"Subpath '{tail}' of path '{head}' not found on container {container}."
                     )
                 # new directory
                 return
