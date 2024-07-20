@@ -11,7 +11,7 @@ from io import StringIO
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph, Raster, StrokePath
-from ..limitations import ensure_single, make_contiguous
+from monobit.storage.utils.limitations import ensure_single, make_contiguous
 
 
 _DOSSTART_SIG = 'DosStartFont'

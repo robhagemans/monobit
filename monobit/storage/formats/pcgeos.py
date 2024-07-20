@@ -15,7 +15,7 @@ from monobit.base import Props, reverse_dict
 from monobit.base.struct import StructError, bitfield, flag, little_endian as le
 from monobit.base.binary import ceildiv, align
 
-from .limitations import make_contiguous
+from monobit.storage.utils.limitations import make_contiguous
 
 
 _BSWF_SIG = b'BSWF'

@@ -15,7 +15,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
 from .draw import load_draw, DrawGlyph, DrawComment, Empty
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 @loaders.register(name='pcbasic',)

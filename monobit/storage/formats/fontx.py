@@ -15,7 +15,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
-from .limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 
 
 _FONTX_MAGIC = b'FONTX2'

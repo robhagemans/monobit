@@ -12,7 +12,7 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
-from ..limitations import ensure_single, ensure_charcell, make_contiguous
+from monobit.storage.utils.limitations import ensure_single, ensure_charcell, make_contiguous
 
 
 ###############################################################################

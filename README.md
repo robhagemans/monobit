@@ -105,6 +105,7 @@ Proportional-spacing formats
 | OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB (MB Ke - unsupported) |
 | GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|&check;| binary | Mu; see `vlir` |
 | Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | -        |
+| Adafruit GFX font     | `gfxfont`  | `.h`                        |&check;|&check;| coded  | -        |
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
 | HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB    |
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;| binary | see `nfnt` |
@@ -173,6 +174,7 @@ Character-cell formats
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       | binary | 8xN  | -        |
+| NetBSD wsfont C header| `netbsd`   | `.h`                        |&check;|&check;| coded  | any  | Mu SB    |
 | Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;| binary | 8xN  | -        |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check;| binary | any (v2) 8xN (v1) | US  |
 | psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       | binary | 8x8, 8x16 | -   |

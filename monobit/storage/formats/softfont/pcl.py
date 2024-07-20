@@ -14,7 +14,7 @@ from monobit.core import Glyph, Raster, Font
 from monobit.base import Props, reverse_dict
 from monobit.encoding import EncodingName
 
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 @loaders.register(

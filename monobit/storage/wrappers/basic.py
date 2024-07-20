@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.source - binary files embedded in BASIC source files
+monobit.storage.wrappers.basic - binary files embedded in BASIC source files
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

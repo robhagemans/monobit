@@ -14,7 +14,7 @@ from monobit.core import Font, Glyph, Tag, Char
 from monobit.encoding import encodings
 from monobit.base.binary import align
 
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 ##############################################################################

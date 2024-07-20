@@ -24,8 +24,7 @@ from monobit.core import Font, Glyph, Codepoint
 from monobit.render import (
     prepare_for_grid_map, grid_map, grid_traverser, glyph_to_image
 )
-
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 DEFAULT_IMAGE_FORMAT = 'png'

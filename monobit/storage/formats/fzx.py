@@ -14,7 +14,7 @@ from monobit.base import Props
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
-from .limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 # beyond ASCII, multiple encodings are in use - set these manually after extraction

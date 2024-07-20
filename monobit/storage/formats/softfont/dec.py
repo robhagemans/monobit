@@ -19,7 +19,7 @@ from monobit.base.binary import ceildiv
 from monobit.base import Coord
 from monobit.base import reverse_dict
 
-from ..limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 
 
 @loaders.register(

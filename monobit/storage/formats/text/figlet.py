@@ -13,7 +13,7 @@ from monobit.base import Props, reverse_dict, extend_string
 from monobit.core import Font, Glyph
 from monobit.encoding import encodings
 
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 # note that we won't be able to use the "subcharacters" that are the defining feature of FIGlet
 # as we only work with monochrome bitmaps

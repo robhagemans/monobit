@@ -12,8 +12,8 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.base import Coord
 from monobit.core import Font, Raster, Glyph, Char, Codepoint, Tag
 from monobit.encoding import encodings, NotFoundError
+from monobit.storage.utils.limitations import ensure_single
 
-from ..limitations import ensure_single
 from .xlfd import parse_xlfd_properties, create_xlfd_properties
 from .xlfd import create_xlfd_name, CUSTOM_NAMESPACE
 

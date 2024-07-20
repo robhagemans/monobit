@@ -17,7 +17,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph, Raster
 from monobit.base.binary import ceildiv
 
-from ..limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single
 
 
 @loaders.register(
