@@ -81,8 +81,8 @@ class Location:
     @classmethod
     def from_path(cls, path, **kwargs):
         """Create from path-like or string."""
-        path = Path(path)
-        root = path.anchor or '.'
+        path = Path(path).resolve()
+        root = path.anchor
         subpath = path.relative_to(root)
         return cls(
             # Directory objects doesn't really need to be closed
