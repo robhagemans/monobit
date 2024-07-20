@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from io import BytesIO
+from itertools import accumulate
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Glyph, Font
@@ -39,7 +40,7 @@ def load_gfxfont(
         bitmap_type:str='uint8_t'
     ):
     """
-    Load font from Adafruit GFX font header.
+    Load fonts from Adafruit GFX font header.
 
     glyph_type: type identifier for glyph metrics (default: 'GFXglyph')
     font_type: type identifier for font metrics (default: 'GFXfont')
@@ -102,3 +103,60 @@ def load_gfxfont(
             name=CCodeReader.clean_identifier(name),
         ))
     return fonts
+
+
+@savers.register(linked=load_gfxfont)
+def save_gfxfont(fonts, outstream):
+    """
+    Save fonts to Adafruit GFX font header.
+    """
+    for font in fonts:
+        font = make_contiguous(font, missing='space')
+        codepoints = font.get_codepoints()
+        if not codepoints:
+            raise ValueError('No storable codepoints found in font.')
+        font = font.subset(codepoints=codepoints)
+        font = font.reduce()
+        glyph_data = tuple(_g.as_bytes(align='bit') for _g in font.glyphs)
+        offsets = accumulate((len(_d) for _d in glyph_data), initial=0)
+        glyph_props = tuple(
+            Props(
+                bitmapOffset=str(_offset),
+                width=str(_g.width),
+                height=str(_g.height),
+                xAdvance=str(_g.advance_width),
+                xOffset=str(_g.left_bearing),
+                yOffset=str(-_g.shift_up-_g.height),
+            )
+            for _g, _offset in zip(font.glyphs, offsets)
+        )
+        basename = CCodeWriter.to_identifier(font.name)
+        bitmap_name = f'{basename}_bitmaps'
+        glyph_name = f'{basename}_glyphs'
+        font_props = Props(
+            bitmap='(uint8_t *) ' + bitmap_name,
+            glyph='(GFXGlyph *) ' + glyph_name,
+            first=CCodeWriter.encode_int(int(min(codepoints))),
+            last=CCodeWriter.encode_int(int(max(codepoints))),
+            YAdvance=str(font.line_height),
+        )
+        outstream = outstream.text
+        if font.get_comment():
+            outstream.write(f'/*\n{font.get_comment()}\n*/\n\n')
+        outstream.write(f'const uint8_t {bitmap_name}[] PROGMEM = ')
+        outstream.write(
+            CCodeWriter.encode_array(b''.join(glyph_data), bytes_per_line=8)
+        )
+        outstream.write(';\n\n')
+        outstream.write(f'const GFXglyph {glyph_name}[] PROGMEM = ' '{\n')
+        for i, props in enumerate(glyph_props):
+            if i:
+                outstream.write(',\n')
+            outstream.write(CCodeWriter.indent)
+            outstream.write(
+                CCodeWriter.encode_struct(props, show_names=False, compact=True)
+            )
+        outstream.write('\n};\n\n')
+        outstream.write(f'const GFXfont {basename} PROGMEM = ')
+        outstream.write(CCodeWriter.encode_struct(font_props, show_names=False))
+        outstream.write(';\n\n')

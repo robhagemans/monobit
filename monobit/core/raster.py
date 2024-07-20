@@ -355,10 +355,12 @@ class Raster:
                 ''.join(_row)
                 for _row in raster.as_matrix(paper='0', ink='1')
             )
+            bytesize = ceildiv(len(bits), 8)
+            # left align the bits to byte boundary
+            bits = bits.ljust(bytesize * 8, '0')
             # per-byte bit swap.
             if bit_order == 'little':
                 bits = reverse_by_group(bits)
-            bytesize = ceildiv(len(bits), 8)
             byterows = (int(bits, 2).to_bytes(bytesize, 'big'),)
         else:
             byterows = raster.as_byterows(align=align, bit_order=bit_order)

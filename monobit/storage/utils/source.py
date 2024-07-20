@@ -220,13 +220,36 @@ class CCodeWriter(CodeWriter, CCode):
         return f'0x{value:02x}'
 
     @classmethod
-    def encode_struct(cls, header, fields):
+    def encode_struct(cls, header, fields=(), compact=False, show_names=True):
         """Encode namespace class as struct."""
-        fields = ',\n'.join(
-            f'{cls.indent}.{_name} = {getattr(header, _name)}'
-            for _name in fields
-        )
-        return '{\n' + fields + '\n}'
+        if fields:
+            header_dict = {
+                _name: getattr(header, _name)
+                for _name in fields
+            }
+        else:
+            header_dict = vars(header)
+        if compact:
+            joiner = ', '
+            start, end = cls.delimiters
+            indent = ''
+        else:
+            joiner = ',\n'
+            start, end = cls.delimiters[0] + '\n', '\n' + cls.delimiters[1]
+            indent = cls.indent
+        if show_names:
+            # format with explicit member names
+            data = joiner.join(
+                f'{indent}.{_name} = {_value}'
+                for _name, _value in header_dict.items()
+            )
+            return start + data + end
+        else:
+            data = joiner.join(
+                f'{indent}{_value}'
+                for _name, _value in header_dict.items()
+            )
+            return start + data + end
 
 
 
