@@ -127,7 +127,7 @@ Proportional-spacing formats
 | Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       | binary | -        |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       | binary | -        |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
-| SFont                 | `sfont`    |                             |&check;|&check;| image  | -        |
+| SFont                 | `sfont`    |                             |&check;|&check;| image  | CA       |
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | Mu US SB MB Ke Ve CA |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2) | binary | Mu US SB MB Ke Ve CA |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | -        |
