@@ -16,24 +16,25 @@ except ImportError:
 
 from ..streams import Stream
 from ..magic import FileFormatError
-from ..base import wrappers
-from .wrappers import FilterWrapper
+from ..base import encoders, decoders
+from .wrappers import _WrappedWriterStream
 
 
 if ncompress:
 
-    @wrappers.register(
+    @decoders.register(
         name='compress',
         patterns=('*.Z',),
         magic=(b'\x1f\x9d',),
     )
-    class CompressWrapper(FilterWrapper):
-        """Compresss .Z format wrapper."""
+    def decode_compress(instream):
+        data = ncompress.decompress(instream)
+        name = Path(instream.name).stem
+        return Stream.from_data(data, mode='r', name=name)
 
-        @staticmethod
-        def decode(instream):
-            return ncompress.decompress(instream)
 
-        @staticmethod
-        def encode(data, outstream):
-            ncompress.compress(data, outstream)
+    @encoders.register(linked=decode_compress)
+    def encode_compress(outstream):
+        encode_func = ncompress.compress
+        name = Path(outstream.name).stem
+        return _WrappedWriterStream(outstream, encode_func, name)

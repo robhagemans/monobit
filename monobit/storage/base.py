@@ -12,7 +12,14 @@ DEFAULT_BINARY_FORMAT = 'raw'
 
 loaders = MagicRegistry(DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT)
 savers = MagicRegistry(DEFAULT_TEXT_FORMAT)
-containers = MagicRegistry()
-wrappers = MagicRegistry()
+
 container_loaders = MagicRegistry()
 container_savers = MagicRegistry()
+
+containers = MagicRegistry()
+# FIXME
+wrappers = MagicRegistry()
+
+# wrappers
+encoders = MagicRegistry()
+decoders = MagicRegistry()

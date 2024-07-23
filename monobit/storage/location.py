@@ -13,7 +13,7 @@ from collections import deque
 from ..plumbing import take_arguments
 from .magic import FileFormatError, MagicRegistry
 from .streams import StreamBase, Stream, KeepOpen
-from .base import wrappers, containers
+from .base import encoders, decoders, containers
 from .containers.containers import Container
 from .containers.directory import Directory
 
@@ -145,13 +145,19 @@ class Location:
             try:
                 self._outer_stream_object.close()
             except Exception as exc:
-                logging.warning('Exception while closing %s: %s', outer, exc)
+                logging.warning(
+                    'Exception while closing %s: %s',
+                    self._outer_stream_object, exc
+                )
         while len(self._path_objects) > 1:
             outer = self._path_objects.pop()
             try:
                 outer.close()
             except Exception as exc:
-                logging.warning('Exception while closing %s: %s', outer, exc)
+                logging.warning(
+                    'Exception while closing %s: %s',
+                    self._outer_stream_object, exc
+                )
         self.resolved = False
 
     @property
@@ -275,23 +281,21 @@ class Location:
             else:
                 format = ''
             try:
-                wrapper_object = _open_container_or_wrapper(
-                    wrappers, stream,
-                    mode=self.mode, format=format, argdict=self.argdict,
+                unwrapped_stream = _get_transcoded_stream(
+                    stream, mode=self.mode, format=format, argdict=self.argdict,
                 )
-            except FileFormatError:
-                # not a wrapper
+            except FileFormatError as e:
+                # not a wrapper, maybe a container
+                logging.debug(e)
                 break
             else:
                 if self._container_format:
                     self._container_format.pop()
-                self._stream_objects.append(wrapper_object)
-                unwrapped_stream = wrapper_object.open()
                 self._stream_objects.append(unwrapped_stream)
                 stream = unwrapped_stream
         # check if innermost stream is a container
         try:
-            container_object = _open_container_or_wrapper(
+            container_object = _open_container(
                 containers, stream,
                 mode=self.mode, format=format, argdict=self.argdict,
             )
@@ -407,7 +411,7 @@ def _contains(container, path, match_case):
     return tail == Path('.')
 
 
-def _open_container_or_wrapper(
+def _open_container(
         registry, instream, *,
         format='', mode='r', argdict=None
     ):
@@ -442,6 +446,53 @@ def _open_container_or_wrapper(
     if last_error:
         raise last_error
     message = f"Cannot open container or wrapper on stream '{instream.name}'"
+    if format:
+        message += f': format specifier `{format}` not recognised'
+    raise FileFormatError(message)
+
+
+
+def _get_transcoded_stream(
+        instream, *,
+        format='', mode='r', argdict=None
+    ):
+    """Open container or wrapper on open stream."""
+    argdict = argdict or {}
+    if mode == 'r':
+        registry = decoders
+    elif mode == 'w':
+        registry = encoders
+    else:
+        raise ValueError(f"`mode` must be 'r' or 'w', not {mode}.")
+    # identify file type
+    try:
+        fitting_funcs = registry.get_for(instream, format=format)
+    except ValueError as e:
+        fitting_funcs = ()
+    last_error = None
+    for transcoder in fitting_funcs:
+        if mode == 'r':
+            instream.seek(0)
+        logging.info(
+            "Transcoding stream '%s' with wrapper format `%s`",
+            instream.name, transcoder.format
+        )
+        try:
+            # pick arguments we can use
+            kwargs = take_arguments(transcoder, argdict)
+            transcoded_stream = transcoder(instream, **kwargs)
+        except FileFormatError as e:
+            logging.debug(e)
+            last_error = e
+            continue
+        else:
+            # remove used arguments
+            for kwarg in kwargs:
+                del argdict[kwarg]
+            return transcoded_stream
+    if last_error:
+        raise last_error
+    message = f"Cannot transcode stream '{instream.name}'"
     if format:
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)

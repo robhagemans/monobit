@@ -5,6 +5,9 @@ monobit.storage.wrappers.wrappers - base class for single-file wrappers
 licence: https://opensource.org/licenses/MIT
 """
 
+#FIXME delete
+
+
 import io
 import logging
 from pathlib import Path
@@ -70,6 +73,7 @@ class FilterWrapper(Wrapper):
         raise NotImplementedError
 
 
+# FIXME -> DelayedWriterStream
 class _WrappedWriterStream(Stream):
 
     def __init__(self, outfile, write_out, name='', **kwargs):
