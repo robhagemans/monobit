@@ -57,6 +57,8 @@ class ZipTarBase(Archive):
                 file = self._open_read(filename)
             except KeyError:
                 raise FileNotFoundError(f"'{filename}' not found on {self}")
+            if file is None:
+                raise IsADirectoryError(f"'{filename}' is a directory")
             # .name is not writeable, so we need to wrap
             return Stream(file, mode, name=name)
         else:

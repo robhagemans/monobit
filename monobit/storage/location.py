@@ -230,10 +230,6 @@ class Location:
         """Open a binary stream in the container."""
         container, subpath = self._get_container_and_subpath()
         self._check_overwrite(container, subpath / name, mode=mode)
-        if container.is_dir(subpath / name):
-            raise IsADirectoryError(
-                f"Cannot open stream on '{name}': is a directory."
-            )
         stream = container.open(subpath / name, mode=mode)
         stream.where = self
         return stream
@@ -318,46 +314,49 @@ class Location:
     def _resolve_subpath(self):
         """Resolve subpath on a container object."""
         container = self._leaf
-        # find the innermost existing file (if reading)
-        # or file name with suffix (if writing)
-        head, tail = self._find_next_node()
+        # stepwise match path elements with existing ones in container
+        # head is the innermost existing path element
+        head, tail = _match_path(self._leaf, self._leafpath, self.match_case)
+        if Path(head) == Path('.') and Path(tail) == Path('.'):
+            # path has resolved
+            return
         if self.mode == 'r':
-            is_dir = container.is_dir(head)
+            try:
+                # see if head points to a file -> open it
+                stream = container.open(head, mode=self.mode)
+            except IsADirectoryError:
+                if Path(tail) == Path('.'):
+                    # path has resolved; nothing further to open
+                    return
+                # head (innermost existing) is a subdirectory
+                # i.e. tail subpath does not exist
+                raise FileNotFoundError(
+                    f"Subpath '{tail}' of path '{head}' not found on container {container}."
+                )
         else:
-            is_dir = (
-                self._make_dir
-                or not head.suffixes
-            )
-        if is_dir:
-            # innermost existing/creatable is a subdirectory
-            if Path(tail) == Path('.'):
-                # we are a directory, nothing to open
+            # step forward until a suffix is found, or we run out of path
+            if not head.suffixes:
+                head2, tail = _split_path_suffix(tail)
+                head /= head2
+            # head is now the innermost path element *to be created*
+            # check if we're asked to create an file or a subdirectory
+            # it's a subdirectory if (1) explicitly asked or (2) no suffix
+            if (
+                    self._make_dir
+                    or not head.suffixes
+                ):
+                # head (innermost creatable) should be a subdirectory
                 return
             else:
-                # tail subpath does not exist
-                if self.mode == 'r':
-                    raise FileNotFoundError(
-                        f"Subpath '{tail}' of path '{head}' not found on container {container}."
-                    )
-                # new directory
-                return
-        else:
-            # head points to a file. open it and recurse
-            self._check_overwrite(container, head, mode=self.mode)
-            stream = container.open(head, mode=self.mode)
-            self._stream_objects.append(stream)
-            if not self._outermost_path:
-                self._outermost_path = head
-            self._leafpath = tail
-            self._resolve()
-
-    def _find_next_node(self):
-        """Find the next existing node (container or file) in the path."""
-        head, tail = _match_path(self._leaf, self._leafpath, self.match_case)
-        if self.mode == 'w' and not head.suffixes:
-            head2, tail = _split_path_suffix(tail)
-            head /= head2
-        return head, tail
+                # head should be a file -> create it
+                self._check_overwrite(container, head, mode=self.mode)
+                if not self._outermost_path:
+                    self._outermost_path = head
+                stream = container.open(head, mode=self.mode)
+        # recurse on successfully opened file
+        self._stream_objects.append(stream)
+        self._leafpath = tail
+        self._resolve()
 
 
 def _split_path_suffix(path):
