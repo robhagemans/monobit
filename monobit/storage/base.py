@@ -17,8 +17,6 @@ container_loaders = MagicRegistry()
 container_savers = MagicRegistry()
 
 containers = MagicRegistry()
-# FIXME
-wrappers = MagicRegistry()
 
 # wrappers
 encoders = MagicRegistry()

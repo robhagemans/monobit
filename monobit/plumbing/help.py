@@ -6,7 +6,9 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from ..storage.base import (
-    loaders, savers, wrappers, containers, container_loaders, container_savers
+    loaders, savers,
+    container_loaders, container_savers,
+    encoders, decoders, containers,
 )
 from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
@@ -107,15 +109,20 @@ def _print_context_help(command, args, kwargs, **ignore):
         except ValueError:
             func, *_ = savers.get_for(format=format)
     if func:
-        _print_section(f'{command} -format={format}', func)
+        _print_section(f'{command} -format={func.format}', func)
     container_format = kwargs.get('container_format', '')
-    try:
-        wrapper_classes = wrappers.get_for(format=container_format)
-        func = wrapper_classes[0].__init__
-    except (ValueError, IndexError):
-        pass
+    if command == 'load':
+        try:
+            func, *_ = decoders.get_for(format=container_format)
+        except ValueError:
+            func = None
     else:
-        _print_section(f'-container-format={container_format}', func)
+        try:
+            func, *_ = encoders.get_for(format=container_format)
+        except ValueError:
+            func = None
+    if func:
+        _print_section(f'-container-format={func.format}', func)
     try:
         container_classes = containers.get_for(format=container_format)
         func = container_classes[0].__init__
