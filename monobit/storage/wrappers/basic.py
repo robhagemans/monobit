@@ -11,8 +11,7 @@ from io import BytesIO
 
 from ..magic import FileFormatError
 from ..base import encoders, decoders
-from ..streams import Stream
-from .wrappers import _WrappedWriterStream
+from ..streams import Stream, DelayedWriterStream
 
 
 @decoders.register(
@@ -55,7 +54,7 @@ def encode_basic(
     """
     encode_func = _do_encode_basic
     name = Path(outstream.name).stem
-    return _WrappedWriterStream(
+    return DelayedWriterStream(
         outstream, encode_func, name,
         line_number_start=line_number_start,
         line_number_inc=line_number_inc,

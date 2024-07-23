@@ -14,10 +14,9 @@ try:
 except ImportError:
     ncompress = None
 
-from ..streams import Stream
+from ..streams import Stream, DelayedWriterStream
 from ..magic import FileFormatError
 from ..base import encoders, decoders
-from .wrappers import _WrappedWriterStream
 
 
 if ncompress:
@@ -37,4 +36,4 @@ if ncompress:
     def encode_compress(outstream):
         encode_func = ncompress.compress
         name = Path(outstream.name).stem
-        return _WrappedWriterStream(outstream, encode_func, name)
+        return DelayedWriterStream(outstream, encode_func, name)

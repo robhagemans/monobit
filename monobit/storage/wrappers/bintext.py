@@ -11,10 +11,9 @@ import binascii
 from io import BytesIO
 from pathlib import Path
 
-from ..streams import Stream
+from ..streams import Stream, DelayedWriterStream
 from ..magic import FileFormatError
 from ..base import encoders, decoders
-from .wrappers import _WrappedWriterStream
 
 
 @decoders.register(name='base64')
@@ -35,7 +34,7 @@ def encode_base64(outstream, *, line_length:int=76):
     """
     encode_func = _do_encode_base64
     name = Path(outstream.name).stem
-    return _WrappedWriterStream(
+    return DelayedWriterStream(
         outstream, encode_func, name,
         line_length=line_length,
     )
@@ -71,7 +70,7 @@ def encode_quopri(outstream, *, quote_tabs:bool=False):
     """
     encode_func = _do_encode_quopri
     name = Path(outstream.name).stem
-    return _WrappedWriterStream(
+    return DelayedWriterStream(
         outstream, encode_func, name,
         quote_tabs=quote_tabs,
     )

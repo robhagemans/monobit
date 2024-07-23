@@ -9,11 +9,10 @@ import logging
 from pathlib import Path
 from io import BytesIO
 
-from ..streams import Stream
+from ..streams import Stream, DelayedWriterStream
 from ..magic import FileFormatError
 from ..base import encoders, decoders
 from ...base.binary import ceildiv
-from .wrappers import _WrappedWriterStream
 
 
 @decoders.register(
@@ -83,7 +82,7 @@ def _encode_intel(outstream, *, chunk_size:int=32):
     """
     encode_func = _do_encode_intel
     name = Path(outstream.name).stem
-    return _WrappedWriterStream(
+    return DelayedWriterStream(
         outstream, encode_func, name, chunk_size=chunk_size
     )
 
