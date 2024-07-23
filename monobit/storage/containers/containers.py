@@ -12,10 +12,9 @@ from pathlib import Path
 
 from ..magic import FileFormatError
 from ..streams import Stream, KeepOpen
-from ..holders import StreamHolder
 
 
-class Container(StreamHolder):
+class Container:
     """Base class for multi-stream containers."""
 
     def __init__(self, mode='r', name=''):
@@ -32,11 +31,29 @@ class Container(StreamHolder):
             f"{' [closed]' if self.closed else ''}>"
         )
 
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
-        raise NotImplementedError()
+    def __enter__(self):
+        # we don't support nesting the same archive
+        assert self.refcount == 0
+        self.refcount += 1
+        logging.debug('Entering %r', self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.refcount -= 1
+        if exc_type == BrokenPipeError:
+            return True
+        logging.debug('Exiting %r', self)
+        self.close()
 
     # NOTE open() opens a stream, close() closes the container
+
+    def close(self):
+        """Close the archive."""
+        self.closed = True
+
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
+        raise NotImplementedError
 
     def open(self, name, mode):
         """Open a binary stream in the container."""

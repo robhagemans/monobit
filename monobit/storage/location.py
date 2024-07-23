@@ -415,7 +415,7 @@ def _open_container(
         registry, instream, *,
         format='', mode='r', argdict=None
     ):
-    """Open container or wrapper on open stream."""
+    """Open container on open stream."""
     argdict = argdict or {}
     # identify file type
     try:
@@ -432,8 +432,8 @@ def _open_container(
         )
         try:
             kwargs = take_arguments(cls.__init__, argdict)
-            # returns container or wrapper object
-            container_wrapper = cls(instream, mode=mode, **kwargs)
+            # returns container object
+            container = cls(instream, mode=mode, **kwargs)
         except FileFormatError as e:
             logging.debug(e)
             last_error = e
@@ -442,10 +442,10 @@ def _open_container(
             # remove used arguments
             for kwarg in kwargs:
                 del argdict[kwarg]
-            return container_wrapper
+            return container
     if last_error:
         raise last_error
-    message = f"Cannot open container or wrapper on stream '{instream.name}'"
+    message = f"Cannot open container on stream '{instream.name}'"
     if format:
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)
