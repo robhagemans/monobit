@@ -108,6 +108,13 @@ def convert_arguments(func):
     return _converted_func
 
 
+
+def manage_arguments(loader):
+    loader = convert_arguments(loader)
+    loader = check_arguments(loader)
+    return loader
+
+
 def take_arguments(func, argdict):
     """Subset the argument dictionary with args that occur in registered script args."""
     _types = {

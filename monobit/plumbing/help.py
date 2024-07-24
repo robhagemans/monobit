@@ -99,34 +99,25 @@ def print_help(command_args, usage, operations, global_options):
 def _print_context_help(command, args, kwargs, **ignore):
     format = kwargs.get('format', '')
     if command == 'load':
-        try:
-            func, *_ = container_loaders.get_for(format=format)
-        except ValueError:
-            func, *_ = loaders.get_for(format=format)
+        funcs = container_loaders.get_for(format=format)
+        if not funcs:
+            funcs = loaders.get_for(format=format)
     else:
-        try:
-            func, *_ = container_savers.get_for(format=format)
-        except ValueError:
-            func, *_ = savers.get_for(format=format)
-    if func:
+        funcs = container_savers.get_for(format=format)
+        if not funcs:
+            funcs = savers.get_for(format=format)
+    if funcs:
+        func = funcs[0]
         _print_section(f'{command} -format={func.format}', func)
     container_format = kwargs.get('container_format', '')
     if command == 'load':
-        try:
-            func, *_ = decoders.get_for(format=container_format)
-        except ValueError:
-            func = None
+        funcs = decoders.get_for(format=container_format)
     else:
-        try:
-            func, *_ = encoders.get_for(format=container_format)
-        except ValueError:
-            func = None
-    if func:
+        funcs = encoders.get_for(format=container_format)
+    if funcs:
+        func = funcs[0]
         _print_section(f'-container-format={func.format}', func)
-    try:
-        container_classes = containers.get_for(format=container_format)
+    container_classes = containers.get_for(format=container_format)
+    if containers:
         func = container_classes[0].__init__
-    except (ValueError, IndexError):
-        pass
-    else:
         _print_section(f'-container-format={container_format}', func)

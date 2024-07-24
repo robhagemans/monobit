@@ -10,7 +10,7 @@ import itertools
 from pathlib import Path
 from collections import deque
 
-from ..plumbing import take_arguments
+from ..plumbing import take_arguments, manage_arguments
 from .magic import FileFormatError, MagicRegistry
 from .streams import StreamBase, Stream, KeepOpen
 from .base import encoders, decoders, containers
@@ -417,10 +417,12 @@ def _open_container(
     """Open container on open stream."""
     argdict = argdict or {}
     # identify file type
-    try:
-        fitting_classes = registry.get_for(instream, format=format)
-    except ValueError as e:
-        raise FileFormatError(e)
+    fitting_classes = registry.get_for(instream, format=format)
+    if not fitting_classes:
+        msg = "Container format not recognised"
+        if format:
+            msg += f': `{format}`'
+        raise FileFormatError(msg)
     last_error = None
     for cls in fitting_classes:
         if mode == 'r':
@@ -464,12 +466,8 @@ def _get_transcoded_stream(
     else:
         raise ValueError(f"`mode` must be 'r' or 'w', not {mode}.")
     # identify file type
-    try:
-        fitting_funcs = registry.get_for(instream, format=format)
-    except ValueError as e:
-        fitting_funcs = ()
     last_error = None
-    for transcoder in fitting_funcs:
+    for transcoder in iter_funcs_from_registry(registry, instream, format):
         if mode == 'r':
             instream.seek(0)
         logging.info(
@@ -495,3 +493,15 @@ def _get_transcoded_stream(
     if format:
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)
+
+
+def iter_funcs_from_registry(registry, instream, format):
+    """
+    Iterate over and wrap functions stored in a MagicRegistry
+    that fit a given stream and format.
+    """
+    # identify file type
+    fitting_loaders = registry.get_for(instream, format=format)
+    for loader in fitting_loaders:
+        yield manage_arguments(loader)
+    return

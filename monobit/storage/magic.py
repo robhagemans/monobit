@@ -89,9 +89,7 @@ class MagicRegistry:
             try:
                 converter = (self._names[format],)
             except KeyError:
-                raise ValueError(
-                    f'Format specifier `{format}` not recognised'
-                )
+                return ()
         else:
             converter = self.identify(file)
             if not converter:
