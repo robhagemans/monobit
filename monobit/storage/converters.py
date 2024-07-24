@@ -126,18 +126,23 @@ def _annotate_fonts_with_source(
 
 def _load_container(location, *, format='', **kwargs):
     """Load from a container."""
-    loaders = container_loaders.get_for(format=format)
-    if not loaders:
-        pack = load_all(location, format=format, **kwargs)
-        spec_msg = 'all'
-    else:
-        loader = manage_arguments(loaders[0])
+    for loader in iter_funcs_from_registry(
+            container_loaders, instream=None, format=format
+        ):
         logging.info("Loading '%s' as container format `%s`", location.path, loader.format)
-        fonts = loader(location, **kwargs)
+        try:
+            fonts = loader(location, **kwargs)
+        except FileFormatError as e:
+            logging.debug(e)
+            continue
         spec_msg = f"as format {loader.format}"
         pack = _annotate_fonts_with_source(
             fonts, location.path, location, loader.format, kwargs
         )
+        break
+    else:
+        pack = load_all(location, format=format, **kwargs)
+        spec_msg = 'all'
     if not pack:
         raise FileFormatError(
             f"No fonts found in '{location.path}' while loading {spec_msg}."
@@ -236,15 +241,16 @@ def _save_stream(pack, outstream, *, format='', **kwargs):
 
 def _save_container(pack, location, *, format, **kwargs):
     """Save font(s) to container."""
-    savers = container_savers.get_for(format=format)
-    if not savers:
-        save_all(pack, location, format=format, **kwargs)
-    else:
-        saver = manage_arguments(savers[0])
+    for saver in iter_funcs_from_registry(
+            container_savers, instream=None, format=format
+        ):
         logging.info(
             "Saving '%s' as container format `%s`", location.path, saver.format
         )
         saver(pack, location, **kwargs)
+        break
+    else:
+        save_all(pack, location, format=format, **kwargs)
 
 
 def save_all(
