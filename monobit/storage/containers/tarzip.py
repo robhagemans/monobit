@@ -46,7 +46,7 @@ class ZipTarBase(Archive):
         self._stream.close()
         super().close()
 
-    def decode(self, name):
+    def decode(self, name, **kwargs):
         """Open a stream in the container."""
         filename = str(PurePosixPath(self.root) / name)
         # always open as binary
@@ -55,7 +55,7 @@ class ZipTarBase(Archive):
             name, self
         )
         try:
-            file = self._open_read(filename)
+            file = self._open_read(filename, **kwargs)
         except KeyError:
             raise FileNotFoundError(f"'{filename}' not found on {self}")
         if file is None:
@@ -63,7 +63,7 @@ class ZipTarBase(Archive):
         # .name is not writeable, so we need to wrap
         return Stream(file, mode='r', name=name)
 
-    def encode(self, name):
+    def encode(self, name, **kwargs):
         """Open a stream for writing to the container."""
         filename = str(PurePosixPath(self.root) / name)
         # always open as binary
@@ -89,30 +89,17 @@ class ZipTarBase(Archive):
 class ZipContainer(ZipTarBase):
     """Zip-file wrapper."""
 
-    def __init__(self, file, mode='r', *, password:bytes=None):
+    def decode(self, name, *, password:bytes=None):
         """
-        Access Zip archive.
+        Extract file from zip archive.
 
-        password: password for encrypted archive entries. Individual per-file passwords not supported.
+        password: password for encrypted archive entry.
         """
-        super().__init__(file, mode)
-        self._pwd = password
+        return super().decode(name, password=password)
 
-    @staticmethod
-    def _create_archive(stream, mode):
-        try:
-            return zipfile.ZipFile(
-                stream, mode,
-                compression=zipfile.ZIP_DEFLATED
-            )
-        except zipfile.BadZipFile as exc:
-            raise FileFormatError(exc) from exc
-
-    def _write_out(self, file):
-        bytearray = file.getvalue()
-        self._archive.writestr(
-            str(PurePosixPath(self.root) / file.name), bytearray
-        )
+    def encode(self, name):
+        """Store file in zip archive."""
+        return super().encode(name)
 
     def list(self):
         """List full contents of archive."""
@@ -125,15 +112,32 @@ class ZipContainer(ZipTarBase):
         ziplist += tuple(str(PurePosixPath(self.root) / _file.name) for _file in self._files)
         return ziplist
 
-    def _open_read(self, filename):
+    @staticmethod
+    def _create_archive(stream, mode):
+        try:
+            return zipfile.ZipFile(
+                stream, mode,
+                compression=zipfile.ZIP_DEFLATED
+            )
+        except zipfile.BadZipFile as exc:
+            raise FileFormatError(exc) from exc
+
+    def _open_read(self, filename, *, password):
         filename = filename.removesuffix('/')
         try:
-            return self._archive.open(filename, 'r', pwd=self._pwd)
+            return self._archive.open(filename, 'r', pwd=password)
         except KeyError:
             # return None for open() on directories (like tarfile does)
             if filename + '/' in self.list():
                 return None
             raise
+
+    def _write_out(self, file):
+        bytearray = file.getvalue()
+        self._archive.writestr(
+            str(PurePosixPath(self.root) / file.name), bytearray
+        )
+
 
 
 ###############################################################################
@@ -149,9 +153,28 @@ class ZipContainer(ZipTarBase):
 class TarContainer(ZipTarBase):
     """Tar-file wrapper."""
 
-    def __init__(self, file, mode='r'):
-        """Access Tar archive."""
-        super().__init__(file, mode)
+    def decode(self, name):
+        """
+        Extract file from tar archive.
+
+        password: password for encrypted archive entry.
+        """
+        return super().decode(name)
+
+    def encode(self, name):
+        """Store file in tar archive."""
+        return super().encode(name)
+
+    def list(self):
+        """List full contents of archive."""
+        tarlist = tuple(
+            f'{_name}/'
+            if self._archive.getmember(_name).isdir()
+            else _name
+            for _name in self._archive.getnames()
+        )
+        tarlist += tuple(str(PurePosixPath(self.root) / _file.name) for _file in self._files)
+        return tarlist
 
     @staticmethod
     def _create_archive(stream, mode):
@@ -160,6 +183,9 @@ class TarContainer(ZipTarBase):
         except tarfile.ReadError as exc:
             raise FileFormatError(exc) from exc
 
+    def _open_read(self, filename):
+        return self._archive.extractfile(filename)
+
     def _write_out(self, file):
         name = file.name
         tinfo = tarfile.TarInfo(str(PurePosixPath(self.root) / name))
@@ -167,20 +193,3 @@ class TarContainer(ZipTarBase):
         tinfo.size = len(file.getvalue())
         file.seek(0)
         self._archive.addfile(tinfo, file)
-
-    def list(self):
-        """List full contents of archive."""
-        tarlist = tuple(
-            f'{_name}/' if self._is_dir(_name) else _name
-            for _name in self._archive.getnames()
-        )
-        tarlist += tuple(str(PurePosixPath(self.root) / _file.name) for _file in self._files)
-        return tarlist
-
-
-    def _open_read(self, filename):
-        return self._archive.extractfile(filename)
-
-    def _is_dir(self, filename):
-        tarinfo = self._archive.getmember(filename)
-        return tarinfo.isdir()

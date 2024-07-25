@@ -49,20 +49,20 @@ class Container:
         """Close the archive."""
         self.closed = True
 
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
-        raise NotImplementedError
-
-    def decode(self, name):
+    def decode(self, name, **kwargs):
         """Open a binary stream to read from the container."""
         raise NotImplementedError
 
-    def encode(self, name):
+    def encode(self, name, **kwargs):
         """Open a binary stream to write to the container."""
         raise NotImplementedError
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
+        raise NotImplementedError
+
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
         raise NotImplementedError
 
 

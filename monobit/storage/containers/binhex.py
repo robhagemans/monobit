@@ -69,6 +69,20 @@ def sixbitdecode(encoded, codedict, byteswap=False):
 class BinHex(FlatFilterContainer):
     """BinHex 4.0 loader."""
 
+    def decode(self, name):
+        """
+        Decode data and resource fork from BinHex container.
+        """
+        return super().decode(name)
+
+    def encode(self, name):
+        """
+        Writing to BinHex is not supported.
+        """
+        raise ValueError(
+            'Writing to BinHex is not supported.'
+        )
+
     def decode_all(self, stream):
         """Parse a BinHex 4.0 file."""
         front, binhex, *back = stream.text.read().split(':')
@@ -168,6 +182,20 @@ _BINSCII_SENTINEL = 'FiLeStArTfIlEsTaRt'
 )
 class BinSCII(FlatFilterContainer):
     """BinSCII loader."""
+
+    def decode(self, name):
+        """
+        Decode file from BinSCII container.
+        """
+        return super().decode(name)
+
+    def encode(self, name):
+        """
+        Writing to BinSCII is not supported.
+        """
+        raise ValueError(
+            'Writing to MacBinary is not supported.'
+        )
 
     def decode_all(self, instream):
         """Parse a BinSCII file."""

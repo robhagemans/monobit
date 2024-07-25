@@ -48,7 +48,19 @@ if yenc:
         # last line starts with '=yend '
     )
     class YEncodeContainer(FlatFilterContainer):
-        """yEncoded format container."""
+        """yEncode format container."""
+
+        def decode(self, name):
+            """
+            Decode files from yEncode file. Accepts multiple, concatenated files.
+            """
+            return super().decode(name)
+
+        def encode(self, name):
+            """
+            Encode files to yEncode file. Multiple files will be concatenated.
+            """
+            return super().encode(name)
 
         @classmethod
         def decode_all(cls, file_in):

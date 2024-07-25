@@ -65,6 +65,21 @@ _APPLE_ENTRY_TYPES = {
 
 class AppleContainer(FlatFilterContainer):
 
+
+    def decode(self, name):
+        """
+        Decode data and resource fork from AppleSingle/AppeDouble container.
+        """
+        return super().decode(name)
+
+    def encode(self, name):
+        """
+        Writing to AppleSingle/AppleDouble is not supported.
+        """
+        raise ValueError(
+            'Writing to AppleSingle/AppleDouble is not supported.'
+        )
+
     def decode_all(self, stream):
         """Parse an AppleSingle or AppleDouble file."""
         data = stream.read()
