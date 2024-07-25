@@ -11,7 +11,7 @@ from pathlib import Path
 
 from ..magic import FileFormatError
 from ..base import containers
-from ..containers.containers import FlatFilterContainer
+from ..containers.containers import SerialTextContainer
 from ..utils.source import (
     CCodeReader, CCodeWriter, PythonCodeReader, PythonCodeWriter,
     PythonTupleCodeReader, PythonTupleCodeWriter,
@@ -19,25 +19,22 @@ from ..utils.source import (
     PascalCodeReader, PascalCodeWriter,
 )
 
-class _CodedBinaryContainer(FlatFilterContainer):
+class _CodedBinaryContainer(SerialTextContainer):
 
-    def __init__(
-            self, stream, mode='r',
-            # writer params
-            bytes_per_line:int=16,
-        ):
+    def decode(self, name):
         """
-        Binary file encoded in source code.
+        Decode files from source code file.
+        """
+        return super().decode(name)
+
+    def encode(self, name, *, bytes_per_line:int=16):
+        """
+        Encode files to source code file.
 
         bytes_per_line: number of bytes to write to one line. (default: 16)
         """
-        cls = type(self)
-        super().__init__(
-            stream, mode,
-            encode_kwargs=dict(
-                bytes_per_line=bytes_per_line or 16,
-            )
-        )
+        return super().encode(name, bytes_per_line=bytes_per_line)
+
 
     ###########################################################################
     # reader
@@ -67,32 +64,24 @@ class _CodedBinaryContainer(FlatFilterContainer):
                 identifier = ''
         return data
 
+
     ###############################################################################
     # writer
 
     @classmethod
-    def encode_all(cls, data, outstream, **kwargs):
-        outstream = outstream.text
-        outstream.write(cls.writer.pre)
-        for count, (name, filedata) in enumerate(data.items()):
-            cls._encode(
-                filedata,
-                outstream=outstream,
-                name=name,
-                **kwargs
-            )
-            if count < len(data) - 1:
-                outstream.write(cls.writer.separator)
-        outstream.write(cls.writer.post)
+    def _head(cls):
+        return cls.writer.pre
 
     @classmethod
-    def _encode(cls, rawbytes, outstream, *, name, bytes_per_line):
-        """
-        Generate file encoded as source code.
+    def _tail(cls):
+        return cls.writer.post
 
-        name: Identifier to use.
-        bytes_per_line: number of encoded bytes in a source line
-        """
+    @classmethod
+    def _separator(cls):
+        return cls.writer.separator
+
+    @classmethod
+    def _encode(cls, name, rawbytes, outstream, *, bytes_per_line):
         # remove non-ascii
         identifier = name.encode('ascii', 'ignore').decode('ascii')
         identifier = cls.writer.to_identifier(identifier)

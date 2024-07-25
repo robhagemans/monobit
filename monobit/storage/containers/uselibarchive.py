@@ -38,7 +38,8 @@ if libarchive:
             if not format:
                 raise ValueError(f'Writing not supported for this format.')
             with libarchive.custom_writer(outstream.write, format) as archive:
-                for name, payload in data.items():
+                for name, filedict in data.items():
+                    payload = filedict.pop('outstream').getvalue()
                     archive.add_file_from_memory(name, len(payload), payload)
 
         @classmethod
