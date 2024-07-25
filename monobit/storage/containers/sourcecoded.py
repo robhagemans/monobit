@@ -75,7 +75,7 @@ class _CodedBinaryContainer(FlatFilterContainer):
         outstream = outstream.text
         outstream.write(cls.writer.pre)
         for count, (name, filedata) in enumerate(data.items()):
-            cls.encode(
+            cls._encode(
                 filedata,
                 outstream=outstream,
                 name=name,
@@ -86,7 +86,7 @@ class _CodedBinaryContainer(FlatFilterContainer):
         outstream.write(cls.writer.post)
 
     @classmethod
-    def encode(cls, rawbytes, outstream, *, name, bytes_per_line):
+    def _encode(cls, rawbytes, outstream, *, name, bytes_per_line):
         """
         Generate file encoded as source code.
 

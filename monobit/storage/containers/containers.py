@@ -45,8 +45,6 @@ class Container:
         logging.debug('Exiting %r', self)
         self.close()
 
-    # NOTE open() opens a stream, close() closes the container
-
     def close(self):
         """Close the archive."""
         self.closed = True
@@ -55,8 +53,12 @@ class Container:
         """List contents of a subpath."""
         raise NotImplementedError
 
-    def open(self, name, mode):
-        """Open a binary stream in the container."""
+    def decode(self, name):
+        """Open a binary stream to read from the container."""
+        raise NotImplementedError
+
+    def encode(self, name):
+        """Open a binary stream to write to the container."""
         raise NotImplementedError
 
     def is_dir(self, name):
@@ -148,16 +150,9 @@ class FlatFilterContainer(Archive):
             for _file in self._files
         )
 
-    def open(self, name, mode):
-        """Open a binary stream in the container."""
+    def decode(self, name):
+        """Open input stream on filter container."""
         name = Path(self.root) / name
-        if mode == 'r':
-            return self._open_read(name)
-        else:
-            return self._open_write(name)
-
-    def _open_read(self, name):
-        """Open input stream on source wrapper."""
         name = str(name)
         try:
             data = self._data[name]
@@ -169,8 +164,9 @@ class FlatFilterContainer(Archive):
             )
         return Stream.from_data(data, mode='r', name=name)
 
-    def _open_write(self, name):
-        """Open output stream on source wrapper."""
+    def encode(self, name):
+        """Open output stream on filter container."""
+        name = Path(self.root) / name
         if name in self._files:
             raise FileExistsError(
                 f"Cannot create multiple files of the same name '{name}'"

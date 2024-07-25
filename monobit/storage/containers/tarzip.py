@@ -46,28 +46,37 @@ class ZipTarBase(Archive):
         self._stream.close()
         super().close()
 
-    def open(self, name, mode):
+    def decode(self, name):
         """Open a stream in the container."""
         filename = str(PurePosixPath(self.root) / name)
-        mode = mode[:1]
         # always open as binary
-        logging.debug("Opening file '%s' on container %s.", name, self)
-        if mode == 'r':
-            try:
-                file = self._open_read(filename)
-            except KeyError:
-                raise FileNotFoundError(f"'{filename}' not found on {self}")
-            if file is None:
-                raise IsADirectoryError(f"'{filename}' is a directory")
-            # .name is not writeable, so we need to wrap
-            return Stream(file, mode, name=name)
-        else:
-            # stop BytesIO from being closed until we want it to be
-            newfile = Stream(KeepOpen(io.BytesIO()), mode=mode, name=name)
-            if any(name == _file.name for _file in self._files):
-                logging.warning('Creating multiple files of the same name `%s`.', name)
-            self._files.append(newfile)
-            return newfile
+        logging.debug(
+            "Opening readable stream '%s' on container %s.",
+            name, self
+        )
+        try:
+            file = self._open_read(filename)
+        except KeyError:
+            raise FileNotFoundError(f"'{filename}' not found on {self}")
+        if file is None:
+            raise IsADirectoryError(f"'{filename}' is a directory")
+        # .name is not writeable, so we need to wrap
+        return Stream(file, mode='r', name=name)
+
+    def encode(self, name):
+        """Open a stream for writing to the container."""
+        filename = str(PurePosixPath(self.root) / name)
+        # always open as binary
+        logging.debug(
+            "Opening writeable stream '%s' on container %s.",
+            name, self
+        )
+        # stop BytesIO from being closed until we want it to be
+        newfile = Stream(KeepOpen(io.BytesIO()), mode='w', name=name)
+        if any(name == _file.name for _file in self._files):
+            logging.warning("Creating multiple files of the same name '%s'.", name)
+        self._files.append(newfile)
+        return newfile
 
 
 ###############################################################################

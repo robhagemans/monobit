@@ -230,7 +230,10 @@ class Location:
         """Open a binary stream in the container."""
         container, subpath = self._get_container_and_subpath()
         self._check_overwrite(container, subpath / name, mode=mode)
-        stream = container.open(subpath / name, mode=mode)
+        if mode == 'r':
+            stream = container.decode(subpath / name)
+        else:
+            stream = container.encode(subpath / name)
         stream.where = self
         return stream
 
@@ -323,7 +326,7 @@ class Location:
         if self.mode == 'r':
             try:
                 # see if head points to a file -> open it
-                stream = container.open(head, mode=self.mode)
+                stream = container.decode(head)
             except IsADirectoryError:
                 if Path(tail) == Path('.'):
                     # path has resolved; nothing further to open
@@ -352,7 +355,7 @@ class Location:
                 self._check_overwrite(container, head, mode=self.mode)
                 if not self._outermost_path:
                     self._outermost_path = head
-                stream = container.open(head, mode=self.mode)
+                stream = container.encode(head)
         # recurse on successfully opened file
         self._stream_objects.append(stream)
         self._leafpath = tail
