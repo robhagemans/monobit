@@ -363,12 +363,6 @@ class Glyph(HasProps):
         for key, value in properties.items():
             if self.get_defined(key):
                 properties[key] = extend_string(self._props[key], value)
-        # do not record glyph history
-        try:
-            history = properties.pop('history')
-            #logging.debug("Ignoring glyph history '%s'", history)
-        except KeyError:
-            pass
         return self.modify(
             comment=comment,
             **properties
