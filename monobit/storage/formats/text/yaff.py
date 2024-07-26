@@ -37,6 +37,7 @@ from .draw import format_comment
         Sentinel(b'yaff:'),
     ),
     patterns=('*.yaff', '*.yaffs',),
+    text=True,
 )
 def load_yaff(instream, allow_empty:bool=False):
     """

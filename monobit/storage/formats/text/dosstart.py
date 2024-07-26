@@ -20,6 +20,7 @@ _DOSSTART_SIG = 'DosStartFont'
     name='dosstart',
     magic=(_DOSSTART_SIG.encode('ascii'),),
     patterns=('*.dsf',),
+    text=True,
 )
 def load_dosstart(instream):
     """Load font from DosStart! .DSF file."""

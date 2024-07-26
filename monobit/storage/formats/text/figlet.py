@@ -26,6 +26,7 @@ from monobit.storage.utils.limitations import ensure_single
     name='figlet',
     magic=(b'flf2a',),
     patterns=('*.flf',),
+    text=True,
 )
 def load_figlet(instream, *, ink:str=''):
     """Load font from a FIGlet .flf file."""

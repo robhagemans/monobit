@@ -18,7 +18,10 @@ from .draw import load_draw, DrawGlyph, DrawComment, Empty
 from monobit.storage.utils.limitations import ensure_single
 
 
-@loaders.register(name='pcbasic',)
+@loaders.register(
+    name='pcbasic',
+    text=True,
+)
 def load_hext(instream):
     """Load 8xN multi-cell font from PC-BASIC extended .HEX file."""
     return _load_hex(instream)
@@ -26,6 +29,7 @@ def load_hext(instream):
 @loaders.register(
     name='unifont',
     patterns=('*.hex',),
+    text=True,
 )
 def load_hex(instream):
     """Load 8x16 multi-cell font from Unifont .HEX file."""

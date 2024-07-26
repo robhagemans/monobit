@@ -39,6 +39,7 @@ PSFT_SIG = '%PSF2'
     name='psf2txt',
     magic=(PSFT_SIG.encode('ascii'),),
     patterns=('*.txt',),
+    text=True,
 )
 def load_psf2txt(instream):
     """Load font from a psf2txt .txt file."""

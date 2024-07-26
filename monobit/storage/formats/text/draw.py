@@ -23,6 +23,7 @@ from monobit.storage.utils.limitations import ensure_single
 @loaders.register(
     name='hexdraw',
     patterns=('*.draw',),
+    text=True,
 )
 def load_hexdraw(
         instream, ink:str='#', paper:str='-', unicode:bool=True, base:int=16,

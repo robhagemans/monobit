@@ -16,7 +16,7 @@ from ..constants import MONOBIT
 from ..core import Font, Pack
 from ..plumbing import scriptable, manage_arguments
 from ..base import Any
-from .magic import MagicRegistry, FileFormatError, maybe_text
+from .magic import MagicRegistry, FileFormatError
 from .location import open_location, iter_funcs_from_registry
 from .base import (
     DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,

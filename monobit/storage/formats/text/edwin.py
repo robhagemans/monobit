@@ -23,6 +23,7 @@ from monobit.storage.utils.limitations import ensure_single
 @loaders.register(
     name='edwin',
     patterns=('*.fnt',),
+    text=True,
 )
 def load_edwin(instream):
     """Load font from EDWIN .FNT file."""

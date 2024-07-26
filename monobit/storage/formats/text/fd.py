@@ -40,6 +40,7 @@ FD_CHAR_KEYS = {
 @loaders.register(
     name='mkwinfont',
     patterns=('*.fd',),
+    text=True,
 )
 def load_mkwinfont(instream):
     """Load font from a mkwinfont .fd file."""
