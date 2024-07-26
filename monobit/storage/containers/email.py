@@ -33,38 +33,44 @@ from ..containers.containers import FlatFilterContainer
 )
 class EmailContainer(FlatFilterContainer):
 
-    def __init__(
-            self, stream, mode='r',
+    def decode(self, name):
+        """
+        Decode files from email attachments.
+        """
+        return super().decode(name)
+
+    def encode(
+            self, name, *,
             sender:str='me@here',
             recipient:str='you@there',
             subject:str='Files',
         ):
         """
-        Files in email attachments.
+        Encode files to email attachments. Only the email parameters of the last file wrtten have an effect.
 
         sender: email From field
         recipient: email To field
         subject: email Subject
         """
-        super().__init__(
-            stream, mode,
-            encode_kwargs=dict(
-                sender=sender,
-                recipient=recipient,
-                subject=subject,
-            ),
-            decode_kwargs={},
+        return super().encode(
+            name,
+            sender=sender,
+            recipient=recipient,
+            subject=subject,
         )
 
     @classmethod
-    def encode_all(cls, data, outstream, *, subject, sender, recipient):
+    def encode_all(cls, data, outstream):
+        if not data:
+            return
         # Create the message
         msg = EmailMessage()
-        msg['Subject'] = subject
-        msg['To'] = recipient
-        msg['From'] = sender
         msg.preamble = 'This is a multi-part message in MIME format.\n'
-        for filename, filedata in data.items():
+        for filename, filedict in data.items():
+            msg['Subject'] = filedict['subject']
+            msg['To'] = filedict['recipient']
+            msg['From'] = filedict['sender']
+            filedata = filedict.pop('outstream').getvalue()
             # Guess the content type based on the file's extension.  Encoding
             # will be ignored, although we should check for simple things like
             # gzip'd or compressed files.
