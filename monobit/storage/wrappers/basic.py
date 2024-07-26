@@ -10,88 +10,84 @@ from pathlib import Path
 from io import BytesIO
 
 from ..magic import FileFormatError
-from ..base import wrappers
-from .wrappers import FilterWrapper
+from ..base import encoders, decoders
+from ..streams import Stream, DelayedWriterStream
 
 
-@wrappers.register(
+@decoders.register(
     name='basic',
     patterns=('*.bas',),
 )
-class BASICCodedBinaryWrapper(FilterWrapper):
-    """BASIC source code wrapper, using DATA lines."""
+def decode_basic(instream):
+    """
+    Extract binary file encoded in DATA lines in classic BASIC source code.
+    Tokenised BASIC files are not supported.
+    """
+    infile = instream.text
+    data = []
+    for line in infile:
+        _, _, dataline = line.partition('DATA')
+        dataline = dataline.strip()
+        if not dataline:
+            continue
+        values = dataline.split(',')
+        data.append(bytes(_int_from_basic(_s) for _s in values))
+    name = Path(instream.name).stem
+    return Stream.from_data(b''.join(data), mode='r', name=name)
 
-    def __init__(
-            self, stream, mode='r',
-            *,
-            line_number_start:int=1000,
-            line_number_inc:int=10,
-            bytes_per_line:int=8
+
+@encoders.register(linked=decode_basic)
+def encode_basic(
+        outstream,
+        *,
+        line_number_start:int=1000,
+        line_number_inc:int=10,
+        bytes_per_line:int=8
+    ):
+    """
+    Write binary file encoded into DATA lines in classic BASIC source code.
+    Tokenised BASIC files are not supported.
+
+    line_number_start: line number of first DATA line (-1 for no line numbers; default: 1000)
+    line_number_inc: increment between line numbers (default: 10)
+    bytes_per_line: number of encoded bytes in a source line (default: 8)
+    """
+    encode_func = _do_encode_basic
+    name = Path(outstream.name).stem
+    return DelayedWriterStream(
+        outstream, encode_func, name,
+        line_number_start=line_number_start,
+        line_number_inc=line_number_inc,
+        bytes_per_line=bytes_per_line,
+    )
+
+
+def _do_encode_basic(
+        data, outstream,
+        *,
+        line_number_start,
+        line_number_inc,
+        bytes_per_line,
+    ):
+    outfile = outstream.text
+    if (
+            line_number_inc <= 0
+            and line_number_start is not None and line_number_start > -1
         ):
-        """
-        Binary file encoded in DATA lines in classic BASIC source code. Options for save:
-
-        line_number_start: line number of first DATA line (-1 for no line numbers; default: 1000)
-        line_number_inc: increment between line numbers (default: 10)
-        bytes_per_line: number of encoded bytes in a source line (default: 8)
-        """
-        super().__init__(
-            stream, mode,
-            encode_kwargs=dict(
-                line_number_start=line_number_start,
-                line_number_inc=line_number_inc,
-                bytes_per_line=bytes_per_line,
-            )
-        )
-
-    @staticmethod
-    def decode(instream):
-        """
-        Extract binary file encoded in DATA lines in classic BASIC source code.
-        Tokenised BASIC files are not supported.
-        """
-        infile = instream.text
-        data = []
-        for line in infile:
-            _, _, dataline = line.partition('DATA')
-            dataline = dataline.strip()
-            if not dataline:
-                continue
-            values = dataline.split(',')
-            data.append(bytes(_int_from_basic(_s) for _s in values))
-        return b''.join(data)
-
-    @staticmethod
-    def encode(
-            data, outstream,
-            *,
-            line_number_start,
-            line_number_inc,
-            bytes_per_line,
-        ):
-        """
-        Write binary file encoded into DATA lines in classic BASIC source code.
-        Tokenised BASIC files are not supported.
-        """
-        outfile = outstream.text
-        if (
-                line_number_inc <= 0
-                and line_number_start is not None and line_number_start > -1
-            ):
-            raise ValueError('line_number_inc must be > 0')
-        line_number = None
-        if line_number_start is not None and line_number_start >= 0:
-            line_number = line_number_start
-        with BytesIO(data) as instream:
-            while True:
-                data = instream.read(bytes_per_line)
-                if not data:
-                    return
-                line = ', '.join(_int_to_basic(_b) for _b in data)
-                if line_number is not None:
-                    outfile.write(f'{line_number} ')
-                    line_number += line_number_inc
-                outfile.write(f'DATA {line}\n')
+        raise ValueError('line_number_inc must be > 0')
+    line_number = None
+    if line_number_start is not None and line_number_start >= 0:
+        line_number = line_number_start
+    with BytesIO(data) as instream:
+        while True:
+            data = instream.read(bytes_per_line)
+            if not data:
+                return
+            line = ', '.join(_int_to_basic(_b) for _b in data)
+            if line_number is not None:
+                outfile.write(f'{line_number} ')
+                line_number += line_number_inc
+            outfile.write(f'DATA {line}\n')
 
 
 def _int_to_basic(value):

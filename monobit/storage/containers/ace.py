@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from pathlib import Path
+from pathlib import PurePosixPath
 
 try:
     import acefile
@@ -15,7 +15,8 @@ except ImportError:
 
 from ..magic import FileFormatError, Magic
 from ..base import containers
-from ..containers.containers import FlatFilterContainer
+from ..streams import Stream
+from ..containers.containers import Archive
 
 
 if acefile:
@@ -27,42 +28,57 @@ if acefile:
             Magic.offset(7) + b'**ACE**',
         ),
     )
-    class AceContainer(FlatFilterContainer):
+    class AceContainer(Archive):
         """Container for ACE archives."""
 
-        def __init__(self, stream, mode='r', *, password:bytes=None):
-            """
-            ACE container access.
-
-            password: password for encrypted archive entries. Individual per-file passwords not supported.
-            """
-            self._pwd = password
+        def __init__(self, stream, mode='r'):
+            """Read ACE archives."""
+            if mode != 'r':
+                raise ValueError('Writing to ACE archives not supported')
             super().__init__(stream, mode)
+            self._archive = acefile.open(stream)
+            self._entries = tuple(self._archive)
 
-        def encode_all(self, data, outstream):
-            """Write all items to archive."""
-            raise ValueError(f'Writing to ACE archives not supported.')
-
-        def decode_all(self, instream):
-            """Read all items from archive."""
-            data = {}
+        def close(self):
+            """Close the archive."""
+            if self.closed:
+                return
             try:
-                with acefile.open(instream) as archive:
-                    for entry in archive:
-                        logging.debug(
-                            "ACE file '%s' entry '%s'",
-                            instream.name, entry.filename
-                        )
-                        name = entry.filename
-                        if name == '.':
-                            continue
+                self._archive.close()
+            except EnvironmentError as e:
+                logging.debug(e)
+            self._entries = ()
+            super().close()
+
+        def list(self):
+            entries =  tuple(
+                f'{_e.filename}/' if _e.is_dir() else _e.filename
+                for _e in self._entries
+            )
+            return entries
+
+        def decode(self, name, *, password:bytes=None):
+            """
+            Extract file from ACE archive.
+
+            password: password for encrypted archive entry.
+            """
+            filename = str(PurePosixPath(self.root) / name)
+            try:
+                for entry in self._entries:
+                    if entry.filename == filename:
                         if entry.is_dir():
-                            data[name + '/'] = b''
-                        else:
-                            data[name] = archive.read(entry, pwd=self._pwd)
-                        for path in Path(name).parents:
-                            if path != Path('.'):
-                                data[f'{path}/'] = b''
+                            raise IsADirectoryError(
+                                f"Entry '{filename}' is a directory in archive {self}"
+                            )
+                        data = self._archive.read(entry, pwd=password)
+                        return Stream.from_data(data, mode='r', name=name)
             except acefile.AceError as e:
                 raise FileFormatError(e) from e
-            return data
+            raise FileNotFoundError(
+                f"Entry '{filename}' not found in archive {self}"
+            )
+
+        def encode(self, name):
+            """Writing to ACE archives not supported."""
+            raise ValueError(f'Writing to ACE archives not supported.')

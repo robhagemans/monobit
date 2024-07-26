@@ -6,90 +6,114 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+import gzip
+import lzma
+import bz2
 from pathlib import Path
-from contextlib import contextmanager
-from importlib import import_module
 
 from ..streams import Stream
 from ..magic import FileFormatError
-from ..base import wrappers
-from .wrappers import Wrapper
+from ..base import encoders, decoders
 
 
-class Compressor(Wrapper):
-    """Base class for single-file compression helpers."""
+###############################################################################
+# gzip
 
-    compressor = None
-    # error raised for bad format
-    error = Exception
-    # late import machinery
-    module = ''
-    errorclass = ''
-
-    def __init__(self, stream, mode='r'):
-        self._ensure_imports()
-        super().__init__(stream, mode)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        # convert library-specific errors to ours
-        if exc_type == self.error:
-            raise FileFormatEror(exc_value)
-        super().__exit__(exc_type, exc_value, traceback)
-
-    def open(self):
-        """Get the uncompressed stream."""
-        name = Path(self._wrapped_stream.name).stem
-        stream = self.compressor.open(self._wrapped_stream, mode=self.mode+'b')
-        self._unwrapped_stream = Stream(stream, mode=self.mode, name=name)
-        return self._unwrapped_stream
-
-    @classmethod
-    def _ensure_imports(cls):
-        """Late import of compressor library."""
-        if cls.module:
-            cls.compressor = import_module(cls.module)
-            cls.module = ''
-        if cls.errorclass:
-            cls.error = getattr(cls.compressor, cls.errorclass)
-            cls.errorclass = ''
-
-
-@wrappers.register(
+@decoders.register(
     name='gzip',
     magic=(b'\x1f\x8b',),
     patterns=('*.gz',),
 )
-class GzipCompressor(Compressor):
-    module = 'gzip'
-    errorclass = 'BadGzipFile'
+def decode_gzip(instream):
+    """Decode a gzip-compressed stream."""
+    stream = gzip.open(instream, mode='rb')
+    try:
+        stream.peek(0)
+    except BadGzipFile as e:
+        raise FileFormatError(e) from e
+    name = Path(instream.name).stem
+    return Stream(stream, mode='r', name=name)
 
 
-@wrappers.register(
+@encoders.register(linked=decode_gzip)
+def encode_gzip(outstream):
+    """Encode to a gzip-compressed stream."""
+    stream = gzip.open(outstream, mode='wb')
+    name = Path(outstream.name).stem
+    return Stream(stream, mode='w', name=name)
+
+
+###############################################################################
+# lzma
+
+@decoders.register(
     name='xz',
     magic=(b'\xFD7zXZ\x00',),
     patterns=('*.xz',),
 )
-class XZCompressor(Compressor):
-    module = 'lzma'
-    errorclass = 'LZMAError'
+def decode_xz(instream):
+    return _decode_lzma_or_xz(instream)
 
 
-@wrappers.register(
+@decoders.register(
     name='lzma',
     # the magic is a 'maybe'
     magic=(b'\x5d\0\0',),
     patterns=('*.lzma',),
 )
-class LzmaCompressor(Compressor):
-    module = 'lzma'
-    errorclass = 'LZMAError'
+def decode_lzma(instream):
+    return _decode_lzma_or_xz(instream)
 
 
-@wrappers.register(
+def _decode_lzma_or_xz(instream):
+    """Decode a lzma or xz-compressed stream."""
+    stream = lzma.open(instream, mode='rb')
+    try:
+        stream.peek(0)
+    except LZMAError as e:
+        raise FileFormatError(e) from e
+    name = Path(instream.name).stem
+    return Stream(stream, mode='r', name=name)
+
+
+@encoders.register(linked=decode_lzma)
+def encode_lzma(outstream):
+    """Encode to a lzma-compressed stream."""
+    stream = lzma.open(outstream, mode='wb', format=lzma.FORMAT_ALONE)
+    name = Path(outstream.name).stem
+    return Stream(stream, mode='w', name=name)
+
+
+@encoders.register(linked=decode_xz)
+def encode_xz(outstream):
+    """Encode to a xz-compressed stream."""
+    stream = lzma.open(outstream, mode='wb', format=lzma.FORMAT_XZ)
+    name = Path(outstream.name).stem
+    return Stream(stream, mode='w', name=name)
+
+
+###############################################################################
+# bzip2
+
+@decoders.register(
     name='bzip2',
     magic=(b'BZh',),
     patterns=('*.bz2',),
 )
-class Bzip2Compressor(Compressor):
-    module = 'bz2'
-    error = OSError
+def decode_bzip2(instream):
+    """Decode a bzip2-compressed stream."""
+    stream = bz2.open(instream, mode='rb')
+    try:
+        stream.peek(0)
+    except OSError as e:
+        raise FileFormatError(e) from e
+    name = Path(instream.name).stem
+    return Stream(stream, mode='r', name=name)
+
+
+@encoders.register(linked=decode_bzip2)
+def encode_bzip2(outstream):
+    """Encode to a bzip2-compressed stream."""
+    stream = bz2.open(outstream, mode='wb')
+    name = Path(outstream.name).stem
+    return Stream(stream, mode='w', name=name)

@@ -37,7 +37,7 @@ except ImportError:
 from ..magic import FileFormatError, Sentinel
 from ..base import containers
 from ...base import Props
-from .containers import FlatFilterContainer
+from .containers import SerialContainer
 
 
 if yenc:
@@ -47,8 +47,20 @@ if yenc:
         magic=(Sentinel(b'=ybegin '),),
         # last line starts with '=yend '
     )
-    class YEncodeContainer(FlatFilterContainer):
-        """yEncoded format container."""
+    class YEncodeContainer(SerialContainer):
+        """yEncode format container."""
+
+        def decode(self, name):
+            """
+            Decode files from yEncode file. Accepts multiple, concatenated files.
+            """
+            return super().decode(name)
+
+        def encode(self, name):
+            """
+            Encode files to yEncode file. Multiple files will be concatenated.
+            """
+            return super().encode(name)
 
         @classmethod
         def decode_all(cls, file_in):
@@ -103,13 +115,19 @@ if yenc:
             return data
 
         @classmethod
-        def encode_all(cls, data, outstream):
-            for name, filedata in data.items():
-                cls._encode(filedata, outstream, name=name)
-                outstream.write(b'\r\n')
+        def _head(cls):
+            return b''
 
         @classmethod
-        def _encode(cls, filedata, file_out, *, name):
+        def _tail(cls):
+            return b''
+
+        @classmethod
+        def _separator(cls):
+            return b'\r\n'
+
+        @classmethod
+        def _encode(cls, name, filedata, file_out):
             crc = b"%08x" % (0xFFFFFFFF & crc32(filedata))
             size = len(filedata)
             line = b"=ybegin line=128 size=%d crc32=%s name=%s\r\n"

@@ -23,9 +23,13 @@ if libarchive:
     class LibArchiveContainer(FlatFilterContainer):
         """Container for formats supported by libarchive."""
 
-        def __init__(self, stream, mode='r'):
-            """Container access using libarchive."""
-            super().__init__(stream, mode)
+        def decode(self, name):
+            """Extract file from archive."""
+            return super().decode(name)
+
+        def encode(self, name):
+            """Store file in archive."""
+            return super().encode(name)
 
         @classmethod
         def encode_all(cls, data, outstream):
@@ -34,7 +38,8 @@ if libarchive:
             if not format:
                 raise ValueError(f'Writing not supported for this format.')
             with libarchive.custom_writer(outstream.write, format) as archive:
-                for name, payload in data.items():
+                for name, filedict in data.items():
+                    payload = filedict.pop('outstream').getvalue()
                     archive.add_file_from_memory(name, len(payload), payload)
 
         @classmethod
@@ -70,7 +75,7 @@ if libarchive:
         ),
     )
     class RARContainer(LibArchiveContainer):
-        pass
+        """RAR archive."""
 
 
     @containers.register(
@@ -81,6 +86,7 @@ if libarchive:
         ),
     )
     class SevenZipContainer(LibArchiveContainer):
+        """7-Zip archive."""
         libarchive_format = '7zip'
 
 
@@ -92,7 +98,7 @@ if libarchive:
         ),
     )
     class CabinetContainer(LibArchiveContainer):
-        pass
+        """Microsoft Cabinet (.cab) file."""
 
 
     @containers.register(
@@ -100,6 +106,7 @@ if libarchive:
         patterns=('*.iso',),
     )
     class ISO9660Container(LibArchiveContainer):
+        """ISO-9660 cd-rom image file."""
         libarchive_format = 'iso9660'
 
 
@@ -108,7 +115,7 @@ if libarchive:
         patterns=('*.lha', '*.lzh'),
     )
     class LHArcContainer(LibArchiveContainer):
-        pass
+        """LHarc archive."""
 
 
     @containers.register(
@@ -121,6 +128,7 @@ if libarchive:
         ),
     )
     class CPIOContainer(LibArchiveContainer):
+        """CPIO archive."""
         libarchive_format = 'cpio'
 
 
@@ -129,6 +137,7 @@ if libarchive:
         patterns=('*.pax',),
     )
     class PaxContainer(LibArchiveContainer):
+        """Pax archive."""
         libarchive_format = 'pax'
 
 
@@ -138,6 +147,7 @@ if libarchive:
         magic=(b'!<arch>\n',),
     )
     class ArContainer(LibArchiveContainer):
+        """Ar archive."""
         libarchive_format = 'ar'
 
 
@@ -147,6 +157,7 @@ if libarchive:
         magic=(b'xar!',),
     )
     class XArContainer(LibArchiveContainer):
+        """XAr archive."""
         libarchive_format = 'xar'
 
 
@@ -156,4 +167,5 @@ if libarchive:
         magic=(b'WARC/',),
     )
     class WARCContainer(LibArchiveContainer):
+        """WARC container."""
         libarchive_format = 'warc'

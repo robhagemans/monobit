@@ -5,31 +5,19 @@ monobit.storage.wrappers.offset - binary files at offset in binary files
 licence: https://opensource.org/licenses/MIT
 """
 
-from ..base import wrappers
-from .wrappers import Wrapper
+from ..base import decoders
 from ..streams import Stream
 
 
-@wrappers.register(
+@decoders.register(
     name='offset',
 )
-class OffsetWrapper(Wrapper):
-    """Binary offset wrapper."""
+def decode_offset(stream, *, offset:int=0):
+    """
+    Binary file at an offset in another binary file.
 
-    def __init__(
-            self, stream, mode='r',
-            *,
-            offset:int=0,
-        ):
-        """
-        Binary file at an offset in another binary file.
-
-        offset: offset to use, in bytes.
-        """
-        super().__init__(stream, mode)
-        self._wrapped_stream.read(offset)
-        # Stream wrapper will drop a seek() anchor
-        self._unwrapped_stream = Stream(self._wrapped_stream, mode)
-
-    def open(self):
-        return self._unwrapped_stream
+    offset: offset to use, in bytes.
+    """
+    stream.read(offset)
+    # Stream wrapper will drop a seek() anchor
+    return Stream(stream, mode=stream.mode, name=stream.name)

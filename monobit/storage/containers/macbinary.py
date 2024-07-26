@@ -91,6 +91,21 @@ _MACBINARY_HEADER = be.Struct(
     ),
 )
 class MacBinary(FlatFilterContainer):
+    """MacBinary container."""
+
+    def decode(self, name):
+        """
+        Decode data and resource fork from MacBinary container.
+        """
+        return super().decode(name)
+
+    def encode(self, name):
+        """
+        Writing to MacBinary is not supported.
+        """
+        raise ValueError(
+            'Writing to MacBinary is not supported.'
+        )
 
     def decode_all(self, stream):
         """Parse a MacBinary file."""

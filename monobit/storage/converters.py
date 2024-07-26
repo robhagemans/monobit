@@ -14,11 +14,10 @@ from contextlib import contextmanager
 
 from ..constants import MONOBIT
 from ..core import Font, Pack
-from ..plumbing import scriptable
+from ..plumbing import scriptable, manage_arguments
 from ..base import Any
 from .magic import MagicRegistry, FileFormatError, maybe_text
-from .location import open_location
-from ..plumbing import convert_arguments, check_arguments
+from .location import open_location, iter_funcs_from_registry
 from .base import (
     DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,
     loaders, savers, container_loaders, container_savers
@@ -56,7 +55,7 @@ def load(infile:Any='', *, format:str='', container_format:str='', match_case:bo
 def _load_stream(instream, *, format='', **kwargs):
     """Load fonts from open stream."""
     tried_formats = []
-    for loader in _iter_funcs_from_registry(loaders, instream, format):
+    for loader in iter_funcs_from_registry(loaders, instream, format):
         tried_formats.append(loader.format)
         instream.seek(0)
         logging.info("Loading '%s' as format `%s`", instream.name, loader.format)
@@ -125,41 +124,25 @@ def _annotate_fonts_with_source(
     )
 
 
-def _iter_funcs_from_registry(registry, instream, format):
-    """
-    Iterate over and wrap functions stored in a MagicRegistry
-    that fit a given stream and format.
-    """
-    # identify file type
-    fitting_loaders = registry.get_for(instream, format=format)
-    for loader in fitting_loaders:
-        yield _wrap_converter_func(loader)
-    return
-
-
-def _wrap_converter_func(loader):
-    loader = convert_arguments(loader)
-    loader = check_arguments(loader)
-    return loader
-
-
 def _load_container(location, *, format='', **kwargs):
     """Load from a container."""
-    try:
-        loaders = container_loaders.get_for(format=format)
-    except ValueError:
-        loaders = None
-    if not loaders:
-        pack = load_all(location, format=format, **kwargs)
-        spec_msg = 'all'
-    else:
-        loader = _wrap_converter_func(loaders[0])
+    for loader in iter_funcs_from_registry(
+            container_loaders, instream=None, format=format
+        ):
         logging.info("Loading '%s' as container format `%s`", location.path, loader.format)
-        fonts = loader(location, **kwargs)
+        try:
+            fonts = loader(location, **kwargs)
+        except FileFormatError as e:
+            logging.debug(e)
+            continue
         spec_msg = f"as format {loader.format}"
         pack = _annotate_fonts_with_source(
             fonts, location.path, location, loader.format, kwargs
         )
+        break
+    else:
+        pack = load_all(location, format=format, **kwargs)
+        spec_msg = 'all'
     if not pack:
         raise FileFormatError(
             f"No fonts found in '{location.path}' while loading {spec_msg}."
@@ -252,24 +235,22 @@ def _save_stream(pack, outstream, *, format='', **kwargs):
     saver, *_ = matching_savers
     logging.info('Saving `%s` as %s.', outstream.name, saver.format)
     # apply wrappers to saver function
-    saver = _wrap_converter_func(saver)
+    saver = manage_arguments(saver)
     saver(pack, outstream, **kwargs)
 
 
 def _save_container(pack, location, *, format, **kwargs):
     """Save font(s) to container."""
-    try:
-        savers = container_savers.get_for(format=format)
-    except ValueError:
-        savers = None
-    if not savers:
-        save_all(pack, location, format=format, **kwargs)
-    else:
-        saver = _wrap_converter_func(savers[0])
+    for saver in iter_funcs_from_registry(
+            container_savers, instream=None, format=format
+        ):
         logging.info(
             "Saving '%s' as container format `%s`", location.path, saver.format
         )
         saver(pack, location, **kwargs)
+        break
+    else:
+        save_all(pack, location, format=format, **kwargs)
 
 
 def save_all(

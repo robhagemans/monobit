@@ -38,7 +38,7 @@ from pathlib import Path
 
 from ..magic import FileFormatError, Sentinel
 from ..base import containers
-from .containers import FlatFilterContainer
+from .containers import SerialContainer
 
 
 @containers.register(
@@ -46,26 +46,29 @@ from .containers import FlatFilterContainer
     magic=(Sentinel(b'begin '),),
     # ends with 'end\n'
 )
-class UUEncodeContainer(FlatFilterContainer):
+class UUEncodeContainer(SerialContainer):
     """UUEncoded format container."""
 
-    def __init__(
-            self, stream, mode='r',
+
+    def decode(self, name):
+        """
+        Decode files from source code file.
+        """
+        return super().decode(name)
+
+    def encode(
+            self, name, *,
             permissions:int=0o666,
             backtick:bool=False,
         ):
         """
-        UUencoded files. Allows multiple files per container.
+        Encode files to source code file.
 
-        permissions: Unix permisions for output file(s)
+        permissions: Unix permissions for output file(s)
         backtick: subtitute backtick for space
         """
-        super().__init__(stream, mode)
-        self.encode_kwargs = dict(
-            permissions=permissions,
-            backtick=backtick,
-        )
-        self.decode_kwargs = {}
+        return super().encode(name, permissions=permissions, backtick=backtick)
+
 
     @classmethod
     def decode_all(cls, in_file):
@@ -113,19 +116,18 @@ class UUEncodeContainer(FlatFilterContainer):
             output[name] = b''.join(data)
 
     @classmethod
-    def encode_all(cls, data, out_file, *, permissions, backtick):
-        for name, filedata in data.items():
-            with BytesIO(filedata) as in_file:
-                name = name.encode('ascii', 'replace').replace(b'?', b'_')
-                out_file.write(
-                    (b'begin %o %s\n' % ((permissions & 0o777), name))
-                )
+    def _encode(cls, name, filedata, out_file, *, permissions, backtick):
+        with BytesIO(filedata) as in_file:
+            name = name.encode('ascii', 'replace').replace(b'?', b'_')
+            out_file.write(
+                (b'begin %o %s\n' % ((permissions & 0o777), name))
+            )
+            data = in_file.read(45)
+            while len(data) > 0:
+                out_file.write(binascii.b2a_uu(data, backtick=backtick))
                 data = in_file.read(45)
-                while len(data) > 0:
-                    out_file.write(binascii.b2a_uu(data, backtick=backtick))
-                    data = in_file.read(45)
-                if backtick:
-                    out_file.write(b'`\nend\n')
-                else:
-                    out_file.write(b' \nend\n')
-            out_file.write(b'\n')
+            if backtick:
+                out_file.write(b'`\nend\n')
+            else:
+                out_file.write(b' \nend\n')
+        out_file.write(b'\n')

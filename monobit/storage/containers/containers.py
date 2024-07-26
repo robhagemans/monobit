@@ -12,10 +12,9 @@ from pathlib import Path
 
 from ..magic import FileFormatError
 from ..streams import Stream, KeepOpen
-from ..holders import StreamHolder
 
 
-class Container(StreamHolder):
+class Container:
     """Base class for multi-stream containers."""
 
     def __init__(self, mode='r', name=''):
@@ -32,18 +31,38 @@ class Container(StreamHolder):
             f"{' [closed]' if self.closed else ''}>"
         )
 
-    def iter_sub(self, prefix):
-        """List contents of a subpath."""
-        raise NotImplementedError()
+    def __enter__(self):
+        # we don't support nesting the same archive
+        assert self.refcount == 0
+        self.refcount += 1
+        logging.debug('Entering %r', self)
+        return self
 
-    # NOTE open() opens a stream, close() closes the container
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.refcount -= 1
+        if exc_type == BrokenPipeError:
+            return True
+        logging.debug('Exiting %r', self)
+        self.close()
 
-    def open(self, name, mode):
-        """Open a binary stream in the container."""
+    def close(self):
+        """Close the archive."""
+        self.closed = True
+
+    def decode(self, name, **kwargs):
+        """Open a binary stream to read from the container."""
+        raise NotImplementedError
+
+    def encode(self, name, **kwargs):
+        """Open a binary stream to write to the container."""
         raise NotImplementedError
 
     def is_dir(self, name):
         """Item at `name` is a directory."""
+        raise NotImplementedError
+
+    def iter_sub(self, prefix):
+        """List contents of a subpath."""
         raise NotImplementedError
 
 
@@ -100,47 +119,31 @@ class Archive(Container):
 class FlatFilterContainer(Archive):
     """Archive implementation based on filter logic."""
 
-    def __init__(self, stream, mode='r', encode_kwargs=None, decode_kwargs=None):
-        self.encode_kwargs = encode_kwargs or {}
-        self.decode_kwargs = decode_kwargs or {}
+    def __init__(self, stream, mode='r'):
         # private fields
         self._wrapped_stream = stream
         self._data = {}
-        self._files = []
+        self._files = {}
         super().__init__(stream, mode)
         self._get_data()
 
     def close(self):
         """Close the archive, ignoring errors."""
         if self.mode == 'w' and not self.closed:
-            data = {
-                str(_file.name): _file.getvalue()
-                for _file in self._files
-            }
-            self.encode_all(
-                data, self._wrapped_stream,
-                **self.encode_kwargs
-            )
+            self.encode_all(self._files, self._wrapped_stream)
         self._wrapped_stream.close()
         super().close()
 
     def list(self):
         """List full contents of archive."""
-        return tuple(self._data.keys()) + tuple(
-            str(_file.name)
-            for _file in self._files
+        return (
+            tuple(self._data.keys())
+            + tuple(self._files.keys())
         )
 
-    def open(self, name, mode):
-        """Open a binary stream in the container."""
+    def decode(self, name):
+        """Open input stream on filter container."""
         name = Path(self.root) / name
-        if mode == 'r':
-            return self._open_read(name)
-        else:
-            return self._open_write(name)
-
-    def _open_read(self, name):
-        """Open input stream on source wrapper."""
         name = str(name)
         try:
             data = self._data[name]
@@ -152,14 +155,18 @@ class FlatFilterContainer(Archive):
             )
         return Stream.from_data(data, mode='r', name=name)
 
-    def _open_write(self, name):
-        """Open output stream on source wrapper."""
+    def encode(self, name, **kwargs):
+        """Open output stream on filter container."""
+        name = Path(self.root) / name
         if name in self._files:
             raise FileExistsError(
                 f"Cannot create multiple files of the same name '{name}'"
             )
         newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
-        self._files.append(newfile)
+        self._files[str(newfile.name)] = {
+            'outstream': newfile,
+            **kwargs
+        }
         return newfile
 
     def _get_data(self):
@@ -168,7 +175,7 @@ class FlatFilterContainer(Archive):
             return
         if self._data:
             return
-        self._data = self.decode_all(self._wrapped_stream, **self.decode_kwargs)
+        self._data = self.decode_all(self._wrapped_stream)
         # create directory items, if not present
         for name in list(self._data.keys()):
             if '/' in name:
@@ -176,13 +183,64 @@ class FlatFilterContainer(Archive):
                     if parent != Path('.'):
                         self._data[f'{parent}/'] = b''
 
-
     @classmethod
     def decode_all(cls, instream):
-        """Generator to decode all files in readable archive."""
+        """Decode all files in readable archive."""
         raise NotImplementedError
 
     @classmethod
-    def encode_all(cls, data, outstream):
-        """Generator to encode all files in writable archive."""
+    def encode_all(cls, filedict, outstream, **kwargs):
+        """Encode all files in writable archive."""
         raise NotImplementedError
+
+
+class SerialContainer(FlatFilterContainer):
+
+    @classmethod
+    def encode_all(cls, data, outstream, **kwargs):
+        outstream.write(cls._head())
+        for count, (name, filedict) in enumerate(data.items()):
+            filedata = filedict.pop('outstream').getvalue()
+            cls._encode(
+                name, filedata, outstream,
+                **filedict
+            )
+            if count < len(data) - 1:
+                outstream.write(cls._separator())
+        outstream.write(cls._tail())
+
+    @classmethod
+    def _head(cls):
+        return b''
+
+    @classmethod
+    def _tail(cls):
+        return b''
+
+    @classmethod
+    def _separator(cls):
+        return b''
+
+    @classmethod
+    def _encode(cls, name, data, outstream, **kwargs):
+        raise NotImplementedError
+
+
+class SerialTextContainer(SerialContainer):
+
+    @classmethod
+    def encode_all(cls, data, outstream, **kwargs):
+        outstream = outstream.text
+        return super().encode_all(data, outstream, **kwargs)
+
+    @classmethod
+    def _head(cls):
+        return ''
+
+    @classmethod
+    def _tail(cls):
+        return ''
+
+    @classmethod
+    def _separator(cls):
+        return ''
