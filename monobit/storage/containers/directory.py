@@ -57,6 +57,14 @@ class Directory(Container):
         stream = Stream(file, name=str(pathname), mode=mode)
         return stream
 
+    def remove(self, name):
+        """Remove a file from the directory."""
+        if not name:
+            return
+        filepath = self._path / name
+        if not filepath.is_dir():
+            filepath.unlink()
+
     def is_dir(self, name):
         """Item at `name` is a directory."""
         filepath = self._path / name

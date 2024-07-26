@@ -20,7 +20,7 @@ from .containers.directory import Directory
 
 def open_location(
         stream_or_location, mode='r', overwrite=False, match_case=False,
-        container_format='', argdict=None,
+        container_format='', argdict=None, make_dir=False,
     ):
     """Point to given location; may include nested containers and wrappers."""
     if mode not in ('r', 'w'):
@@ -32,6 +32,7 @@ def open_location(
             stream_or_location, mode=mode,
             overwrite=overwrite, match_case=match_case,
             container_format=container_format, argdict=argdict,
+            make_dir=make_dir,
         )
     # assume stream_or_location is a file-like object
     return Location.from_stream(
@@ -46,7 +47,7 @@ class Location:
     def __init__(
             self, *,
             root=None, path='', mode='r', overwrite=False, match_case=False,
-            container_format='', argdict=None,
+            container_format='', argdict=None, make_dir=False,
         ):
         self.path = Path(path)
         self.mode = mode
@@ -68,7 +69,9 @@ class Location:
         self._leafpath = self.path
         # format parameters
         self._container_format = container_format.split('.')
+        self._make_dir = make_dir
         self.argdict = argdict
+        self._outermost_path = None
 
     def __repr__(self):
         """String representation."""
@@ -81,8 +84,8 @@ class Location:
     @classmethod
     def from_path(cls, path, **kwargs):
         """Create from path-like or string."""
-        path = Path(path)
-        root = path.anchor or '.'
+        path = Path(path).resolve()
+        root = path.anchor
         subpath = path.relative_to(root)
         return cls(
             # Directory objects doesn't really need to be closed
@@ -118,6 +121,11 @@ class Location:
         self.close()
         if exc_type == BrokenPipeError:
             return True
+        elif exc_type is not None:
+            if self._path_objects and self.mode == 'w':
+                root = self._path_objects[0]
+                if isinstance(root, Directory):
+                    root.remove(self._outermost_path)
 
     def resolve(self):
         """Resolve path, opening streams and containers as needed."""
@@ -133,9 +141,9 @@ class Location:
         """Close objects we opened on path."""
         # leave out the root object as we don't own it
         while self._stream_objects:
-            outer = self._stream_objects.pop()
+            self._outer_stream_object = self._stream_objects.pop()
             try:
-                outer.close()
+                self._outer_stream_object.close()
             except Exception as exc:
                 logging.warning('Exception while closing %s: %s', outer, exc)
         while len(self._path_objects) > 1:
@@ -256,7 +264,7 @@ class Location:
         if isinstance(self._leaf, StreamBase):
             self._resolve_wrappers()
         if isinstance(self._leaf, Container):
-            self._resolve_container()
+            self._resolve_subpath()
 
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
@@ -303,7 +311,8 @@ class Location:
             self._stream_objects = []
             self._container_subpath = self._leafpath
 
-    def _resolve_container(self):
+    def _resolve_subpath(self):
+        """Resolve subpath on a container object."""
         container = self._leaf
         # find the innermost existing file (if reading)
         # or file name with suffix (if writing)
@@ -311,7 +320,10 @@ class Location:
         if self.mode == 'r':
             is_dir = container.is_dir(head)
         else:
-            is_dir = not head.suffixes
+            is_dir = (
+                self._make_dir
+                or not head.suffixes
+            )
         if is_dir:
             # innermost existing/creatable is a subdirectory
             if Path(tail) == Path('.'):
@@ -321,7 +333,7 @@ class Location:
                 # tail subpath does not exist
                 if self.mode == 'r':
                     raise FileNotFoundError(
-                        f"Subpath '{tail}' not found on container {container}."
+                        f"Subpath '{tail}' of path '{head}' not found on container {container}."
                     )
                 # new directory
                 return
@@ -330,6 +342,8 @@ class Location:
             self._check_overwrite(container, head, mode=self.mode)
             stream = container.open(head, mode=self.mode)
             self._stream_objects.append(stream)
+            if not self._outermost_path:
+                self._outermost_path = head
             self._leafpath = tail
             self._resolve()
 
