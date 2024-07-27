@@ -60,7 +60,7 @@ def save_edwin(fonts, outstream):
     outstream = outstream.text
     font = ensure_single(fonts)
     # we can only store ascii range
-    font = font.subset(tuple(chr(_b) for _b in range(0x80)))
+    font = font.subset(chars=tuple(chr(_b) for _b in range(0x80)))
     min_cp, max_cp = int(min(font.get_codepoints())), int(max(font.get_codepoints()))
     # make contiguous
     font = font.resample(codepoints=range(min_cp, max_cp+1))
