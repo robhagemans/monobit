@@ -1155,41 +1155,6 @@ class TestFormats(BaseTester):
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
-    def test_export_vtfont_multicell(self):
-        """Test exporting freebsd vt font files with two-cell glyphs."""
-        unscii_16 = monobit.load(self.font_path / 'unscii-16.hex')
-        fnt_file = self.temp_path / 'unscii-16.fnt'
-        monobit.save(unscii_16, fnt_file, format='vtfont')
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 3240)
-        self.assertEqual(font.spacing, 'multi-cell')
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), """\
-..@@..
-.@@@@.
-@@..@@
-@@..@@
-@@..@@
-@@@@@@
-@@..@@
-@@..@@
-@@..@@
-@@..@@
-@@..@@
-""")
-        self.assertEqual(font.get_glyph('\uFF21').reduce().as_text(), """\
-....@@@@....
-..@@@@@@@@..
-@@@@....@@@@
-@@@@....@@@@
-@@@@....@@@@
-@@@@@@@@@@@@
-@@@@....@@@@
-@@@@....@@@@
-@@@@....@@@@
-@@@@....@@@@
-@@@@....@@@@
-""")
-
     # COM loaders
 
     def test_import_frapt(self):

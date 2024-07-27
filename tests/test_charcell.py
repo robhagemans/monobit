@@ -146,5 +146,49 @@ class TestCharCell(BaseTester):
         assert_text_eq(font.get_glyph(label).as_text(), glyph_0x100)
 
 
+class TestMultiCell(BaseTester):
+
+        def test_export_vtfont_multicell(self):
+            self._export_multicell(format='vtfont')
+
+        def test_export_hex_multicell(self):
+            self._export_multicell(format='unifont')
+
+        def _export_multicell(self, format):
+            """Test exporting freebsd vt font files with two-cell glyphs."""
+            unscii_16 = monobit.load(self.font_path / 'unscii-16.hex')
+            fnt_file = self.temp_path / 'unscii-16.fnt'
+            monobit.save(unscii_16, fnt_file, format=format)
+            font, *_ = monobit.load(fnt_file, format=format)
+            self.assertEqual(len(font.glyphs), 3240)
+            self.assertEqual(font.spacing, 'multi-cell')
+            self.assertEqual(font.get_glyph('A').reduce().as_text(), """\
+..@@..
+.@@@@.
+@@..@@
+@@..@@
+@@..@@
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+""")
+            self.assertEqual(font.get_glyph('\uFF21').reduce().as_text(), """\
+....@@@@....
+..@@@@@@@@..
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@@@@@@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+""")
+
+
 if __name__ == '__main__':
     unittest.main()
