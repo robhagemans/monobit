@@ -78,7 +78,7 @@ def _read_dsf_format_1(instream, ascent):
 
 def _write_dsf_format_1(font, outstream):
     """DosStart simple bitmap format writer."""
-    font = make_contiguous(font, supported_range=range(0x20, 0x80), missing='space')
+    font = font.resample(codepoints=range(0x20, 0x80), missing='empty')
     outstream.write(_DOSSTART_SIG.encode('ascii') + b'\r\n')
     outstream.write(font.name.encode('ascii', 'replace') + b'\r\n')
     outstream.write((b'1, %d' % (font.ascent,)) + b'\r\n')
