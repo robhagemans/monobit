@@ -129,7 +129,9 @@ def _convert_to_os_2_props(font, _to_funits):
         # but fonttosfnt produces + values while fontforge -
         sTypoDescender=-_to_funits(font.descent),
         sTypoLineGap=_to_funits(font.leading),
-        # not included: strikeout metrics
+        # strikeout metrics
+        yStrikeoutSize=_to_funits(font.strikethrough_thickness),
+        yStrikeoutPosition=_to_funits(font.strikethrough_ascent),
         # not included: panose table
         # special characters
         # if default_char can't be mappped to a utf-16 codepoint,

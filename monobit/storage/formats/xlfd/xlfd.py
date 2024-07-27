@@ -556,6 +556,15 @@ def parse_xlfd_properties(x_props, xlfd_name, to_int=int):
             x_props.pop('SUBSCRIPT_X'), x_props.pop('SUBSCRIPT_Y'),
             to_int=to_int
         )
+    if 'STRIKEOUT_ASCENT' in x_props:
+        # XLFD seems to think of strikeout as "putting a box around"
+        # rather than "putting a line through"
+        properties['strikethrough_ascent'] = x_props.pop('STRIKEOUT_ASCENT')
+        if 'STRIKEOUT_DESCENT' in x_props:
+            properties['strikethrough_thickness'] = (
+                to_int(properties['strikethrough_ascent'])
+                + to_int(x_props.pop('STRIKEOUT_DESCENT'))
+            )
     # encoding
     registry = from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
     encoding = from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
@@ -668,6 +677,10 @@ def create_xlfd_properties(font):
         'SUPERSCRIPT_Y': font.superscript_offset.y if 'superscript_offset' in font.get_properties() else None,
         'SUBSCRIPT_X': font.subscript_offset.x if 'subscript_offset' in font.get_properties() else None,
         'SUBSCRIPT_Y': font.subscript_offset.y if 'subscript_offset' in font.get_properties() else None,
+        'STRIKEOUT_ASCENT': font.strikethrough_ascent,
+        # this will only be positive if the thickness is similar to pixel_size
+        # however that's how XLFD seems to think of strikeout ("boxing glyphs")
+        'STRIKEOUT_DESCENT': font.strikethrough_thickness - font.strikethrough_ascent,
         'FIGURE_WIDTH': font.get_defined('digit_width'),
         'MIN_SPACE': font.get_defined('min_word_space'),
         'NORM_SPACE': font.get_defined('word_space'),

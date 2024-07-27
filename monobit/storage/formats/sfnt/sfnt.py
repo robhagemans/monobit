@@ -22,6 +22,11 @@ from .fonttools import check_fonttools
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
 
 
+# specs
+# Microsoft: https://learn.microsoft.com/en-gb/typography/opentype/spec/otff#font-tables
+# Apple: https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6.html
+
+
 # errors that invalidate only one strike or resource, not the whole file
 
 class ResourceFormatError(FileFormatError):
@@ -831,6 +836,8 @@ def _convert_os_2_props(os_2, vert_fu_p_pix, hori_fu_p_pix):
         line_height=(
             os_2.sTypoAscender + abs(os_2.sTypoDescender) + os_2.sTypoLineGap
         ) // vert_fu_p_pix,
+        strikethrough_thickness=os_2.yStrikeoutSize // vert_fu_p_pix,
+        strikethrough_ascent=os_2.yStrikeoutPosition // vert_fu_p_pix,
     )
     if os_2.version > 1:
         props |= Props(

@@ -626,10 +626,10 @@ def convert_os2_properties(font_data):
         weight=_WEIGHT_MAP.get(metrics.usWeightClass, ''),
         setwidth=_SETWIDTH_MAP.get(metrics.usWidthClass, ''),
         slant='italic' if metrics.fsSelectionFlags.FM_SEL_ITALIC else 'roman',
-        decoration=' '.join(decoration)
-        # # strikeout stroke thickness
-        # yStrikeoutSize='int16',
-        # # strikeout height above baseline
-        # yStrikeoutPosition='int16',
+        decoration=' '.join(decoration),
+        # strikeout stroke thickness
+        strikethrough_thickness=metrics.yStrikeoutSize,
+        # strikeout height above baseline
+        strikethrough_ascent=metrics.yStrikeoutPosition,
     )
     return properties
