@@ -431,9 +431,11 @@ class TestFeatures(BaseTester):
         text = monobit.render(font, b'012').as_text()
         assert_text_eq(text, self.bearing_testtext)
 
-    # proportional formats that don't support negative bearings:
+    # proportional formats that have writers but don't support negative bearings:
     # consoleet
+    # dosstart
     # edwin
+    # figlet
     # geos
     # hexdraw
     # image, imageset
@@ -448,12 +450,6 @@ class TestFeatures(BaseTester):
 
     def test_bmfont_negbearings(self):
         self._render_bearings('bmfont')
-
-    def test_dosstart_negbearings(self):
-        self._render_bearings('dosstart')
-
-    def test_figlet_negbearings(self):
-        self._render_bearings('figlet')
 
     def test_fzx_negbearings(self):
         self._render_bearings('fzx')
