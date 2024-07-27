@@ -426,11 +426,14 @@ class TestFeatures(BaseTester):
 ..@..
 """
 
-    def _render_bearings(self, format, **save_kwargs):
+    def _render_bearings(self, format, char=False, **save_kwargs):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
         monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
         font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
-        text = monobit.render(font, b'012').as_text()
+        if char:
+            text = monobit.render(font, '012').as_text()
+        else:
+            text = monobit.render(font, b'012').as_text()
         assert_text_eq(text, self.bearing_testtext)
 
     # proportional formats that have writers but don't support negative bearings:
@@ -484,7 +487,7 @@ class TestFeatures(BaseTester):
         self._render_bearings('pilfont')
 
     def test_sfnt_negbearings(self):
-        self._render_bearings('sfnt')
+        self._render_bearings('sfnt', char=True)
 
     def test_vfont_negbearings(self):
         self._render_bearings('vfont')
