@@ -218,51 +218,98 @@ class TestFeatures(BaseTester):
         text1 = monobit.render(prop1, b'testing').as_text()
         assert_text_eq(text1, self.proptext)
 
-    def _render_proportional(self, format, **save_kwargs):
+    def _render_proportional(self, format, *, load_kwargs=(), save_kwargs=()):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
-        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format, **save_kwargs)
-        prop2, *_ = monobit.load(self.temp_path / f'wbfont_prop.{format}', format=format)
+        monobit.save(
+            prop1, self.temp_path / f'wbfont_prop.{format}',
+            format=format, **(save_kwargs or {}),
+        )
+        prop2, *_ = monobit.load(
+            self.temp_path / f'wbfont_prop.{format}',
+            format=format, **(load_kwargs or {}),
+        )
         text2 = monobit.render(prop2, b'testing').as_text()
         assert_text_eq(text2, self.proptext)
 
     def test_yaff_proportional(self):
         self._render_proportional('yaff')
 
-    def test_draw_proportional(self):
-        self._render_proportional('hexdraw')
-
-    def test_win_proportional(self):
-        self._render_proportional('mzfon')
-
-    def test_fzx_proportional(self):
-        self._render_proportional('fzx')
-
     def test_bdf_proportional(self):
         self._render_proportional('bdf')
 
-    def test_gdos_proportional(self):
-        self._render_proportional('gdos')
+    def test_bmfont_proportional(self):
+        self._render_proportional('bmfont')
+
+    def test_consoleet_proportional(self):
+        self._render_proportional('consoleet')
+
+    def test_dosstart_proportional(self):
+        self._render_proportional('dosstart')
+
+    def test_edwin_proportional(self):
+        self._render_proportional('edwin')
 
     def test_figlet_proportional(self):
         self._render_proportional('figlet')
 
-    def test_vfont_proportional(self):
-        self._render_proportional('vfont')
+    def test_fzx_proportional(self):
+        self._render_proportional('fzx')
 
-    def test_iigs_proportional(self):
-        self._render_proportional('iigs')
+    def test_gdos_proportional(self):
+        self._render_proportional('gdos')
 
-    def test_nfnt_proportional(self):
-        self._render_proportional('nfnt')
+    def test_geos_proportional(self):
+        self._render_proportional('geos')
+
+    def test_gfxfont_proportional(self):
+        self._render_proportional('gfxfont')
+
+    def test_draw_proportional(self):
+        self._render_proportional('hexdraw')
 
     def test_hppcl_proportional(self):
         self._render_proportional('hppcl')
 
     def test_hppcl_landscape_proportional(self):
-        self._render_proportional('hppcl', orientation='landscape')
+        self._render_proportional(
+            'hppcl', save_kwargs=dict(orientation='landscape')
+        )
+
+    def test_image_proportional(self):
+        self._render_proportional('image', load_kwargs=dict(table_size=(32, 7)))
+
+    def test_imageset_proportional(self):
+        self._render_proportional('imageset')
+
+    def test_iigs_proportional(self):
+        self._render_proportional('iigs')
 
     def test_dfont_proportional(self):
         self._render_proportional('mac')
+
+    def test_mkwinfont_proportional(self):
+        self._render_proportional('mkwinfont')
+
+    def test_win_proportional(self):
+        self._render_proportional('mzfon')
+
+    def test_nfnt_proportional(self):
+        self._render_proportional('nfnt')
+
+    def test_pcf_proportional(self):
+        self._render_proportional('pcf')
+
+    def test_pcgeos_proportional(self):
+        self._render_proportional('pcgeos')
+
+    def test_pilfont_proportional(self):
+        self._render_proportional('pilfont')
+
+    def test_sfont_proportional(self):
+        self._render_proportional('sfont')
+
+    def test_vfont_proportional(self):
+        self._render_proportional('vfont')
 
     def test_otb_proportional(self):
         format = 'sfnt'
@@ -384,17 +431,46 @@ class TestFeatures(BaseTester):
         text = monobit.render(font, b'012').as_text()
         assert_text_eq(text, self.bearing_testtext)
 
-    # def test_win_negbearings(self):
-    #     self._render_bearings('mzfon')
+    # proportional formats that don't support negative bearings:
+    # consoleet
+    # edwin
+    # hexdraw
+    # image, imageset
+    # windows, mkwinfont
+    # sfont
 
-    def test_fzx_negbearings(self):
-        self._render_bearings('fzx')
+    def test_yaff_negbearings(self):
+        self._render_bearings('yaff')
 
     def test_bdf_negbearings(self):
         self._render_bearings('bdf')
 
+    def test_bmfont_negbearings(self):
+        self._render_bearings('bmfont')
+
+    def test_dosstart_negbearings(self):
+        self._render_bearings('dosstart')
+
+    def test_figlet_negbearings(self):
+        self._render_bearings('figlet')
+
+    def test_fzx_negbearings(self):
+        self._render_bearings('fzx')
+
     def test_gdos_negbearings(self):
         self._render_bearings('gdos')
+
+    def test_geos_negbearings(self):
+        self._render_bearings('geos')
+
+    def test_gfxfont_negbearings(self):
+        self._render_bearings('gfxfont')
+
+    def test_hppcl_negbearings(self):
+        self._render_bearings('hppcl')
+
+    def test_hppcl_negbearings_landscape(self):
+        self._render_bearings('hppcl', orientation='landscape')
 
     def test_iigs_negbearings(self):
         self._render_bearings('iigs')
@@ -402,17 +478,20 @@ class TestFeatures(BaseTester):
     def test_nfnt_negbearings(self):
         self._render_bearings('nfnt')
 
-    # def test_figlet_negbearings(self):
-    #     self._render_bearings('figlet')
+    def test_pcgeos_negbearings(self):
+        self._render_bearings('pcgeos')
+
+    def test_pcf_negbearings(self):
+        self._render_bearings('pcf')
+
+    def test_pilfont_negbearings(self):
+        self._render_bearings('pilfont')
+
+    def test_sfnt_negbearings(self):
+        self._render_bearings('sfnt')
 
     def test_vfont_negbearings(self):
         self._render_bearings('vfont')
-
-    def test_hppcl_negbearings(self):
-        self._render_bearings('hppcl')
-
-    def test_hppcl_negbearings_landscape(self):
-        self._render_bearings('hppcl', orientation='landscape')
 
     # vertical negative bearings
 
