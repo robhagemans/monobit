@@ -133,10 +133,10 @@ if Image:
         # extract sub-images
         crops = tuple(
             img.crop((
-                margin.x + _col*step_x,
-                img.height - (margin.y + _row*step_y + cell.y * scale.y),
-                margin.x + _col*step_x + cell.x * scale.x,
-                img.height - (margin.y + _row*step_y),
+                min(img.width, margin.x + _col*step_x),
+                max(0, img.height - (margin.y + _row*step_y + cell.y*scale.y)),
+                min(img.width, margin.x + _col*step_x + cell.x*scale.x),
+                max(0, img.height - (margin.y + _row*step_y)),
             ))
             for _row, _col in traverse
         )
