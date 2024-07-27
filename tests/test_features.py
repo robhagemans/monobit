@@ -434,6 +434,7 @@ class TestFeatures(BaseTester):
     # proportional formats that don't support negative bearings:
     # consoleet
     # edwin
+    # geos
     # hexdraw
     # image, imageset
     # windows, mkwinfont
@@ -459,9 +460,6 @@ class TestFeatures(BaseTester):
 
     def test_gdos_negbearings(self):
         self._render_bearings('gdos')
-
-    def test_geos_negbearings(self):
-        self._render_bearings('geos')
 
     def test_gfxfont_negbearings(self):
         self._render_bearings('gfxfont')
