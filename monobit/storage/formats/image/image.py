@@ -348,6 +348,7 @@ def loop_save(fonts, location, prefix, suffix, save_func):
     """Loop over per-glyph files in container."""
     font = ensure_single(fonts)
     font = font.label(codepoint_from=font.encoding)
+    font = font.equalise_horizontal()
     width = len(f'{int(max(font.get_codepoints())):x}')
     for glyph in font.glyphs:
         if not glyph.codepoint:
