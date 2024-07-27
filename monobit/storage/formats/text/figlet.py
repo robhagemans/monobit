@@ -44,6 +44,7 @@ def load_figlet(instream, *, ink:str=''):
 def save_figlet(fonts, outstream):
     """Write fonts to a FIGlet .flf file."""
     font = ensure_single(fonts)
+    font = font.equalise_horizontal()
     flf_glyphs, flf_props, comments = _convert_to_flf(font)
     logging.info('figlet properties:')
     for line in str(flf_props).splitlines():
@@ -208,14 +209,14 @@ def _convert_from_flf(glyphs, props):
 def _convert_to_flf(font, hardblank='$'):
     """Convert monobit glyphs and properties to figlet."""
     # ensure we have unicode labels where possible
-    if not font.get_chars():
+    font = font.label()
+    font_chars = tuple(_c.value for _c in font.get_chars())
+    if not font_chars:
         raise FileFormatError('No figlet-storable codepoints in font.')
-    # count glyphs outside the default set
-    # we can only encode glyphs that have chars
     # latin-1 codepoints, so we can just use chr()
     flf_chars = tuple(chr(_cp) for _cp in _CODEPOINTS)
     # exclude NULL which is used for the default char
-    coded_chars = set(font.get_chars()) - set(flf_chars) - set('\0')
+    coded_chars = set(font_chars) - set(flf_chars) - set('\0')
     # construct flf properties
     props = Props(
         signature_hardblank=_SIGNATURE + hardblank,
@@ -244,12 +245,12 @@ def _convert_to_flf(font, hardblank='$'):
     # first get glyphs in default repertoire
     # fill missing glyphs with empties
     glyphs = [
-        font.get_glyph(_chr, missing='empty').modify(char=_chr)
+        font.get_glyph(char=_chr, missing='empty').modify(char=_chr)
         for _chr in flf_chars
     ]
     # code-tagged glyphs
     glyphs.extend(
-        font.get_glyph(_chr).modify(char=_chr) for _chr in sorted(coded_chars)
+        font.get_glyph(char=_chr).modify(char=_chr) for _chr in sorted(coded_chars)
     )
     # map default glyph to codepoint zero
     # > If a FIGcharacter with code 0 is present, it is treated
