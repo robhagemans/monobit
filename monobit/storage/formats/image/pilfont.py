@@ -129,5 +129,5 @@ if Image:
         # write image
         image_name = Path(outstream.name).stem + '.pbm'
         with outstream.where.open(image_name, 'w') as image_file:
-            image = glyph_map.as_image(ink=1, paper=0, border=0)
+            image = glyph_map.as_image(ink=1, paper=0, border=0, invert_y=True)
             image.save(image_file, format='png')
