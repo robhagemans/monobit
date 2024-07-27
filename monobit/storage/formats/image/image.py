@@ -103,6 +103,8 @@ if Image:
                 cell = Coord(0, 0)
             else:
                 table_size = Coord(0, 0)
+        elif cell is None:
+            cell = Coord(0, 0)
         # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
