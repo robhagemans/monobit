@@ -276,7 +276,9 @@ class TestFeatures(BaseTester):
         )
 
     def test_image_proportional(self):
-        self._render_proportional('image', load_kwargs=dict(table_size=(32, 7)))
+        self._render_proportional(
+            'image', load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
+        )
 
     def test_imageset_proportional(self):
         self._render_proportional('imageset')
