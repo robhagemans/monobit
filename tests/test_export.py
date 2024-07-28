@@ -38,6 +38,16 @@ class TestExport(BaseTester):
         self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
+    def _export_8x8(self, *, format, label='A', count=919, save_kwargs=(), load_kwargs=()):
+        """Test exporting 8x8 files."""
+        file = self.temp_path / f'8x8.{format}'
+        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
+        monobit.save(font, file, format=format, **(save_kwargs or {}))
+        font, *_ = monobit.load(file, format=format, **(load_kwargs or {}))
+        # only 8-bit codepoints; input font excludes [0, 0x20) and [0x80, 0xa0)
+        self.assertEqual(len(font.glyphs), count)
+        self.assertEqual(font.get_glyph(label).reduce().as_text(), self.fixed4x6_A)
+
     # BDF
 
     def test_export_bdf(self):
@@ -308,13 +318,8 @@ class TestExport(BaseTester):
 
     def test_export_bbc(self):
         """Test exporting bbc files."""
-        file = self.temp_path / '4x6.bbc'
-        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
-        monobit.save(font, file, format='bbc')
-        font, *_ = monobit.load(file)
         # only 8-bit codepoints; input font excludes [0, 0x20) and [0x80, 0xa0)
-        self.assertEqual(len(font.glyphs), 191)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+        self._export_8x8(format='bbc', count=191, label=b'A')
 
     # HBF
 
@@ -345,12 +350,7 @@ class TestExport(BaseTester):
 
     def test_export_optiks(self):
         """Test exporting Optiks PCR files."""
-        file = self.temp_path / '4x6.pcr'
-        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
-        monobit.save(font, file)
-        font, *_ = monobit.load(file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+        self._export_8x8(format='pcr', count=256, label=b'A')
 
     # Write On!
 
@@ -375,21 +375,14 @@ class TestExport(BaseTester):
 
     def test_export_64c(self):
         """Test exporting 64c files."""
-        fnt_file = self.temp_path / '8x8.64c'
-        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
-        monobit.save(font, fnt_file)
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 919)
+        # labelling is not correct
+        self._export_8x8(format='64c', label=0x22)
 
     # +3DOS
 
     def test_export_plus3dos(self):
         """Test exporting plus3dos files."""
-        fnt_file = self.temp_path / '8x8.p3d'
-        font = self.fixed4x6.expand(right=4, bottom=2, adjust_metrics=False)
-        monobit.save(font, fnt_file, format='plus3dos')
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 96)
+        self._export_8x8(format='plus3dos', count=96, label=b'A')
 
     # GRASP / PCPaint old format
 
