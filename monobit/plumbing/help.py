@@ -6,7 +6,9 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from ..storage.base import (
-    loaders, savers, wrappers, containers, container_loaders, container_savers
+    loaders, savers,
+    container_loaders, container_savers,
+    encoders, decoders, containers,
 )
 from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
@@ -97,29 +99,28 @@ def print_help(command_args, usage, operations, global_options):
 def _print_context_help(command, args, kwargs, **ignore):
     format = kwargs.get('format', '')
     if command == 'load':
-        try:
-            func, *_ = container_loaders.get_for(format=format)
-        except ValueError:
-            func, *_ = loaders.get_for(format=format)
+        funcs = container_loaders.get_for(format=format)
+        if not funcs:
+            funcs = loaders.get_for(format=format)
     else:
-        try:
-            func, *_ = container_savers.get_for(format=format)
-        except ValueError:
-            func, *_ = savers.get_for(format=format)
-    if func:
-        _print_section(f'{command} -format={format}', func)
+        funcs = container_savers.get_for(format=format)
+        if not funcs:
+            funcs = savers.get_for(format=format)
+    if funcs:
+        func = funcs[0]
+        _print_section(f'{command} -format={func.format}', func)
     container_format = kwargs.get('container_format', '')
-    try:
-        wrapper_classes = wrappers.get_for(format=container_format)
-        func = wrapper_classes[0].__init__
-    except (ValueError, IndexError):
-        pass
+    if command == 'load':
+        funcs = decoders.get_for(format=container_format)
     else:
-        _print_section(f'-container-format={container_format}', func)
-    try:
-        container_classes = containers.get_for(format=container_format)
-        func = container_classes[0].__init__
-    except (ValueError, IndexError):
-        pass
-    else:
+        funcs = encoders.get_for(format=container_format)
+    if funcs:
+        func = funcs[0]
+        _print_section(f'-container-format={func.format}', func)
+    container_classes = containers.get_for(format=container_format)
+    if containers:
+        if command == 'load':
+            func = container_classes[0].decode
+        else:
+            func = container_classes[0].encode
         _print_section(f'-container-format={container_format}', func)

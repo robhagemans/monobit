@@ -2225,5 +2225,11 @@
     },
     "freedos-58335": {
         "filename": "freedos/58335.ucp"
+    },
+    "pc-geos" : {
+        "filename": "manual/pc-geos.ucp",
+        "overlays": [
+            "ascii"
+        ]
     }
 }

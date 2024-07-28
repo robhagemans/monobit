@@ -9,7 +9,6 @@ import logging
 from functools import wraps, partial
 
 from ..base import Any, passthrough, to_int, CONVERTERS, NOT_SET
-from .history import record_history
 
 
 class ArgumentError(TypeError):
@@ -37,10 +36,8 @@ def scriptable(
     Decorated functions get
     - script arguments in annotations
     - automatic type conversion
-    - recorded history
 
     script_args: additional arguments not given in annotations
-    record: record in history log
     pack_operation: function works on sequence of fonts
     wrapper: enable keyword argument passthrough
     """
@@ -63,8 +60,6 @@ def scriptable(
     _scriptable_func = convert_arguments(_scriptable_func)
     if not wrapper:
         _scriptable_func = check_arguments(_scriptable_func)
-    if record:
-        _scriptable_func = record_history(_scriptable_func)
     _scriptable_func.pack_operation = pack_operation
     # register the scriptable function
     scriptables[_scriptable_func.__name__] = _scriptable_func
@@ -106,8 +101,17 @@ def convert_arguments(func):
     return _converted_func
 
 
+
+def manage_arguments(loader):
+    loader = convert_arguments(loader)
+    loader = check_arguments(loader)
+    return loader
+
+
 def take_arguments(func, argdict):
     """Subset the argument dictionary with args that occur in registered script args."""
+    if not argdict:
+        return {}
     _types = {
         _key: func.__annotations__.get(_key, Any)
         for _key in func.__annotations__

@@ -19,44 +19,49 @@ class TestCompressed(BaseTester):
     def _test_compressed(self, format):
         """Test importing/exporting compressed files."""
         compressed_file = self.temp_path / f'4x6.yaff.{format}'
-        monobit.save(self.fixed4x6, compressed_file)
+        monobit.save(self.fixed4x6, compressed_file, container_format=format)
         self.assertTrue(os.path.getsize(compressed_file) > 0)
-        font, *_ = monobit.load(compressed_file)
+        font, *_ = monobit.load(compressed_file, container_format=format)
         self.assertEqual(len(font.glyphs), 919)
 
     def test_gzip(self):
         """Test importing/exporting gzip compressed files."""
-        self._test_compressed('gz')
+        self._test_compressed('gzip')
 
-    def test_lzma(self):
+    def test_xz(self):
         """Test importing/exporting lzma compressed files."""
         self._test_compressed('xz')
 
-    def test_bz2(self):
+    def test_lzma(self):
+        """Test importing/exporting lzma compressed files."""
+        self._test_compressed('lzma')
+
+    def test_bzip2(self):
         """Test importing/exporting bzip2 compressed files."""
-        self._test_compressed('bz2')
+        self._test_compressed('bzip2')
 
     def test_compress(self):
         """Test importing/exporting compress compressed files."""
-        self._test_compressed('Z')
+        self._test_compressed('compress')
 
-    def _test_double(self, format):
+
+    def _test_double(self, suffix):
         """Test doubly compressed files."""
-        container_file = self.font_path / f'double.yaff.{format}'
+        container_file = self.font_path / f'double.yaff.{suffix}'
         font, *_ = monobit.load(container_file)
         self.assertEqual(len(font.glyphs), 919)
 
     def test_double_gzip2(self):
         """Test importing doubly gzip compressed files."""
-        self._test_double('gz')
+        self._test_double(suffix='gz')
 
-    def test_double_lzma(self):
+    def test_double_xz(self):
         """Test importing doubly lzma compressed files."""
-        self._test_double('xz')
+        self._test_double(suffix='xz')
 
     def test_double_bz2(self):
         """Test importing doubly bzip2 compressed files."""
-        self._test_double('bz2')
+        self._test_double(suffix='bz2')
 
 
 class TestContainers(BaseTester):
@@ -293,22 +298,19 @@ class TestWrappers(BaseTester):
         """Test importing c source files."""
         font, *_ = monobit.load(
             self.font_path / '4x6.c' / 'font_Fixed_Medium_6',
-            cell=(4, 6)
+            cell=(4, 6),
+            container_format='c',
         )
         self.assertEqual(len(font.glyphs), 919)
 
-    def test_import_bas(self):
+    def test_import_basic(self):
         """Test importing BASIC source files."""
-        font, *_ = monobit.load(
-            self.font_path / '4x6.bas', cell=(4, 6)
-        )
+        font, *_ = monobit.load(self.font_path / '4x6.bas', cell=(4, 6))
         self.assertEqual(len(font.glyphs), 919)
 
     def test_import_intel(self):
         """Test importing Intel Hex files."""
-        font, *_ = monobit.load(
-            self.font_path / '4x6.ihex', cell=(4, 6)
-        )
+        font, *_ = monobit.load(self.font_path / '4x6.ihex', cell=(4, 6))
         self.assertEqual(len(font.glyphs), 919)
 
     gsos_umich = (
@@ -337,27 +339,31 @@ class TestWrappers(BaseTester):
 
     def test_export_c(self):
         """Test exporting c source files."""
-        self._test_export_textbin(suffix='c')
+        self._test_export_textbin(suffix='c', container_format='c')
 
     def test_export_py(self):
         """Test exporting Python source files."""
-        self._test_export_textbin(suffix='py')
+        self._test_export_textbin(suffix='py', container_format='python')
+
+    def test_export_py_tuple(self):
+        """Test exporting Python source files."""
+        self._test_export_textbin(suffix='py', container_format='python-tuple')
 
     def test_export_json(self):
         """Test exporting JSON source files."""
-        self._test_export_textbin(suffix='json')
+        self._test_export_textbin(suffix='json', container_format='json')
 
     def test_export_pas(self):
         """Test exporting Pascal source files."""
-        self._test_export_textbin(suffix='pas')
+        self._test_export_textbin(suffix='pas', container_format='pascal')
 
-    def test_export_bas(self):
+    def test_export_basic(self):
         """Test exporting BASIC source files."""
-        self._test_export_textbin(suffix='bas')
+        self._test_export_textbin(suffix='bas', container_format='basic')
 
     def test_export_intel(self):
         """Test exporting Intel Hex files."""
-        self._test_export_textbin(suffix='ihex')
+        self._test_export_textbin(suffix='ihex', container_format='intel')
 
     def test_export_base64(self):
         """Test exporting base64 files."""

@@ -29,7 +29,7 @@ _NON_TEXT_BYTES = (
 )
 
 
-def maybe_text(instream):
+def looks_like_text(instream):
     """
     Check if a binary input stream looks a bit like it might hold utf-8 text.
     Currently just checks for unexpected bytes in a short sample.
@@ -89,13 +89,11 @@ class MagicRegistry:
             try:
                 converter = (self._names[format],)
             except KeyError:
-                raise ValueError(
-                    f'Format specifier `{format}` not recognised'
-                )
+                return ()
         else:
             converter = self.identify(file)
             if not converter:
-                if not file or file.mode == 'w' or maybe_text(file):
+                if not file or file.mode == 'w' or looks_like_text(file):
                     format = self._default_text
                 else:
                     format = self._default_binary
@@ -106,7 +104,7 @@ class MagicRegistry:
                         level = logging.DEBUG
                     logging.log(
                         level,
-                        f'Could not infer format from filename `{file.name}`. '
+                        f"Could not infer format from file '{file.name}'. "
                         f'Falling back to default `{format}` format'
                     )
                 try:
@@ -115,7 +113,12 @@ class MagicRegistry:
                     pass
         return converter
 
-    def register(self, name='', magic=(), patterns=(), template=(), linked=None):
+    def register(
+            self, name='',
+            magic=(), patterns=(), template=(),
+            text=False,
+            linked=None,
+        ):
         """
         Decorator to register converter for file type.
 
@@ -123,6 +126,7 @@ class MagicRegistry:
         magic: magic sequences for this format (no effect for savers)
         patterns: filename patterns for this format
         template: template to generate filenames
+        text: text-based format
         linked: earlier registration to take information from
         """
 
@@ -132,12 +136,14 @@ class MagicRegistry:
             converter.magic = magic
             converter.patterns = patterns
             converter.template = template
+            converter.text = text
             if linked:
                 # take from linked registration
                 converter.format = converter.format or linked.format
                 converter.magic = converter.magic or linked.magic
                 converter.patterns = converter.patterns or linked.patterns
                 converter.template = converter.template or linked.template
+                converter.text = converter.text or linked.text
 
             if not converter.format:
                 raise ValueError('No registration name given')
@@ -182,6 +188,7 @@ class MagicRegistry:
         if not file:
             return ()
         matches = []
+        maybe_text = looks_like_text(file)
         ## match magic on readable files
         if file.mode == 'r':
             for magic, converter in self._magic:
@@ -199,7 +206,13 @@ class MagicRegistry:
                     'Filename matches pattern for format `%s`.',
                     converter.format
                 )
-                glob_matches.append(converter)
+                if converter.text and not maybe_text:
+                    logging.debug(
+                        'but format `%s` requires text.',
+                        converter.format
+                    )
+                else:
+                    glob_matches.append(converter)
         matches.extend(_c for _c in glob_matches if _c not in matches)
         return tuple(matches)
 

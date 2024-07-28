@@ -142,10 +142,12 @@ class GlyphMap:
     def as_image(
             self, *,
             ink=255, paper=0, border=0,
-            sheet=0,
+            sheet=0, invert_y=False,
         ):
         """Convert glyph map to image."""
-        images = self.to_images(ink=ink, paper=paper, border=border)
+        images = self.to_images(
+            ink=ink, paper=paper, border=border, invert_y=invert_y,
+        )
         return images[sheet]
 
     def as_text(

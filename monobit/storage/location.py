@@ -10,17 +10,17 @@ import itertools
 from pathlib import Path
 from collections import deque
 
-from ..plumbing import take_arguments
+from ..plumbing import take_arguments, manage_arguments
 from .magic import FileFormatError, MagicRegistry
 from .streams import StreamBase, Stream, KeepOpen
-from .base import wrappers, containers
-from .containers.containers import Container
-from .containers.directory import Directory
+from .base import encoders, decoders, containers
+from .containers import Container
+from .containerformats.directory import Directory
 
 
 def open_location(
         stream_or_location, mode='r', overwrite=False, match_case=False,
-        container_format='', argdict=None,
+        container_format='', argdict=None, make_dir=False,
     ):
     """Point to given location; may include nested containers and wrappers."""
     if mode not in ('r', 'w'):
@@ -32,6 +32,7 @@ def open_location(
             stream_or_location, mode=mode,
             overwrite=overwrite, match_case=match_case,
             container_format=container_format, argdict=argdict,
+            make_dir=make_dir,
         )
     # assume stream_or_location is a file-like object
     return Location.from_stream(
@@ -46,7 +47,7 @@ class Location:
     def __init__(
             self, *,
             root=None, path='', mode='r', overwrite=False, match_case=False,
-            container_format='', argdict=None,
+            container_format='', argdict=None, make_dir=False,
         ):
         self.path = Path(path)
         self.mode = mode
@@ -68,7 +69,9 @@ class Location:
         self._leafpath = self.path
         # format parameters
         self._container_format = container_format.split('.')
+        self._make_dir = make_dir
         self.argdict = argdict
+        self._outermost_path = None
 
     def __repr__(self):
         """String representation."""
@@ -81,8 +84,8 @@ class Location:
     @classmethod
     def from_path(cls, path, **kwargs):
         """Create from path-like or string."""
-        path = Path(path)
-        root = path.anchor or '.'
+        path = Path(path).resolve()
+        root = path.anchor
         subpath = path.relative_to(root)
         return cls(
             # Directory objects doesn't really need to be closed
@@ -118,6 +121,11 @@ class Location:
         self.close()
         if exc_type == BrokenPipeError:
             return True
+        elif exc_type is not None:
+            if self._path_objects and self.mode == 'w':
+                root = self._path_objects[0]
+                if isinstance(root, Directory):
+                    root.remove(self._outermost_path)
 
     def resolve(self):
         """Resolve path, opening streams and containers as needed."""
@@ -133,17 +141,23 @@ class Location:
         """Close objects we opened on path."""
         # leave out the root object as we don't own it
         while self._stream_objects:
-            outer = self._stream_objects.pop()
+            self._outer_stream_object = self._stream_objects.pop()
             try:
-                outer.close()
+                self._outer_stream_object.close()
             except Exception as exc:
-                logging.warning('Exception while closing %s: %s', outer, exc)
+                logging.warning(
+                    'Exception while closing %s: %s',
+                    self._outer_stream_object, exc
+                )
         while len(self._path_objects) > 1:
             outer = self._path_objects.pop()
             try:
                 outer.close()
             except Exception as exc:
-                logging.warning('Exception while closing %s: %s', outer, exc)
+                logging.warning(
+                    'Exception while closing %s: %s',
+                    self._outer_stream_object, exc
+                )
         self.resolved = False
 
     @property
@@ -216,11 +230,12 @@ class Location:
         """Open a binary stream in the container."""
         container, subpath = self._get_container_and_subpath()
         self._check_overwrite(container, subpath / name, mode=mode)
-        if container.is_dir(subpath / name):
-            raise IsADirectoryError(
-                f"Cannot open stream on '{name}': is a directory."
-            )
-        stream = container.open(subpath / name, mode=mode)
+        if mode == 'r':
+            kwargs = take_arguments(container.decode, self.argdict)
+            stream = container.decode(subpath / name, **kwargs)
+        else:
+            kwargs = take_arguments(container.encode, self.argdict)
+            stream = container.encode(subpath / name, **kwargs)
         stream.where = self
         return stream
 
@@ -256,7 +271,7 @@ class Location:
         if isinstance(self._leaf, StreamBase):
             self._resolve_wrappers()
         if isinstance(self._leaf, Container):
-            self._resolve_container()
+            self._resolve_subpath()
 
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
@@ -267,25 +282,22 @@ class Location:
             else:
                 format = ''
             try:
-                wrapper_object = _open_container_or_wrapper(
-                    wrappers, stream,
-                    mode=self.mode, format=format, argdict=self.argdict,
+                unwrapped_stream = _get_transcoded_stream(
+                    stream, mode=self.mode, format=format, argdict=self.argdict,
                 )
-            except FileFormatError:
-                # not a wrapper
+            except FileFormatError as e:
+                # not a wrapper, maybe a container
+                logging.debug(e)
                 break
             else:
                 if self._container_format:
                     self._container_format.pop()
-                self._stream_objects.append(wrapper_object)
-                unwrapped_stream = wrapper_object.open()
                 self._stream_objects.append(unwrapped_stream)
                 stream = unwrapped_stream
         # check if innermost stream is a container
         try:
-            container_object = _open_container_or_wrapper(
-                containers, stream,
-                mode=self.mode, format=format, argdict=self.argdict,
+            container_object = _open_container(
+                containers, stream, mode=self.mode, format=format,
             )
         except FileFormatError:
             # innermost stream is a non-container stream.
@@ -303,43 +315,60 @@ class Location:
             self._stream_objects = []
             self._container_subpath = self._leafpath
 
-    def _resolve_container(self):
+    def _resolve_subpath(self):
+        """Resolve subpath on a container object."""
         container = self._leaf
-        # find the innermost existing file (if reading)
-        # or file name with suffix (if writing)
-        head, tail = self._find_next_node()
+        # stepwise match path elements with existing ones in container
+        # head is the innermost existing path element
+        head, tail = _match_path(self._leaf, self._leafpath, self.match_case)
+        if Path(head) == Path('.') and Path(tail) == Path('.'):
+            # path has resolved
+            return
         if self.mode == 'r':
-            is_dir = container.is_dir(head)
+            try:
+                # see if head points to a file -> open it
+                kwargs = take_arguments(container.decode, self.argdict)
+                stream = container.decode(head, **kwargs)
+            except IsADirectoryError:
+                if Path(tail) == Path('.'):
+                    # path has resolved; nothing further to open
+                    return
+                # head (innermost existing) is a subdirectory
+                # i.e. tail subpath does not exist
+                raise FileNotFoundError(
+                    f"Subpath '{tail}' of path '{head}' not found on container {container}."
+                )
+            else:
+                # remove used arguments
+                for kwarg in kwargs:
+                    del self.argdict[kwarg]
         else:
-            is_dir = not head.suffixes
-        if is_dir:
-            # innermost existing/creatable is a subdirectory
-            if Path(tail) == Path('.'):
-                # we are a directory, nothing to open
+            # step forward until a suffix is found, or we run out of path
+            if not head.suffixes:
+                head2, tail = _split_path_suffix(tail)
+                head /= head2
+            # head is now the innermost path element *to be created*
+            # check if we're asked to create an file or a subdirectory
+            # it's a subdirectory if (1) explicitly asked or (2) no suffix
+            if (
+                    self._make_dir
+                    or not head.suffixes
+                ):
+                # head (innermost creatable) should be a subdirectory
                 return
             else:
-                # tail subpath does not exist
-                if self.mode == 'r':
-                    raise FileNotFoundError(
-                        f"Subpath '{tail}' not found on container {container}."
-                    )
-                # new directory
-                return
-        else:
-            # head points to a file. open it and recurse
-            self._check_overwrite(container, head, mode=self.mode)
-            stream = container.open(head, mode=self.mode)
-            self._stream_objects.append(stream)
-            self._leafpath = tail
-            self._resolve()
-
-    def _find_next_node(self):
-        """Find the next existing node (container or file) in the path."""
-        head, tail = _match_path(self._leaf, self._leafpath, self.match_case)
-        if self.mode == 'w' and not head.suffixes:
-            head2, tail = _split_path_suffix(tail)
-            head /= head2
-        return head, tail
+                # head should be a file -> create it
+                self._check_overwrite(container, head, mode=self.mode)
+                if not self._outermost_path:
+                    self._outermost_path = head
+                kwargs = take_arguments(container.encode, self.argdict)
+                stream = container.encode(head, **kwargs)
+                for kwarg in kwargs:
+                    del self.argdict[kwarg]
+        # recurse on successfully opened file
+        self._stream_objects.append(stream)
+        self._leafpath = tail
+        self._resolve()
 
 
 def _split_path_suffix(path):
@@ -393,17 +422,18 @@ def _contains(container, path, match_case):
     return tail == Path('.')
 
 
-def _open_container_or_wrapper(
+def _open_container(
         registry, instream, *,
-        format='', mode='r', argdict=None
+        format='', mode='r'
     ):
-    """Open container or wrapper on open stream."""
-    argdict = argdict or {}
+    """Open container on open stream."""
     # identify file type
-    try:
-        fitting_classes = registry.get_for(instream, format=format)
-    except ValueError as e:
-        raise FileFormatError(e)
+    fitting_classes = registry.get_for(instream, format=format)
+    if not fitting_classes:
+        msg = "Container format not recognised"
+        if format:
+            msg += f': `{format}`'
+        raise FileFormatError(msg)
     last_error = None
     for cls in fitting_classes:
         if mode == 'r':
@@ -413,9 +443,47 @@ def _open_container_or_wrapper(
             instream.name, cls.format
         )
         try:
-            kwargs = take_arguments(cls.__init__, argdict)
-            # returns container or wrapper object
-            container_wrapper = cls(instream, mode=mode, **kwargs)
+            # returns container object
+            container = cls(instream, mode=mode)
+        except FileFormatError as e:
+            logging.debug(e)
+            last_error = e
+            continue
+        else:
+            return container
+    if last_error:
+        raise last_error
+    message = f"Cannot open container on stream '{instream.name}'"
+    if format:
+        message += f': format specifier `{format}` not recognised'
+    raise FileFormatError(message)
+
+
+def _get_transcoded_stream(
+        instream, *,
+        format='', mode='r', argdict=None
+    ):
+    """Open wrapper on open stream."""
+    argdict = argdict or {}
+    if mode == 'r':
+        registry = decoders
+    elif mode == 'w':
+        registry = encoders
+    else:
+        raise ValueError(f"`mode` must be 'r' or 'w', not {mode}.")
+    # identify file type
+    last_error = None
+    for transcoder in iter_funcs_from_registry(registry, instream, format):
+        if mode == 'r':
+            instream.seek(0)
+        logging.info(
+            "Transcoding stream '%s' with wrapper format `%s`",
+            instream.name, transcoder.format
+        )
+        try:
+            # pick arguments we can use
+            kwargs = take_arguments(transcoder, argdict)
+            transcoded_stream = transcoder(instream, **kwargs)
         except FileFormatError as e:
             logging.debug(e)
             last_error = e
@@ -424,10 +492,22 @@ def _open_container_or_wrapper(
             # remove used arguments
             for kwarg in kwargs:
                 del argdict[kwarg]
-            return container_wrapper
+            return transcoded_stream
     if last_error:
         raise last_error
-    message = f"Cannot open container or wrapper on stream '{instream.name}'"
+    message = f"Cannot transcode stream '{instream.name}'"
     if format:
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)
+
+
+def iter_funcs_from_registry(registry, instream, format):
+    """
+    Iterate over and wrap functions stored in a MagicRegistry
+    that fit a given stream and format.
+    """
+    # identify file type
+    fitting_loaders = registry.get_for(instream, format=format)
+    for loader in fitting_loaders:
+        yield manage_arguments(loader)
+    return

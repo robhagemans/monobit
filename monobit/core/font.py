@@ -1,7 +1,7 @@
 """
 monobit.core.font - representation of font
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -20,7 +20,7 @@ from monobit.base import extend_string
 from monobit.base import HasProps, writable_property, checked_property
 
 from .labels import Tag, Char, Codepoint, Label, to_label
-from .glyph import Glyph
+from .glyph import Glyph, KernTable
 from .raster import turn_method
 
 
@@ -158,8 +158,12 @@ class FontProperties:
     # number of pixels in underline
     # we don't implement the XLFD calculation based on average stem width
     underline_thickness: int = 1
+    # number of pixels in strikethrough
+    strikethrough_thickness: int = 1
     # position of underline below baseline. 0 means underline rests on baseline itself, 1 is one line below
     underline_descent: int
+    # position of strikethorugh above baseline. 1 means strikethrough rests on baseline
+    strikethrough_ascent: int
     # recommended superscript size in pixels.
     superscript_size: int
     # recommended subscript size in pixels.
@@ -569,6 +573,15 @@ class Font(HasProps):
         # they may meam something else with the 'top of the baseline'?
         return 1 + ceildiv(max_descent, 2)
 
+
+    @writable_property
+    def strikethrough_ascent(self):
+        """
+        Position of strikethrough above baseline.
+        1 means strikethrough on baseline itself.
+        """
+        return self.x_height // 2
+
     @writable_property
     def superscript_size(self):
         """Recommended superscript size in pixels."""
@@ -883,6 +896,8 @@ class Font(HasProps):
                 if label == self.word_boundary:
                     return self.get_space_glyph()
                 return self.get_default_glyph()
+            if missing == 'space':
+                return self.get_space_glyph()
             if missing == 'empty':
                 return self.get_empty_glyph()
             if missing is None or isinstance(missing, Glyph):
@@ -931,6 +946,11 @@ class Font(HasProps):
     @cache
     def get_space_glyph(self):
         """Get blank glyph with advance width defined by word-space property."""
+        if self.glyphs and self.spacing in ('character-cell', 'multi-cell'):
+            return Glyph.blank(
+                width=self.cell_size.x, height=self.cell_size.y,
+                shift_up=self.glyphs[0].shift_up
+            )
         # pylint: disable=invalid-unary-operand-type
         return Glyph.blank(
             width=self.word_space, height=self.pixel_size,
@@ -1056,15 +1076,19 @@ class Font(HasProps):
             if isinstance(_v, Label)
         }
         left_kerning = (
-            {_update_label(_k): _v for _k, _v in _glyph.left_kerning.items()}
+            KernTable({
+                _update_label(_k): _v for _k, _v in _glyph.left_kerning.items()
+            })
             for _glyph in glyphs
         )
         right_kerning = (
-            {_update_label(_k): _v for _k, _v in _glyph.right_kerning.items()}
+            KernTable({
+                _update_label(_k): _v for _k, _v in _glyph.right_kerning.items()
+            })
             for _glyph in glyphs
         )
         glyphs = tuple(
-            _g.modify(left_kerning=_l, right_kerning=_r)
+            _g.modify(left_kerning=_l or None, right_kerning=_r or None)
             for _g, _l, _r in zip(glyphs, left_kerning, right_kerning)
         )
         return glyphs, references
