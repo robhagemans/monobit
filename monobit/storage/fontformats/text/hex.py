@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.text.hex - Unifont Hex format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -19,14 +19,6 @@ from monobit.storage.utils.limitations import ensure_single
 
 
 @loaders.register(
-    name='pcbasic',
-    text=True,
-)
-def load_hext(instream):
-    """Load 8xN multi-cell font from PC-BASIC extended .HEX file."""
-    return _load_hex(instream)
-
-@loaders.register(
     name='unifont',
     patterns=('*.hex',),
     text=True,
@@ -35,17 +27,18 @@ def load_hex(instream):
     """Load 8x16 multi-cell font from Unifont .HEX file."""
     return _load_hex(instream)
 
-@savers.register(linked=load_hex)
-def save_hex(fonts, outstream):
-    """Save 8x16 multi-cell font to Unifont .HEX file."""
-    font = _validate(fonts)
-    _save_hex(font, outstream.text, _fits_in_hex)
 
-@savers.register(linked=load_hext)
-def save_hext(fonts, outstream):
-    """Save 8xN multi-cell font to PC-BASIC extended .HEX file."""
+@savers.register(linked=load_hex)
+def save_hex(fonts, outstream, extended:bool=False, unicode_sequences:bool=False):
+    """
+    Save multi-cell font to Unifont .HEX file.
+
+    extended: allow 8xN multi-cell fonts
+    unicode_sequences: allow unicode sequences
+    """
     font = _validate(fonts)
-    _save_hex(font, outstream.text, _fits_in_hext)
+    fits = _fit_func(extended, unicode_sequences)
+    _save_hex(font, outstream.text, fits)
 
 
 # loader
@@ -90,6 +83,7 @@ def _validate(fonts):
     font = font.equalise_horizontal()
     return font
 
+
 def _save_hex(font, outstream, fits):
     """Save 8x16 multi-cell font to Unifont or PC-BASIC Extended .HEX file."""
     # global comment
@@ -106,34 +100,52 @@ def _save_hex(font, outstream, fits):
         else:
             outstream.write(_format_glyph(glyph))
 
-def _fits_in_hex(glyph):
-    """Check if glyph fits in Unifont Hex format."""
-    if len(glyph.char) > 1:
-        logging.warning('Hex format does not support multi-codepoint grapheme clusters.')
-        return False
-    if glyph.height != 16 or glyph.width not in (8, 16):
-        logging.warning(
-            'Hex format only supports 8x16 or 16x16 glyphs, '
-            f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
-        )
-        return False
-    return True
 
-def _fits_in_hext(glyph):
-    """Check if glyph fits in PC-BASIC Extended Hex format."""
-    if glyph.width not in (8, 16):
-        logging.warning(
-            'Extended Hex format only supports glyphs of width 8 or 16 pixels, '
-            f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
-        )
-        return False
-    if glyph.height >= 32:
-        logging.warning(
-            'Extended Hex format only supports glyphs less than 32 pixels high, '
-            f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
-        )
-        return False
-    return True
+def _fit_func(extended, unicode_sequences):
+    """Check if glyph fits in Unifont Hex format."""
+
+    def _fits(glyph):
+        fits = True
+        if extended:
+            fits = fits and _check_8xN(glyph)
+        else:
+            fits = fits and _check_8x16(glyph)
+        if not unicode_sequences:
+            fits = fits and _check_char(glyph)
+        return fits
+
+    def _check_char(glyph):
+        if len(glyph.char) > 1:
+            logging.warning('Hex format does not support multi-codepoint grapheme clusters.')
+            return False
+        return True
+
+    def _check_8x16(glyph):
+        if glyph.height != 16 or glyph.width not in (8, 16):
+            logging.warning(
+                'Hex format only supports 8x16 or 16x16 glyphs, '
+                f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
+            )
+            return False
+        return True
+
+    def _check_8xN(glyph):
+        """Check if glyph fits in PC-BASIC Extended Hex format."""
+        if glyph.width not in (8, 16):
+            logging.warning(
+                'Extended Hex format only supports glyphs of width 8 or 16 pixels, '
+                f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
+            )
+            return False
+        if glyph.height >= 32:
+            logging.warning(
+                'Extended Hex format only supports glyphs less than 32 pixels high, '
+                f'glyph {glyph.char} is {glyph.width}x{glyph.height}.'
+            )
+            return False
+        return True
+
+    return _fits
 
 def _format_glyph(glyph):
     """Format glyph line for hex file."""
@@ -147,6 +159,7 @@ def _format_glyph(glyph):
             glyph.as_hex().upper()
         )
     )
+
 
 def _format_comment(comment, comm_char):
     """Format a multiline comment."""

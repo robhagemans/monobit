@@ -69,10 +69,12 @@ class TestCharCell(BaseTester):
         self.assertEqual(len(font.glyphs), count)
         assert_text_eq(font.get_glyph(label).as_text(), self.fixed8x8_A)
 
-
     def test_export_hex_r(self):
         """Test exporting extended hex files."""
-        self._test_export_charcell_reduced('pcbasic', label='A')
+        self._test_export_charcell_reduced(
+            'unifont', label='A',
+            save_kwargs=dict(extended=True, unicode_sequences=True)
+        )
 
     def test_export_psf_r(self):
         """Test exporting psf files."""
