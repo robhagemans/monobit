@@ -50,10 +50,10 @@ Original sources:
     modified, by any individual, group or organization, for any purpose.  
     (C) 2013 Alexander Taylor
 * `hershey-az.jhf`
-   - first 26 lines of `hersh.oc1` from Peter Holzmann's USENET distribution of the Hershey fonts
-   - see e.g. https://www.galleyrack.com/hershey/additional-fonts-for-VARKON/hershey/index.html
-   - The Hershey Fonts were originally created by Dr. A. V. Hershey
-   - See README for conditions
+  - first 26 lines of `hersh.oc1` from Peter Holzmann's USENET distribution of the Hershey fonts
+  - see e.g. https://www.galleyrack.com/hershey/additional-fonts-for-VARKON/hershey/index.html
+  - The Hershey Fonts were originally created by Dr. A. V. Hershey
+  - See README for conditions
 * Terminus Font, `ter-i12n.wsf` and `ter-u28.fnt`
   - Copyright (c) 2019 Dimitar Toshkov Zhekov
     Terminus Font is licensed under the SIL Open Font License, Version 1.1
@@ -65,15 +65,20 @@ Original sources:
     derived from or containing parts of Roman Czyborra's Unifont project
     (`unifont.hex`, `hex2bdf.pl`, `unscii-16-full.*`) which fall under GPL.
 * Spleen Font, `spleen5x8.h`
-   - https://github.com/NetBSD/src/blob/trunk/sys/dev/wsfont/spleen5x8.h
-   - Copyright (c) 2018-2021 Frederic Cambus <fcambus@openbsd.org>
-   - BSD 2-clause licence
+  - https://github.com/NetBSD/src/blob/trunk/sys/dev/wsfont/spleen5x8.h
+  - Copyright (c) 2018-2021 Frederic Cambus <fcambus@openbsd.org>
+  - BSD 2-clause licence
 * Free Sans `FreeSans9pt7b.h` - GNU FreeFont
-   - Original font https://www.gnu.org/software/freefont
-   - GNU General Public licence v3, with font exception
-   - Header file https://github.com/adafruit/Adafruit-GFX-Library/
-   - Copyright (c) 2012 Adafruit Industries.  All rights reserved.
-   - BSD 2-clause licence
+  - Original font https://www.gnu.org/software/freefont
+  - GNU General Public licence v3, with font exception
+  - Header file https://github.com/adafruit/Adafruit-GFX-Library/
+  - Copyright (c) 2012 Adafruit Industries.  All rights reserved.
+  - BSD 2-clause licence
+* Gallant `gallant12x22.h`
+  - https://github.com/NetBSD/src/blob/trunk/sys/dev/wsfont/gallant12x22.h
+  - Copyright (c) 1992, 1993
+    The Regents of the University of California.  All rights reserved.
+  - BSD 3-clause licence
 
 
 ### Derivatives of `4x6`
@@ -81,7 +86,7 @@ Original sources:
 * `4x6.yaff`, `4x6.fzx` were created from `4x6.bdf` using `monobit`
 * `4x6.c`, `4x6.c`, `4x6.iigs`, `4x6.sfp`, `4x6*.raw` were created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
-* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com`, `4x6.txt` were created from `4x6.psf` using `psftools` v1.1.1
+* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com`, `4x6.txt`, `4x6.wyse`, `4x6.wof` were created from `4x6.psf` using `psftools` v1.1.1
 * `4x6.ttf` was created from `4x6.bdf` using `fonttosfnt`
 * `4x6.otb`, `4x6.sfnt.dfont` and `4x6.ffms.ttf` were created from `4x6.bdf` using FontForge
 * `4x6.clt` was created from `4x6.bdf` using `vfontas`
@@ -89,7 +94,6 @@ Original sources:
 * `4x6*.pcf` were created from `4x6.bdf` using `bdftopcf`
 * `4x6.ihex` were created from `4x6.raw` using `srec_cat` (part of `srecord`)
 * `4x6.pil` and `4x6.pbm` were created from `4x6.bdf` using `pillow`
-* `4x6.wyse` and `4x6.wof` were created from `4x6.psf` using `psftools`
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`

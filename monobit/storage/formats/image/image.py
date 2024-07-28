@@ -103,6 +103,8 @@ if Image:
                 cell = Coord(0, 0)
             else:
                 table_size = Coord(0, 0)
+        elif cell is None:
+            cell = Coord(0, 0)
         # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
@@ -131,10 +133,10 @@ if Image:
         # extract sub-images
         crops = tuple(
             img.crop((
-                margin.x + _col*step_x,
-                img.height - (margin.y + _row*step_y + cell.y * scale.y),
-                margin.x + _col*step_x + cell.x * scale.x,
-                img.height - (margin.y + _row*step_y),
+                min(img.width, margin.x + _col*step_x),
+                max(0, img.height - (margin.y + _row*step_y + cell.y*scale.y)),
+                min(img.width, margin.x + _col*step_x + cell.x*scale.x),
+                max(0, img.height - (margin.y + _row*step_y)),
             ))
             for _row, _col in traverse
         )
@@ -346,6 +348,7 @@ def loop_save(fonts, location, prefix, suffix, save_func):
     """Loop over per-glyph files in container."""
     font = ensure_single(fonts)
     font = font.label(codepoint_from=font.encoding)
+    font = font.equalise_horizontal()
     width = len(f'{int(max(font.get_codepoints())):x}')
     for glyph in font.glyphs:
         if not glyph.codepoint:

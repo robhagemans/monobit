@@ -101,6 +101,7 @@ def _convert_mkwinfont(props, glyphs, comments):
     mb_props = dict(
         name=props.facename,
         copyright=props.copyright,
+        # .fd doesn't store internal/external leading, so it gets included in descent
         descent=int(props.height)-int(props.ascent),
         ascent=props.ascent,
         point_size=props.pointsize,
@@ -119,6 +120,7 @@ def _convert_mkwinfont(props, glyphs, comments):
         ),
         comment='\n\n'.join(comments),
     )
+    glyphs = (_g.modify(shift_up=-mb_props['descent']) for _g in glyphs)
     return Font(glyphs, **mb_props).label()
 
 
@@ -145,7 +147,7 @@ class MWFProperties(NonEmptyBlock):
         return not self.starts(line)
 
     def get_value(self):
-        return dict(_l.split(' ', 1) for _l in self.lines)
+        return dict(_l.partition(' ')[::2] for _l in self.lines)
 
 
 class MWFComment(DrawComment):
@@ -161,7 +163,7 @@ def _write_mkwinfont(font, outstream):
     props = _convert_to_mkwinfont_props(font)
 
     def _write_prop(key):
-        if props[key] is not None:
+        if props[key] is not None and props[key] != '':
             outstream.write(f'{key} {props[key]}\n')
 
     if font.get_comment():
@@ -201,7 +203,8 @@ def _convert_to_mkwinfont_props(font):
     return dict(
         facename=font.name,
         copyright=font.copyright,
-        height=font.pixel_size,
+        # .fd doesn't store internal/external leading, so we include everything
+        height=font.line_height,
         ascent=font.ascent,
         pointsize=font.point_size,
         italic=font.slant == 'italic',

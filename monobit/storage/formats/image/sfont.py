@@ -102,7 +102,7 @@ if Image:
         """
         font = ensure_single(fonts)
         font = font.equalise_horizontal()
-        # font = font.subset(codepoints=_SFONT_RANGE)
+        font = font.resample(codepoints=_SFONT_RANGE)
         glyphmap = GlyphMap()
         glyphmap.append_glyph(Glyph(), 0, 0)
         indicator = []

@@ -146,5 +146,122 @@ class TestCharCell(BaseTester):
         assert_text_eq(font.get_glyph(label).as_text(), glyph_0x100)
 
 
+
+class TestBigCell(BaseTester):
+    """Test exporting wider than 8 pixel charcell fonts."""
+
+    gallant = monobit.load(BaseTester.font_path / 'gallant12x22.h', format='netbsd')
+
+    gallant_A = """\
+.....@@.....
+.....@@.....
+....@.@@....
+....@.@@....
+....@..@....
+...@...@@...
+...@...@@...
+...@....@...
+..@@@@@@@@..
+..@.....@@..
+..@......@..
+.@.......@@.
+.@.......@@.
+@@@.....@@@@
+"""
+
+    def _export_bigcell(self, format, label='A'):
+        """Test exporting freebsd vt font files with two-cell glyphs."""
+        fnt_file = self.temp_path / 'gallant.fnt'
+        monobit.save(self.gallant, fnt_file, format=format)
+        font, *_ = monobit.load(fnt_file, format=format)
+        self.assertEqual(font.get_glyph(label).reduce().as_text(), self.gallant_A)
+
+    def test_bigcell_yaff(self):
+        self._export_bigcell(format='yaff')
+
+    def test_bigcell_dec(self):
+        self._export_bigcell(format='dec')
+
+    def test_bigcell_fontx(self):
+        self._export_bigcell(format='fontx', label=b'A')
+
+    def test_bigcell_grasp(self):
+        self._export_bigcell(format='grasp', label=b'A')
+
+    # HBF doesn't store latin range
+    # def test_bigcell_hbf(self):
+    #     self._export_bigcell(format='hbf')
+
+    def test_bigcell_netbsd(self):
+        self._export_bigcell(format='netbsd')
+
+    def test_bigcell_psf(self):
+        self._export_bigcell(format='psf')
+
+    def test_bigcell_psf2txt(self):
+        self._export_bigcell(format='psf2txt')
+
+    def test_bigcell_vtfont(self):
+        self._export_bigcell(format='vtfont')
+
+    def test_bigcell_wsfont(self):
+        self._export_bigcell(format='wsfont')
+
+
+class TestMultiCell(BaseTester):
+    """Test exporting multi-cell fonts."""
+
+    unscii_16 = monobit.load(BaseTester.font_path / 'unscii-16.hex')
+
+    unscii_16_A = """\
+..@@..
+.@@@@.
+@@..@@
+@@..@@
+@@..@@
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+"""
+
+    unscii_16_A_wide = """\
+....@@@@....
+..@@@@@@@@..
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@@@@@@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+@@@@....@@@@
+"""
+
+
+    def _export_multicell(self, format):
+        """Test exporting freebsd vt font files with two-cell glyphs."""
+        fnt_file = self.temp_path / 'unscii-16.fnt'
+        monobit.save(self.unscii_16, fnt_file, format=format)
+        font, *_ = monobit.load(fnt_file, format=format)
+        self.assertEqual(len(font.glyphs), 3240)
+        self.assertEqual(font.spacing, 'multi-cell')
+        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.unscii_16_A)
+        self.assertEqual(font.get_glyph('\uFF21').reduce().as_text(), self.unscii_16_A_wide)
+
+
+    def test_export_yaff_multicell(self):
+        self._export_multicell(format='yaff')
+
+    def test_export_vtfont_multicell(self):
+        self._export_multicell(format='vtfont')
+
+    def test_export_hex_multicell(self):
+        self._export_multicell(format='unifont')
+
+
 if __name__ == '__main__':
     unittest.main()
