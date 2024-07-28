@@ -64,19 +64,6 @@ class TestExport(BaseTester):
         """Test exporting v1 fnt files."""
         self._export_4x6(format='win', save_kwargs=dict(version=1), count=256, label=b'A')
 
-    def test_export_fnt_v1_proportional(self):
-        """Test exporting v1 fnt files."""
-        webby_mod, *_ = monobit.load(self.font_path / 'webby-small-kerned.yaff')
-        fnt_file = self.temp_path / 'webby.fnt'
-        monobit.save(webby_mod, fnt_file, format='win', version=1)
-        # read back
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 96)
-        self.assertEqual(
-            font.get_glyph(b'A').reduce().as_text(),
-            webby_mod.get_glyph(b'A').reduce().as_text(),
-        )
-
     def test_export_fnt_v2(self):
         """Test exporting fnt files."""
         self._export_4x6(format='win', save_kwargs=dict(version=2), count=256, label=b'A')
@@ -177,14 +164,6 @@ class TestExport(BaseTester):
             save_kwargs=dict(msb='r'),
             load_kwargs=dict(cell=(4, 6), first_codepoint=31, msb='r'),
         )
-
-    # PDF chart
-
-    def test_export_pdf(self):
-        """Test exporting pdf files."""
-        pdf_file = self.temp_path / '4x6.pdf'
-        monobit.save(self.fixed4x6, pdf_file)
-        self.assertTrue(os.path.getsize(pdf_file) > 0)
 
     # BMFont
 

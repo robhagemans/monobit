@@ -295,6 +295,10 @@ class TestFeatures(BaseTester):
     def test_win_proportional(self):
         self._render_proportional('mzfon')
 
+    def test_winv1_proportional(self):
+        # windows v1 .fnt stores proportional fonts differently from v2 and 3
+        self._render_proportional('win', save_kwargs=dict(version=1))
+
     def test_nfnt_proportional(self):
         self._render_proportional('nfnt')
 
