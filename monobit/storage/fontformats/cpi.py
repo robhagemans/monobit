@@ -16,8 +16,6 @@ from monobit.base.struct import little_endian as le, sizeof
 from monobit.storage import loaders, savers, FileFormatError, Magic
 from monobit.core import Font, Glyph
 
-from .raw import load_bitmap
-
 
 _ID_MS = b'FONT   '
 _ID_NT = b'FONT.NT'

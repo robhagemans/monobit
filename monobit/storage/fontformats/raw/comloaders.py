@@ -7,11 +7,11 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.storage import loaders, Magic, FileFormatError
 from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
-from .raw import load_bitmap, save_bitmap
+from .raw import load_bitmap
 
 
 ###############################################################################
