@@ -188,7 +188,7 @@ Character-cell formats
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;| binary | 8x14 multiples | - |
 | NetBSD wsfont binary  | `wsfont`   | `.wsf`                      |&check;|&check;| binary | any  | SB       |
 | Wyse-60 soft font     | `wyse`     |                             |&check;|&check;| esc    | 8x16 | -        |
-| XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;| binary | any  | -        |
+| XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;| binary | 8X<=32 | -        |
 
 
 MC multi-cell glyphs

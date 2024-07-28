@@ -86,6 +86,7 @@ def save_xbin(fonts, outstream):
     glyphs = (font.get_glyph(_cp, missing=blank) for _cp in range(count))
     header = _XBIN_HEADER(
         magic=_XBIN_MAGIC,
+        # no image stored, so no width and height
         fontsize=font.cell_size.y,
         font=1,
         has_512_glyphs=count==512,

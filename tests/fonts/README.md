@@ -74,6 +74,11 @@ Original sources:
   - Header file https://github.com/adafruit/Adafruit-GFX-Library/
   - Copyright (c) 2012 Adafruit Industries.  All rights reserved.
   - BSD 2-clause licence
+* Gallant `gallant12x22.h`
+  - https://github.com/NetBSD/src/blob/trunk/sys/dev/wsfont/gallant12x22.h
+  - Copyright (c) 1992, 1993
+    The Regents of the University of California.  All rights reserved.
+  - BSD 3-clause licence
 
 
 ### Derivatives of `4x6`
