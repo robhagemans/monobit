@@ -231,9 +231,11 @@ class Location:
         container, subpath = self._get_container_and_subpath()
         self._check_overwrite(container, subpath / name, mode=mode)
         if mode == 'r':
-            stream = container.decode(subpath / name)
+            kwargs = take_arguments(container.decode, self.argdict)
+            stream = container.decode(subpath / name, **kwargs)
         else:
-            stream = container.encode(subpath / name)
+            kwargs = take_arguments(container.encode, self.argdict)
+            stream = container.encode(subpath / name, **kwargs)
         stream.where = self
         return stream
 
@@ -295,8 +297,7 @@ class Location:
         # check if innermost stream is a container
         try:
             container_object = _open_container(
-                containers, stream,
-                mode=self.mode, format=format, argdict=self.argdict,
+                containers, stream, mode=self.mode, format=format,
             )
         except FileFormatError:
             # innermost stream is a non-container stream.
@@ -326,7 +327,8 @@ class Location:
         if self.mode == 'r':
             try:
                 # see if head points to a file -> open it
-                stream = container.decode(head)
+                kwargs = take_arguments(container.decode, self.argdict)
+                stream = container.decode(head, **kwargs)
             except IsADirectoryError:
                 if Path(tail) == Path('.'):
                     # path has resolved; nothing further to open
@@ -336,6 +338,10 @@ class Location:
                 raise FileNotFoundError(
                     f"Subpath '{tail}' of path '{head}' not found on container {container}."
                 )
+            else:
+                # remove used arguments
+                for kwarg in kwargs:
+                    del self.argdict[kwarg]
         else:
             # step forward until a suffix is found, or we run out of path
             if not head.suffixes:
@@ -355,7 +361,10 @@ class Location:
                 self._check_overwrite(container, head, mode=self.mode)
                 if not self._outermost_path:
                     self._outermost_path = head
-                stream = container.encode(head)
+                kwargs = take_arguments(container.encode, self.argdict)
+                stream = container.encode(head, **kwargs)
+                for kwarg in kwargs:
+                    del self.argdict[kwarg]
         # recurse on successfully opened file
         self._stream_objects.append(stream)
         self._leafpath = tail
@@ -415,10 +424,9 @@ def _contains(container, path, match_case):
 
 def _open_container(
         registry, instream, *,
-        format='', mode='r', argdict=None
+        format='', mode='r'
     ):
     """Open container on open stream."""
-    argdict = argdict or {}
     # identify file type
     fitting_classes = registry.get_for(instream, format=format)
     if not fitting_classes:
@@ -435,17 +443,13 @@ def _open_container(
             instream.name, cls.format
         )
         try:
-            kwargs = take_arguments(cls.__init__, argdict)
             # returns container object
-            container = cls(instream, mode=mode, **kwargs)
+            container = cls(instream, mode=mode)
         except FileFormatError as e:
             logging.debug(e)
             last_error = e
             continue
         else:
-            # remove used arguments
-            for kwarg in kwargs:
-                del argdict[kwarg]
             return container
     if last_error:
         raise last_error
@@ -455,12 +459,11 @@ def _open_container(
     raise FileFormatError(message)
 
 
-
 def _get_transcoded_stream(
         instream, *,
         format='', mode='r', argdict=None
     ):
-    """Open container or wrapper on open stream."""
+    """Open wrapper on open stream."""
     argdict = argdict or {}
     if mode == 'r':
         registry = decoders
