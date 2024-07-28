@@ -1,5 +1,5 @@
 """
-monobit.storage.converters - load and save fonts
+monobit.storage.fontfiles - load and save fonts
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

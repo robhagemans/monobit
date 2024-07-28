@@ -19,8 +19,6 @@ from monobit.encoding import EncodingName
 from monobit.storage.utils.source import CCodeReader, CCodeWriter
 from monobit.storage.utils.limitations import ensure_single, make_contiguous, ensure_charcell
 
-from .raw import load_bitmap, save_bitmap
-
 
 _GLYPH_FIELDS = (
     'bitmapOffset', 'width', 'height', 'xAdvance', 'xOffset', 'yOffset',

@@ -15,7 +15,7 @@ except ImportError:
 
 from ..magic import FileFormatError
 from ..base import containers
-from ..containers.containers import FlatFilterContainer
+from ..containers import FlatFilterContainer
 
 
 if libarchive:

@@ -13,7 +13,7 @@ from collections import deque
 
 from ..streams import Stream
 from ..base import containers
-from .containers import Container
+from ..containers import Container
 
 
 @containers.register(name='dir')

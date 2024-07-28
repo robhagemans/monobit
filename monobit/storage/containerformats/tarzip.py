@@ -13,7 +13,7 @@ import time
 from pathlib import Path, PurePosixPath
 from itertools import chain
 
-from .containers import Archive
+from ..containers import Archive
 from ..base import containers
 from ..streams import KeepOpen, Stream
 from ..magic import FileFormatError, Magic

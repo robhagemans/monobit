@@ -110,6 +110,8 @@ def manage_arguments(loader):
 
 def take_arguments(func, argdict):
     """Subset the argument dictionary with args that occur in registered script args."""
+    if not argdict:
+        return {}
     _types = {
         _key: func.__annotations__.get(_key, Any)
         for _key in func.__annotations__

@@ -11,7 +11,7 @@ from monobit.storage import loaders, savers
 from monobit.storage import Stream
 from monobit.storage import FileFormatError
 
-from monobit.storage.formats.sfnt import load_sfnt, SFNT_MAGIC
+from monobit.storage.fontformats.sfnt import load_sfnt, SFNT_MAGIC
 
 from .mz import MZ_HEADER, create_mz_stub
 from .windows.ne import create_ne, read_ne, NE_HEADER

@@ -13,7 +13,7 @@ from monobit.base.binary import align
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
 from ..base import containers
-from .containers import FlatFilterContainer
+from ..containers import FlatFilterContainer
 
 
 ##############################################################################
