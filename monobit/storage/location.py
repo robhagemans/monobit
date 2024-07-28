@@ -14,8 +14,8 @@ from ..plumbing import take_arguments, manage_arguments
 from .magic import FileFormatError, MagicRegistry
 from .streams import StreamBase, Stream, KeepOpen
 from .base import encoders, decoders, containers
-from .containers.containers import Container
-from .containers.directory import Directory
+from .containers import Container
+from .containerformats.directory import Directory
 
 
 def open_location(

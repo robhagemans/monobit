@@ -37,7 +37,7 @@ except ImportError:
 from ..magic import FileFormatError, Sentinel
 from ..base import containers
 from ...base import Props
-from .containers import SerialContainer
+from ..containers import SerialContainer
 
 
 if yenc:

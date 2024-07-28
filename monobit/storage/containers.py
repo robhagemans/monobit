@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.containers - base classes for containers
+monobit.storage.containers - base classes for containers
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -10,8 +10,8 @@ import itertools
 from io import BytesIO
 from pathlib import Path
 
-from ..magic import FileFormatError
-from ..streams import Stream, KeepOpen
+from .magic import FileFormatError
+from .streams import Stream, KeepOpen
 
 
 class Container:

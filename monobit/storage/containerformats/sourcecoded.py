@@ -11,7 +11,7 @@ from pathlib import Path
 
 from ..magic import FileFormatError
 from ..base import containers
-from ..containers.containers import SerialTextContainer
+from ..containers import SerialTextContainer
 from ..utils.source import (
     CCodeReader, CCodeWriter, PythonCodeReader, PythonCodeWriter,
     PythonTupleCodeReader, PythonTupleCodeWriter,

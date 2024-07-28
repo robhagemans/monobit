@@ -14,7 +14,7 @@ from monobit.base.struct import big_endian as be, little_endian as le
 from ..streams import Stream
 from ..magic import FileFormatError, Magic, Sentinel
 from ..base import containers
-from .containers import FlatFilterContainer
+from ..containers import FlatFilterContainer
 
 
 ###############################################################################

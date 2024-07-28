@@ -12,7 +12,7 @@ from monobit.base.struct import big_endian as be
 from ..streams import Stream
 from ..magic import FileFormatError, Magic
 from ..base import containers
-from .containers import FlatFilterContainer
+from ..containers import FlatFilterContainer
 
 
 ##############################################################################

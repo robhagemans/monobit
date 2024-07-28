@@ -38,7 +38,7 @@ from pathlib import Path
 
 from ..magic import FileFormatError, Sentinel
 from ..base import containers
-from .containers import SerialContainer
+from ..containers import SerialContainer
 
 
 @containers.register(

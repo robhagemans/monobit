@@ -16,7 +16,7 @@ except ImportError:
 from ..magic import FileFormatError, Magic
 from ..base import containers
 from ..streams import Stream
-from ..containers.containers import Archive
+from ..containers import Archive
 
 
 if acefile:
