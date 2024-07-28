@@ -143,12 +143,12 @@ class FlatFilterContainer(Archive):
 
     def decode(self, name):
         """Open input stream on filter container."""
-        name = Path(self.root) / name
+        filename = str(Path(self.root) / name)
         name = str(name)
         try:
-            data = self._data[name]
+            data = self._data[filename]
         except KeyError:
-            if f'{name}/' in self._data:
+            if f'{filename}/' in self._data:
                 raise IsADirectoryError(f"'{name}' is a directory")
             raise FileNotFoundError(
                 f"No file with name '{name}' found in archive."
@@ -157,13 +157,14 @@ class FlatFilterContainer(Archive):
 
     def encode(self, name, **kwargs):
         """Open output stream on filter container."""
-        name = Path(self.root) / name
-        if name in self._files:
+        filename = str(Path(self.root) / name)
+        name = str(name)
+        if filename in self._files:
             raise FileExistsError(
                 f"Cannot create multiple files of the same name '{name}'"
             )
         newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
-        self._files[str(newfile.name)] = {
+        self._files[filename] = {
             'outstream': newfile,
             **kwargs
         }
