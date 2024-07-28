@@ -14,13 +14,29 @@ class TestExport(BaseTester):
     """Test monobit export."""
 
     def _export_4x6(self, *, format, label='A', count=919, save_kwargs=(), load_kwargs=()):
-        """Test exporting font files."""
-        file = self.temp_path / '4x6.{format}'
+        """Test exporting 4x6 font files."""
+        file = self.temp_path / f'4x6.{format}'
         monobit.save(self.fixed4x6, file, format=format, **(save_kwargs or {}))
         font, *_ = monobit.load(file, format=format, **(load_kwargs or {}))
         self.assertEqual(len(font.glyphs), count)
-        self.assertEqual(font.get_glyph(label).reduce().as_text(), self.fixed4x6_A)
+        assert_text_eq(font.get_glyph(label).reduce().as_text(), self.fixed4x6_A)
 
+    def _export_8x16(self, *, format, label='A', count=919, save_kwargs=(), load_kwargs=()):
+        """Test exporting 8x16 files."""
+        file = self.temp_path / f'8x16.{format}'
+        monobit.save(self.fixed8x16, file, format=format, **(save_kwargs or {}))
+        font, *_ = monobit.load(file, format=format, **(load_kwargs or {}))
+        self.assertEqual(len(font.glyphs), count)
+        assert_text_eq(font.get_glyph(label).reduce().as_text(), self.fixed8x16_A)
+
+    def _export_8x16_cp437(self, *, format, save_kwargs=(), load_kwargs=()):
+        """Test exporting 8x16 files with codepage 437."""
+        file = self.temp_path / f'8x16.{format}'
+        font = self.fixed8x16.modify(encoding='cp437')
+        monobit.save(font, file, format=format, **(save_kwargs or {}))
+        font, *_ = monobit.load(file, format=format, **(load_kwargs or {}))
+        self.assertEqual(len(font.glyphs), 256)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
     # BDF
 
@@ -63,11 +79,7 @@ class TestExport(BaseTester):
 
     def test_export_hex(self):
         """Test exporting hex files."""
-        hex_file = self.temp_path / '8x16.hex'
-        monobit.save(self.fixed8x16, hex_file)
-        font, *_ = monobit.load(hex_file)
-        self.assertEqual(len(font.glyphs), 919)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16(format='unifont')
 
     # other text formats
 
@@ -95,11 +107,7 @@ class TestExport(BaseTester):
 
     def test_export_psf1(self):
         """Test exporting psf version 1 files."""
-        psf_file = self.temp_path / '8x16.psf'
-        monobit.save(self.fixed8x16, psf_file, version=1, count=256)
-        font, *_ = monobit.load(psf_file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16(format='psf', count=256, save_kwargs=dict(version=1, count=256))
 
     # FZX
 
@@ -111,11 +119,7 @@ class TestExport(BaseTester):
 
     def test_export_dec_drcs(self):
         """Test exporting dec-drcs files."""
-        dec_file = self.temp_path / '8x16.dec'
-        monobit.save(self.fixed8x16, dec_file, format='dec')
-        font, *_ = monobit.load(dec_file)
-        self.assertEqual(len(font.glyphs), 94)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16(format='dec', count=94, label=b'A')
 
     # yaff
 
@@ -216,57 +220,27 @@ class TestExport(BaseTester):
 
     def test_export_cpi_font(self):
         """Test exporting CPI (FONT) files"""
-        fnt_file = self.temp_path / '8x16.cpi'
-        font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, version='FONT')
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16_cp437(format='cpi', save_kwargs=dict(version='FONT'))
 
     def test_export_cpi_fontnt(self):
         """Test exporting CPI (FONT.NT) files"""
-        fnt_file = self.temp_path / '8x16.cpi'
-        font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, version='FONT.NT')
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16_cp437(format='cpi', save_kwargs=dict(version='FONT.NT'))
 
     def test_export_cpi_drfont(self):
         """Test exporting CPI (DRFONT) files"""
-        fnt_file = self.temp_path / '8x16.cpi'
-        font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, version='DRFONT')
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16_cp437(format='cpi', save_kwargs=dict(version='DRFONT'))
 
     def test_export_cp(self):
         """Test exporting kbd CP files"""
-        fnt_file = self.temp_path / '8x16.cp'
-        font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, format='kbd')
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='FONT'))
 
     def test_export_cp_nt(self):
         """Test exporting bare FONT.NT codepage."""
-        fnt_file = self.temp_path / '8x16.cp'
-        font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, format='kbd', version='FONT.NT')
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='FONT.NT'))
 
     def test_export_cp_drfont(self):
         """Test exporting bare DRFONT codepage."""
-        fnt_file = self.temp_path / '8x16.cp'
-        font = self.fixed8x16.modify(encoding='cp437')
-        monobit.save(font, fnt_file, format='kbd', version='DRFONT')
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='DRFONT'))
 
     # Figlet
 
@@ -365,11 +339,7 @@ class TestExport(BaseTester):
 
     def test_export_xbin(self):
         """Test exporting XBIN files."""
-        fnt_file = self.temp_path / '8x16.xb'
-        monobit.save(self.fixed8x16, fnt_file)
-        font, *_ = monobit.load(fnt_file)
-        self.assertEqual(len(font.glyphs), 256)
-        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed8x16_A)
+        self._export_8x16(format='xbin', count=256, label=b'A')
 
     # Optiks PCR
 
@@ -436,7 +406,6 @@ class TestExport(BaseTester):
         font, *_ = monobit.load(fnt_file, format='gfxfont')
         self.assertEqual(len(font.glyphs), 256)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
-
 
     # wsfont
 
@@ -505,16 +474,12 @@ class TestExport(BaseTester):
             for bit_order in ('big', 'little'):
                 for scan_unit in (1, 2, 4, 8):
                     for padding_bytes in (1, 2, 4, 8):
-                        file = self.temp_path / f'4x6_{byte_order[0].upper()}{bit_order[0]}u{scan_unit}p{padding_bytes}.pcf'
-                        monobit.save(
-                            self.fixed4x6, file, format='pcf',
+                        # file = self.temp_path / f'4x6_{byte_order[0].upper()}{bit_order[0]}u{scan_unit}p{padding_bytes}.pcf'
+                        self._export_4x6(format='pcf', save_kwargs=dict(
                             byte_order=byte_order, bit_order=bit_order,
                             scan_unit=scan_unit, padding_bytes=padding_bytes,
                             overwrite=True
-                        )
-                        font, *_ = monobit.load(file)
-                        self.assertEqual(len(font.glyphs), 919)
-                        self.assertEqual(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+                        ))
 
     # EDWIN
 
