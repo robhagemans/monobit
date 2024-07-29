@@ -257,7 +257,7 @@ def _convert_drcs_glyph(glyphdef, raster_size):
         ''.join(f'{_b:06b}' for _b in _pair[::-1])
         for _pair in glyphbytes
     )
-    raster = Raster(glyphstrs, _0='0', _1='1')
+    raster = Raster(glyphstrs, inklevels='01')
     # pylint: disable=unexpected-keyword-arg
     raster = raster.turn(anti=1)
     raster = raster.crop(

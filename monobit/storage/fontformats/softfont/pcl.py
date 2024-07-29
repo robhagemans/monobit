@@ -574,7 +574,7 @@ def _convert_hppcl_glyph(code, chardef, glyphbytes):
                 outrow.extend([bit] * ord(n))
                 bit = not bit
             outbits.extend(outrow * ord(repeats))
-        raster = Raster.from_matrix(outbits, paper=False, ink=True)
+        raster = Raster.from_matrix(outbits, inklevels=(False, True))
     else:
         raster = Raster.from_bytes(
             glyphbytes, width=chardef.character_width,

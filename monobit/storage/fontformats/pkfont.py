@@ -259,7 +259,9 @@ def _convert_char(char):
         )
     else:
         bitmap = _unpack_bits(char)
-        raster = Raster.from_vector(bitmap, stride=char.w)
+        raster = Raster.from_vector(
+            bitmap, stride=char.w, inklevels=(False, True)
+        )
     raster = raster.crop(bottom=max(0, raster.height-char.h))
     # convert glyph properties
     props = dict(

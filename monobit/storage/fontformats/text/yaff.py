@@ -259,7 +259,7 @@ class YaffGlyph(YaffMultiline):
         if all(set(_line) == set([self.empty]) for _line in raster):
             raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
         return Props(
-            pixels=Raster(raster, _0=self.paper, _1=self.ink),
+            pixels=Raster(raster, inklevels=(self.paper, self.ink)),
             labels=labels, **properties
         )
 
@@ -441,7 +441,7 @@ def _write_glyph(outstream, glyph, global_metrics):
     else:
         glyphtxt = glyph.pixels.as_text(
             start=YaffParams.tab,
-            ink=YaffParams.ink, paper=YaffParams.paper,
+            inklevels=(YaffParams.paper, YaffParams.ink),
             end='\n'
         )
     outstream.write(glyphtxt)

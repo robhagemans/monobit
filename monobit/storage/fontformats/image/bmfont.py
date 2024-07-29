@@ -556,8 +556,11 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
                 glyph = Glyph.blank(width=0, height=char.height)
             else:
                 glyph = Glyph.from_matrix(
-                    bits[_offs: _offs+char.width]
-                    for _offs in range(0, len(bits), char.width)
+                    (
+                        bits[_offs: _offs+char.width]
+                        for _offs in range(0, len(bits), char.width)
+                    ),
+                    inklevels=(False, True),
                 )
             # append kernings (this glyph left)
             is_unicode = bool(_to_int(info['unicode']))

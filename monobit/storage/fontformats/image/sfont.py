@@ -30,11 +30,9 @@ if Image:
     @loaders.register(
         name='sfont',
     )
-    def load_sfont(instream, *, flatten:bool=False):
+    def load_sfont(instream):
         """
         Load font from SFont file.
-
-        flatten: interpret all non-background colours as ink. If false (default), more than 2 colours will raise an error.
         """
         image = Image.open(instream).convert('RGB')
         glyphs = []
@@ -46,16 +44,19 @@ if Image:
                 raise FileFormatError('Not an SFont image: must be RGB or RGBA.')
             if rgb != _INDICATOR_RGB and rgb != _INDICATOR_RGBA:
                 background = rgb
+                break
         spritesheet = image.crop((0, 1, image.width, image.height))
-        if len(set(spritesheet.getdata())) > 2:
+        colours = set(spritesheet.getdata())
+        if len(colours) > 2:
             msg = (
                 'Colour and anti-aliasing not supported. '
                 'All non-background pixels will be interpreted as inked.'
             )
-            if flatten:
-                logging.warning(msg)
-            else:
-                raise FileFormatError(msg)
+            raise FileFormatError(msg)
+        for rgb in colours:
+            if rgb != background:
+                foreground = rgb
+                break
         groups = tuple(
             (_clr, len(tuple(_g)))
             for _clr, _g in groupby(indicator)
@@ -78,11 +79,12 @@ if Image:
                     glyphs.append(
                         Glyph.from_vector(
                             tuple(crop.getdata()),
-                            stride=crop.width, _1=background,
+                            stride=crop.width,
+                            inklevels=(background, foreground),
                             codepoint=min(_SFONT_RANGE) + i//2,
                             left_bearing=-left,
                             right_bearing=-right,
-                        ).invert()
+                        )
                     )
                     x += left+width+right + length%2
                     left = right
