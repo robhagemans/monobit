@@ -13,7 +13,7 @@ from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 from monobit.base import Props, reverse_dict
 from monobit.base.struct import StructError, bitfield, flag, little_endian as le
-from monobit.base.binary import ceildiv, align
+from monobit.base.binary import ceildiv
 
 from monobit.storage.utils.limitations import make_contiguous
 

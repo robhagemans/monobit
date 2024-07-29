@@ -11,7 +11,6 @@ licence: https://opensource.org/licenses/MIT
 import io
 import logging
 
-from monobit.base.binary import bytes_to_bits, align
 from monobit.base.struct import bitfield, little_endian as le
 from monobit.base import struct
 from monobit.base import Coord
