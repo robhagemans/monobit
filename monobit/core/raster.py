@@ -50,22 +50,15 @@ turn_method = turn
 class Raster:
     """Bit matrix."""
 
-    _0 = '0'
-    _1 = '1'
-    _inner = ''.join
-    _innertype = str
-    _outer = tuple
-    _itemtype = str
+    _inklevels = '01'
 
-    def __init__(self, pixels=(), *, width=NOT_SET, _0=NOT_SET, _1=NOT_SET):
+    def __init__(self, pixels=(), *, width=NOT_SET, inklevels=NOT_SET):
         """Create raster from tuple of tuples of string."""
         if isinstance(pixels, type(self)):
             if width is NOT_SET:
                 width = pixels.width
-            if _0 is NOT_SET:
-                _0 = pixels._0
-            if _1 is NOT_SET:
-                _1 = pixels._1
+            if inklevels is NOT_SET:
+                inklevels = pixels._inklevels
             pixels = pixels._pixels
         if not pixels:
             if width is NOT_SET:
@@ -74,22 +67,16 @@ class Raster:
             width = len(pixels[0])
         self._pixels = pixels
         self._width = width
-        if _0 is not NOT_SET and _1 is not NOT_SET:
-            self._0 = _0
-            self._1 = _1
+        if inklevels is not NOT_SET:
+            self._inklevels = inklevels
+        self._paper = self._inklevels[0]
         # check pixel matrix types
         if (
-            not isinstance(self._pixels, self._outer)
-            or (self._pixels and (
-                not isinstance(self._pixels[0], self._innertype)
-                or (
-                    self._pixels[0]
-                    and not isinstance(self._pixels[0][0], self._itemtype)
-            )))):
-            raise ValueError(
-                f"Raster must be {self._outer} of {self._innertype} of {self._itemtype}"
-                f": not {self._pixels}"
-            )
+                not isinstance(self._pixels, tuple)
+                or (self._pixels and (
+                    not isinstance(self._pixels[0], str)
+            ))):
+            raise ValueError(f"Raster must be tuple of str: not {self._pixels}")
         # check pixel matrix geometry
         if len(set(len(_r) for _r in pixels)) > 1:
             raise ValueError(
@@ -97,6 +84,7 @@ class Raster:
             )
 
     def __bool__(self):
+        """Raster is not empty."""
         return bool(self.height and self.width)
 
     # NOTE - these following are shadowed in GlyphProperties
@@ -116,12 +104,18 @@ class Raster:
         """Offset from raster sides to bounding box. Left, bottom, right, top."""
         if not self._pixels:
             return Bounds(0, 0, 0, 0)
-        row_inked = tuple(self._1 in _row for _row in self._pixels)
+        row_inked = tuple(
+            any(_pix != self._paper for _pix in _row)
+            for _row in self._pixels
+        )
         if not any(row_inked):
             return Bounds(self.width, self.height, 0, 0)
         bottom = row_inked[::-1].index(True)
         top = row_inked.index(True)
-        col_inked = tuple(self._1 in _col for _col in zip(*self._pixels))
+        col_inked = tuple(
+            any(_pix != self._paper for _pix in _col)
+            for _col in zip(*self._pixels)
+        )
         left = col_inked.index(True)
         right = col_inked[::-1].index(True)
         return Bounds(left, bottom, right, top)
@@ -155,30 +149,20 @@ class Raster:
 
     def is_blank(self):
         """Glyph has no ink."""
-        return not any(self._1 in _row for _row in self._pixels)
+        return all(_pix == self._paper for _row in self._pixels for _pix in _row)
 
-    def as_text(self, *, ink='@', paper='.', start='', end='\n'):
+    def as_text(self, *, inklevels='.@', start='', end='\n'):
         """Convert raster to text."""
-        def _get_unused(startval):
-            charset = (self._0, self._1, start, end, ink, paper)
-            for _i in range(startval, startval+len(charset)+1):
-                unused = chr(_i)
-                if unused not in charset:
-                    return unused
-
         if not self.height:
             return ''
-        delim = _get_unused(0)
-        contents = delim.join(self._pixels)
-        if paper in (self._1, start, end):
-            swap = _get_unused(7)
-        else:
-            swap = paper
-        contents = (
-            contents.replace(self._0, swap).replace(self._1, ink)
-            .replace(swap, paper).replace(delim, end+start)
+        translator = {_k: _v for _k, _v in zip(self._inklevels, inklevels)}
+        # translator = str.maketrans(''.join(self._inklevels), ''.join(inklevels))
+        contents = tuple(
+            # _row.translate(translator) for _row in self._pixels
+            ''.join(translator[_c] for _c in _row)
+            for _row in self._pixels
         )
-        return blockstr(''.join((start, contents, end)))
+        return blockstr(''.join((start, (end+start).join(contents), end)))
 
     def as_blocks(self, resolution=(2, 2)):
         """Convert glyph to a string of block characters."""
@@ -191,7 +175,7 @@ class Raster:
     def from_vector(
             cls, bitseq, *,
             stride, width=NOT_SET, height=NOT_SET, align='left',
-            _0=NOT_SET, _1=NOT_SET
+            inklevels=NOT_SET
         ):
         """Create raster from flat immutable sequence representing bits."""
         if not bitseq or width == 0 or stride == 0:
@@ -211,25 +195,25 @@ class Raster:
             if len(rows) < height:
                 raise ValueError('Bit string too short')
             rows = rows[:height]
-        return cls.from_matrix(rows, paper=_0, ink=_1)
+        return cls.from_matrix(rows, inklevels=inklevels)
 
-    def as_vector(self, ink=1, paper=0):
+    def as_vector(self, inklevels=(0, 1)):
         """Return flat tuple of user-specified foreground and background objects."""
-        return tuple(
-            ink if _c == self._1 else paper
-            for _c in ''.join(self._pixels)
-        )
+        translator = {_k: _v for _k, _v in zip(self._inklevels, inklevels)}
+        joined = ''.join(self._pixels)
+        return tuple(translator[_c] for _c in joined)
 
-    def as_bits(self, ink=1, paper=0):
+    def as_bits(self, inklevels=(0, 1)):
         """Return flat bits as bytes string."""
-        if isinstance(ink, int) and isinstance(paper, int):
-            ink = (ink,)
-            paper = (paper,)
-        return (
-            ''.join(self._pixels).encode('latin-1')
-            .replace(self._1.encode('latin-1'), bytes(ink))
-            .replace(self._0.encode('latin-1'), bytes(paper))
+        inklevels = tuple(
+            bytes((_l,)) if isinstance(_l, int) else bytes(_l)
+            for _l in inklevels
         )
+        pixstr = ''.join(self._pixels).encode('latin-1')
+        # FIXME this only works if newlevels don't overlap with oldlevels
+        for oldlevel, newlevel in zip(self._inklevels, inklevels):
+            pixstr = pixstr.replace(oldlevel.encode('latin-1'), newlevel)
+        return pixstr
 
     @classmethod
     def from_bytes(
@@ -251,7 +235,7 @@ class Raster:
         """
         if all(_arg is NOT_SET for _arg in (width, height, stride)):
             raise ValueError(
-                'At least one of width, height or stride must be speecified'
+                'At least one of width, height or stride must be specified'
             )
         if width == 0 or height == 0:
             if height is NOT_SET:
@@ -294,7 +278,7 @@ class Raster:
             bitseq = reverse_by_group(bitseq)
         return cls.from_vector(
             bitseq, width=width, height=height, stride=stride, align=align,
-            _0='0', _1='1',
+            inklevels='01',
         )
 
     def as_byterows(self, *, align='left', bit_order='big'):
@@ -308,7 +292,7 @@ class Raster:
             return ()
         rows = (
             ''.join(_row)
-            for _row in self.as_matrix(paper='0', ink='1')
+            for _row in self.as_matrix(inklevels='01')
         )
         bytewidth = ceildiv(self.width, 8)
         if align.startswith('l'):
@@ -345,7 +329,7 @@ class Raster:
         if align == 'bit':
             bits = ''.join(
                 ''.join(_row)
-                for _row in raster.as_matrix(paper='0', ink='1')
+                for _row in raster.as_matrix(inklevels='01')
             )
             bytesize = ceildiv(len(bits), 8)
             # left align the bits to byte boundary
@@ -390,21 +374,24 @@ class Raster:
         return self.as_bytes(align=align).hex()
 
     @classmethod
-    def from_matrix(cls, matrix, *, ink=NOT_SET, paper=NOT_SET):
+    def from_matrix(cls, matrix, *, inklevels=(0, 1)):
         """Create raster from iterable of iterables."""
-        if ink is NOT_SET:
-            ink = True
+        matrix = tuple(matrix)
+        if inklevels is NOT_SET:
+            inklevels = cls._inklevels
+        translator = {_k: _v for _k, _v in zip(inklevels, cls._inklevels)}
         # glyph data
-        pixels = cls._outer(
-            cls._inner(cls._1 if _bit == ink else cls._0 for _bit in _row)
+        pixels = tuple(
+            ''.join(translator[_bit] for _bit in _row)
             for _row in matrix
         )
-        return cls(pixels, _0=cls._0, _1=cls._1)
+        return cls(pixels, inklevels=cls._inklevels)
 
-    def as_matrix(self, *, ink=1, paper=0):
+    def as_matrix(self, *, inklevels=(0, 1)):
         """Return matrix of user-specified foreground and background objects."""
+        translator = {_k: _v for _k, _v in zip(self._inklevels, inklevels)}
         return tuple(
-            tuple(ink if _c == self._1 else paper for _c in _row)
+            tuple(translator[_c] for _c in _row)
             for _row in self._pixels
         )
 
@@ -458,22 +445,22 @@ class Raster:
     def mirror(self):
         """Reverse pixels horizontally."""
         return type(self)(
-            self._outer(_row[::-1] for _row in self._pixels),
-            _0=self._0, _1=self._1
+            tuple(_row[::-1] for _row in self._pixels),
+            inklevels=self._inklevels,
         )
 
     def flip(self):
         """Reverse pixels vertically."""
         return type(self)(
             self._pixels[::-1],
-            _0=self._0, _1=self._1
+            inklevels=self._inklevels,
         )
 
     def transpose(self):
         """Transpose glyph."""
         return type(self)(
-            self._outer(self._inner(_r) for _r in zip(*self._pixels)),
-            _0=self._0, _1=self._1
+            tuple(''.join(_r) for _r in zip(*self._pixels)),
+            inklevels=self._inklevels,
         )
 
     turn = turn_method
@@ -492,11 +479,11 @@ class Raster:
         if self.height > 1 and rows:
             rolled = rolled._pixels[-rows:] + rolled._pixels[:-rows]
         if self.width > 1 and columns:
-            rolled = self._outer(
+            rolled = tuple(
                 _row[-columns:] + _row[:-columns]
                 for _row in rolled._pixels
             )
-        return type(self)(rolled, _0=self._0, _1=self._1)
+        return type(self)(rolled, inklevels=self._inklevels)
 
     def shift(self, *, left:int=0, down:int=0, right:int=0, up:int=0):
         """
@@ -511,25 +498,26 @@ class Raster:
             raise ValueError('Can only shift glyph by a positive amount.')
         rows = down - up
         columns = right - left
-        _0, _1 = '0', '1'
-        pixels = tuple(
-            ''.join(_row)
-            for _row in self.as_matrix(paper=_0, ink=_1)
-        )
-        empty_row = _0 * self.width
+        empty_row = self._paper * self.width
         if rows > 0:
-            shifted = (empty_row,) * rows + pixels[:-rows]
+            shifted = (empty_row,) * rows + self._pixels[:-rows]
         else:
-            shifted = pixels[-rows:] + (empty_row,) * -rows
+            shifted = self._pixels[-rows:] + (empty_row,) * -rows
         if columns > 0:
             return type(self)(
-                self._outer(_0 * columns + _row[:-columns] for _row in shifted),
-                _0=_0, _1=_1
+                tuple(
+                    self._paper * columns + _row[:-columns]
+                    for _row in shifted
+                ),
+                inklevels=self._inklevels,
             )
         else:
             return type(self)(
-                self._outer(_row[-columns:] + _0 * -columns for _row in shifted),
-                _0=_0, _1=_1
+                tuple(
+                    _row[-columns:] + self._paper * -columns
+                    for _row in shifted
+                ),
+                inklevels=self._inklevels,
             )
 
     # raster size changes
@@ -545,13 +533,14 @@ class Raster:
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only crop glyph by a positive amount.')
-        if self.height-top-bottom <= 0:
+        if self.height - top - bottom <= 0:
             return type(self).blank(width=max(0, self.width-right-left))
-        return type(self)(self._outer(
+        return type(self)(
+            tuple(
                 _row[left : (-right if right else None)]
                 for _row in self._pixels[top : (-bottom if bottom else None)]
             ),
-            _0=self._0, _1=self._1
+            inklevels=self._inklevels,
         )
 
     def expand(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
@@ -568,16 +557,16 @@ class Raster:
         if not top+self.height+bottom:
             return type(self).blank(width=right+self.width+left)
         new_width = left + self.width + right
-        empty_row = self._0 * new_width
+        empty_row = self._paper * new_width
         pixels = (
-            self._outer((empty_row,)) * top
-            + self._outer(
-                self._0 * left + _row + self._0 * right
+            (empty_row,) * top
+            + tuple(
+                self._paper * left + _row + self._paper * right
                 for _row in self._pixels
             )
-            + self._outer((empty_row,)) * bottom
+            + (empty_row,) * bottom
         )
-        return type(self)(pixels, _0=self._0, _1=self._1)
+        return type(self)(pixels, inklevels=self._inklevels)
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
@@ -589,11 +578,11 @@ class Raster:
         # vertical stretch
         pixels = (_row for _row in self._pixels for _ in range(factor_y))
         # horizontal stretch
-        pixels = (
-            self._inner(_col for _col in _row for _ in range(factor_x))
+        pixels = tuple(
+            ''.join(_col for _col in _row for _ in range(factor_x))
             for _row in pixels
         )
-        return type(self)(self._outer(pixels), _0=self._0, _1=self._1)
+        return type(self)(pixels, inklevels=self._inklevels)
 
     def shrink(self, factor_x:int=1, factor_y:int=1):
         """
@@ -605,8 +594,8 @@ class Raster:
         # vertical shrink
         shrunk = self._pixels[::factor_y]
         # horizontal shrink
-        shrunk = self._outer(_row[::factor_x] for _row in shrunk)
-        return type(self)(shrunk, _0=self._0, _1=self._1)
+        shrunk = tuple(_row[::factor_x] for _row in shrunk)
+        return type(self)(shrunk, inklevels=self._inklevels)
 
     # effects
 
@@ -622,15 +611,16 @@ class Raster:
         # use as instance method or class method
         matrices = tuple(_r.as_matrix() for _r in others)
         rows = tuple(zip(*_row) for _row in zip(*matrices))
-        combined = self._outer(
-            self._inner(self._1 if operator(_item) else self._0 for _item in _row)
+        ink = self._inklevels[-1]
+        combined = tuple(
+            ''.join(ink if operator(_item) else self._paper for _item in _row)
             for _row in rows
         )
-        return type(self)(combined, _0=self._0, _1=self._1)
+        return type(self)(combined, inklevels=self._inklevels)
 
     def invert(self):
         """Reverse video."""
-        return type(self)(self._pixels, _0=self._1, _1=self._0)
+        return type(self)(self._pixels, inklevels=self._inklevels[::-1])
 
     def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0):
         """
@@ -660,22 +650,22 @@ class Raster:
             (_y*xpitch + modulo)//ypitch - (modulo==ypitch)
             for _y in shiftrange
         )
-        empty = self._0 * self.width
+        empty = self._paper * self.width
         if direction == 'l':
             return type(self)(
-                self._outer(
+                tuple(
                     _row[_y:] + empty[:_y]
                     for _row, _y in zip(self._pixels, shiftrange)
                 ),
-                _0=self._0, _1=self._1
+                inklevels=self._inklevels,
             )
         elif direction == 'r':
             return type(self)(
-                self._outer(
+                tuple(
                     empty[:_y] + _row[:self.width-_y]
                     for _row, _y in zip(self._pixels, shiftrange)
                 ),
-                _0=self._0, _1=self._1
+                inklevels=self._inklevels,
             )
         raise ValueError(
             f'Shear direction must be `left` or `right`, not `{direction}`'
@@ -683,15 +673,15 @@ class Raster:
 
     def underline(self, top_height:int=0, bottom_height:int=0):
         """Return a raster with a line added."""
-        _0, _1 = '0', '1'
         if bottom_height > top_height:
             return self
         top_height = min(self.height, max(0, top_height))
         bottom_height = min(self.height, max(0, bottom_height))
-        pixels = self._outer(
-            _1 * self.width
+        ink = self._inklevels[-1]
+        pixels = tuple(
+            ink * self.width
             if top_height >= self.height-_line-1 >= bottom_height
-            else ''.join(_row)
-            for _line, _row in enumerate(self.as_matrix(paper=_0, ink=_1))
+            else _row
+            for _line, _row in enumerate(self._pixels)
         )
-        return type(self)(pixels, _0=_0, _1=_1)
+        return type(self)(pixels, inklevels=self._inklevels)

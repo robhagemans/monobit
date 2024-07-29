@@ -342,7 +342,10 @@ def _read_strike(f, props):
         for _loc in locs
     )
     glyphs = tuple(
-        Glyph.from_matrix(_pix, codepoint=_ord, kerning=_kern, spacing=_spc)
+        Glyph.from_matrix(
+            _pix, codepoint=_ord, kerning=_kern, spacing=_spc,
+            inklevels=(False, True),
+        )
         for _ord, (_pix, _kern, _spc) in enumerate(
             zip(pixels, kerning, spacing),
             start=props.tf_LoChar

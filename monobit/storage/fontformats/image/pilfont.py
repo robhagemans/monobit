@@ -73,7 +73,8 @@ if Image:
                 glyphs.append(
                     Glyph.from_vector(
                         tuple(crop.getdata()),
-                        stride=crop.width, _0=0, _1=255,
+                        stride=crop.width,
+                        inklevels=(0, 255),
                         codepoint=cp,
                         left_bearing=metric.dst_x0,
                         right_bearing=metric.dwx - metric.dst_x1,

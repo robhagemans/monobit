@@ -410,7 +410,8 @@ def _read_gdos_glyphs(data, header, ext_header, off_table, hor_table, endian):
     glyphs = [
         Glyph.from_matrix(
             _pix, codepoint=_ord,
-            left_bearing=-_hor_table.pre, right_bearing=-_hor_table.post
+            left_bearing=-_hor_table.pre, right_bearing=-_hor_table.post,
+            inklevels=(False, True),
         )
         for _ord, (_pix, _hor_table) in enumerate(
             zip(pixels, hor_table),

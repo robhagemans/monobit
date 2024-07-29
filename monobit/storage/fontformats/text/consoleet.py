@@ -45,9 +45,10 @@ def _read_clt_glyph(instream):
     width, _, height = text.readline().strip().partition(' ')
     glyphtext = tuple(text.read().splitlines())
     return Glyph(
-        glyphtext, _0='.', _1='#',
+        glyphtext,
+        inklevels='.#',
         # encoding is not specified by spec or file - can be unicode or codepage
-        codepoint=f'0x{codepoint}'
+        codepoint=f'0x{codepoint}',
     ).shrink(factor_x=2)
 
 
@@ -55,4 +56,4 @@ def _write_clt_glyph(glyph, outstream):
     text = outstream.text
     text.write('PCLT\n')
     text.write(f'{glyph.width} {glyph.height}\n')
-    text.write(glyph.as_text(paper='..', ink='##', end='\n'))
+    text.write(glyph.as_text(inklevels=('..', '##'), end='\n'))

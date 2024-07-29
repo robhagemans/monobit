@@ -196,19 +196,19 @@ class Glyph(HasProps):
     def __init__(
             self, pixels=(), *,
             labels=(), codepoint=b'', char='', tag='', comment='',
-            _0=NOT_SET, _1=NOT_SET, _trustme=False,
+            inklevels=NOT_SET, _trustme=False,
             **properties
         ):
         """Create glyph from tuple of tuples."""
         super().__init__()
         if _trustme:
-            self._pixels = Raster(pixels, _0=_0, _1=_1)
+            self._pixels = Raster(pixels, inklevels=inklevels)
             self._labels = labels
             self._comment = comment
             self._set_properties(properties)
             return
         # raster data
-        self._pixels = Raster(pixels, _0=_0, _1=_1)
+        self._pixels = Raster(pixels, inklevels=inklevels)
         # labels
         labels = (
             Char(char), Codepoint(codepoint), Tag(tag),
@@ -262,7 +262,7 @@ class Glyph(HasProps):
             self, pixels=NOT_SET, *,
             labels=NOT_SET, tag=NOT_SET, char=NOT_SET, codepoint=NOT_SET,
             comment=NOT_SET,
-            _0=NOT_SET, _1=NOT_SET,
+            inklevels=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -455,11 +455,11 @@ class Glyph(HasProps):
     @classmethod
     def from_vector(
             cls, bitseq, *, stride, width=NOT_SET, align='left',
-            _0=NOT_SET, _1=NOT_SET, **kwargs
+            inklevels=NOT_SET, **kwargs
         ):
         """Create glyph from flat immutable sequence representing bits."""
         pixels = Raster.from_vector(
-            bitseq, stride=stride, width=width, align=align, _0=_0, _1=_1
+            bitseq, stride=stride, width=width, align=align, inklevels=inklevels
         )
         return cls(pixels, **kwargs)
 
@@ -485,9 +485,9 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_matrix(cls, matrix, *, ink=NOT_SET, paper=NOT_SET, **kwargs):
+    def from_matrix(cls, matrix, *, inklevels=NOT_SET, **kwargs):
         """Create glyph from iterable of iterables."""
-        pixels = Raster.from_matrix(matrix, ink=ink, paper=paper)
+        pixels = Raster.from_matrix(matrix, inklevels=inklevels)
         return cls(pixels, **kwargs)
 
     @classmethod
@@ -516,25 +516,25 @@ class Glyph(HasProps):
         """Glyph has no ink."""
         return self._pixels.is_blank()
 
-    def as_matrix(self, *, ink=1, paper=0):
+    def as_matrix(self, *, inklevels=(0, 1)):
         """Return matrix of user-specified foreground and background objects."""
-        return self._pixels.as_matrix(ink=ink, paper=paper)
+        return self._pixels.as_matrix(inklevels=inklevels)
 
-    def as_text(self, *, ink='@', paper='.', start='', end='\n'):
+    def as_text(self, *, inklevels='.@', start='', end='\n'):
         """Convert glyph to text."""
-        return self._pixels.as_text(ink=ink, paper=paper, start=start, end=end)
+        return self._pixels.as_text(inklevels=inklevels, start=start, end=end)
 
     def as_blocks(self, resolution=(2, 2)):
         """Convert glyph to a string of quadrant block characters."""
         return self._pixels.as_blocks(resolution)
 
-    def as_vector(self, ink=1, paper=0):
+    def as_vector(self, inklevels=(0, 1)):
         """Return flat tuple of user-specified foreground and background objects."""
-        return self._pixels.as_vector(ink=ink, paper=paper)
+        return self._pixels.as_vector(inklevels=inklevels)
 
-    def as_bits(self, ink=1, paper=0):
-        """Return flat bits as bytes string. Ink, paper may be of type int or RGB"""
-        return self._pixels.as_bits(ink=ink, paper=paper)
+    def as_bits(self, inklevels=(0, 1)):
+        """Return flat bits as bytes string. Inklevels may be of type int or RGB"""
+        return self._pixels.as_bits(inklevels=inklevels)
 
     def as_byterows(self, *, align='left'):
         """Convert glyph to rows of bytes."""

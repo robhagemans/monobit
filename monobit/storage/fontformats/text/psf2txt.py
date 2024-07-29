@@ -71,7 +71,7 @@ def _write_psf2txt(font, outstream):
         outstream.write(f'%\n// Character {i}\n')
         outstream.write('Bitmap: ')
         outstream.write(
-            glyph.as_text(start='', end=' \\\n        ', paper='-', ink='#')
+            glyph.as_text(start='', end=' \\\n        ', inklevels='-#')
             .rstrip(' \\\n        ')
         )
         outstream.write('\n')
@@ -110,7 +110,7 @@ def _read_psf2txt(text_stream):
         elif isinstance(block, PTProperties):
             current_props.update(block.get_value())
         elif isinstance(block, PTGlyph):
-            glyphs.append(Glyph(block.get_value(), _0='-', _1='#'))
+            glyphs.append(Glyph(block.get_value(), inklevels='-#'))
         elif isinstance(block, PTLabel):
             glyphs[-1] = glyphs[-1].modify(labels=block.get_value())
         elif isinstance(block, Unparsed):

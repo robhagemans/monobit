@@ -698,5 +698,5 @@ _FONT_ICON = """\
 
 def _make_icon():
     """Create standard icon."""
-    icon = Glyph.from_vector(_FONT_ICON, stride=25, width=24, _0='.', _1='@')
+    icon = Raster.from_vector(_FONT_ICON, stride=25, width=24, inklevels='.@')
     return icon.as_bytes()

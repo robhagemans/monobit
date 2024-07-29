@@ -131,7 +131,9 @@ def _save_draw(font, outstream, *, ink, paper, unicode):
                 ascii(char)
             )
         else:
-            glyphtxt = glyph.as_text(start='\t', ink=ink, paper=paper, end='\n')
+            glyphtxt = glyph.as_text(
+                start='\t', inklevels=(paper, ink), end='\n'
+            )
             outstream.write(f'\n{ord(char):04x}:')
             outstream.write(glyphtxt)
 
@@ -279,7 +281,7 @@ class DrawGlyph(NonEmptyBlock):
             lines = [value] + lines
         lines = tuple(_l.strip() for _l in lines)
         return Glyph(
-            lines, _0=self.paper, _1=self.ink,
+            lines, inklevels=(self.paper, self.ink),
             labels=(self.convert_key(key),),
         )
 

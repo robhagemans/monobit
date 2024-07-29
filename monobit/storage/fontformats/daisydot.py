@@ -77,8 +77,9 @@ def _parse_daisy2(data):
         pass1 = bytes_to_bits(data[ofs+width+1:ofs+2*width+1])
         bits = tuple(_b for _pair in zip(pass0, pass1) for _b in _pair)
         glyphs.append(
-            Glyph.from_vector(bits, stride=16, codepoint=cp)
-            .transpose(adjust_metrics=False)
+            Glyph.from_vector(
+                bits, stride=16, codepoint=cp, inklevels=(False, True)
+            ).transpose(adjust_metrics=False)
         )
         # separated by a \x9b
         ofs += 2*width + 2
@@ -103,7 +104,9 @@ def _parse_daisy3(data):
         ]
         bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
         # we transpose, so stride is based on row height which is fixed
-        raster = Raster.from_vector(bits, stride=16).transpose()
+        raster = Raster.from_vector(
+            bits, stride=16, inklevels=(False, True)
+        ).transpose()
         ofs += 2*width
         if double:
             passes = [
@@ -114,7 +117,9 @@ def _parse_daisy3(data):
             bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
             raster = Raster.stack(
                 raster,
-                Raster.from_vector(bits, stride=16).transpose(),
+                Raster.from_vector(
+                    bits, stride=16, inklevels=(False, True)
+                ).transpose(),
             )
         glyphs.append(Glyph(raster, codepoint=cp))
         # in dd3, not separated by a \x9b

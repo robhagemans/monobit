@@ -171,7 +171,9 @@ if Image:
         # convert to glyphs, set codepoints
         glyphs = tuple(
             Glyph.from_vector(
-                tuple(_crop.getdata()), stride=_crop.width, _0=paper, _1=ink,
+                tuple(_crop.getdata()),
+                stride=_crop.width,
+                inklevels=(paper, ink),
                 codepoint=_index,
             )
             for _index, _crop in enumerated_crops
