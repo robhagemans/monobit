@@ -265,7 +265,7 @@ def _extract_glyphs_v1(data, win_props):
             _srow[offset:offset+width]
             for _srow in strikerows
         )
-        glyph = Glyph(rows, codepoint=(win_props.dfFirstChar + ord,))
+        glyph = Glyph.from_matrix(rows, codepoint=(win_props.dfFirstChar + ord,))
         glyphs.append(glyph)
     return glyphs
 

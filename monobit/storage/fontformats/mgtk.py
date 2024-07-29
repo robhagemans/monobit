@@ -76,7 +76,7 @@ def _parse_mgtk(data):
         ]
     # apply glyph widths
     glyphs = [
-        Glyph(_row[_offset][0:_width] for _row in rows)
+        Glyph.from_matrix(_row[_offset][0:_width] for _row in rows)
         for _offset, _width in enumerate(widths)
     ]
     glyphs = [

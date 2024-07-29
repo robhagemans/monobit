@@ -308,7 +308,7 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     # (do we need to consider the width table, if defined?)
     locs = [_loc.offset for _loc in loc_table]
     glyphs = [
-        Glyph([_row[_offs:_next] for _row in rows])
+        Glyph.from_matrix([_row[_offs:_next] for _row in rows])
         for _offs, _next in zip(locs[:-1], locs[1:])
     ]
     # add glyph metrics

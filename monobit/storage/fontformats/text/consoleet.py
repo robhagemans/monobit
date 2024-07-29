@@ -43,7 +43,7 @@ def _read_clt_glyph(instream):
     if magic != 'PCLT':
         return Glyph()
     width, _, height = text.readline().strip().partition(' ')
-    glyphtext = text.read().splitlines()
+    glyphtext = tuple(text.read().splitlines())
     return Glyph(
         glyphtext, _0='.', _1='#',
         # encoding is not specified by spec or file - can be unicode or codepage

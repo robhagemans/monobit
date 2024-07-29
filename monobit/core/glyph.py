@@ -450,7 +450,7 @@ class Glyph(HasProps):
     @classmethod
     def blank(cls, width=0, height=0, **kwargs):
         """Create whitespace glyph."""
-        return cls(((0,) * width,) * height, **kwargs)
+        return cls(Raster.blank(width, height), **kwargs)
 
     @classmethod
     def from_vector(
@@ -482,6 +482,12 @@ class Glyph(HasProps):
     def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left', **kwargs):
         """Create glyph from hex string."""
         pixels = Raster.from_hex(hexstr, width, height, align=align)
+        return cls(pixels, **kwargs)
+
+    @classmethod
+    def from_matrix(cls, matrix, *, ink=NOT_SET, paper=NOT_SET, **kwargs):
+        """Create glyph from iterable of iterables."""
+        pixels = Raster.from_matrix(matrix, ink=ink, paper=paper)
         return cls(pixels, **kwargs)
 
     @classmethod

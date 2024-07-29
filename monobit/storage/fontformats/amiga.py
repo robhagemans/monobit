@@ -328,26 +328,26 @@ def _read_strike(f, props):
     else:
         kerning = [0] * nchars
     # bitmap strike
-    strike = [
+    strike = tuple(
         bytes_to_bits(data[_offset : _offset+props.tf_Modulo])
         for _offset in range(
             loc + props.tf_CharData,
             loc + props.tf_CharData + props.tf_Modulo*props.tf_YSize,
             props.tf_Modulo
         )
-    ]
+    )
     # extract glyphs
-    pixels = [
-        [_row[_loc.offset:_loc.offset+_loc.width] for _row in strike]
+    pixels = (
+        tuple(_row[_loc.offset:_loc.offset+_loc.width] for _row in strike)
         for _loc in locs
-    ]
-    glyphs = [
-        Glyph(_pix, codepoint=_ord, kerning=_kern, spacing=_spc)
+    )
+    glyphs = tuple(
+        Glyph.from_matrix(_pix, codepoint=_ord, kerning=_kern, spacing=_spc)
         for _ord, (_pix, _kern, _spc) in enumerate(
             zip(pixels, kerning, spacing),
             start=props.tf_LoChar
         )
-    ]
+    )
     return glyphs
 
 

@@ -53,49 +53,48 @@ class Raster:
     _0 = '0'
     _1 = '1'
     _inner = ''.join
+    _innertype = str
     _outer = tuple
     _itemtype = str
 
     def __init__(self, pixels=(), *, width=NOT_SET, _0=NOT_SET, _1=NOT_SET):
-        """Create glyph from tuple of tuples."""
+        """Create raster from tuple of tuples of string."""
         if isinstance(pixels, type(self)):
+            if width is NOT_SET:
+                width = pixels.width
             if _0 is NOT_SET:
                 _0 = pixels._0
             if _1 is NOT_SET:
                 _1 = pixels._1
-            if width is NOT_SET:
-                width = pixels.width
             pixels = pixels._pixels
-        if (
-                _0 is NOT_SET or _1 is NOT_SET
-                or not isinstance(_0, self._itemtype)
-                or not isinstance(_1, self._itemtype)
-            ):
-            if _1 is NOT_SET:
-                _1 = True
-            # glyph data
-            self._pixels = self._outer(
-                self._inner(self._1 if _bit == _1 else self._0 for _bit in _row)
-                for _row in pixels
-            )
-            # check pixel matrix geometry
-            if len(set(len(_r) for _r in self._pixels)) > 1:
-                raise ValueError(
-                    f"All rows in raster must be of the same width: {repr(self)}"
-                )
+        if not pixels:
+            if width is NOT_SET:
+                width = 0
         else:
-            # if _0 and _1 provided, we don't check the pixel matrix
-            self._pixels = pixels
+            width = len(pixels[0])
+        self._pixels = pixels
+        self._width = width
+        if _0 is not NOT_SET and _1 is not NOT_SET:
             self._0 = _0
             self._1 = _1
-        if not self._pixels:
-            if width is not NOT_SET:
-                self._width = width
-            else:
-                self._width = 0
-        else:
-            self._width = len(self._pixels[0])
-
+        # check pixel matrix types
+        if (
+            not isinstance(self._pixels, self._outer)
+            or (self._pixels and (
+                not isinstance(self._pixels[0], self._innertype)
+                or (
+                    self._pixels[0]
+                    and not isinstance(self._pixels[0][0], self._itemtype)
+            )))):
+            raise ValueError(
+                f"Raster must be {self._outer} of {self._innertype} of {self._itemtype}"
+                f": not {self._pixels}"
+            )
+        # check pixel matrix geometry
+        if len(set(len(_r) for _r in pixels)) > 1:
+            raise ValueError(
+                f"All rows in raster must be of the same width: {repr(self)}"
+            )
 
     def __bool__(self):
         return bool(self.height and self.width)
@@ -152,18 +151,11 @@ class Raster:
         """Create uninked raster."""
         if height == 0:
             return cls(width=width)
-        return cls(((0,) * width,) * height)
+        return cls(('0' * width,) * height)
 
     def is_blank(self):
         """Glyph has no ink."""
         return not any(self._1 in _row for _row in self._pixels)
-
-    def as_matrix(self, *, ink=1, paper=0):
-        """Return matrix of user-specified foreground and background objects."""
-        return tuple(
-            tuple(ink if _c == self._1 else paper for _c in _row)
-            for _row in self._pixels
-        )
 
     def as_text(self, *, ink='@', paper='.', start='', end='\n'):
         """Convert raster to text."""
@@ -219,7 +211,7 @@ class Raster:
             if len(rows) < height:
                 raise ValueError('Bit string too short')
             rows = rows[:height]
-        return cls(rows, _0=_0, _1=_1)
+        return cls.from_matrix(rows, paper=_0, ink=_1)
 
     def as_vector(self, ink=1, paper=0):
         """Return flat tuple of user-specified foreground and background objects."""
@@ -397,6 +389,24 @@ class Raster:
         """Convert raster to hex string."""
         return self.as_bytes(align=align).hex()
 
+    @classmethod
+    def from_matrix(cls, matrix, *, ink=NOT_SET, paper=NOT_SET):
+        """Create raster from iterable of iterables."""
+        if ink is NOT_SET:
+            ink = True
+        # glyph data
+        pixels = cls._outer(
+            cls._inner(cls._1 if _bit == ink else cls._0 for _bit in _row)
+            for _row in matrix
+        )
+        return cls(pixels, _0=cls._0, _1=cls._1)
+
+    def as_matrix(self, *, ink=1, paper=0):
+        """Return matrix of user-specified foreground and background objects."""
+        return tuple(
+            tuple(ink if _c == self._1 else paper for _c in _row)
+            for _row in self._pixels
+        )
 
     ##########################################################################
 
@@ -413,7 +423,7 @@ class Raster:
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
         matrices = (_raster.as_matrix() for _raster in row_of_rasters)
-        concatenated = cls(
+        concatenated = cls.from_matrix(
             sum(_row, ())
             for _row in zip(*matrices)
         )
@@ -425,14 +435,14 @@ class Raster:
         if not column_of_rasters:
             return cls()
         # drop empties
-        row_of_rasters = tuple(
+        column_of_rasters = tuple(
             _raster for _raster in column_of_rasters if _raster.height
         )
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
         matrices = (_raster.as_matrix() for _raster in column_of_rasters)
-        concatenated = cls(
+        concatenated = cls.from_matrix(
             _row
             for _matrix in matrices
             for _row in _matrix
