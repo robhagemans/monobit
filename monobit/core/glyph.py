@@ -488,7 +488,7 @@ class Glyph(HasProps):
     def from_path(cls, path, *, advance_width=None, **kwargs):
         """Draw the StrokePath and create a Glyph."""
         strokepath = StrokePath(path)
-        raster = Raster(strokepath.draw())
+        raster = strokepath.draw()
         if advance_width is None:
             advance_width = strokepath.bounds.right
         return cls(
