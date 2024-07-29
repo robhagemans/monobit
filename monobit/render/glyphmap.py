@@ -8,9 +8,9 @@ licence: https://opensource.org/licenses/MIT
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
+from monobit.base.blocks import matrix_to_blocks, blockstr
 from ..base import Props, Coord
-from ..base.blocks import blockstr
-from ..core import Raster
+from ..core.raster import turn_method
 from ..plumbing import convert_arguments
 
 
@@ -167,22 +167,20 @@ class GlyphMap:
         return canvas.as_blocks(resolution)
 
 
-class _Canvas(Raster):
-    """Mutable raster for glyph maps."""
+class _Canvas:
+    """Blittable raster for glyph maps."""
 
-    _inner = list
-    _innertype = list
-    _outer = list
-    _0 = 0
-    _1 = 1
-    _itemtype = int
+    def __init__(self, pixels):
+        """Create raster from tuple of tuples of string."""
+        self._pixels = pixels
+        self.height = len(pixels)
+        self.width = 0 if not pixels else len(pixels[0])
 
     @classmethod
     def blank(cls, width, height, fill=-1):
         """Create a canvas in background colour."""
         canvas = [[fill]*width for _ in range(height)]
-        # setting 0 and 1 will make Raster init leave the input alone
-        return cls(canvas, _0=0, _1=1)
+        return cls(canvas)
 
     def blit(self, raster, grid_x, grid_y):
         """
@@ -214,3 +212,35 @@ class _Canvas(Raster):
             for _row in self._pixels
         )
         return blockstr(''.join((start, contents, end)))
+
+    def as_blocks(self, resolution=(2, 2)):
+        """Convert glyph to a string of block characters."""
+        if not self.height:
+            return ''
+        return matrix_to_blocks(self._pixels, *resolution)
+
+    def stretch(self, factor_x:int=1, factor_y:int=1):
+        """
+        Repeat rows and/or columns.
+
+        factor_x: number of times to repeat horizontally
+        factor_y: number of times to repeat vertically
+        """
+        # vertical stretch
+        pixels = (_row for _row in self._pixels for _ in range(factor_y))
+        # horizontal stretch
+        pixels = [
+            [_col for _col in _row for _ in range(factor_x)]
+            for _row in pixels
+        ]
+        return type(self)(pixels)
+
+    def flip(self):
+        """Reverse pixels vertically."""
+        return type(self)(self._pixels[::-1])
+
+    def transpose(self):
+        """Transpose glyph."""
+        return type(self)([list(_r) for _r in zip(*self._pixels)])
+
+    turn = turn_method
