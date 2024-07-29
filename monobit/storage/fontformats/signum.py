@@ -11,7 +11,7 @@ from pathlib import Path
 from monobit.base.struct import big_endian as be
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph, Raster
-from monobit.base.binary import ceildiv, bytes_to_bits
+from monobit.base.binary import ceildiv
 
 
 # editor font
