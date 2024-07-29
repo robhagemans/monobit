@@ -171,6 +171,7 @@ class _Canvas(Raster):
     """Mutable raster for glyph maps."""
 
     _inner = list
+    _innertype = list
     _outer = list
     _0 = 0
     _1 = 1

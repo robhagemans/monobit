@@ -119,13 +119,14 @@ class StrokePath:
                 canvas.draw_line(x, y, x+dx, y+dy)
             x += dx
             y += dy
-        return Raster(canvas)
+        return canvas.as_raster()
 
 
 class Canvas(Raster):
     """Mutable raster for line draw operations."""
 
     _inner = list
+    _innertype = list
     _outer = list
     _0 = 0
     _1 = 1
@@ -135,8 +136,12 @@ class Canvas(Raster):
     def blank(cls, width, height):
         """Create a canvas in background colour."""
         canvas = [[cls._0]*width for _ in range(height)]
-        # setting 0 and 1 will make Raster init leave the input alone
+        # Raster init leaves the input alone
         return cls(canvas, _0=cls._0, _1=cls._1)
+
+    def as_raster(self):
+        """Convert to immutable raster."""
+        return Raster.from_matrix(self._pixels, ink=self._1, paper=self._0)
 
     def draw_pixel(self, x, y):
         """Draw a pixel."""
