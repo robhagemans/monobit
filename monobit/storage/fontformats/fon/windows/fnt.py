@@ -15,7 +15,7 @@ import logging
 import itertools
 from types import SimpleNamespace
 
-from monobit.base.binary import bytes_to_bits, ceildiv, align
+from monobit.base.binary import ceildiv, align
 from monobit.base.struct import little_endian as le
 from monobit.base import reverse_dict
 from monobit.storage import FileFormatError
@@ -251,9 +251,9 @@ def _extract_glyphs_v1(data, win_props):
         ]
     bytewidth = win_props.dfWidthBytes
     offset = win_props.dfBitsOffset
-    strikerows = tuple(
-        bytes_to_bits(data[offset+_row*bytewidth : offset+(_row+1)*bytewidth])
-        for _row in range(win_props.dfPixHeight)
+    strike = Raster.from_bytes(
+        data[offset : offset+win_props.dfPixHeight*bytewidth],
+        height=win_props.dfPixHeight,
     )
     glyphs = []
     for ord in range(n_chars):
@@ -261,15 +261,8 @@ def _extract_glyphs_v1(data, win_props):
         width = offsets[ord+1] - offset
         if not width:
             continue
-        rows = tuple(
-            _srow[offset:offset+width]
-            for _srow in strikerows
-        )
-        glyph = Glyph.from_matrix(
-            rows,
-            codepoint=(win_props.dfFirstChar + ord,), 
-            inklevels=(False, True),
-        )
+        raster = strike.crop(left=offset, right=strike.width-offset-width)
+        glyph = Glyph(raster, codepoint=win_props.dfFirstChar + ord)
         glyphs.append(glyph)
     return glyphs
 
