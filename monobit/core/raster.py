@@ -46,10 +46,11 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
+# we allow for max 32 shades (bit depth 5)
+_DIGITS = string.digits + string.ascii_lowercase[:22]
 
-_INKLEVELS = (
-    '.' + string.digits + string.ascii_uppercase + string.ascii_lowercase + '@'
-)
+
+
 
 class Raster:
     """Bit matrix."""
@@ -66,7 +67,7 @@ class Raster:
             elif width is NOT_SET:
                 width = 0
             if inklevels is NOT_SET:
-                inklevels = self._default_inklevels(2)
+                inklevels = _DIGITS[:2]
         self._pixels = pixels
         self._width = width
         self._inklevels = inklevels
@@ -367,7 +368,7 @@ class Raster:
             pixels = tuple(''.join(_row) for _row in matrix)
             return cls(pixels, inklevels=inklevels)
         else:
-            str_inklevels = cls._default_inklevels(len(inklevels))
+            str_inklevels = _DIGITS[:len(inklevels)]
             translator = {_k: _v for _k, _v in zip(inklevels, str_inklevels)}
             # glyph data
             pixels = tuple(
@@ -381,16 +382,6 @@ class Raster:
         if inklevels is NOT_SET:
             inklevels = tuple(range(len(self._inklevels)))
         return tuple(self._as_iter(inklevels=inklevels))
-
-    @classmethod
-    def _default_inklevels(cls, number_shades):
-        """Default ink shades for internal/text representation"""
-        if number_shades > len(_INKLEVELS):
-            raise ValueError(
-                f'Can not represent more than {len(_INKLEVELS)} shades.'
-            )
-        inklevels = _INKLEVELS[:number_shades-1] + _INKLEVELS[-1]
-        return inklevels
 
     def _as_iter(self, *, inklevels):
         """Return iterable of user-specified foreground and background objects."""
@@ -423,7 +414,8 @@ class Raster:
         if not self.height:
             return ''
         if inklevels is NOT_SET:
-            inklevels = self._default_inklevels(len(self._inklevels))
+            # default text representation uses . for paper and @ for full ink
+            inklevels = '.' + _DIGITS[1:len(self._inklevels)-1] + '@'
         rows = self._as_iter(inklevels=inklevels)
         return blockstr(
             start
@@ -454,7 +446,7 @@ class Raster:
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
-        inklevels = cls._default_inklevels(max(len(_r._inklevels) for _r in row_of_rasters))
+        inklevels = _DIGITS[:max(len(_r._inklevels) for _r in row_of_rasters)]
         matrices = (
             _raster.as_matrix(inklevels=inklevels)
             for _raster in row_of_rasters
@@ -477,7 +469,7 @@ class Raster:
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
-        inklevels = cls._default_inklevels(max(len(_r._inklevels) for _r in column_of_rasters))
+        inklevels = _DIGITS[:max(len(_r._inklevels) for _r in column_of_rasters)]
         matrices = (
             _raster.as_matrix(inklevels=inklevels)
             for _raster in column_of_rasters
