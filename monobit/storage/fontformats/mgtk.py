@@ -45,7 +45,7 @@ _HEADER = le.Struct(
 # Pixel data is 7-bits (MSB ignored) and stored in reverse order.
 
 def _split_byte(inbyte):
-    """Reverse bit string, ommitting MSB."""
+    """Reverse bit string, omitting MSB."""
     return bytes_to_bits(bytes((inbyte,)))[:0:-1]
 
 
@@ -76,7 +76,10 @@ def _parse_mgtk(data):
         ]
     # apply glyph widths
     glyphs = [
-        Glyph(_row[_offset][0:_width] for _row in rows)
+        Glyph.from_matrix(
+            (_row[_offset][0:_width] for _row in rows),
+            inklevels=(False, True),
+        )
         for _offset, _width in enumerate(widths)
     ]
     glyphs = [

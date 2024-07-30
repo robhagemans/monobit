@@ -65,7 +65,7 @@ def _read_dsf_format_1(instream, ascent):
         width = int(code[:3])
         height = int(code[3:6])
         raster = Raster.from_vector(
-            code[6:].strip(), stride=width, _0='G', _1='H'
+            code[6:].strip(), stride=width, inklevels='GH'
         )
         # sample file has short bit string
         raster = raster.expand(top=height-raster.height)
@@ -86,7 +86,7 @@ def _write_dsf_format_1(font, outstream):
         # code
         outstream.write(b'%03d%03d' % (glyph.width, glyph.height))
         # glyph def
-        outstream.write(b''.join(glyph.as_vector(ink=b'H', paper=b'G')))
+        outstream.write(b''.join(glyph.as_vector(inklevels=(b'G', b'H'))))
         # advance
         outstream.write(b', %d \r\n' % (glyph.advance_width,))
 
