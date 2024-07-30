@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+import string
 from itertools import zip_longest
 
 from monobit.base.binary import ceildiv, reverse_by_group, bytes_to_bits
@@ -45,12 +46,13 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
-# immutable bit matrix
+
+_INKLEVELS = (
+    '.' + string.digits + string.ascii_uppercase + string.ascii_lowercase + '@'
+)
 
 class Raster:
     """Bit matrix."""
-
-    _inklevels = '01'
 
     def __init__(self, pixels=(), *, width=NOT_SET, inklevels=NOT_SET):
         """Create raster from tuple of tuples of string."""
@@ -64,10 +66,11 @@ class Raster:
             elif width is NOT_SET:
                 width = 0
             if inklevels is NOT_SET:
-                inklevels = self._inklevels
+                inklevels = self._default_inklevels(2)
         self._pixels = pixels
         self._width = width
         self._inklevels = inklevels
+        assert set(inklevels) >= set(''.join(pixels))
         self._paper = self._inklevels[0]
         # check pixel matrix types
         if (
@@ -144,7 +147,7 @@ class Raster:
         """Create uninked raster."""
         if height == 0:
             return cls(width=width)
-        return cls(('0' * width,) * height)
+        return cls(('0' * width,) * height, inklevels='01')
 
     def is_blank(self):
         """Raster has no ink."""
@@ -176,7 +179,7 @@ class Raster:
             rows = rows[:height]
         return cls.from_matrix(rows, inklevels=inklevels)
 
-    def as_vector(self, inklevels=(0, 1)):
+    def as_vector(self, inklevels=NOT_SET):
         """Return flat tuple of user-specified foreground and background objects."""
         return tuple(
             _c
@@ -184,9 +187,11 @@ class Raster:
             for _c in _row
         )
 
-    def as_bits(self, inklevels=b'\0\1'):
+    def as_bits(self, inklevels=NOT_SET):
         """Return flat bits as bytes string. Inklevels must be int or bytes."""
-        if not isinstance(inklevels, bytes):
+        if inklevels is NOT_SET:
+            inklevels = bytes(range(len(self._inklevels)))
+        elif not isinstance(inklevels, bytes):
             # convert inklevels to tuple of bytes
             inklevels = tuple(
                 bytes((_l,)) if isinstance(_l, int) else bytes(_l)
@@ -362,19 +367,32 @@ class Raster:
             pixels = tuple(''.join(_row) for _row in matrix)
             return cls(pixels, inklevels=inklevels)
         else:
-            translator = {_k: _v for _k, _v in zip(inklevels, cls._inklevels)}
+            str_inklevels = cls._default_inklevels(len(inklevels))
+            translator = {_k: _v for _k, _v in zip(inklevels, str_inklevels)}
             # glyph data
             pixels = tuple(
                 ''.join(translator[_bit] for _bit in _row)
                 for _row in matrix
             )
-            return cls(pixels, inklevels=cls._inklevels)
+            return cls(pixels, inklevels=str_inklevels)
 
-    def as_matrix(self, *, inklevels=(0, 1)):
+    def as_matrix(self, *, inklevels=NOT_SET):
         """Return matrix of user-specified foreground and background objects."""
+        if inklevels is NOT_SET:
+            inklevels = tuple(range(len(self._inklevels)))
         return tuple(self._as_iter(inklevels=inklevels))
 
-    def _as_iter(self, *, inklevels=(0, 1)):
+    @classmethod
+    def _default_inklevels(cls, number_shades):
+        """Default ink shades for internal/text representation"""
+        if number_shades > len(_INKLEVELS):
+            raise ValueError(
+                f'Can not represent more than {len(_INKLEVELS)} shades.'
+            )
+        inklevels = _INKLEVELS[:number_shades-1] + _INKLEVELS[-1]
+        return inklevels
+
+    def _as_iter(self, *, inklevels):
         """Return iterable of user-specified foreground and background objects."""
         if inklevels == self._inklevels:
             return self._pixels
@@ -400,10 +418,12 @@ class Raster:
             for _row in self._pixels
         )
 
-    def as_text(self, *, inklevels='.@', start='', end='\n'):
+    def as_text(self, *, inklevels=NOT_SET, start='', end='\n'):
         """Convert raster to text."""
         if not self.height:
             return ''
+        if inklevels is NOT_SET:
+            inklevels = self._default_inklevels(len(self._inklevels))
         rows = self._as_iter(inklevels=inklevels)
         return blockstr(
             start
@@ -415,6 +435,8 @@ class Raster:
         """Convert raster to a string of block characters."""
         if not self.height:
             return ''
+        if len(self._inklevels) > 2:
+            raise ValueError(f'Can not represent more than 2 shades.')
         matrix = self._as_iter()
         return matrix_to_blocks(matrix, *resolution)
 
@@ -432,13 +454,14 @@ class Raster:
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
+        inklevels = cls._default_inklevels(max(len(_r._inklevels) for _r in row_of_rasters))
         matrices = (
-            _raster.as_matrix(inklevels=cls._inklevels)
+            _raster.as_matrix(inklevels=inklevels)
             for _raster in row_of_rasters
         )
         concatenated = cls.from_matrix(
             (''.join(_row) for _row in zip(*matrices)),
-            inklevels=cls._inklevels,
+            inklevels=inklevels,
         )
         return concatenated
 
@@ -454,8 +477,9 @@ class Raster:
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
+        inklevels = cls._default_inklevels(max(len(_r._inklevels) for _r in column_of_rasters))
         matrices = (
-            _raster.as_matrix(inklevels=cls._inklevels)
+            _raster.as_matrix(inklevels=inklevels)
             for _raster in column_of_rasters
         )
         concatenated = cls.from_matrix(
@@ -464,7 +488,7 @@ class Raster:
                 for _matrix in matrices
                 for _row in _matrix
             ),
-            inklevels=cls._inklevels,
+            inklevels=inklevels,
         )
         return concatenated
 
