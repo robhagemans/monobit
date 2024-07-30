@@ -432,10 +432,13 @@ class Raster:
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
-        matrices = (_raster.as_matrix() for _raster in row_of_rasters)
+        matrices = (
+            _raster.as_matrix(inklevels=cls._inklevels)
+            for _raster in row_of_rasters
+        )
         concatenated = cls.from_matrix(
-            sum(_row, ())
-            for _row in zip(*matrices)
+            (''.join(_row) for _row in zip(*matrices)),
+            inklevels=cls._inklevels,
         )
         return concatenated
 
@@ -451,11 +454,17 @@ class Raster:
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
-        matrices = (_raster.as_matrix() for _raster in column_of_rasters)
+        matrices = (
+            _raster.as_matrix(inklevels=cls._inklevels)
+            for _raster in column_of_rasters
+        )
         concatenated = cls.from_matrix(
-            _row
-            for _matrix in matrices
-            for _row in _matrix
+            (
+                _row
+                for _matrix in matrices
+                for _row in _matrix
+            ),
+            inklevels=cls._inklevels,
         )
         return concatenated
 
