@@ -151,26 +151,6 @@ class Raster:
         """Glyph has no ink."""
         return all(_pix == self._paper for _row in self._pixels for _pix in _row)
 
-    def as_text(self, *, inklevels='.@', start='', end='\n'):
-        """Convert raster to text."""
-        if not self.height:
-            return ''
-        translator = {_k: _v for _k, _v in zip(self._inklevels, inklevels)}
-        # translator = str.maketrans(''.join(self._inklevels), ''.join(inklevels))
-        contents = tuple(
-            # _row.translate(translator) for _row in self._pixels
-            ''.join(translator[_c] for _c in _row)
-            for _row in self._pixels
-        )
-        return blockstr(''.join((start, (end+start).join(contents), end)))
-
-    def as_blocks(self, resolution=(2, 2)):
-        """Convert glyph to a string of block characters."""
-        if not self.height:
-            return ''
-        matrix = self.as_matrix()
-        return matrix_to_blocks(matrix, *resolution)
-
     @classmethod
     def from_vector(
             cls, bitseq, *,
@@ -199,21 +179,21 @@ class Raster:
 
     def as_vector(self, inklevels=(0, 1)):
         """Return flat tuple of user-specified foreground and background objects."""
-        translator = {_k: _v for _k, _v in zip(self._inklevels, inklevels)}
-        joined = ''.join(self._pixels)
-        return tuple(translator[_c] for _c in joined)
+        return tuple(
+            _c
+            for _row in self.as_matrix(inklevels=inklevels)
+            for _c in _row
+        )
 
     def as_bits(self, inklevels=(0, 1)):
-        """Return flat bits as bytes string."""
+        """Return flat bits as bytes string. Inklevels must be int or bytes."""
+        # convert inklevels to tuple of bytes
         inklevels = tuple(
             bytes((_l,)) if isinstance(_l, int) else bytes(_l)
             for _l in inklevels
         )
-        pixstr = ''.join(self._pixels).encode('latin-1')
-        # FIXME this only works if newlevels don't overlap with oldlevels
-        for oldlevel, newlevel in zip(self._inklevels, inklevels):
-            pixstr = pixstr.replace(oldlevel.encode('latin-1'), newlevel)
-        return pixstr
+        bits = b''.join(self.as_vector(inklevels))
+        return bits
 
     @classmethod
     def from_bytes(
@@ -394,6 +374,27 @@ class Raster:
             tuple(translator[_c] for _c in _row)
             for _row in self._pixels
         )
+        # optimisation if inklevels consists of individual chars or bytes:
+        # translator = str.maketrans(''.join(self._inklevels), ''.join(inklevels))
+        # _row.translate(translator) for _row in self._pixels
+
+    def as_text(self, *, inklevels='.@', start='', end='\n'):
+        """Convert raster to text."""
+        if not self.height:
+            return ''
+        rows = self.as_matrix(inklevels=inklevels)
+        return blockstr(
+            start
+            + (end+start).join(''.join(_row) for _row in rows)
+            + end
+        )
+
+    def as_blocks(self, resolution=(2, 2)):
+        """Convert glyph to a string of block characters."""
+        if not self.height:
+            return ''
+        matrix = self.as_matrix()
+        return matrix_to_blocks(matrix, *resolution)
 
     ##########################################################################
 
