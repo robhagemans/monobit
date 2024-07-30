@@ -437,12 +437,12 @@ class Raster:
     @classmethod
     def concatenate(cls, *row_of_rasters):
         """Concatenate rasters left-to-right."""
-        if not row_of_rasters:
-            return cls()
         # drop empties
         row_of_rasters = tuple(
             _raster for _raster in row_of_rasters if _raster.width
         )
+        if not row_of_rasters:
+            return cls()
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
@@ -460,12 +460,12 @@ class Raster:
     @classmethod
     def stack(cls, *column_of_rasters):
         """Concatenate rasters top-to-bottom."""
-        if not column_of_rasters:
-            return cls()
         # drop empties
         column_of_rasters = tuple(
             _raster for _raster in column_of_rasters if _raster.height
         )
+        if not column_of_rasters:
+            return cls()
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
