@@ -213,7 +213,7 @@ class TestFeatures(BaseTester):
 ........................................@@@@@..
 """
 
-    def test_render_amiga_proportional(self):
+    def test_amiga_proportional(self):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
         text1 = monobit.render(prop1, b'testing').as_text()
         assert_text_eq(text1, self.proptext)

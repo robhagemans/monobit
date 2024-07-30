@@ -176,7 +176,7 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
         ink = '#'
     char = chr(codepoint)
     glyph = Glyph(
-        glyph_lines, _0=' ', _1=ink,
+        glyph_lines, inklevels=(' ', ink),
         char=char, tag=tag
     )
     return glyph
@@ -291,7 +291,7 @@ def _write_flf(
 def _format_glyph(glyph, ink='#', paper=' ', end='@'):
     lines = [
         f'{_line}{end}'
-        for _line in glyph.as_text(ink=ink, paper=paper).splitlines()
+        for _line in glyph.as_text(inklevels=(paper, ink)).splitlines()
     ]
     if lines:
         lines[-1] += end + '\n'

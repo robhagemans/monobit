@@ -9,7 +9,7 @@ import logging
 from itertools import zip_longest
 from pathlib import PurePath
 
-from monobit.base.binary import ceildiv, bytes_to_bits
+from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.storage import FileFormatError, Regex, Glob
 from monobit.core import Font, Glyph, Raster
