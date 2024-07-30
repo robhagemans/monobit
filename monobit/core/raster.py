@@ -181,20 +181,22 @@ class Raster:
         """Return flat tuple of user-specified foreground and background objects."""
         return tuple(
             _c
-            for _row in self.as_matrix(inklevels=inklevels)
+            for _row in self._as_iter(inklevels=inklevels)
             for _c in _row
         )
 
-    # can use inklevels = b'\0\1' here for optimisation
-    def as_bits(self, inklevels=(0, 1)):
+    def as_bits(self, inklevels=b'\0\1'):
         """Return flat bits as bytes string. Inklevels must be int or bytes."""
-        # convert inklevels to tuple of bytes
-        inklevels = tuple(
-            bytes((_l,)) if isinstance(_l, int) else bytes(_l)
-            for _l in inklevels
+        if not isinstance(inklevels, bytes):
+            # convert inklevels to tuple of bytes
+            inklevels = tuple(
+                bytes((_l,)) if isinstance(_l, int) else bytes(_l)
+                for _l in inklevels
+            )
+        return b''.join(
+            b''.join(_row)
+            for _row in self._as_iter(inklevels=inklevels)
         )
-        bits = b''.join(self.as_vector(inklevels))
-        return bits
 
     @classmethod
     def from_bytes(
@@ -370,10 +372,14 @@ class Raster:
 
     def as_matrix(self, *, inklevels=(0, 1)):
         """Return matrix of user-specified foreground and background objects."""
+        return tuple(self._as_iter(inklevels=inklevels))
+
+    def _as_iter(self, *, inklevels=(0, 1)):
+        """Return iterable of user-specified foreground and background objects."""
         if isinstance(inklevels, str):
             # optimisation if inklevels consists of individual chars or bytes:
             translator = str.maketrans(''.join(self._inklevels), inklevels)
-            return tuple(
+            return (
                 _row.translate(translator)
                 for _row in self._pixels
             )
@@ -381,13 +387,13 @@ class Raster:
             # assuming we use one-byte codepoints
             current_inklevels = ''.join(self._inklevels).encode('latin-1')
             translator = bytes.maketrans(current_inklevels, inklevels)
-            return tuple(
+            return (
                 _row.encode('latin-1').translate(translator)
                 for _row in self._pixels
             )
         # generic logic - allows for any object to be used
         translator = {_k: _v for _k, _v in zip(self._inklevels, inklevels)}
-        return tuple(
+        return (
             tuple(translator[_c] for _c in _row)
             for _row in self._pixels
         )
@@ -396,7 +402,7 @@ class Raster:
         """Convert raster to text."""
         if not self.height:
             return ''
-        rows = self.as_matrix(inklevels=inklevels)
+        rows = self._as_iter(inklevels=inklevels)
         return blockstr(
             start
             + (end+start).join(''.join(_row) for _row in rows)
@@ -407,7 +413,7 @@ class Raster:
         """Convert glyph to a string of block characters."""
         if not self.height:
             return ''
-        matrix = self.as_matrix()
+        matrix = self._as_iter()
         return matrix_to_blocks(matrix, *resolution)
 
     ##########################################################################
