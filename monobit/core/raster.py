@@ -185,6 +185,7 @@ class Raster:
             for _c in _row
         )
 
+    # can use inklevels = b'\0\1' here for optimisation
     def as_bits(self, inklevels=(0, 1)):
         """Return flat bits as bytes string. Inklevels must be int or bytes."""
         # convert inklevels to tuple of bytes
@@ -369,14 +370,27 @@ class Raster:
 
     def as_matrix(self, *, inklevels=(0, 1)):
         """Return matrix of user-specified foreground and background objects."""
+        if isinstance(inklevels, str):
+            # optimisation if inklevels consists of individual chars or bytes:
+            translator = str.maketrans(''.join(self._inklevels), inklevels)
+            return tuple(
+                _row.translate(translator)
+                for _row in self._pixels
+            )
+        if isinstance(inklevels, bytes):
+            # assuming we use one-byte codepoints
+            current_inklevels = ''.join(self._inklevels).encode('latin-1')
+            translator = bytes.maketrans(current_inklevels, inklevels)
+            return tuple(
+                _row.encode('latin-1').translate(translator)
+                for _row in self._pixels
+            )
+        # generic logic - allows for any object to be used
         translator = {_k: _v for _k, _v in zip(self._inklevels, inklevels)}
         return tuple(
             tuple(translator[_c] for _c in _row)
             for _row in self._pixels
         )
-        # optimisation if inklevels consists of individual chars or bytes:
-        # translator = str.maketrans(''.join(self._inklevels), ''.join(inklevels))
-        # _row.translate(translator) for _row in self._pixels
 
     def as_text(self, *, inklevels='.@', start='', end='\n'):
         """Convert raster to text."""
