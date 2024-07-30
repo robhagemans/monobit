@@ -359,16 +359,17 @@ class Raster:
     @classmethod
     def from_matrix(cls, matrix, *, inklevels=(0, 1)):
         """Create raster from iterable of iterables."""
-        matrix = tuple(matrix)
-        if inklevels is NOT_SET:
-            inklevels = cls._inklevels
-        translator = {_k: _v for _k, _v in zip(inklevels, cls._inklevels)}
-        # glyph data
-        pixels = tuple(
-            ''.join(translator[_bit] for _bit in _row)
-            for _row in matrix
-        )
-        return cls(pixels, inklevels=cls._inklevels)
+        if isinstance(inklevels, str):
+            pixels = tuple(''.join(_row) for _row in matrix)
+            return cls(pixels, inklevels=inklevels)
+        else:
+            translator = {_k: _v for _k, _v in zip(inklevels, cls._inklevels)}
+            # glyph data
+            pixels = tuple(
+                ''.join(translator[_bit] for _bit in _row)
+                for _row in matrix
+            )
+            return cls(pixels, inklevels=cls._inklevels)
 
     def as_matrix(self, *, inklevels=(0, 1)):
         """Return matrix of user-specified foreground and background objects."""
@@ -376,6 +377,8 @@ class Raster:
 
     def _as_iter(self, *, inklevels=(0, 1)):
         """Return iterable of user-specified foreground and background objects."""
+        if inklevels == self._inklevels:
+            return self._pixels
         if isinstance(inklevels, str):
             # optimisation if inklevels consists of individual chars or bytes:
             translator = str.maketrans(''.join(self._inklevels), inklevels)
