@@ -532,8 +532,11 @@ class Glyph(HasProps):
         """Return flat tuple of user-specified foreground and background objects."""
         return self._pixels.as_vector(inklevels=inklevels)
 
-    def as_bits(self, inklevels=(0, 1)):
-        """Return flat bits as bytes string. Inklevels may be of type int or RGB"""
+    def as_bits(self, inklevels=b'\0\1'):
+        """
+        Return flat bits as bytes string.
+        `inklevels` may be bytes, tuple of int or tuple of RGB.
+        """
         return self._pixels.as_bits(inklevels=inklevels)
 
     def as_byterows(self, *, align='left'):
