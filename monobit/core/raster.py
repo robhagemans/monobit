@@ -55,20 +55,19 @@ class Raster:
     def __init__(self, pixels=(), *, width=NOT_SET, inklevels=NOT_SET):
         """Create raster from tuple of tuples of string."""
         if isinstance(pixels, type(self)):
-            if width is NOT_SET:
-                width = pixels.width
-            if inklevels is NOT_SET:
-                inklevels = pixels._inklevels
+            width = pixels._width
+            inklevels = pixels._inklevels
             pixels = pixels._pixels
-        if not pixels:
-            if width is NOT_SET:
-                width = 0
         else:
-            width = len(pixels[0])
+            if pixels:
+                width = len(pixels[0])
+            elif width is NOT_SET:
+                width = 0
+            if inklevels is NOT_SET:
+                inklevels = self._inklevels
         self._pixels = pixels
         self._width = width
-        if inklevels is not NOT_SET:
-            self._inklevels = inklevels
+        self._inklevels = inklevels
         self._paper = self._inklevels[0]
         # check pixel matrix types
         if (
