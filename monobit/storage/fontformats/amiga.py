@@ -9,9 +9,8 @@ import os
 import logging
 from pathlib import Path
 
-from monobit.base.binary import bytes_to_bits
 from monobit.storage import loaders, savers, FileFormatError, Regex
-from monobit.core import Font, Glyph
+from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import flag, bitfield, big_endian as be
 from monobit.base import Props, Coord
 
@@ -328,24 +327,20 @@ def _read_strike(f, props):
     else:
         kerning = [0] * nchars
     # bitmap strike
-    strike = tuple(
-        bytes_to_bits(data[_offset : _offset+props.tf_Modulo])
-        for _offset in range(
-            loc + props.tf_CharData,
-            loc + props.tf_CharData + props.tf_Modulo*props.tf_YSize,
-            props.tf_Modulo
-        )
+    strike = Raster.from_bytes(
+        data[
+            loc + props.tf_CharData
+            : loc + props.tf_CharData + props.tf_Modulo*props.tf_YSize
+        ],
+        height=props.tf_YSize,
     )
     # extract glyphs
     pixels = (
-        tuple(_row[_loc.offset:_loc.offset+_loc.width] for _row in strike)
+        strike.crop(left=_loc.offset, right=strike.width-_loc.offset-_loc.width)
         for _loc in locs
     )
     glyphs = tuple(
-        Glyph.from_matrix(
-            _pix, codepoint=_ord, kerning=_kern, spacing=_spc,
-            inklevels=(False, True),
-        )
+        Glyph(_pix, codepoint=_ord, kerning=_kern, spacing=_spc)
         for _ord, (_pix, _kern, _spc) in enumerate(
             zip(pixels, kerning, spacing),
             start=props.tf_LoChar
