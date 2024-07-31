@@ -75,6 +75,9 @@ def load_beos(instream):
         height = glyph_data.bottom - glyph_data.top + 1
         glyph_bytes = instream.read(height*bytewidth)
         glyphs.append(
-            Glyph.from_bytes(glyph_bytes, width=width*4, height=height, codepoint=code)
+            Glyph.from_bytes(
+                glyph_bytes, width=width, height=height, bits_per_pixel=4,
+                codepoint=code,
+            )
         )
     return Font(glyphs, encoding='unicode').label()
