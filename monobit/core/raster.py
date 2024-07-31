@@ -346,14 +346,14 @@ class Raster:
         return ceildiv(stride, 8) * self.height
 
     @classmethod
-    def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left'):
+    def from_hex(cls, hexstr, *args, **kwargs):
         """Create raster from hex string."""
         byteseq = bytes.fromhex(hexstr)
-        return cls.from_bytes(byteseq, width, height, align=align)
+        return cls.from_bytes(byteseq, *args, **kwargs)
 
-    def as_hex(self, *, align='left'):
+    def as_hex(self, **kwargs):
         """Convert raster to hex string."""
-        return self.as_bytes(align=align).hex()
+        return self.as_bytes(**kwargs).hex()
 
     @classmethod
     def from_matrix(cls, matrix, *, inklevels=(0, 1)):
