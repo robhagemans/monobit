@@ -441,8 +441,8 @@ def _write_glyph(outstream, glyph, global_metrics):
     else:
         glyphtxt = glyph.pixels.as_text(
             start=YaffParams.tab,
-            inklevels=(YaffParams.paper, YaffParams.ink),
-            end='\n'
+            # inklevels=(YaffParams.paper, YaffParams.ink),
+            end='\n',
         )
     outstream.write(glyphtxt)
     properties = glyph.get_properties()
