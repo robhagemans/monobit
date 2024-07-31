@@ -99,6 +99,7 @@ class GlyphProperties:
     advance_height: int
     width: int
     height: int
+    levels: int
     ink_bounds: Bounds
     bounding_box: Coord
     padding: Bounds
@@ -142,6 +143,10 @@ class Glyph(HasProps):
     def height(self):
         """Raster height of glyph."""
         return self._pixels.height
+
+    @checked_property
+    def levels(self):
+        return self._pixels.levels
 
     @checked_property
     def ink_bounds(self):
