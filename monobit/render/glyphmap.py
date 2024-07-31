@@ -18,7 +18,14 @@ def glyph_to_image(glyph, paper, ink):
     """Create image of single glyph."""
     image_mode = _get_image_mode(paper, ink, paper)
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
-    data = glyph.as_bits(inklevels=(paper, ink))
+    inklevels = tuple(
+        tuple(
+            (_i * _ink + (glyph.levels - _i) * _paper) // glyph.levels
+            for _ink, _paper in zip(ink, paper)
+        )
+        for _i in range(glyph.levels)
+    )
+    data = glyph.as_bits(inklevels=inklevels)
     if image_mode in ('RGB', 'RGBA'):
         # itertools grouper idiom, split in groups of 3 or 4 bytes
         iterators = [iter(data)] * len(image_mode)

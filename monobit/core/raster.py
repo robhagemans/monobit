@@ -71,6 +71,7 @@ def to_base(base):
             # notwithstanding best practice, the str concat here is
             # twice as fast for relevant input sizes as list or deque
             # credits to stackoverflow user Gareth
+            # https://stackoverflow.com/questions/2063425/python-elegant-inverse-function-of-intstring-base
             digits = _DIGITS[value % base]
             while value >= base:
                 value //= base
@@ -225,16 +226,17 @@ class Raster:
         """Return flat bits as bytes string. Inklevels must be int or bytes."""
         if inklevels is NOT_SET:
             inklevels = bytes(range(self._levels))
-        elif not isinstance(inklevels, bytes):
+        elif isinstance(inklevels, bytes):
+            return b''.join(self._as_iter(inklevels=inklevels))
+        else:
             # convert inklevels to tuple of bytes
             inklevels = tuple(
                 bytes((_l,)) if isinstance(_l, int) else bytes(_l)
                 for _l in inklevels
             )
-        return b''.join(
-            b''.join(_row)
-            for _row in self._as_iter(inklevels=inklevels)
-        )
+            return b''.join(
+                b''.join(_l) for _l in self._as_iter(inklevels=inklevels)
+            )
 
     @classmethod
     def from_bytes(
