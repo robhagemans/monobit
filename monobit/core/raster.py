@@ -90,12 +90,12 @@ class Raster:
 
     @property
     def width(self):
-        """Raster width of glyph."""
+        """Raster width."""
         return self._width
 
     @property
     def height(self):
-        """Raster height of glyph."""
+        """Raster height."""
         return len(self._pixels)
 
     @property
@@ -147,7 +147,7 @@ class Raster:
         return cls(('0' * width,) * height)
 
     def is_blank(self):
-        """Glyph has no ink."""
+        """Raster has no ink."""
         return all(_pix == self._paper for _row in self._pixels for _pix in _row)
 
     @classmethod
@@ -412,7 +412,7 @@ class Raster:
         )
 
     def as_blocks(self, resolution=(2, 2)):
-        """Convert glyph to a string of block characters."""
+        """Convert raster to a string of block characters."""
         if not self.height:
             return ''
         matrix = self._as_iter()
@@ -489,7 +489,7 @@ class Raster:
         )
 
     def transpose(self):
-        """Transpose glyph."""
+        """Transpose raster."""
         return type(self)(
             tuple(''.join(_r) for _r in zip(*self._pixels)),
             inklevels=self._inklevels,
@@ -527,7 +527,7 @@ class Raster:
         up: number of rows to move up
         """
         if min(left, down, right, up) < 0:
-            raise ValueError('Can only shift glyph by a positive amount.')
+            raise ValueError('Can only shift raster by a positive amount.')
         rows = down - up
         columns = right - left
         empty_row = self._paper * self.width
@@ -556,7 +556,7 @@ class Raster:
 
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """
-        Crop glyph.
+        Crop raster.
 
         left: number of columns to remove from left
         bottom: number of rows to remove from bottom
@@ -564,7 +564,7 @@ class Raster:
         top: number of rows to remove from top
         """
         if min(left, bottom, right, top) < 0:
-            raise ValueError('Can only crop glyph by a positive amount.')
+            raise ValueError('Can only crop raster by a positive amount.')
         if self.height - top - bottom <= 0:
             return type(self).blank(width=max(0, self.width-right-left))
         return type(self)(
@@ -585,7 +585,7 @@ class Raster:
         top: number of rows to add on top
         """
         if min(left, bottom, right, top) < 0:
-            raise ValueError('Can only expand glyph by a positive amount.')
+            raise ValueError('Can only expand raster by a positive amount.')
         if not top+self.height+bottom:
             return type(self).blank(width=right+self.width+left)
         new_width = left + self.width + right
