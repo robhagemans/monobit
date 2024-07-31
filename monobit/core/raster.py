@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import string
 from itertools import zip_longest
+from collections import deque
 
 from monobit.base.binary import ceildiv, reverse_by_group, bytes_to_bits
 from monobit.base import Bounds, Coord, NOT_SET
@@ -51,7 +52,7 @@ _DIGITS = string.digits + string.ascii_lowercase[:6]
 
 
 def to_base(base):
-    """Converter for number to str in given base."""
+    """Converter for non-negative number to str in given base."""
     if base == 2:
         return lambda _v: bin(_v)[2:]
     elif base == 8:
@@ -62,13 +63,19 @@ def to_base(base):
         return lambda _v: hex(_v)[2:]
     else:
         def _to_base(value):
+            """Convert nonnegative integer to string in any base."""
             if value == 0:
                 return _DIGITS[0]
-            digits = []
-            while value:
-                digits.append(int(value % base))
+            elif value < 0:
+                raise ValueError('value must be nonegative')
+            # notwithstanding best practice, the str concat here is
+            # twice as fast for relevant input sizes as list or deque
+            # credits to stackoverflow user Gareth
+            digits = _DIGITS[value % base]
+            while value >= base:
                 value //= base
-            return ''.join(_DIGITS[_i] for _i in digits[::-1])
+                digits = _DIGITS[value % base] + digits
+            return digits
         return _to_base
 
 
