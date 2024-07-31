@@ -539,9 +539,9 @@ class Glyph(HasProps):
         """
         return self._pixels.as_bits(inklevels=inklevels)
 
-    def as_byterows(self, *, align='left'):
+    def as_byterows(self, *, align='left', bit_order='big'):
         """Convert glyph to rows of bytes."""
-        return self._pixels.as_byterows(align=align)
+        return self._pixels.as_byterows(align=align, bit_order=bit_order)
 
     def as_bytes(
             self, *, align='left', stride=NOT_SET, byte_swap=0,
