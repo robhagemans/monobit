@@ -536,8 +536,7 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
         # check if font is monochromatic
         colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
         if len(colourset) <= 1:
-            # only one colour found
-            bg, fg = None, colourset[0]
+            raise FileFormatError('No glyphs or only blank glyphs found.')
             # note that if colourset is empty, all char widths/heights must be zero
         elif len(colourset) > 2:
             raise FileFormatError(
@@ -547,20 +546,16 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
             # use higher intensity (sum of channels) as foreground
             bg, fg = colourset
             if sum(bg) > sum(fg):
-                bg, fg = fg, bg
+                inklevels = fg, bg
+            else:
+                inklevels = bg, fg
         # extract glyphs
         for char, sprite in zip(chars, sprites):
-            #if char.width and char.height:
-            bits = tuple(_c == fg for _c in sprite)
             if not char.width:
                 glyph = Glyph.blank(width=0, height=char.height)
             else:
-                glyph = Glyph.from_matrix(
-                    (
-                        bits[_offs: _offs+char.width]
-                        for _offs in range(0, len(bits), char.width)
-                    ),
-                    inklevels=(False, True),
+                glyph = Glyph.from_vector(
+                    sprite, stride=char.width, inklevels=inklevels,
                 )
             # append kernings (this glyph left)
             is_unicode = bool(_to_int(info['unicode']))
