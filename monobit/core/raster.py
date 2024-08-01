@@ -99,7 +99,9 @@ class Raster:
         self._pixels = pixels
         self._width = width
         self._inklevels = inklevels
-        assert set(inklevels) >= set(''.join(pixels))
+        assert set(inklevels) >= set(''.join(pixels)), (
+            f"{set(inklevels)} >= {set(''.join(pixels))} fails"
+        )
         self._paper = self._inklevels[0]
         self._levels = len(self._inklevels)
         # check pixel matrix types
