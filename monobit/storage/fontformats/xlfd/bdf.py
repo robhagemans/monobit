@@ -246,14 +246,11 @@ def _convert_bdf_glyphs(bdf_glyphs, global_metrics, bdf_props):
         # decode raster hex string
         hexstr = props.pop('hex')
         if len(bdf_props['SIZE']) == 4:
+            # Microsoft greymap extension of BDF, FontForge "BDF 2.3"
+            # https://fontforge.org/docs/techref/BDFGrey.html
             depth = bdf_props['SIZE'][3]
-            if depth not in (1, 2, 4):
-                # Microsoft greymap extension of BDF, FontForge "BDF 2.3"
-                # https://fontforge.org/docs/techref/BDFGrey.html
-                # we're not supporting 8-bit currently
-                raise FileFormatError(
-                    f'{depth}-bits per pixel BDF not supported.'
-                )
+            if depth not in (1, 2, 4, 8):
+                raise FileFormatError(f'{depth}-bits per pixel not supported.')
         else:
             depth = 1
         width, height, _, _ = props['BBX']
