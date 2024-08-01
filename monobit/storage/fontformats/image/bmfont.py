@@ -19,7 +19,7 @@ Image = safe_import('PIL.Image')
 from monobit.base import Coord, Bounds
 from monobit.encoding import encodings
 from monobit.storage import FileFormatError
-from monobit.base.binary import int_to_bytes, bytes_to_int, ceildiv
+from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
 from monobit.base import Props, reverse_dict
 from monobit.storage import loaders, savers
