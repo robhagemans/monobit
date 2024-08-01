@@ -18,9 +18,14 @@ def glyph_to_image(glyph, paper, ink):
     """Create image of single glyph."""
     image_mode = _get_image_mode(paper, ink, paper)
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
+    # create ink gradient
+    if isinstance(ink, int):
+        ink = (ink,)
+        paper = (paper,)
+    maxlevel = glyph.levels - 1
     inklevels = tuple(
         tuple(
-            (_i * _ink + (glyph.levels - _i) * _paper) // glyph.levels
+            (_i * _ink + (maxlevel - _i) * _paper) // maxlevel
             for _ink, _paper in zip(ink, paper)
         )
         for _i in range(glyph.levels)
