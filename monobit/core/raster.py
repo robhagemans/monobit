@@ -47,37 +47,37 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
-# we allow for max 16 shades (bit depth 4, 2 pixels per byte)
+# these allow for max 16 shades (bit depth 4, 2, 1 pixels per byte)
 _DIGITS = string.digits + string.ascii_lowercase[:6]
 
 
-def to_base(base):
+def base_conv(base):
     """Converter for non-negative number to str in given base."""
     if base == 2:
-        return lambda _v: bin(_v)[2:]
+        return (lambda _v: bin(_v)[2:]), _DIGITS[:base]
     elif base == 8:
-        return lambda _v: oct(_v)[2:]
+        return (lambda _v: oct(_v)[2:]), _DIGITS[:base]
     elif base == 10:
-        return str
+        return str, _DIGITS[:base]
     elif base == 16:
-        return lambda _v: hex(_v)[2:]
+        return (lambda _v: hex(_v)[2:]), _DIGITS[:base]
     else:
         def _to_base(value):
-            """Convert nonnegative integer to string in any base."""
+            """Convert nonnegative integer to string in any base up to 256."""
             if value == 0:
-                return _DIGITS[0]
+                return chr(0)
             elif value < 0:
                 raise ValueError('value must be nonegative')
             # notwithstanding best practice, the str concat here is
             # twice as fast for relevant input sizes as list or deque
             # credits to stackoverflow user Gareth
             # https://stackoverflow.com/questions/2063425/python-elegant-inverse-function-of-intstring-base
-            digits = _DIGITS[value % base]
+            digits = chr(value % base)
             while value >= base:
                 value //= base
-                digits = _DIGITS[value % base] + digits
+                digits = chr(value % base) + digits
             return digits
-        return _to_base
+        return _to_base, ''.join(chr(_i) for _i in range(base))
 
 
 class Raster:
@@ -295,18 +295,25 @@ class Raster:
                 byteseq[_offs::height]
                 for _offs in range(height)
             )
-        if not byteseq:
-            bitseq = ''
+        # convert bytes to pixels
+        if levels == 256:
+            inklevels = ''.join(chr(_i) for _i in range(256))
+            bitseq = byteseq.decode('latin-1')
         else:
-            bitseq = to_base(levels)(
-                int.from_bytes(byteseq, 'big')
-            ).zfill(pixels_per_byte*len(byteseq))
+            to_base, inklevels = base_conv(levels)
+            if not byteseq:
+                bitseq = ''
+            else:
+                bitseq = (
+                    to_base(int.from_bytes(byteseq, 'big'))
+                    .zfill(pixels_per_byte*len(byteseq))
+                )
         # per-byte bit swap.
         if bit_order == 'little':
             bitseq = reverse_by_group(bitseq)
         return cls.from_vector(
             bitseq, width=width, height=height, stride=stride, align=align,
-            inklevels=_DIGITS[:levels],
+            inklevels=inklevels,
         )
 
     def as_byterows(self, *, align='left', bit_order='big'):
