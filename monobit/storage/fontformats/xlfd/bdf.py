@@ -339,17 +339,21 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
 
 def swidth_to_pixel(swidth, point_size, dpi):
     """DWIDTH = SWIDTH * points/1000 * dpi / 72"""
-    return swidth * (point_size / 1000) * (dpi / 72)
-
+    dwidth = point_size * (dpi / 72) * swidth / 1000
+    # swidth is rounded at 1/1000 points, dwidth is pixel-valued
+    # snap to integer allowing relative error of 1/100 of pixel size
+    whole = round(dwidth)
+    if whole == 0:
+        return dwidth
+    return round(dwidth / whole, 2) * whole
 
 ##############################################################################
 # BDF writer
 
 def pixel_to_swidth(dwidth, point_size, dpi):
     """SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )"""
-    return int(
-        round(dwidth / (point_size / 1000) / (dpi / 72))
-    )
+    swidth = dwidth / (point_size / 1000) / (dpi / 72)
+    return int(round(swidth))
 
 
 def _save_bdf(font, outstream):
