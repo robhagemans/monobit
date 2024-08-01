@@ -433,6 +433,11 @@ class Font(HasProps):
         )
 
     @checked_property
+    def levels(self):
+        """Number of ink levels."""
+        return max(_g.levels for _g in self.glyphs)
+
+    @checked_property
     def cell_size(self):
         """Width, height of the character cell."""
         if not self.glyphs or self.spacing not in ('character-cell', 'multi-cell'):
