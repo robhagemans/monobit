@@ -357,7 +357,7 @@ def pixel_to_swidth(dwidth, point_size, dpi):
 
 
 def _save_bdf(font, outstream):
-    """Write one font to X11 BDF 2.1."""
+    """Write one font to BDF."""
     # property table
     xlfd_props = create_xlfd_properties(font)
     xlfd_name = create_xlfd_name(xlfd_props)
@@ -390,8 +390,14 @@ def _save_bdf(font, outstream):
 
 
 def _convert_to_bdf_properties(font, xlfd_name):
+    # version 2.2 supports vertical metrics
+    # and glyph names longer than 14 characters
+    if font.has_vertical_metrics():
+        version = '2.2'
+    else:
+        version = '2.1'
     bdf_props = [
-        ('STARTFONT', '2.1'),
+        ('STARTFONT', version),
     ] + [
         ('COMMENT', _comment) for _comment in font.get_comment().splitlines()
     ] + [
