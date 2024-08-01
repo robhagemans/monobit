@@ -15,17 +15,13 @@ def align(num, exp):
     mask = 2**exp - 1
     return (num + mask) & ~mask
 
-def bytes_to_bits(inbytes, width=None, align='left'):
+def bytes_to_bits(inbytes, width=None):
     """Convert bytes/bytearray/sequence of int to tuple of bits."""
     bitstr = ''.join('{:08b}'.format(_b) for _b in inbytes)
     bits = tuple(_c == '1' for _c in bitstr)
     if width is None:
         return bits
-    elif align.startswith('r'):
-        # pylint: disable=invalid-unary-operand-type
-        return bits[-width:]
-    else:
-        return bits[:width]
+    return bits[:width]
 
 def int_to_bytes(in_int, byteorder='big'):
     """Convert integer to bytes."""

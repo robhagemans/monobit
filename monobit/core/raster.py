@@ -10,7 +10,7 @@ import string
 from itertools import zip_longest
 from collections import deque
 
-from monobit.base.binary import ceildiv, reverse_by_group, bytes_to_bits
+from monobit.base.binary import ceildiv, reverse_by_group
 from monobit.base import Bounds, Coord, NOT_SET
 from monobit.base.blocks import matrix_to_blocks, blockstr
 
