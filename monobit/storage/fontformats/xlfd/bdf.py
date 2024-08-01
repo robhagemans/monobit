@@ -361,7 +361,6 @@ def _save_bdf(font, outstream):
     # property table
     xlfd_props = create_xlfd_properties(font)
     xlfd_name = create_xlfd_name(xlfd_props)
-    bdf_props = _convert_to_bdf_properties(font, xlfd_name)
     # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
     if font.spacing not in ('character-cell', 'multi-cell'):
         font = font.reduce()
@@ -372,8 +371,9 @@ def _save_bdf(font, outstream):
         _convert_to_bdf_glyph(glyph, font)
         for glyph in font.glyphs
     )
+    bdf_props = _convert_to_bdf_properties(font, xlfd_name, glyphs)
     # write out
-    for key, value in bdf_props:
+    for key, value in bdf_props.items():
         if value:
             outstream.write(f'{key} {value}\n')
     if xlfd_props:
@@ -383,16 +383,19 @@ def _save_bdf(font, outstream):
         outstream.write('ENDPROPERTIES\n')
     outstream.write(f'CHARS {len(glyphs)}\n')
     for glyph in glyphs:
-        for key, value in glyph:
+        for key, value in glyph.items():
             outstream.write(f'{key} {value}\n')
         outstream.write('ENDCHAR\n')
     outstream.write('ENDFONT\n')
 
 
-def _convert_to_bdf_properties(font, xlfd_name):
+def _convert_to_bdf_properties(font, xlfd_name, glyphs):
     # version 2.2 supports vertical metrics
     # and glyph names longer than 14 characters
-    if font.has_vertical_metrics():
+    if (
+            font.has_vertical_metrics()
+            or any(len(_g['STARTCHAR']) > 14 for _g in glyphs)
+        ):
         version = '2.2'
     else:
         version = '2.1'
@@ -415,7 +418,7 @@ def _convert_to_bdf_properties(font, xlfd_name):
     ]
     if font.has_vertical_metrics():
         bdf_props.append(('METRICSSET', '2'))
-    return bdf_props
+    return dict(bdf_props)
 
 
 def _get_glyph_encvalue(glyph, is_unicode):
@@ -509,4 +512,4 @@ def _convert_to_bdf_glyph(glyph, font):
             for _offs in range(0, len(hex), width)
         ]
         glyphdata.append(('BITMAP', '\n' + '\n'.join(split_hex)))
-    return glyphdata
+    return dict(glyphdata)
