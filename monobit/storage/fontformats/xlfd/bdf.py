@@ -325,7 +325,7 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
     new_props['top_bearing'] = top_bearing
     new_props['bottom_bearing'] = bottom_bearing
     swidth1_x, swidth1_y = props['SWIDTH1']
-    new_props['scalable_height'] = swidth_to_pixel(
+    new_props['scalable_height'] = -swidth_to_pixel(
         swidth1_y, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][2]
     )
     if new_props['scalable_height'] == advance_height:
