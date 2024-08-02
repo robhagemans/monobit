@@ -20,7 +20,7 @@ from monobit.storage.utils.limitations import ensure_single
 # see https://github.com/karlb/sfont
 
 
-_INDICATOR_RGBA = (255, 0, 255, 255)
+# _INDICATOR_RGBA = (255, 0, 255, 255)
 _INDICATOR_RGB = (255, 0, 255)
 _SFONT_RANGE = range(33, 127)
 
@@ -39,33 +39,38 @@ if Image:
         indicator = tuple(image.crop((0, 0, image.width, 1)).getdata())
         if len(set(indicator)) != 2:
             raise FileFormatError('Not an SFont image: missing indicator bar.')
+        # we converted to RGB so we don't need to consider RGBA
         for rgb in set(indicator):
-            if not isinstance(rgb, tuple):
-                raise FileFormatError('Not an SFont image: must be RGB or RGBA.')
-            if rgb != _INDICATOR_RGB and rgb != _INDICATOR_RGBA:
+            if rgb != _INDICATOR_RGB:
                 background = rgb
                 break
         spritesheet = image.crop((0, 1, image.width, image.height))
         colours = set(spritesheet.getdata())
-        if len(colours) > 2:
-            msg = (
-                'Colour and anti-aliasing not supported. '
-                'All non-background pixels will be interpreted as inked.'
-            )
-            raise FileFormatError(msg)
-        for rgb in colours:
-            if rgb != background:
-                foreground = rgb
-                break
+        # identify colour mode
+        if len(colours) < 2:
+            raise FileFormatError('No glyphs or only blank glyphs found.')
+        elif len(colours) == 2:
+            for rgb in colours:
+                if rgb != background:
+                    foreground = rgb
+                    break
+            inklevels = (background, foreground)
+        else:
+            if not all(len(set(_c)) == 1 for _c in colours):
+                # only greyscale allowed, r==g==b
+                raise FileFormatError('Colour fonts not supported.')
+            inklevels = tuple((_c, _c, _c) for _c in range(256))
+        # find indicator lengths
         groups = tuple(
             (_clr, len(tuple(_g)))
             for _clr, _g in groupby(indicator)
         )
+        # extract glyphs
         x = 0
         glyphs = []
         left = 0
         for i, (clr, length) in enumerate(groups):
-            if clr in (_INDICATOR_RGB, _INDICATOR_RGBA):
+            if clr == _INDICATOR_RGB:
                 if i == 0:
                     left = length
                 else:
@@ -80,7 +85,7 @@ if Image:
                         Glyph.from_vector(
                             tuple(crop.getdata()),
                             stride=crop.width,
-                            inklevels=(background, foreground),
+                            inklevels=inklevels,
                             codepoint=min(_SFONT_RANGE) + i//2,
                             left_bearing=-left,
                             right_bearing=-right,
@@ -118,14 +123,14 @@ if Image:
             glyphmap.append_glyph(glyph, x, 0)
             width = glyph.advance_width
             x += width
-            indicator.extend((_INDICATOR_RGBA,) * indicator_length)
-            indicator.extend(((0, 0, 0, 0),) * width)
+            indicator.extend((_INDICATOR_RGB,) * indicator_length)
+            indicator.extend(((0, 0, 0),) * width)
             right = -glyph.right_bearing
         if right:
-            indicator.append(_INDICATOR_RGBA * right)
+            indicator.append(_INDICATOR_RGB * right)
         glyphmap.append_glyph(Glyph(), x, 0)
         glyph_image = glyphmap.as_image(
-            ink=(255, 255, 255, 255), paper=(0, 0, 0, 0), border=(0, 0, 0, 0)
+            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0)
         )
         image = Image.new(
             glyph_image.mode, (glyph_image.width, glyph_image.height+1)
