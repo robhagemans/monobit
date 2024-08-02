@@ -92,6 +92,8 @@ class FontProperties:
     # maximum raster (not necessarily ink) width/height
     raster_size: Coord
     raster: Bounds
+    # greyscale levels
+    levels: int
     # width, height of the character cell
     cell_size: Coord
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
@@ -435,7 +437,7 @@ class Font(HasProps):
     @checked_property
     def levels(self):
         """Number of ink levels."""
-        return max(_g.levels for _g in self.glyphs)
+        return max((_g.levels for _g in self.glyphs), default=2)
 
     @checked_property
     def cell_size(self):

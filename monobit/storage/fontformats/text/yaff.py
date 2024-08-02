@@ -18,6 +18,7 @@ from monobit.storage.magic import Sentinel
 from monobit.core import (
     Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
 )
+from monobit.core.raster import base_conv
 from monobit.base import Props
 from monobit.base import Coord, passthrough
 
@@ -154,9 +155,10 @@ def _read_yaff(text_stream):
     font_props = {}
     font_prop_comms = {}
     current_comment = []
+    inklevels = YaffParams.paper + YaffParams.ink
     for block in iter_blocks(text_stream, blocktypes):
         if isinstance(block, (YaffGlyph, YaffPropertyOrGlyph)) and block.is_glyph():
-            glyphs.append(block.get_glyph_value() | Props(
+            glyphs.append(block.get_glyph_value(inklevels) | Props(
                 comment='\n\n'.join(current_comment),
             ))
             current_comment = []
@@ -167,6 +169,9 @@ def _read_yaff(text_stream):
                 logging.debug("yaff signature found, version %s", value)
             else:
                 _set_property(font_props, key, value)
+                if key == 'levels':
+                    _, inklevels = base_conv(int(value, 0))
+                    inklevels = '.' + inklevels[1:-1] + '@'
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -218,20 +223,21 @@ class YaffMultiline(NonEmptyBlock, YaffParams):
 
 
 class YaffGlyph(YaffMultiline):
+    """Glyph with 1.0 label. Monochrome or greyscale."""
 
     label_chars = tuple('"' + "'" + string.digits)
 
     def starts(self, line):
         return line and (line[:1] in self.label_chars) or '+' in line
 
-    def get_value(self):
+    def get_value(self, inklevels):
         labels = tuple(_l[:-1] for _l in self.lines[:self.n_keys])
         lines = (_l[self.indent:] for _l in self.lines[self.n_keys:])
         lines = tuple(_l for _l in lines if _l)
         # locate glyph properties
         i = 0
         for i, line in enumerate(lines):
-            if line[:1] not in (self.paper, self.ink) and set(line) != set(self.empty):
+            if self.separator in line:
                 break
         else:
             i += 1
@@ -259,7 +265,7 @@ class YaffGlyph(YaffMultiline):
         if all(set(_line) == set([self.empty]) for _line in raster):
             raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
         return Props(
-            pixels=Raster(raster, inklevels=(self.paper, self.ink)),
+            pixels=Raster(raster, inklevels=inklevels),
             labels=labels, **properties
         )
 
@@ -290,6 +296,7 @@ _LABEL_VALUED_KEYS = tuple(
 
 
 class YaffProperty(NonEmptyBlock, YaffParams):
+    """Inline property."""
 
     def starts(self, line):
         return (
@@ -318,6 +325,7 @@ def _strip_quotes(line):
 
 
 class YaffPropertyOrGlyph(YaffMultiline):
+    """Multiline properties, or monochrome glyph with pre-1.0 tag/char label."""
 
     def starts(self, line):
         return line[:1] not in self.whitespace and line[-1:] == self.separator
@@ -406,6 +414,8 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
+        if font.levels != 2:
+            props['levels'] = font.levels
         # transfer font properties in defined order
         font_props = font.get_properties()
         props |= transfer_properties(font_props)
