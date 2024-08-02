@@ -355,7 +355,7 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enct
         else:
             # format 8, 9: component bitmaps
             # format 3: obsolete, not used
-            # format 4: modified-Hufffman compressed, insufficiently documented
+            # format 4: modified-Huffman compressed, insufficiently documented
             logging.warning(
                 'Unsupported image format %d', subtable.imageFormat
             )
