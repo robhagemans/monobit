@@ -130,18 +130,21 @@ class GlyphMap:
         width, height = max_x - min_x, max_y - min_y
         images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
         for entry in self._map:
-            charimg = glyph_to_image(entry.glyph, paper, ink)
+            # we need to treat the background colour as transparent
+            # we create the glyph as a mask and cut it from a solid ink-colour
+            if transparent:
+                mask = glyph_to_image(entry.glyph, 0, 255)
+                colour = Image.new(image_mode, mask.size, ink)
+            else:
+                mask = None
+                colour = glyph_to_image(entry.glyph, paper, ink)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
                 # Image has ttb y coords, we have btt
                 # our character origin is bottom left
                 target = (entry.x-min_x, height-entry.glyph.height+min_y-entry.y)
-            if transparent:
-                mask = charimg
-            else:
-                mask = None
-            images[entry.sheet].paste(charimg, target, mask)
+            images[entry.sheet].paste(colour, target, mask)
         images = tuple(
             _im.resize((self._scale_x*_im.width, self._scale_y*_im.height))
                 .rotate(-90 * self._turns, expand=True)
