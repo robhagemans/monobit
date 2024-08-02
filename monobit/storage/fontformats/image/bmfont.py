@@ -534,28 +534,39 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
         for image in sheets.values():
             image.close()
         # check if font is monochromatic
-        colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
-        if len(colourset) <= 1:
+        colours = list(set(_tup for _sprite in sprites for _tup in _sprite))
+        if len(colours) < 2:
             raise FileFormatError('No glyphs or only blank glyphs found.')
-            # note that if colourset is empty, all char widths/heights must be zero
-        elif len(colourset) > 2:
-            raise FileFormatError(
-                'Greyscale, colour and antialiased fonts not supported.'
-            )
-        elif len(colourset) == 2:
+        elif len(colours) == 2:
             # use higher intensity (sum of channels) as foreground
-            bg, fg = colourset
+            bg, fg = colours
             if sum(bg) > sum(fg):
                 inklevels = fg, bg
             else:
                 inklevels = bg, fg
+            pixels_per_byte = 8
+        else:
+            if not all(
+                    len(set(_c[:3])) == 1 and not _c[3:] or _c[3] == 255
+                    for _c in colours
+                ):
+                # only greyscale allowed, r==g==b, alpha==255
+                raise FileFormatError('Colour fonts not supported.')
+            tuple_len = len(colours[0])
+            if tuple_len == 4:
+                inklevels = tuple((_c, _c, _c, 255) for _c in range(256))
+            else:
+                inklevels = tuple((_c,) * tuple_len for _c in range(256))
+            pixels_per_byte = 1
         # extract glyphs
         for char, sprite in zip(chars, sprites):
             if not char.width:
-                glyph = Glyph.blank(width=0, height=char.height)
+                glyph = Glyph.blank(width=0, height=char.height, levels=len(inklevels))
             else:
                 glyph = Glyph.from_vector(
-                    sprite, stride=char.width, inklevels=inklevels,
+                    sprite,
+                    stride=char.width,
+                    inklevels=inklevels,
                 )
             # append kernings (this glyph left)
             is_unicode = bool(_to_int(info['unicode']))
