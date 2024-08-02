@@ -47,8 +47,8 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
-# these allow for max 16 shades (bit depth 4, 2, 1 pixels per byte)
-_DIGITS = string.digits + string.ascii_lowercase[:6]
+# these allow for max 36 shades
+_DIGITS = string.digits + string.ascii_lowercase
 
 
 def base_conv(base):
@@ -62,22 +62,28 @@ def base_conv(base):
     elif base == 16:
         return (lambda _v: hex(_v)[2:]), _DIGITS[:base]
     else:
+        if base <= 36:
+            inklevels = _DIGITS
+        elif base == 256:
+            inklevels = ''.join(chr(_i) for _i in range(base))
+        else:
+            raise ValueError(f'Unsupported base {base}')
         def _to_base(value):
             """Convert nonnegative integer to string in any base up to 256."""
             if value == 0:
-                return chr(0)
+                return inklevels[0]
             elif value < 0:
                 raise ValueError('value must be nonegative')
             # notwithstanding best practice, the str concat here is
             # twice as fast for relevant input sizes as list or deque
             # credits to stackoverflow user Gareth
             # https://stackoverflow.com/questions/2063425/python-elegant-inverse-function-of-intstring-base
-            digits = chr(value % base)
+            digits = inklevels[value % base]
             while value >= base:
                 value //= base
-                digits = chr(value % base) + digits
+                digits = inklevels[value % base] + digits
             return digits
-        return _to_base, ''.join(chr(_i) for _i in range(base))
+        return _to_base, inklevels
 
 
 class Raster:
@@ -184,7 +190,8 @@ class Raster:
         """Create uninked raster."""
         if height == 0:
             return cls(width=width)
-        return cls((_DIGITS[0] * width,) * height, inklevels=_DIGITS[:levels])
+        _, inklevels = base_conv(levels)
+        return cls((inklevels[0] * width,) * height, inklevels=inklevels)
 
     def is_blank(self):
         """Raster has no ink."""
@@ -325,9 +332,10 @@ class Raster:
         """
         if not self.height or not self.width:
             return ()
+        _, inklevels = base_conv(self._levels)
         rows = (
             ''.join(_row)
-            for _row in self.as_matrix(inklevels=_DIGITS[:self._levels])
+            for _row in self.as_matrix(inklevels=inklevels)
         )
         bits_per_pixel = (self._levels - 1).bit_length()
         base = 2 ** bits_per_pixel
@@ -335,12 +343,19 @@ class Raster:
         bytewidth = ceildiv(self.width, pixels_per_byte)
         stride = pixels_per_byte * bytewidth
         if align.startswith('l'):
-            rows = (_row.ljust(stride, _DIGITS[0]) for _row in rows)
+            rows = (_row.ljust(stride, inklevels[0]) for _row in rows)
         else:
-            rows = (_row.rjust(stride, _DIGITS[0]) for _row in rows)
+            rows = (_row.rjust(stride, inklevels[0]) for _row in rows)
         if bit_order == 'little':
             rows = (reverse_by_group(_row) for _row in rows)
-        byterows = (int(_row, base).to_bytes(bytewidth, 'big') for _row in rows)
+        if base == 256:
+            byterows = tuple(
+                _row.encode('latin-1') for _row in rows
+            )
+        else:
+            byterows = tuple(
+                int(_row, base).to_bytes(bytewidth, 'big') for _row in rows
+            )
         return byterows
 
     def as_bytes(
@@ -369,13 +384,14 @@ class Raster:
             bits_per_pixel = (self._levels - 1).bit_length()
             base = 2 ** bits_per_pixel
             pixels_per_byte = 8 // bits_per_pixel
+            _, inklevels = base_conv(self._levels)
             bits = ''.join(
                 ''.join(_row)
-                for _row in raster.as_matrix(inklevels=_DIGITS[:self._levels])
+                for _row in raster.as_matrix(inklevels=inklevels)
             )
             bytesize = ceildiv(len(bits), pixels_per_byte)
             # left align the bits to byte boundary
-            bits = bits.ljust(bytesize * pixels_per_byte, _DIGITS[0])
+            bits = bits.ljust(bytesize * pixels_per_byte, inklevels[0])
             # per-byte bit swap.
             if bit_order == 'little':
                 bits = reverse_by_group(bits)
@@ -426,7 +442,7 @@ class Raster:
             pixels = tuple(''.join(_row) for _row in matrix)
             return cls(pixels, inklevels=inklevels)
         else:
-            str_inklevels = _DIGITS[:len(inklevels)]
+            _, str_inklevels = base_conv(len(inklevels))
             translator = {_k: _v for _k, _v in zip(inklevels, str_inklevels)}
             # glyph data
             pixels = tuple(
@@ -504,7 +520,7 @@ class Raster:
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
-        inklevels = _DIGITS[:max(len(_r._inklevels) for _r in row_of_rasters)]
+        _, inklevels = base_conv(max(_r.levels for _r in row_of_rasters))
         matrices = (
             _raster.as_matrix(inklevels=inklevels)
             for _raster in row_of_rasters
@@ -527,7 +543,7 @@ class Raster:
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
-        inklevels = _DIGITS[:max(len(_r._inklevels) for _r in column_of_rasters)]
+        _, inklevels = base_conv(max(_r.levels for _r in column_of_rasters))
         matrices = (
             _raster.as_matrix(inklevels=inklevels)
             for _raster in column_of_rasters
