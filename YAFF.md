@@ -14,7 +14,7 @@
     .@@......@@..........................@@.
 
 
-The `yaff` font file format, version 1.0.1
+The `yaff` font file format, version 1.0.2
 ==========================================
 
 Design aims
@@ -32,8 +32,8 @@ The `yaff` format has the following design aims:
 - **Able to represent Unicode fonts as well as codepage fonts.**
 
 Non-aims include:
-- Colour/greyscale fonts and anti-aliasing. It has to stop somewhere.
-- Performance. Bitmap fonts are small; computers are fast and have tons of memory.
+- Colour fonts.  
+- Performance.  
 
 
 Example
@@ -423,7 +423,7 @@ _Encoding parameters_ affect how text is converted into glyphs.
 - `word-boundary`: label indicating the glyph to be used as a word boundary. Usually u+0020 (space).
 
 
-##### Stroke definitions
+##### Stroke definitions (experimental)
 
 - `path` is a glyph property that contains a stroke sequence describing
     how to draw the glyph. The stroke path is defined as a sequence of straight lines
