@@ -33,10 +33,10 @@ _HEADER = be.Struct(
     # > font-point (Bitmap fonts are enabled at this point number)
     point='uint16',
     unknown_768='uint16',
-    padding_1='8s',
+    unknown='8s',
 )
 
-_LOCATION_TABLE = be.Struct(
+_LOCATION_ENTRY = be.Struct(
     pointer='uint32',
     code='uint16',
     reserved='uint16',
@@ -69,17 +69,18 @@ def load_beos(instream):
     logging.debug('family: %s', familyName)
     logging.debug('style: %s', styleName)
     # hash table of pointers to glyphs, hashed by unicode codepoint
-    location_table = (_LOCATION_TABLE * (header.ltMax+1)).read_from(instream)
+    location_table = (_LOCATION_ENTRY * (header.ltMax+1)).read_from(instream)
     location_dict = {_e.pointer: _e.code for _e in location_table}
     glyphs = []
     while instream.tell() < header.size:
         pointer = instream.tell()
         code = location_dict.get(pointer, None)
         glyph_data = _GLYPH_DATA.read_from(instream)
-        # 4 bits per pixel
+        # bitmap dimensions
         width = glyph_data.right - glyph_data.left + 1
-        bytewidth = ceildiv(width * 4, 8)
         height = glyph_data.bottom - glyph_data.top + 1
+        # 4 bits per pixel
+        bytewidth = ceildiv(width * 4, 8)
         glyph_bytes = instream.read(height*bytewidth)
         glyphs.append(
             Glyph.from_bytes(
