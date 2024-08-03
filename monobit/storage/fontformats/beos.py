@@ -32,7 +32,9 @@ _HEADER = be.Struct(
     ltMax='uint16',
     # > font-point (Bitmap fonts are enabled at this point number)
     point='uint16',
+    # > 0x0300 (unknown)
     unknown_768='uint16',
+    # unknown and differs per font; ProFont has it all null so that is valid?
     unknown='8s',
 )
 
@@ -85,7 +87,7 @@ def load_beos(instream):
         glyphs.append(
             Glyph.from_bytes(
                 glyph_bytes, width=width, height=height, bits_per_pixel=4,
-                codepoint=code,
+                char=chr(code),
                 right_bearing=glyph_data.width-width-glyph_data.left,
                 left_bearing=glyph_data.left,
                 shift_up=-1-glyph_data.bottom,
@@ -97,7 +99,7 @@ def load_beos(instream):
         family=familyName,
         name=(familyName + ' ' + styleName),
         point_size=header.point,
-    ).label()
+    )
 
 
 @savers.register(linked=load_beos)
