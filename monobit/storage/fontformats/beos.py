@@ -21,11 +21,16 @@ from monobit.storage.utils.limitations import ensure_single
 
 _HEADER = be.Struct(
     mark='4s',
+    # > total size
     size='uint32',
+    # > font-family-name size (not including the trailing null)
     ffnSize='uint16',
+    # > font-style-name size (not including the trailing null)
     fsnSize='uint16',
     padding_0='10s',
+    # > The number of characters that can be stored in the location-table -1
     ltMax='uint16',
+    # > font-point (Bitmap fonts are enabled at this point number)
     point='uint16',
     unknown_768='uint16',
     padding_1='8s',
@@ -48,22 +53,24 @@ _GLYPH_DATA = be.Struct(
     maybe_height='float',
 )
 
+_BEOS_MAGIC = b'|Be;'
+
+
 @loaders.register(
     name='beos',
-    magic=(b'|Be;',)
+    magic=(_BEOS_MAGIC,)
 )
 def load_beos(instream):
     """Load font from Be Bitmap Font file."""
     header = _HEADER.read_from(instream)
-    familyName = instream.read(header.ffnSize+1)
-    styleName = instream.read(header.fsnSize+1)
+    familyName = instream.read(header.ffnSize+1)[:-1].decode('latin-1')
+    styleName = instream.read(header.fsnSize+1)[:-1].decode('latin-1')
     logging.debug('header: %s', header)
     logging.debug('family: %s', familyName)
     logging.debug('style: %s', styleName)
     # hash table of pointers to glyphs, hashed by unicode codepoint
     location_table = (_LOCATION_TABLE * (header.ltMax+1)).read_from(instream)
     location_dict = {_e.pointer: _e.code for _e in location_table}
-    # for entry in location_table:
     glyphs = []
     while instream.tell() < header.size:
         pointer = instream.tell()
@@ -77,7 +84,16 @@ def load_beos(instream):
         glyphs.append(
             Glyph.from_bytes(
                 glyph_bytes, width=width, height=height, bits_per_pixel=4,
-                codepoint=code, right_bearing=glyph_data.width-width,
+                codepoint=code,
+                right_bearing=glyph_data.width-width,
+                left_bearing=glyph_data.left,
+                shift_up=-1-glyph_data.bottom,
             )
         )
-    return Font(glyphs, encoding='unicode').label()
+    return Font(
+        glyphs,
+        encoding='unicode',
+        family=familyName,
+        name=(familyName + ' ' + styleName),
+        point_size=header.point,
+    ).label()
