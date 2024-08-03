@@ -98,3 +98,78 @@ def load_beos(instream):
         name=(familyName + ' ' + styleName),
         point_size=header.point,
     ).label()
+
+
+@savers.register(linked=load_beos)
+def save_beos(fonts, outstream):
+    """Save font to BeOS file."""
+    font = ensure_single(fonts)
+    font = font.label()
+    # drop multi-codepoint sequences and unlabelled glyphs
+    glyphs = tuple(_g for _g in font.glyphs if len(_g.char) == 1)
+    # create header
+    style_name = font.name[len(font.family):].strip()
+    header = _HEADER(
+        mark=_BEOS_MAGIC,
+        # size='uint32',
+        ffnSize=len(font.family),
+        fsnSize=len(style_name),
+        # ltMax is an assumption reproducing the value in my sample font
+        ltMax = 2*(len(glyphs)-1)-1,
+        point=font.point_size,
+        unknown_768=0x300,
+    )
+    # create glyph table
+    glyph_data = tuple(
+        bytes(_GLYPH_DATA(
+            unknown_0x4996b438 = 0x4996b438,
+            unknown_0x4996b440 = 0x4996b440,
+            left=_g.left_bearing,
+            top=(-1-_g.shift_up) -_g.height + 1,
+            right=_g.width + _g.left_bearing - 1,
+            bottom=-1-_g.shift_up,
+            width=_g.advance_width,
+            # maybe_height='float',
+        ))
+        for _g in glyphs
+    )
+    strike_offset = (
+        _HEADER.size + header.ffnSize + 1 + header.fsnSize + 1
+        + _LOCATION_ENTRY.size * (header.ltMax+1)
+    )
+    glyph_bytes = tuple(_g.as_bytes() for _g in glyphs)
+    offsets = accumulate(
+        (len(_g) + len(_s) for _g, _s in zip(glyph_data, glyph_bytes)),
+        initial=strike_offset,
+    )
+    # create location entries
+    loc_entries = tuple(
+        _LOCATION_ENTRY(pointer=_offs, code=ord(_g.char))
+        for _g, _offs in zip(glyphs, offsets)
+    )
+    strike = b''.join(
+        b''.join((_data, _bytes))
+        for _data, _bytes in zip(glyph_data, glyph_bytes)
+    )
+    header.size = strike_offset + len(strike)
+    # create hash table
+    hashes = (
+        ((ord(_g.char)>>2) ^ (ord(_g.char)<<3)) & header.ltMax
+        for _g in glyphs
+    )
+    location_table = [None] * (header.ltMax+1)
+    for entry, hash in zip(loc_entries, hashes):
+        while location_table[hash] is not None:
+            hash += 1
+            if hash > header.ltMax:
+                hash = 0
+        location_table[hash] = entry
+    location_table = (_LOCATION_ENTRY * (header.ltMax+1))(*(
+        _entry if _entry else _LOCATION_ENTRY(pointer=0xffffffff)
+        for _entry in location_table
+    ))
+    outstream.write(bytes(header))
+    outstream.write(font.family.encode('latin-1', 'replace')+ b'\0')
+    outstream.write(style_name.encode('latin-1', 'replace')+ b'\0')
+    outstream.write(bytes(location_table))
+    outstream.write(bytes(strike))
