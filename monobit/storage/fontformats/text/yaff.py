@@ -170,8 +170,12 @@ def _read_yaff(text_stream):
             else:
                 _set_property(font_props, key, value)
                 if key == 'levels':
-                    _, inklevels = base_conv(int(value, 0))
-                    inklevels = '.' + inklevels[1:-1] + '@'
+                    levels = int(value, 0)
+                    if levels == 256:
+                        inklevels = ('..', *(f'{_c:02x}' for _c in range(1, 255)), '@@')
+                    else:
+                        _, inklevels = base_conv(levels)
+                        inklevels = YaffParams.paper + inklevels[1:-1] + YaffParams.ink
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -263,7 +267,19 @@ class YaffGlyph(YaffMultiline):
                 _set_property(properties, key, value)
         # deal with sized empties (why?)
         if all(set(_line) == set([self.empty]) for _line in raster):
-            raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
+            raster = Raster.blank(
+                width=len(raster[0])-1, height=len(raster)-1,
+                levels=len(inklevels),
+            )
+        # split up pixel groups for 8-bit
+        elif len(inklevels) == 256:
+            raster = Raster.from_matrix(
+                (
+                    tuple(_row[_c:_c+2] for _c in range(0, len(_row), 2))
+                    for _row in raster
+                ),
+                inklevels=inklevels,
+            )
         return Props(
             pixels=Raster(raster, inklevels=inklevels),
             labels=labels, **properties
@@ -449,9 +465,14 @@ def _write_glyph(outstream, glyph, global_metrics):
     if not glyph.pixels.width or not glyph.pixels.height:
         glyphtxt = f'{YaffParams.tab}{YaffParams.empty}\n'
     else:
+        if glyph.levels == 256:
+            inklevels = ('..', *(f'{_c:02x}' for _c in range(255)), '@@')
+        else:
+            _, inklevels = base_conv(glyph.levels)
+            inklevels = YaffParams.paper + inklevels[1:-1] + YaffParams.ink
         glyphtxt = glyph.pixels.as_text(
             start=YaffParams.tab,
-            # inklevels=(YaffParams.paper, YaffParams.ink),
+            inklevels=inklevels,
             end='\n',
         )
     outstream.write(glyphtxt)

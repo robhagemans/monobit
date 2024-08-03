@@ -299,7 +299,7 @@ def save_bitmap(
         bitmap = Raster.stack(*rasters)
         glyphrows = (bitmap,)
     else:
-        # contruct rows (itertools.grouper recipe)
+        # construct rows (itertools.grouper recipe)
         args = [iter(rasters)] * strike_count
         grouped = zip_longest(*args, fillvalue=Glyph())
         glyphrows = (
