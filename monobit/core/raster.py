@@ -349,9 +349,7 @@ class Raster:
         if bit_order == 'little':
             rows = (reverse_by_group(_row) for _row in rows)
         if base == 256:
-            byterows = tuple(
-                _row.encode('latin-1') for _row in rows
-            )
+            byterows = tuple(_row.encode('latin-1') for _row in rows)
         else:
             byterows = tuple(
                 int(_row, base).to_bytes(bytewidth, 'big') for _row in rows
