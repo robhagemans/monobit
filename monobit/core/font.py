@@ -956,18 +956,18 @@ class Font(HasProps):
         if self.glyphs and self.spacing in ('character-cell', 'multi-cell'):
             return Glyph.blank(
                 width=self.cell_size.x, height=self.cell_size.y,
-                shift_up=self.glyphs[0].shift_up
+                shift_up=self.glyphs[0].shift_up, levels=self.levels,
             )
         # pylint: disable=invalid-unary-operand-type
         return Glyph.blank(
             width=self.word_space, height=self.pixel_size,
-            shift_up=-self.descent
+            shift_up=-self.descent, levels=self.levels,
         )
 
     @cache
     def get_empty_glyph(self):
         """Get blank glyph with zero advance_width and advance_height."""
-        return Glyph.blank()
+        return Glyph.blank(levels=self.levels)
 
 
     ##########################################################################

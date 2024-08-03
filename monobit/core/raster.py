@@ -188,9 +188,9 @@ class Raster:
     @classmethod
     def blank(cls, width=0, height=0, levels=2):
         """Create uninked raster."""
-        if height == 0:
-            return cls(width=width)
         _, inklevels = base_conv(levels)
+        if height == 0:
+            return cls(width=width, inklevels=inklevels)
         return cls((inklevels[0] * width,) * height, inklevels=inklevels)
 
     def is_blank(self):
@@ -521,7 +521,7 @@ class Raster:
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
         _, inklevels = base_conv(max(_r.levels for _r in row_of_rasters))
-        matrices = (
+        matrices = tuple(
             _raster.as_matrix(inklevels=inklevels)
             for _raster in row_of_rasters
         )
