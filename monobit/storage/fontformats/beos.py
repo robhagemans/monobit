@@ -86,7 +86,7 @@ def load_beos(instream):
             Glyph.from_bytes(
                 glyph_bytes, width=width, height=height, bits_per_pixel=4,
                 codepoint=code,
-                right_bearing=glyph_data.width-width,
+                right_bearing=glyph_data.width-width-glyph_data.left,
                 left_bearing=glyph_data.left,
                 shift_up=-1-glyph_data.bottom,
             )
