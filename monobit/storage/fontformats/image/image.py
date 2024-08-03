@@ -147,13 +147,8 @@ if Image:
         crops = tuple(_crop.resize(cell, resample=Image.NEAREST) for _crop in crops)
         # determine colour mode (2- or 3-colour)
         colourset = set(img.getdata())
-        if len(colourset) > 3:
-            raise FileFormatError(
-                f'More than three colours ({len(colourset)}) found in image. '
-                'Colour, greyscale and antialiased glyphs are not supported.'
-            )
         # three-colour mode - proportional width encoded with border colour
-        elif len(colourset) == 3:
+        if len(colourset) >= 3:
             # get border/padding colour
             border = _get_border_colour(img, cell, margin, padding)
             # clip off border colour from cells
@@ -167,13 +162,13 @@ if Image:
         enumerated_crops = tuple(enumerated_crops)
         # get pixels
         _, crops = tuple(zip(*enumerated_crops))
-        paper, ink = _identify_colours(crops, background)
+        inklevels = _identify_colours(crops, background)
         # convert to glyphs, set codepoints
         glyphs = tuple(
             Glyph.from_vector(
                 tuple(_crop.getdata()),
                 stride=_crop.width,
-                inklevels=(paper, ink),
+                inklevels=inklevels,
                 codepoint=_index,
             )
             for _index, _crop in enumerated_crops
@@ -199,36 +194,46 @@ if Image:
         # check that cells are monochrome
         crops = tuple(tuple(_crop.getdata()) for _crop in crops)
         colourset = set.union(*(set(_data) for _data in crops))
-        if not colourset:
-            raise FileFormatError('Empty image.')
+        if len(colourset) < 2:
+            raise FileFormatError('No glyphs or only blank glyphs found.')
         elif len(colourset) > 2:
-            raise FileFormatError(
-                f'More than two colours ({len(colourset)}) found in image. '
-                'Colour, greyscale and antialiased glyphs are not supported. '
-            )
-        elif len(colourset) == 1:
-            # only one colour - interpret as paper
-            return colourset.pop(), None
-        colourfreq = Counter(_c for _data in crops for _c in _data)
-        brightness = sorted((sum(_v for _v in _c), _c) for _c in colourset)
-        if background == 'most-common':
-            # most common colour in image assumed to be background colour
-            paper, _ = colourfreq.most_common(1)[0]
-        elif background == 'least-common':
-            # least common colour in image assumed to be background colour
-            paper, _ = colourfreq.most_common()[-1]
-        elif background == 'brightest':
-            # brightest colour assumed to be background
-            _, paper = brightness[-1]
-        elif background == 'darkest':
-            # darkest colour assumed to be background
-            _, paper = brightness[0]
-        elif background == 'top-left':
-            # top-left pixel of first char assumed to be background colour
-            paper = crops[0][0]
-        # 2 colour image - not-paper means ink
-        ink = (colourset - {paper}).pop()
-        return paper, ink
+            # 3 or more non-border colours, must be a greyscale image
+            if not all(
+                    len(set(_c[:3])) == 1 and not _c[3:] or _c[3] == 255
+                    for _c in colourset
+                ):
+                # only greyscale allowed, r==g==b, alpha==255
+                raise FileFormatError('Colour fonts not supported.')
+            # get a random element to check colour mode (8/24/32 bit)
+            tuple_len = len(colourset.pop())
+            if tuple_len == 4:
+                # RGBA
+                inklevels = tuple((_c, _c, _c, 255) for _c in range(256))
+            else:
+                # RGB or 8-bit
+                inklevels = tuple((_c,) * tuple_len for _c in range(256))
+            return inklevels
+        else:
+            colourfreq = Counter(_c for _data in crops for _c in _data)
+            brightness = sorted((sum(_v for _v in _c), _c) for _c in colourset)
+            if background == 'most-common':
+                # most common colour in image assumed to be background colour
+                paper, _ = colourfreq.most_common(1)[0]
+            elif background == 'least-common':
+                # least common colour in image assumed to be background colour
+                paper, _ = colourfreq.most_common()[-1]
+            elif background == 'brightest':
+                # brightest colour assumed to be background
+                _, paper = brightness[-1]
+            elif background == 'darkest':
+                # darkest colour assumed to be background
+                _, paper = brightness[0]
+            elif background == 'top-left':
+                # top-left pixel of first char assumed to be background colour
+                paper = crops[0][0]
+            # 2 colour image - not-paper means ink
+            ink = (colourset - {paper}).pop()
+            return paper, ink
 
     def _crop_border(image, border):
         """Remove border area from image."""
