@@ -380,7 +380,10 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enct
             props = _convert_glyph_metrics(metrics, small_is_vert)
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
-            raster = Raster.from_bytes(glyphbytes, width=width, align=align)
+            raster = Raster.from_bytes(
+                glyphbytes, width=width, align=align,
+                bits_per_pixel=blocstrike.bitmapSizeTable.bitDepth,
+            )
             raster = raster.crop(bottom=max(0, raster.height-height))
             glyph = Glyph(
                 raster,
@@ -630,10 +633,6 @@ def _convert_bloc_props(bloc, i_strike):
     strike = bloc.strikes[i_strike]
     bmst = strike.bitmapSizeTable
     # validations
-    if bmst.bitDepth != 1:
-        raise StrikeFormatError(
-            'Colour and grayscale not supported.'
-        )
     if bmst.flags not in (1, 2):
         logging.warning(
             f'Unsupported metric flag value {bmst.flags}, '
