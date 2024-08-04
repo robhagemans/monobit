@@ -10,7 +10,7 @@ import logging
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le
 from monobit.storage import loaders, FileFormatError, Magic
-from monobit.core import Font, Glyph
+from monobit.core import Font, Glyph, Raster
 
 # https://web.archive.org/web/20210610120924/https://hwiegman.home.xs4all.nl/fileformats/acorn_font/font.htm
 # > (The original information can be found on page 1801 of Volume IV of
@@ -112,21 +112,29 @@ def load_x90y45(instream):
         char_tables.append(char_table)
     # convert
     fonts = []
-    for font_entry, char_table in zip(font_data, char_tables):
+    for index_entry, font_entry, char_table in zip(index, font_data, char_tables):
         glyphs = tuple(
-            Glyph.from_bytes(
-                char_data,
-                width=char_entry.width,
-                height=char_entry.height,
-                # bpp must be 4
-                bits_per_pixel=4,
-                align='bit',
-                bit_order='little',
-                bytes=len(char_data),
-                entry=char_entry,
+            Glyph(
+                Raster.from_bytes(
+                    char_data,
+                    width=char_entry.width,
+                    height=char_entry.height,
+                    # bpp must be 4
+                    bits_per_pixel=index_entry.bpp,
+                    align='bit',
+                    bit_order='little',
+                    bytes=len(char_data),
+                ).flip(),
+                left_bearing=char_entry.x0,
+                shift_up=char_entry.y0,
                 codepoint=cp,
-            ).flip()
+            )
             for cp, char_entry, char_data in char_table
         )
-        fonts.append(Font(glyphs))
+        fonts.append(Font(
+            glyphs,
+            point_size=index_entry.point_size,
+            dpi=(font_entry.dpi_x, font_entry.dpi_y),
+            encoding='latin-1',
+        ).label())
     return fonts
