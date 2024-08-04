@@ -317,7 +317,7 @@ class Raster:
                 )
         # per-byte bit swap.
         if bit_order == 'little':
-            bitseq = reverse_by_group(bitseq)
+            bitseq = reverse_by_group(bitseq, group_size=pixels_per_byte)
         return cls.from_vector(
             bitseq, width=width, height=height, stride=stride, align=align,
             inklevels=inklevels,

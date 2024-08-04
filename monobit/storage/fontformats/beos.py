@@ -10,7 +10,6 @@ from itertools import accumulate
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import big_endian as be
-from monobit.base import Props
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
 
