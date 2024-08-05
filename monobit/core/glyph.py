@@ -479,9 +479,18 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left', **kwargs):
+    def from_hex(
+            cls, byteseq, width, height=NOT_SET,
+            *, align='left', order='row-major', stride=NOT_SET,
+            byte_swap=0, bit_order='big',
+            **kwargs
+        ):
         """Create glyph from hex string."""
-        pixels = Raster.from_hex(hexstr, width, height, align=align)
+        pixels = Raster.from_hex(
+            byteseq, width, height,
+            align=align, stride=stride, order=order,
+            byte_swap=byte_swap, bit_order=bit_order,
+        )
         return cls(pixels, **kwargs)
 
     @classmethod
@@ -539,9 +548,9 @@ class Glyph(HasProps):
         """
         return self._pixels.as_bits(inklevels=inklevels)
 
-    def as_byterows(self, *, align='left'):
+    def as_byterows(self, *, align='left', bit_order='big'):
         """Convert glyph to rows of bytes."""
-        return self._pixels.as_byterows(align=align)
+        return self._pixels.as_byterows(align=align, bit_order=bit_order)
 
     def as_bytes(
             self, *, align='left', stride=NOT_SET, byte_swap=0,
@@ -559,9 +568,9 @@ class Glyph(HasProps):
             align=align, stride=stride, byte_swap=byte_swap, bit_order=bit_order,
         )
 
-    def as_hex(self, *, align='left'):
+    def as_hex(self, **kwargs):
         """Convert glyph to hex string."""
-        return self._pixels.as_hex(align=align)
+        return self._pixels.as_hex(**kwargs)
 
 
     ##########################################################################
