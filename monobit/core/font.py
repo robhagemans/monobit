@@ -846,7 +846,7 @@ class Font(HasProps):
                 for _p in ('line_width', 'left_extent', 'right_extent')
             ):
             return True
-        return any(_g.has_vertical_metrics for _g in self.glyphs)
+        return any(_g.has_vertical_metrics() for _g in self.glyphs)
 
     ##########################################################################
     # glyph access
