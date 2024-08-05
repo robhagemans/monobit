@@ -325,7 +325,7 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
     new_props['top_bearing'] = top_bearing
     new_props['bottom_bearing'] = bottom_bearing
     swidth1_x, swidth1_y = props['SWIDTH1']
-    new_props['scalable_height'] = swidth_to_pixel(
+    new_props['scalable_height'] = -swidth_to_pixel(
         swidth1_y, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][2]
     )
     if new_props['scalable_height'] == advance_height:
@@ -339,25 +339,28 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
 
 def swidth_to_pixel(swidth, point_size, dpi):
     """DWIDTH = SWIDTH * points/1000 * dpi / 72"""
-    return swidth * (point_size / 1000) * (dpi / 72)
-
+    dwidth = point_size * (dpi / 72) * swidth / 1000
+    # swidth is rounded at 1/1000 points, dwidth is pixel-valued
+    # snap to integer allowing relative error of 1/100 of pixel size
+    whole = round(dwidth)
+    if whole == 0:
+        return dwidth
+    return round(dwidth / whole, 2) * whole
 
 ##############################################################################
 # BDF writer
 
 def pixel_to_swidth(dwidth, point_size, dpi):
     """SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )"""
-    return int(
-        round(dwidth / (point_size / 1000) / (dpi / 72))
-    )
+    swidth = dwidth / (point_size / 1000) / (dpi / 72)
+    return int(round(swidth))
 
 
 def _save_bdf(font, outstream):
-    """Write one font to X11 BDF 2.1."""
+    """Write one font to BDF."""
     # property table
     xlfd_props = create_xlfd_properties(font)
     xlfd_name = create_xlfd_name(xlfd_props)
-    bdf_props = _convert_to_bdf_properties(font, xlfd_name)
     # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
     if font.spacing not in ('character-cell', 'multi-cell'):
         font = font.reduce()
@@ -368,8 +371,9 @@ def _save_bdf(font, outstream):
         _convert_to_bdf_glyph(glyph, font)
         for glyph in font.glyphs
     )
+    bdf_props = _convert_to_bdf_properties(font, xlfd_name, glyphs)
     # write out
-    for key, value in bdf_props:
+    for key, value in bdf_props.items():
         if value:
             outstream.write(f'{key} {value}\n')
     if xlfd_props:
@@ -379,15 +383,24 @@ def _save_bdf(font, outstream):
         outstream.write('ENDPROPERTIES\n')
     outstream.write(f'CHARS {len(glyphs)}\n')
     for glyph in glyphs:
-        for key, value in glyph:
+        for key, value in glyph.items():
             outstream.write(f'{key} {value}\n')
         outstream.write('ENDCHAR\n')
     outstream.write('ENDFONT\n')
 
 
-def _convert_to_bdf_properties(font, xlfd_name):
+def _convert_to_bdf_properties(font, xlfd_name, glyphs):
+    # version 2.2 supports vertical metrics
+    # and glyph names longer than 14 characters
+    if (
+            font.has_vertical_metrics()
+            or any(len(_g['STARTCHAR']) > 14 for _g in glyphs)
+        ):
+        version = '2.2'
+    else:
+        version = '2.1'
     bdf_props = [
-        ('STARTFONT', '2.1'),
+        ('STARTFONT', version),
     ] + [
         ('COMMENT', _comment) for _comment in font.get_comment().splitlines()
     ] + [
@@ -405,7 +418,7 @@ def _convert_to_bdf_properties(font, xlfd_name):
     ]
     if font.has_vertical_metrics():
         bdf_props.append(('METRICSSET', '2'))
-    return bdf_props
+    return dict(bdf_props)
 
 
 def _get_glyph_encvalue(glyph, is_unicode):
@@ -499,4 +512,4 @@ def _convert_to_bdf_glyph(glyph, font):
             for _offs in range(0, len(hex), width)
         ]
         glyphdata.append(('BITMAP', '\n' + '\n'.join(split_hex)))
-    return glyphdata
+    return dict(glyphdata)
