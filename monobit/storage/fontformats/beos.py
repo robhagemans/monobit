@@ -97,7 +97,7 @@ def load_beos(instream):
         glyphs,
         encoding='unicode',
         family=familyName,
-        name=(familyName + ' ' + styleName),
+        subfamily=styleName,
         point_size=header.point,
     )
 
