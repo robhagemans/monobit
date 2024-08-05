@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.base.binary import ceildiv
+from monobit.base.properties import Props
 from monobit.base.struct import little_endian as le
 from monobit.storage import loaders, FileFormatError, Magic
 from monobit.core import Font, Glyph, Raster
@@ -18,6 +19,8 @@ from monobit.core import Font, Glyph, Raster
 
 # extended format versions exist, not yet supported
 
+
+# x90y45 old-style bitmap file
 
 _INDEX_ENTRY = le.Struct(
     # > 1       point size (not multiplied by 16)
@@ -46,13 +49,13 @@ _FONT_DATA = le.Struct(
     # > 4       pixels per inch in the y-direction
     dpi_y='uint32',
     # > 1       x0     |  maximum bounding box for any character
-    max_x0='int8',
+    x0='int8',
     # > 1       y0     |  bottom-left is inclusive
-    max_y0='int8',
+    y0='int8',
     # > 1       x1     |  top-rightis exclusive
-    max_x1='int8',
+    x1='int8',
     # > 1       y1     |  all coordinates are in pixels
-    max_y1='int8',
+    y1='int8',
     # > 512     2 byte offsets from table start of character data. A zero value
     # >         means the character is not defined. These are low/high byte
     # >         pairs (ie little-endian)
@@ -82,6 +85,16 @@ _CHAR_HEADER = le.Struct(
 )
 def load_x90y45(instream):
     """Load font from acorn RiscOS x90y45 font files."""
+    # load metrics, if available
+    location = instream.where
+    try:
+        metrics_file = location.open('IntMetrics', mode='r')
+    except FileNotFoundError:
+        header = None
+        metrics = None
+    else:
+        with metrics_file:
+            header, metrics = _read_int_metrics(metrics_file)
     index = []
     while True:
         entry = _INDEX_ENTRY.read_from(instream)
@@ -104,15 +117,24 @@ def load_x90y45(instream):
         for cp, offset in enumerate(font_entry.offsets):
             if offset == 0:
                 continue
+            if metrics:
+                metrics_index = header.mapping[cp]
+                char_metrics = metrics[metrics_index]
+            else:
+                char_metrics = None
             instream.seek(anchor + offset)
             char_entry = _CHAR_HEADER.read_from(instream)
             logging.debug('char entry: %s', char_entry)
             char_data = instream.read(ceildiv(char_entry.width * char_entry.height, 2))
-            char_table.append((cp, char_entry, char_data))
+            char_table.append((cp, char_entry, char_data, char_metrics))
         char_tables.append(char_table)
     # convert
     fonts = []
     for index_entry, font_entry, char_table in zip(index, font_data, char_tables):
+        # entries are in 1/1000 of an em (1em == point-size)
+        # point = 1/72 in, 90dpi -> 90 pixels per inch -> 90/72 pixels per point
+        scale_x = index_entry.point_size * font_entry.dpi_x / 72 / 1000
+        scale_y = index_entry.point_size * font_entry.dpi_y / 72 / 1000
         glyphs = tuple(
             Glyph(
                 Raster.from_bytes(
@@ -125,16 +147,75 @@ def load_x90y45(instream):
                     bit_order='little',
                     bytes=len(char_data),
                 ).flip(),
-                left_bearing=char_entry.x0,
+                # x0, y0 in the x90y45 file seem to make more sense than in IntMetrics
+                # or I am not understanding the units correctly
                 shift_up=char_entry.y0,
+                left_bearing=char_entry.x0,
+                # y1 seems to be more consistent than y0
+                # shift_up=round(char_metrics.y1*scale_y) - char_entry.height + 1,
+                # left_bearing=round(char_metrics.x0*scale_x),
+                # right bearing such that advance width is consistent
+                right_bearing=(
+                    round(char_metrics.x_offset*scale_x)
+                    - char_entry.x0
+                    - char_entry.width
+                ),
                 codepoint=cp,
             )
-            for cp, char_entry, char_data in char_table
+            for cp, char_entry, char_data, char_metrics in char_table
         )
         fonts.append(Font(
             glyphs,
+            name=header.name.rstrip(b'\r').decode('latin-1').replace('.', ' '),
             point_size=index_entry.point_size,
             dpi=(font_entry.dpi_x, font_entry.dpi_y),
             encoding='latin-1',
         ).label())
     return fonts
+
+
+# IntMetrics file
+
+_INT_METRICS_HEADER = le.Struct(
+    # > 40      Name of font, padded with Return (&0D) characters
+    name='40s',
+    # > 4       16
+    # > 4       16
+    four_0='uint32',
+    four_1='uint32',
+    # > 1       n=number of defined characters
+    n='uint8',
+    # > 3       reserved - currently 0
+    reserved=le.uint8 * 3,
+    # > 256     character mapping (ie indices into following arrays). For
+    # >         example, if the 40th byte in this block is 4, then the fourth
+    # >         entry in each of the following arrays refers to that character.
+    # >         A zero entry means that character is not defined in this font.
+    mapping=le.uint8 * 256,
+    # 2n      x0     |
+    # 2n      y0     |  bounding cox of character (in 1/1000th em)
+    # 2n      x1     |  coordinates are relative to the 'origin point'
+    # 2n      y1     |
+    # 2n      x-offset after printing this character
+    # 2n      y-offset after printing this character
+    #
+    # The bounding boxes and offsets are given as 16-bit signed numbers, with the low byte first.
+)
+
+
+def _read_int_metrics(instream):
+    """Read IntMetrics file."""
+    header = _INT_METRICS_HEADER.read_from(instream)
+    x0 = (le.int16 * header.n).read_from(instream)
+    y0 = (le.int16 * header.n).read_from(instream)
+    x1 = (le.int16 * header.n).read_from(instream)
+    y1 = (le.int16 * header.n).read_from(instream)
+    x_offset = (le.int16 * header.n).read_from(instream)
+    y_offset = (le.int16 * header.n).read_from(instream)
+    logging.debug('header: %s', header)
+    metrics = tuple(
+        Props(x0=_x0, y0=_y0, x1=_x1, y1=_y1, x_offset=_xoffs, y_offset=_yoffs)
+        for _x0, _y0, _x1, _y1, _xoffs, _yoffs
+        in zip(x0, y0, x1, y1, x_offset, y_offset)
+    )
+    return header, metrics
