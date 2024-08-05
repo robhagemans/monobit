@@ -160,13 +160,17 @@ def load_x90y45(instream):
                     - char_entry.x0
                     - char_entry.width
                 ),
+                scalable_width=char_metrics.x_offset * scale_x,
                 codepoint=cp,
             )
             for cp, char_entry, char_data, char_metrics in char_table
         )
+        name = header.name.rstrip(b'\r').decode('latin-1')
+        family, _, subfamily = name.partition('.')
         fonts.append(Font(
             glyphs,
-            name=header.name.rstrip(b'\r').decode('latin-1').replace('.', ' '),
+            family=family,
+            subfamily=subfamily or None,
             point_size=index_entry.point_size,
             dpi=(font_entry.dpi_x, font_entry.dpi_y),
             encoding='latin-1',
