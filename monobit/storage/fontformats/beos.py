@@ -87,9 +87,10 @@ def load_beos(instream):
             Glyph.from_bytes(
                 glyph_bytes, width=width, height=height, bits_per_pixel=4,
                 char=chr(code),
-                right_bearing=glyph_data.width-width-glyph_data.left,
+                right_bearing=round(glyph_data.width)-width-glyph_data.left,
                 left_bearing=glyph_data.left,
                 shift_up=-1-glyph_data.bottom,
+                scalable_width=glyph_data.width,
             )
         )
     return Font(
@@ -129,7 +130,7 @@ def save_beos(fonts, outstream):
             top=(-1-_g.shift_up) -_g.height + 1,
             right=_g.width + _g.left_bearing - 1,
             bottom=-1-_g.shift_up,
-            width=_g.advance_width,
+            width=_g.scalable_width,
             # maybe_height='float',
         ))
         for _g in glyphs
