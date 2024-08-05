@@ -55,20 +55,19 @@ class Raster:
     def __init__(self, pixels=(), *, width=NOT_SET, inklevels=NOT_SET):
         """Create raster from tuple of tuples of string."""
         if isinstance(pixels, type(self)):
-            if width is NOT_SET:
-                width = pixels.width
-            if inklevels is NOT_SET:
-                inklevels = pixels._inklevels
+            width = pixels._width
+            inklevels = pixels._inklevels
             pixels = pixels._pixels
-        if not pixels:
-            if width is NOT_SET:
-                width = 0
         else:
-            width = len(pixels[0])
+            if pixels:
+                width = len(pixels[0])
+            elif width is NOT_SET:
+                width = 0
+            if inklevels is NOT_SET:
+                inklevels = self._inklevels
         self._pixels = pixels
         self._width = width
-        if inklevels is not NOT_SET:
-            self._inklevels = inklevels
+        self._inklevels = inklevels
         self._paper = self._inklevels[0]
         # check pixel matrix types
         if (
@@ -91,12 +90,12 @@ class Raster:
 
     @property
     def width(self):
-        """Raster width of glyph."""
+        """Raster width."""
         return self._width
 
     @property
     def height(self):
-        """Raster height of glyph."""
+        """Raster height."""
         return len(self._pixels)
 
     @property
@@ -148,7 +147,7 @@ class Raster:
         return cls(('0' * width,) * height)
 
     def is_blank(self):
-        """Glyph has no ink."""
+        """Raster has no ink."""
         return all(_pix == self._paper for _row in self._pixels for _pix in _row)
 
     @classmethod
@@ -347,28 +346,29 @@ class Raster:
         return ceildiv(stride, 8) * self.height
 
     @classmethod
-    def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left'):
+    def from_hex(cls, hexstr, *args, **kwargs):
         """Create raster from hex string."""
         byteseq = bytes.fromhex(hexstr)
-        return cls.from_bytes(byteseq, width, height, align=align)
+        return cls.from_bytes(byteseq, *args, **kwargs)
 
-    def as_hex(self, *, align='left'):
+    def as_hex(self, **kwargs):
         """Convert raster to hex string."""
-        return self.as_bytes(align=align).hex()
+        return self.as_bytes(**kwargs).hex()
 
     @classmethod
     def from_matrix(cls, matrix, *, inklevels=(0, 1)):
         """Create raster from iterable of iterables."""
-        matrix = tuple(matrix)
-        if inklevels is NOT_SET:
-            inklevels = cls._inklevels
-        translator = {_k: _v for _k, _v in zip(inklevels, cls._inklevels)}
-        # glyph data
-        pixels = tuple(
-            ''.join(translator[_bit] for _bit in _row)
-            for _row in matrix
-        )
-        return cls(pixels, inklevels=cls._inklevels)
+        if isinstance(inklevels, str):
+            pixels = tuple(''.join(_row) for _row in matrix)
+            return cls(pixels, inklevels=inklevels)
+        else:
+            translator = {_k: _v for _k, _v in zip(inklevels, cls._inklevels)}
+            # glyph data
+            pixels = tuple(
+                ''.join(translator[_bit] for _bit in _row)
+                for _row in matrix
+            )
+            return cls(pixels, inklevels=cls._inklevels)
 
     def as_matrix(self, *, inklevels=(0, 1)):
         """Return matrix of user-specified foreground and background objects."""
@@ -376,6 +376,8 @@ class Raster:
 
     def _as_iter(self, *, inklevels=(0, 1)):
         """Return iterable of user-specified foreground and background objects."""
+        if inklevels == self._inklevels:
+            return self._pixels
         if isinstance(inklevels, str):
             # optimisation if inklevels consists of individual chars or bytes:
             translator = str.maketrans(''.join(self._inklevels), inklevels)
@@ -410,7 +412,7 @@ class Raster:
         )
 
     def as_blocks(self, resolution=(2, 2)):
-        """Convert glyph to a string of block characters."""
+        """Convert raster to a string of block characters."""
         if not self.height:
             return ''
         matrix = self._as_iter()
@@ -430,10 +432,13 @@ class Raster:
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
-        matrices = (_raster.as_matrix() for _raster in row_of_rasters)
+        matrices = (
+            _raster.as_matrix(inklevels=cls._inklevels)
+            for _raster in row_of_rasters
+        )
         concatenated = cls.from_matrix(
-            sum(_row, ())
-            for _row in zip(*matrices)
+            (''.join(_row) for _row in zip(*matrices)),
+            inklevels=cls._inklevels,
         )
         return concatenated
 
@@ -449,11 +454,17 @@ class Raster:
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
-        matrices = (_raster.as_matrix() for _raster in column_of_rasters)
+        matrices = (
+            _raster.as_matrix(inklevels=cls._inklevels)
+            for _raster in column_of_rasters
+        )
         concatenated = cls.from_matrix(
-            _row
-            for _matrix in matrices
-            for _row in _matrix
+            (
+                _row
+                for _matrix in matrices
+                for _row in _matrix
+            ),
+            inklevels=cls._inklevels,
         )
         return concatenated
 
@@ -478,7 +489,7 @@ class Raster:
         )
 
     def transpose(self):
-        """Transpose glyph."""
+        """Transpose raster."""
         return type(self)(
             tuple(''.join(_r) for _r in zip(*self._pixels)),
             inklevels=self._inklevels,
@@ -516,7 +527,7 @@ class Raster:
         up: number of rows to move up
         """
         if min(left, down, right, up) < 0:
-            raise ValueError('Can only shift glyph by a positive amount.')
+            raise ValueError('Can only shift raster by a positive amount.')
         rows = down - up
         columns = right - left
         empty_row = self._paper * self.width
@@ -545,7 +556,7 @@ class Raster:
 
     def crop(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
         """
-        Crop glyph.
+        Crop raster.
 
         left: number of columns to remove from left
         bottom: number of rows to remove from bottom
@@ -553,7 +564,7 @@ class Raster:
         top: number of rows to remove from top
         """
         if min(left, bottom, right, top) < 0:
-            raise ValueError('Can only crop glyph by a positive amount.')
+            raise ValueError('Can only crop raster by a positive amount.')
         if self.height - top - bottom <= 0:
             return type(self).blank(width=max(0, self.width-right-left))
         return type(self)(
@@ -574,7 +585,7 @@ class Raster:
         top: number of rows to add on top
         """
         if min(left, bottom, right, top) < 0:
-            raise ValueError('Can only expand glyph by a positive amount.')
+            raise ValueError('Can only expand raster by a positive amount.')
         if not top+self.height+bottom:
             return type(self).blank(width=right+self.width+left)
         new_width = left + self.width + right
