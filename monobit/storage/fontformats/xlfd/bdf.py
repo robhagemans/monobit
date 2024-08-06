@@ -1,15 +1,15 @@
 """
 monobit.storage.formats.xlfd.bdf - Adobe Glyph Bitmap Distribution Format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 
 from monobit.base.binary import ceildiv
-from monobit.storage import loaders, savers, FileFormatError
-from monobit.base import Coord
+from monobit.storage import loaders, savers
+from monobit.base import Coord, FileFormatError, UnsupportedError
 from monobit.core import Font, Raster, Glyph, Char, Codepoint, Tag
 from monobit.encoding import encodings, NotFoundError
 from monobit.storage.utils.limitations import ensure_single
@@ -250,7 +250,7 @@ def _convert_bdf_glyphs(bdf_glyphs, global_metrics, bdf_props):
             # https://fontforge.org/docs/techref/BDFGrey.html
             depth = bdf_props['SIZE'][3]
             if depth not in (1, 2, 4, 8):
-                raise FileFormatError(f'{depth}-bits per pixel not supported.')
+                raise UnsupportedError(f'{depth}-bits per pixel not supported.')
         else:
             depth = 1
         width, height, _, _ = props['BBX']

@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.vector.borland - Borland Graphics Interface .CHR files
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,9 +9,10 @@ import logging
 from itertools import accumulate
 
 from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError
 from monobit.base.struct import little_endian as le, bitfield
 from monobit.core import Font, Glyph, StrokePath, StrokeMove
+from monobit.storage.utils.limitations import ensure_single
 
 
 _BGI_MAGIC = b'PK\b\bBGI '
@@ -31,8 +32,7 @@ def load_borland(instream):
 @savers.register(linked=load_borland)
 def save_borland(fonts, outstream):
     """Save a Borland BGI stroke font."""
-    if len(fonts) > 1:
-        raise FileFormatError('BBC font file can only store one font.')
+    font = ensure_single(fonts)
     bgi_data = _convert_to_borland(fonts[0])
     _write_borland(outstream, **bgi_data)
 

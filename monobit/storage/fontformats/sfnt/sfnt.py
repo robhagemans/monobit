@@ -12,10 +12,9 @@ import math
 import re
 from unicodedata import bidirectional
 
-from monobit.base import Props
+from monobit.base import Props, FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint
 from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
 
 from . import fonttools
 from .fonttools import check_fonttools
@@ -29,10 +28,10 @@ from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style
 
 # errors that invalidate only one strike or resource, not the whole file
 
-class ResourceFormatError(FileFormatError):
+class ResourceFormatError(UnsupportedError):
     """Unsupported parameters in resource."""
 
-class StrikeFormatError(ResourceFormatError):
+class StrikeFormatError(UnsupportedError):
     """Unsupported parameters in bitmap strike."""
 
 

@@ -1,7 +1,7 @@
 """
 monobit.render.pdf - pdf chart output
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -13,7 +13,7 @@ if reportlab:
     from reportlab.lib.units import mm
     from reportlab.pdfgen.canvas import Canvas
 
-from monobit.storage import savers, FileFormatError
+from monobit.storage import savers
 from monobit.base import Coord
 from monobit.base.binary import ceildiv
 from monobit.core import Codepoint, Char, Tag

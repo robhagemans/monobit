@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.image.image - fonts stored in image files
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -12,12 +12,11 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, RGB
+from monobit.base import Coord, RGB, FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
-from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph, Codepoint
 from monobit.render import (
     prepare_for_grid_map, grid_map, grid_traverser, glyph_to_image
@@ -203,7 +202,7 @@ if Image:
                     for _c in colourset
                 ):
                 # only greyscale allowed, r==g==b, alpha==255
-                raise FileFormatError('Colour fonts not supported.')
+                raise UnsupportedError('Colour fonts not supported.')
             # get a random element to check colour mode (8/24/32 bit)
             tuple_len = len(colourset.pop())
             if tuple_len == 4:

@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.dashen - Dashen font
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,7 +10,7 @@ import logging
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le
 from monobit.base import Props
-from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Raster
 
 from .softfont.pcl import load_hppcl

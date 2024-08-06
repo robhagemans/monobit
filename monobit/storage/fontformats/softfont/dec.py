@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.softfont.dec - DEC Dynamically Redefined Character Set
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -13,10 +13,10 @@ licence: https://opensource.org/licenses/MIT
 import shlex
 import logging
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Raster, Glyph
 from monobit.base.binary import ceildiv
-from monobit.base import Coord
+from monobit.base import Coord, FileFormatError, UnsupportedError
 from monobit.base import reverse_dict
 
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell
@@ -44,7 +44,7 @@ def save_dec_drcs(fonts, outstream, *, use_8bit:bool=False):
     # upper size limits vary by device, not enforced.
     # lower sizes would conflict with vt200 size values
     if font.raster_size.x < 5 or font.raster_size.y < 1:
-        raise FileFormatError(
+        raise UnsupportedError(
             'This format only supports fonts of 5px or wider and 1px or taller.'
         )
     _write_dec_drcs(font, outstream)
@@ -222,7 +222,7 @@ def _read_dscs_name(f):
         if c and ord(c) in range(0x30, 0x80):
             break
         if c and ord(c) not in range(0x20, 0x30):
-            raise FileFormatError('invalid Dscs sequence')
+            raise FileFormatError('Invalid Dscs sequence')
         c = _read_char(f)
     return b''.join(dscs)
 

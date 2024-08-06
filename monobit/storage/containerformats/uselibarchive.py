@@ -15,7 +15,7 @@ if libarchive:
     from libarchive.entry import FileType
 
 
-from ..magic import FileFormatError
+from monobit.base import FileFormatError
 from ..base import containers
 from ..containers import FlatFilterContainer
 

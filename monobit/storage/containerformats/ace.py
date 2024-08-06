@@ -11,7 +11,8 @@ from pathlib import PurePosixPath
 from monobit.base import safe_import
 acefile = safe_import('acefile')
 
-from ..magic import FileFormatError, Magic
+from monobit.base import FileFormatError
+from ..magic import Magic
 from ..base import containers
 from ..streams import Stream
 from ..containers import Archive

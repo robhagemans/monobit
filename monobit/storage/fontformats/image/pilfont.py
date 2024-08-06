@@ -11,7 +11,8 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph
 from monobit.base.struct import big_endian as be
 from monobit.render import GlyphMap
