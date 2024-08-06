@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.gdos - Atari GDOS/GEM format
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,8 +10,8 @@ from itertools import accumulate
 
 from monobit.base.struct import bitfield, little_endian as le, big_endian as be, sizeof
 from monobit.base.binary import bytes_to_bits, ceildiv
-from monobit.base import Props
-from monobit.storage import loaders, savers, FileFormatError, Magic
+from monobit.base import Props, FileFormatError
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Raster
 
 from monobit.storage.utils.limitations import ensure_single
@@ -500,7 +500,7 @@ def _read_compressed_strike(data, header, ext_header, endian):
         max = 2**16
         if n_zeros > max:
             # error
-            raise FileFormatError('could not read compressed bitmap.')
+            raise FileFormatError('Could not read compressed bitmap.')
         elif n_zeros == max:
             # special case, no alternation
             bits.extend([False]*(max-1))

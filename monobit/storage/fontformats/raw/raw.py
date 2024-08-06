@@ -11,9 +11,9 @@ from pathlib import PurePath
 
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError, Regex, Glob
+from monobit.storage import Regex, Glob
 from monobit.core import Font, Glyph, Raster
-from monobit.base import Coord, NOT_SET
+from monobit.base import Coord, NOT_SET, FileFormatError
 from monobit.storage.utils.limitations import ensure_charcell
 
 # patterns

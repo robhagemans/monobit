@@ -9,7 +9,7 @@ import string
 import logging
 from pathlib import Path
 
-from ..magic import FileFormatError
+from monobit.base import FileFormatError
 from ..base import containers
 from ..containers import SerialTextContainer
 from ..utils.source import (

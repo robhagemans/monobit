@@ -18,6 +18,8 @@ NOT_SET = ...
 class FileFormatError(Exception):
     """Incorrect file format."""
 
+class UnsupportedError(Exception):
+    """Unsupported file format variant."""
 
 
 def passthrough(var):

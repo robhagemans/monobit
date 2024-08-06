@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.apple.nfnt - Mac FONT/NFNT fonts
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 
 NFNT writer based on the Apple IIgs writer
@@ -15,11 +15,9 @@ from itertools import chain, accumulate
 from monobit.base.binary import bytes_to_bits
 from monobit.base.struct import bitfield, big_endian as be, little_endian as le
 from monobit.core import Font, Glyph, KernTable, Char, Raster
-from monobit.storage import FileFormatError
 from monobit.storage import loaders, savers
 from monobit.encoding import EncodingName
-from monobit.base import Props
-from monobit.base import NOT_SET
+from monobit.base import Props, NOT_SET, UnsupportedError
 
 from .fond import fixed_to_float
 from ..common import MAC_ENCODING
@@ -257,7 +255,7 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
         logging.debug('Empty FONT/NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)
     if fontrec.fontType.has_fctb:
-        raise FileFormatError('Colour fonts not supported.')
+        raise UnsupportedError('Colour fonts not supported.')
     # read char tables & bitmaps
     # table offsets
     strike_offset = offset + NFNTHeader.size
@@ -507,7 +505,7 @@ def subset_for_nfnt(font, resample_encoding):
         # this affects mac-japanese, mac-korean which have multibyte codepoints
         font = font.subset(range(0, 256))
     if not font.glyphs:
-        raise FileFormatError('No suitable characters for NFNT font')
+        raise UnsupportedError('No suitable characters for NFNT font')
     # add the default glyph at the end
     font = font.append(glyphs=(default,))
     return font
@@ -551,9 +549,9 @@ def _calculate_nfnt_glyph_metrics(glyphs):
     )
     # check that glyph widths and offsets fit
     if any(_g.wo_width >= 255 for _g in glyphs if _g):
-        raise FileFormatError('NFNT character width must be < 255')
+        raise UnsupportedError('NFNT character width must be < 255')
     if any(_g.wo_offset >= 255 for _g in glyphs if _g):
-        raise FileFormatError('NFNT character offset must be < 255')
+        raise UnsupportedError('NFNT character offset must be < 255')
     levels = max((_g.levels for _g in glyphs if _g), default=2)
     empty = Glyph(wo_offset=255, wo_width=255, levels=levels)
     glyphs = tuple(empty if _g is None else _g for _g in glyphs)

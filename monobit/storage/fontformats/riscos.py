@@ -10,7 +10,8 @@ import logging
 from monobit.base.binary import ceildiv
 from monobit.base.properties import Props
 from monobit.base.struct import little_endian as le
-from monobit.storage import loaders, FileFormatError, Magic
+from monobit.storage import loaders, Magic
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster
 
 # https://web.archive.org/web/20210610120924/https://hwiegman.home.xs4all.nl/fileformats/acorn_font/font.htm

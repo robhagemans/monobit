@@ -36,7 +36,8 @@ import binascii
 from io import BytesIO
 from pathlib import Path
 
-from ..magic import FileFormatError, Sentinel
+from monobit.base import FileFormatError
+from ..magic import Sentinel
 from ..base import containers
 from ..containers import SerialContainer
 

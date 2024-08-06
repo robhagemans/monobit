@@ -11,7 +11,8 @@ from itertools import groupby
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 from monobit.render import GlyphMap
 
@@ -58,7 +59,7 @@ if Image:
         else:
             if not all(len(set(_c)) == 1 for _c in colours):
                 # only greyscale allowed, r==g==b
-                raise FileFormatError('Colour fonts not supported.')
+                raise UnsupportedError('Colour fonts not supported.')
             inklevels = tuple((_c, _c, _c) for _c in range(256))
         # find indicator lengths
         groups = tuple(

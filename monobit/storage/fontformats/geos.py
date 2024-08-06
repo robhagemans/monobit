@@ -9,7 +9,8 @@ import logging
 from datetime import datetime
 from itertools import count, accumulate
 
-from monobit.storage import loaders, savers, Stream, Magic, FileFormatError
+from monobit.storage import loaders, savers, Stream, Magic
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
@@ -558,19 +559,19 @@ def _write_geos(
 def _prepare_geos(fonts):
     """Validate fonts for storing in GEOS convert format; extract metadata."""
     if len(set(_f.family for _f in fonts)) > 1:
-        raise FileFormatError(
+        raise UnsupportedError(
             'GEOS font file can only store fonts from one family.'
         )
     if len(set(_f.pixel_size for _f in fonts)) != len(fonts):
-        raise FileFormatError(
+        raise UnsupportedError(
             'GEOS font file can only store fonts with distinct pixel sizes.'
         )
     if len(fonts) > 15:
-        raise FileFormatError(
+        raise UnsupportedError(
             'GEOS font file can only store at most 15 pixel sizes.'
         )
     if max(_f.pixel_size for _f in fonts) > 63:
-        raise FileFormatError(
+        raise UnsupportedError(
             'GEOS font file can only store fonts of up to 63 pixels tall.'
         )
     common_props = _get_metadata(fonts[0])

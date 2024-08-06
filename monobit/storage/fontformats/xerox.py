@@ -9,8 +9,8 @@ import logging
 from itertools import count
 
 from monobit.base.struct import bitfield, flag, big_endian as be
-from monobit.storage import loaders, savers, FileFormatError
-from monobit.base import Props
+from monobit.storage import loaders, savers
+from monobit.base import Props, FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster, Tag
 
 
@@ -214,7 +214,7 @@ def _read_bitblt(instream):
     if not header.format.oneBit:
         raise FileFormatError('Not a Xerox BITBLT strike')
     if header.format.index:
-        raise FileFormatError('StrikeIndex format not supported')
+        raise UnsupportedError('StrikeIndex format not supported')
     # @BoundingBoxBlock
     if header.format.kerned:
         bbox = _BOUNDING_BOX_BLOCK.read_from(instream)
@@ -356,7 +356,7 @@ def _read_prepress(instream):
     if cie.ix.type != 3:
         raise FileFormatError('Not an .ac file: no character index entry')
     if cie.rotation != 0:
-        raise FileFormatError('Nonzero rotation not supported for this format.')
+        raise UnsupportedError('Nonzero rotation not supported for this format.')
     instream.seek(cie.segmentSA*2)
     nchars = cie.ec - cie.bc + 1
     char_data = (_CHARACTER_DATA * nchars).read_from(instream)

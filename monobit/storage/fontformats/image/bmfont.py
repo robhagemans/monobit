@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.bmfont - AngelCode BMFont format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -18,10 +18,9 @@ Image = safe_import('PIL.Image')
 
 from monobit.base import Coord, Bounds
 from monobit.encoding import encodings
-from monobit.storage import FileFormatError
 from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
-from monobit.base import Props, reverse_dict
+from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
 from monobit.render import GlyphMap, grid_map
@@ -551,7 +550,7 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
                     for _c in colours
                 ):
                 # only greyscale allowed, r==g==b, alpha==255
-                raise FileFormatError('Colour fonts not supported.')
+                raise UnsupportedError('Colour fonts not supported.')
             tuple_len = len(colours[0])
             if tuple_len == 4:
                 inklevels = tuple((_c, _c, _c, 255) for _c in range(256))

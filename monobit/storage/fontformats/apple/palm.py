@@ -1,17 +1,17 @@
 """
 monobit.storage.formats.apple.palm - Palm OS databases and NFNT font resources
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 
 from monobit.base.struct import big_endian as be
-from monobit.base import Props
+from monobit.base import Props, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font
-from monobit.storage import FileFormatError, Magic
+from monobit.storage import Magic
 
 from .nfnt import extract_nfnt, convert_nfnt
 
@@ -153,7 +153,7 @@ def _read_palm(instream):
     """Read a PDB file."""
     props = _read_header(instream)
     if (props.header.type, props.header.creator) != (b'Font', b'Font'):
-        logging.warning(
+        raise UnsupportedError(
             'Not a Font PDB: type `%s` creator `%s`',
             props.header.type, props.header.creator
         )

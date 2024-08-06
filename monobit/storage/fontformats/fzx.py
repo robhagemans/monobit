@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.fzx - FZX format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,8 +10,8 @@ from itertools import accumulate
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import bitfield, little_endian as le
-from monobit.base import Props
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.base import Props, UnsupportedError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 
 from monobit.storage.utils.limitations import ensure_single
@@ -243,7 +243,7 @@ def _convert_to_fzx(font):
     while glyphs and glyphs[-1].is_blank() and not glyphs[-1].advance_width:
         glyphs = glyphs[:-1]
     if not glyphs:
-        raise FileFormatError(
+        raise UnsupportedError(
             'FZX format: no glyphs in storable codepoint range 32--255.'
         )
     # we aim for left-bearing >= -3, fzx_shift >= 0
@@ -280,16 +280,16 @@ def _convert_to_fzx(font):
     )
     # check glyph dimensions / bitfield ranges
     if any(_glyph.fzx_width < 0 or _glyph.fzx_width > 15 for _glyph in fzx_glyphs):
-        raise FileFormatError('FZX format: glyphs must be from 1 to 16 pixels wide.')
+        raise UnsupportedError('FZX format: glyphs must be from 1 to 16 pixels wide.')
     if any(_glyph.fzx_kern < 0 or _glyph.fzx_kern > 3 for _glyph in fzx_glyphs):
-        raise FileFormatError('FZX format: left-bearing must be in range -3--0.')
+        raise UnsupportedError('FZX format: left-bearing must be in range -3--0.')
     if any(_glyph.fzx_shift > 15 or _glyph.fzx_shift < 0 for _glyph in fzx_glyphs):
-        raise FileFormatError(
+        raise UnsupportedError(
             'FZX format: distance between raster top and line height '
             'must be in range 0--15.'
         )
     if common_right_bearing < -128 or common_right_bearing > 127:
-        raise FileFormatError('FZX format: right-bearing must be in range -128--127.')
+        raise UnsupportedError('FZX format: right-bearing must be in range -128--127.')
     # set font FZX properties
     fzx_props = Props(
         tracking=common_right_bearing,

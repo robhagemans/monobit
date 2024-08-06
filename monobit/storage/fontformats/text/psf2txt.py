@@ -9,7 +9,7 @@ import logging
 import string
 
 from monobit.storage.base import loaders, savers
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph, Char
 from monobit.base import Props
 

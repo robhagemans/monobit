@@ -1,14 +1,15 @@
 """
 monobit.storage.formats.text.figlet - FIGlet .flf format
 
-(c) 2021--2023 Rob Hagemans
+(c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 from typing import NamedTuple
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.base import Props, reverse_dict, extend_string
 from monobit.core import Font, Glyph
 from monobit.encoding import encodings
@@ -102,7 +103,9 @@ def _read_props(instream):
     """Read .flf property header."""
     header = _FLF_HEADER(*instream.readline().strip().split())
     if not header.signature_hardblank.startswith(_SIGNATURE):
-        raise FileFormatError('Not a FIGlet .flf file: does not start with `flf2a` signature.')
+        raise FileFormatError(
+            'Not a FIGlet .flf file: does not start with `flf2a` signature.'
+        )
     return Props(
         hardblank = header.signature_hardblank[-1],
         **header._asdict()
@@ -160,7 +163,7 @@ def _read_glyph(instream, props, codepoint, tag='', ink=''):
     # if multiple characters per glyph found, ink characters must be specified explicitly
     if len(charset) > 1:
         if not ink:
-            raise FileFormatError(
+            raise UnsupportedError(
                 'Multiple ink characters not supported: '
                 f'encountered {list(charset)}.'
             )
@@ -212,7 +215,7 @@ def _convert_to_flf(font, hardblank='$'):
     font = font.label()
     font_chars = tuple(_c.value for _c in font.get_chars())
     if not font_chars:
-        raise FileFormatError('No figlet-storable codepoints in font.')
+        raise UnsupportedError('No figlet-storable codepoints in font.')
     # latin-1 codepoints, so we can just use chr()
     flf_chars = tuple(chr(_cp) for _cp in _CODEPOINTS)
     # exclude NULL which is used for the default char

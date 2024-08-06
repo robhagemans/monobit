@@ -10,7 +10,6 @@ import itertools
 from io import BytesIO
 from pathlib import Path
 
-from .magic import FileFormatError
 from .streams import Stream, KeepOpen
 
 

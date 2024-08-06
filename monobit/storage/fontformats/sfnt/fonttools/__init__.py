@@ -13,7 +13,7 @@ from monobit.base import safe_import
 ttLib = safe_import('fontTools.ttLib')
 loaded = ttLib is not None
 
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError
 
 
 def register_extensions():

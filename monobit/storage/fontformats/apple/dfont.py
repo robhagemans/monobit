@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.apple.dfont - MacOS suitcases and resources
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -11,7 +11,6 @@ from itertools import accumulate
 from io import BytesIO
 
 from monobit.base.struct import big_endian as be
-from monobit.storage import FileFormatError
 from monobit.storage import Stream
 from monobit.storage import loaders, savers
 from monobit.base import Props, reverse_dict

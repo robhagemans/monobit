@@ -9,7 +9,7 @@ import logging
 from io import BytesIO
 from itertools import accumulate
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Glyph, Font
 from monobit.base import Props, reverse_dict
 from monobit.base.struct import little_endian as le

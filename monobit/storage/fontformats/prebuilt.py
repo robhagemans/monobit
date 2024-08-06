@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.prebuilt - Adobe BE/LE Prebuilt Format
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,7 +10,7 @@ from itertools import cycle
 
 from monobit.base.struct import bitfield, little_endian as le, big_endian as be
 from monobit.base import Props
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 from monobit.encoding import encodings
 

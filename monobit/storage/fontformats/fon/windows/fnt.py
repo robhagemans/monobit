@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.fon.windows.fnt - Windows FNT resource
 
-`monobit.storage.formats.fon.windows` is copyright 2019--2023 Rob Hagemans
+`monobit.storage.formats.fon.windows` is copyright 2019--2024 Rob Hagemans
 `mkwinfont` is copyright 2001 Simon Tatham. All rights reserved.
 `dewinfont` is copyright 2001,2017 Simon Tatham. All rights reserved.
 
@@ -17,10 +17,10 @@ from types import SimpleNamespace
 
 from monobit.base.binary import ceildiv, align
 from monobit.base.struct import little_endian as le
-from monobit.base import reverse_dict
-from monobit.storage import FileFormatError
-from monobit.base import Props
+from monobit.storage import loaders, savers
+from monobit.base import reverse_dict, FileFormatError, Props
 from monobit.core import Font, Glyph, Raster, StrokePath
+from monobit.storage.utils.limitations import ensure_single
 
 # tables used by other formats
 from ...common import (
@@ -33,6 +33,32 @@ from monobit.storage.utils.limitations import make_contiguous
 FNT_MAGIC_1 = b'\0\1'
 FNT_MAGIC_2 = b'\0\2'
 FNT_MAGIC_3 = b'\0\3'
+
+
+@loaders.register(
+    name='win',
+    magic=(FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3),
+    patterns=('*.fnt',),
+)
+def load_win_fnt(instream):
+    """Load font from a Windows .FNT resource."""
+    resource = instream.read()
+    font = convert_win_fnt_resource(resource)
+    return font
+
+
+@savers.register(linked=load_win_fnt)
+def save_win_fnt(fonts, outstream, version:int=2, vector:bool=False):
+    """
+    Save font to a Windows .FNT resource.
+
+    version: Windows font format version (default 2)
+    vector: output a vector font (if the input font has stroke paths defined; default False)
+    """
+    font = ensure_single(fonts)
+    outstream.write(create_fnt(font, version*0x100, vector))
+    return font
+
 
 
 ##############################################################################
@@ -439,17 +465,17 @@ def _convert_win_props(data, win_props):
                     win_props.dfPixWidth, win_props.dfFlags
                 )
             )
-        # https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
-        # NOTE: The only formats supported in Windows 3.0 will be DFF_FIXED and DFF_PROPORTIONAL.
         if win_props.dfFlags & _DFF_COLORFONT:
-            raise FileFormatError('ColorFont not supported')
+            # https://web.archive.org/web/20120215123301/http://support.microsoft.com/kb/65123
+            # NOTE: The only formats supported in Windows 3.0 will be DFF_FIXED and DFF_PROPORTIONAL.
+            raise UnsupportedError('Colour fonts not supported')
         if win_props.dfFlags & _DFF_ABC:
             # https://ffenc.blogspot.com/2008/04/fnt-font-file-format.html
             # For Windows 3.00, the font-file header includes six new fields:
             # dFlags, dfAspace, dfBspace, dfCspace, dfColorPointer, and dfReserved1.
             # These fields are not used in Windows 3.00. To ensure compatibility with future
             # versions of Windows, these fields should be set to zero.
-            raise FileFormatError('ABC spacing properties not supported')
+            raise UnsupportedError('ABC spacing properties not supported')
     return properties
 
 

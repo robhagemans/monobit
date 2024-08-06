@@ -13,7 +13,6 @@ from monobit.base import safe_import
 ncompress = safe_import('ncompress')
 
 from ..streams import Stream, DelayedWriterStream
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 
 

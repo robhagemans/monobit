@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.fon.os2.gpifont - OS/2 GPI font resource parser
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 
 
@@ -18,7 +18,8 @@ notice for gpifont.c and gpifont.h:
 
 import logging
 
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError, UnsupportedError
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph
 from monobit.base import Props
 from monobit.base.struct import little_endian as le, bitfield
@@ -27,10 +28,22 @@ from monobit.base.binary import ceildiv
 
 GPI_MAGIC = b'\xfe\xff\xff\xff'
 
-
 # Text signatures for standard OS/2 bitmap fonts.
 OS2FNT_SIGNATURE = "OS/2 FONT"
 OS2FNT2_SIGNATURE = "OS/2 FONT 2"
+
+
+@loaders.register(
+    name='gpi',
+    magic=(GPI_MAGIC + Magic.offset(4) + OS2FNT_SIGNATURE.encode('ascii'),),
+    patterns=('*.fnt',),
+)
+def load_os2(instream):
+    """Load a bare OS/2 GPI font resource."""
+    resource = instream.read()
+    return convert_os2_font_resource(resource)
+
+
 
 # Binary signatures for various OS/2 font records.
 SIG_OS2FONTSTART = 0xFFFFFFFE
@@ -436,7 +449,7 @@ def parse_os2_font_resource(pBuffer):
         raise FileFormatError('Not an OS/2 font resource')
     pFont.pFontDef = OS2FONTDEFHEADER.from_bytes(pBuffer, ofs)
     if pFont.pMetrics.fsDefn.FM_DEFN_OUTLINE:
-        raise FileFormatError('OS/2 outline fonts not supported')
+        raise UnsupportedError('OS/2 outline fonts not supported')
     #
     # read character definitions and bitmaps
     #

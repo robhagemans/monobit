@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.vfont - BSD/SunOS vfont format
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,7 +10,8 @@ from itertools import accumulate
 
 from monobit.base.struct import bitfield, little_endian as le, big_endian as be
 from monobit.base import Props
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph
 
 from monobit.storage.utils.limitations import ensure_single

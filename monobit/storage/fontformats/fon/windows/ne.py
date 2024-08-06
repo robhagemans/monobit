@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.fon.windows.ne - Windows 16-bit NE executable header
 
-`monobit.storage.formats.fon.windows` is copyright 2019--2023 Rob Hagemans
+`monobit.storage.formats.fon.windows` is copyright 2019--2024 Rob Hagemans
 `mkwinfont` is copyright 2001 Simon Tatham. All rights reserved.
 `dewinfont` is copyright 2001,2017 Simon Tatham. All rights reserved.
 
@@ -13,7 +13,6 @@ import logging
 
 from monobit.base.binary import align
 from monobit.base.struct import little_endian as le
-from monobit.storage import FileFormatError
 
 from .fnt import create_fnt
 

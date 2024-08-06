@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.text.yaff - monobit-yaff format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -13,14 +13,12 @@ from collections import deque
 from functools import cached_property
 
 from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
 from monobit.storage.magic import Sentinel
 from monobit.core import (
     Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
 )
 from monobit.core.raster import base_conv
-from monobit.base import Props
-from monobit.base import Coord, passthrough
+from monobit.base import Props, Coord, passthrough, FileFormatError
 
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment

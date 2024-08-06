@@ -9,8 +9,8 @@ import logging
 from pathlib import Path
 from io import BytesIO
 
+from monobit.base import FileFormatError
 from ..streams import Stream, DelayedWriterStream
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 from ...base.binary import ceildiv
 

@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.daisydot - Daisy Dot II/III NLQ format
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,7 +10,8 @@ from pathlib import Path
 
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import ceildiv, bytes_to_bits
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph, Raster
 
 

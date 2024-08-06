@@ -1,7 +1,7 @@
 f"""
 monobit.storage.formats.fontx - DOS/V FONTX2 format
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,8 +10,8 @@ from itertools import accumulate
 
 from monobit.base.struct import bitfield, little_endian as le
 from monobit.base.binary import ceildiv
-from monobit.base import Props
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.base import Props, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell

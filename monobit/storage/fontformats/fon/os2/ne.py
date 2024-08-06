@@ -1,13 +1,12 @@
 """
 monobit.storage.formats.fon.os2.ne - read OS/2 NE containers
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 
-from monobit.storage import FileFormatError
 from monobit.base.struct import little_endian as le
 
 from ..windows.ne import NE_HEADER
