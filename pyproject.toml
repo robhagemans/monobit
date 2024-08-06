@@ -17,7 +17,6 @@ dependencies = [
     "uniseg",
     "fonttools",
     "libarchive-c",
-    "python3-yenc",
     "ncompress",
     "acefile"
 ]

@@ -335,10 +335,11 @@ The renderer additionally employs
 - **python-bidi**
 - **arabic-reshaper**
 
-All can be installed through Pip:
+Almost all can be installed through Pip:
 
-    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper libarchive-c python3-yenc ncompress acefile
+    pip install Pillow reportlab fonttools uniseg python-bidi arabic-reshaper libarchive-c ncompress acefile
 
+The package `python3-yenc` is available at https://github.com/oe-mirrors/python3-yenc and through some Linux distributions.
 Without these packages, some functionality may not be available.
 
 
