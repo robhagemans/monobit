@@ -5,10 +5,8 @@ monobit.render.glyphmap - glyph maps
 licence: https://opensource.org/licenses/MIT
 """
 
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
+from monobit.base import safe_import
+Image = safe_import('PIL.Image')
 
 from ..base import Props, Coord
 from ..base.blocks import blockstr

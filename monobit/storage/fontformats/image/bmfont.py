@@ -14,7 +14,7 @@ from math import ceil, sqrt
 from itertools import zip_longest
 
 from monobit.base import safe_import
-Image = safe_import('PIL', 'Image')
+Image = safe_import('PIL.Image')
 
 from monobit.base import Coord, Bounds
 from monobit.encoding import encodings

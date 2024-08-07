@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 from monobit.base import safe_import
-Image = safe_import('PIL', 'Image')
+Image = safe_import('PIL.Image')
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph
