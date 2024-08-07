@@ -10,7 +10,8 @@ from unicodedata import bidirectional, normalize, category
 
 try:
     from bidi.algorithm import get_display, get_base_level
-except ImportError:
+except Exception as e:
+    logging.debug('Could not import module `bidi`: %s', e)
     def _bidi_not_found(*args, **kwargs):
         raise ImportError(
             'Bidirectional text requires module `python-bidi`; not found.'
@@ -20,7 +21,8 @@ except ImportError:
 
 try:
     from arabic_reshaper import reshape
-except ImportError:
+except Exception:
+    logging.debug('Could not import module `arabic_reshaper`: %s', e)
     def reshape(text):
         raise ImportError(
             'Arabic text requires module `arabic-reshaper`; not found.'
@@ -28,9 +30,10 @@ except ImportError:
 
 try:
     from uniseg.graphemecluster import grapheme_clusters
-except ImportError:
+except Exception:
+    logging.debug('Could not import module `uniseg`: %s', e)
     logging.warning(
-        'Module `uniseg` not found. Grapheme clusters may not render correctly.'
+        'Module `uniseg` not available. Grapheme clusters may not render correctly.'
     )
     def grapheme_clusters(text):
         """Use NFC as poor-man's grapheme cluster. This works... sometimes."""

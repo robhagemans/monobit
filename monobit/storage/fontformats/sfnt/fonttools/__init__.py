@@ -5,15 +5,13 @@ monobit.storage.formats.sfnt.fonttools - fontTools interface and extensions
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 from importlib.resources import files
 from pathlib import Path
 
-try:
-    from fontTools import ttLib
-    loaded = True
-except ImportError:
-    ttLib = None
-    loaded = False
+from monobit.base import safe_import
+ttLib = safe_import('fontTools', 'ttLib')
+loaded = ttLib is not None
 
 from monobit.storage import FileFormatError
 

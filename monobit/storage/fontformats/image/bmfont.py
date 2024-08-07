@@ -13,10 +13,8 @@ import xml.etree.ElementTree as etree
 from math import ceil, sqrt
 from itertools import zip_longest
 
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
+from monobit.base import safe_import
+Image = safe_import('PIL', 'Image')
 
 from monobit.base import Coord, Bounds
 from monobit.encoding import encodings

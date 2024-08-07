@@ -9,10 +9,8 @@ import logging
 from collections import Counter
 from pathlib import Path
 
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
+from monobit.base import safe_import
+Image = safe_import('PIL', 'Image')
 
 from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv

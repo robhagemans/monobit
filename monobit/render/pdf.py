@@ -7,12 +7,11 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-try:
-    import reportlab
+from monobit.base import safe_import
+reportlab = safe_import('reportlab')
+if reportlab:
     from reportlab.lib.units import mm
     from reportlab.pdfgen.canvas import Canvas
-except ImportError:
-    reportlab = None
 
 from monobit.storage import savers, FileFormatError
 from monobit.base import Coord

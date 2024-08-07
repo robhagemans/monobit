@@ -29,10 +29,8 @@ from pathlib import Path
 import re
 from binascii import crc32
 
-try:
-    import yenc
-except ImportError:
-    yenc = None
+from monobit.base import safe_import
+yenc = safe_import('yenc')
 
 from ..magic import FileFormatError, Sentinel
 from ..base import containers

@@ -8,10 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import PurePosixPath
 
-try:
-    import acefile
-except ImportError:
-    acefile = None
+from monobit.base import safe_import
+acefile = safe_import('acefile')
 
 from ..magic import FileFormatError, Magic
 from ..base import containers

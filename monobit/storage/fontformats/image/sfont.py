@@ -8,10 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import groupby
 
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
+from monobit.base import safe_import
+Image = safe_import('PIL', 'Image')
 
 from monobit.storage import loaders, savers, FileFormatError
 from monobit.core import Font, Glyph

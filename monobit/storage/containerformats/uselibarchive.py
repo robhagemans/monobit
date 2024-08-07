@@ -5,13 +5,15 @@ monobit.storage.containers.uselibarchive - archive formats supported by libarchi
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 from pathlib import Path
 
-try:
-    import libarchive
+
+from monobit.base import safe_import
+libarchive = safe_import('libarchive')
+if libarchive:
     from libarchive.entry import FileType
-except ImportError:
-    libarchive = None
+
 
 from ..magic import FileFormatError
 from ..base import containers

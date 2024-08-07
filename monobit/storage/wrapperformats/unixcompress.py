@@ -9,10 +9,8 @@ import logging
 from io import BytesIO
 from pathlib import Path
 
-try:
-    import ncompress
-except ImportError:
-    ncompress = None
+from monobit.base import safe_import
+ncompress = safe_import('ncompress')
 
 from ..streams import Stream, DelayedWriterStream
 from ..magic import FileFormatError
