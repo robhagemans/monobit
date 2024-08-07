@@ -10,7 +10,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from monobit.base import safe_import
-ttLib = safe_import('fontTools', 'ttLib')
+ttLib = safe_import('fontTools.ttLib')
 loaded = ttLib is not None
 
 from monobit.storage import FileFormatError
