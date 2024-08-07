@@ -22,8 +22,7 @@ def import_all(module_name):
         )
         for _file in files(module_name).iterdir()
         if (
-            _file.name.endswith('.py')
-            and not _file.name.startswith('_')
+            not _file.name.startswith('_')
             and not _file.name.startswith('.')
         )
     })
