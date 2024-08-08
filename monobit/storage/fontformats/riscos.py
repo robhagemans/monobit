@@ -416,17 +416,19 @@ def load_riscos(instream):
                     bits, inklevels=(False, True),
                     stride=char_data.xs, width=char_data.xs, height=char_data.ys,
                 ).flip()
-            glyphs.append(Glyph(raster, codepoint=cp+32*chunk_nr))
-    return Font(glyphs)
+            glyphs.append(Glyph(
+                raster, codepoint=cp+32*chunk_nr,
+                shift_up=char_data.y0, left_bearing=char_data.x0
+            ))
+    return Font(glyphs).label(char_from='latin-1')
 
 
 from .pkfont import _pk_packed_num
 
 def _iter_nybbles(bytestr):
-    """Iterate over a bytes string in 4-bit steps (big-endian)."""
+    """Iterate over a bytes string in 4-bit steps (little-endian)."""
     for byte in bytestr:
         hi, lo = divmod(byte, 16)
-        # little-endian?
         yield lo
         yield hi
 
