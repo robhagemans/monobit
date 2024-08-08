@@ -11,7 +11,7 @@ from itertools import chain
 from monobit.base.binary import ceildiv
 from monobit.base.properties import Props
 from monobit.base.struct import little_endian as le, bitfield, flag
-from monobit.storage import loaders, Magic
+from monobit.storage import loaders, Magic, Regex
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster
 
@@ -229,7 +229,7 @@ def _read_int_metrics(instream):
     return header, metrics
 
 
-
+###############################################################################
 # new font file format
 
 _NEW_HEADER = le.Struct(
@@ -343,7 +343,7 @@ _RISCOS_MAGIC = b'FONT'
     # maybe, assumes 4bpp, xdpi 90, ydpi 45 in first entry
     # followed by four nulls in newer but not older files
     magic=(_RISCOS_MAGIC,),
-    patterns=('f*x*','b*x*'),
+    patterns=(Regex(r'[fb]\d+x\d+'),),
 )
 def load_riscos(instream):
     """Load font from acorn RiscOS new-style font files."""
