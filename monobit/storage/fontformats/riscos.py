@@ -359,7 +359,10 @@ def load_riscos(instream):
     # NULL-separated description
     desc = instream.read(header.offsets[0] - instream.tell())
     logging.debug('%s', desc)
-    for chunk_start, chunk_end in zip(header.offsets[:-1], header.offsets[1:]):
+    glyphs = []
+    for chunk_nr, (chunk_start, chunk_end) in enumerate(
+            zip(header.offsets[:-1], header.offsets[1:])
+        ):
         logging.debug('%d %d', chunk_start, chunk_end)
         if chunk_end == chunk_start:
             continue
@@ -407,4 +410,61 @@ def load_riscos(instream):
                     width=char_data.xs, height=char_data.ys,
                     bits_per_pixel=(1 if char_flags.data_1bpp else 4),
                 ).flip()
-                logging.debug(raster)
+            else:
+                bits = _unpack_bits(char_bytes, char_flags.initial_black, char_flags.f_value, char_data.xs)
+                raster = Raster.from_vector(
+                    bits, inklevels=(False, True),
+                    stride=char_data.xs, width=char_data.xs, height=char_data.ys,
+                ).flip()
+            glyphs.append(Glyph(raster, codepoint=cp+32*chunk_nr))
+    return Font(glyphs)
+
+
+from .pkfont import _pk_packed_num
+
+def _iter_nybbles(bytestr):
+    """Iterate over a bytes string in 4-bit steps (big-endian)."""
+    for byte in bytestr:
+        hi, lo = divmod(byte, 16)
+        # little-endian?
+        yield lo
+        yield hi
+
+
+# this is the same as in pkfont
+def _unpack_bits(raster_data, ink_run, dyn_f, w):
+    """Unpack a packed character definition."""
+    char = Props()
+    char.raster_data = raster_data
+    char.ink_run = ink_run
+    char.dyn_f = dyn_f
+    char.w = w
+    iternyb = _iter_nybbles(char.raster_data)
+    repeat = 0
+    bitmap = []
+    colour = bool(char.ink_run)
+    while True:
+        try:
+            run, new_repeat = _pk_packed_num(iternyb, char.dyn_f)
+            if new_repeat is not None:
+                repeat = new_repeat
+        except StopIteration as e:
+            break
+        # check if we go past a row boundary
+        row_remaining = char.w - (len(bitmap) % char.w)
+        # > The current row is defined as the row on which the
+        # > first pixel of the next run count will lie. The repeat
+        # > count is set back to zero when the last pixel in the
+        # > current row is seen, and the row is sent out
+        if run >= row_remaining:
+            bitmap.extend([colour] * row_remaining)
+            run -= row_remaining
+            # apply row repeats
+            bitmap.extend(bitmap[-char.w:]*repeat)
+            repeat = 0
+        # even if the rest of the run is longer than a row,
+        # there are no more repeat markers
+        bitmap.extend([colour] * run)
+        # flip colour for next run
+        colour = not colour
+    return bitmap
