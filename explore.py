@@ -215,9 +215,9 @@ def bitdump_image(
         img = Image.frombytes('1', (width, height), data)
         images.append((stride, img))
 
-    font = ImageFont.load_default()
+    font = ImageFont.load_default_imagefont()
     max_stride, _ = images[-1]
-    size = font.getsize(str(max_stride))
+    size = font.font.getsize(str(max_stride))
     margin += size[0]
 
     fullimage = Image.new(
