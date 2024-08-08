@@ -15,6 +15,8 @@ from monobit.storage import loaders, Magic
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster
 
+from .pkfont import unpack_bits
+
 # https://web.archive.org/web/20210610120924/https://hwiegman.home.xs4all.nl/fileformats/acorn_font/font.htm
 # > (The original information can be found on page 1801 of Volume IV of
 # > the RISC OS 3.1 PROGRAMMER'S REFERENCE MANUAL)
@@ -411,7 +413,13 @@ def load_riscos(instream):
                     bits_per_pixel=(1 if char_flags.data_1bpp else 4),
                 ).flip()
             else:
-                bits = _unpack_bits(char_bytes, char_flags.initial_black, char_flags.f_value, char_data.xs)
+                # the packing algorithm is the same as in pkfont
+                # except nybbles are taken in little-endian order
+                # and pixels are output from bottom left to top right
+                bits = unpack_bits(
+                    _iter_nybbles_le(char_bytes),
+                    char_flags.initial_black, char_flags.f_value, char_data.xs,
+                )
                 raster = Raster.from_vector(
                     bits, inklevels=(False, True),
                     stride=char_data.xs, width=char_data.xs, height=char_data.ys,
@@ -423,50 +431,9 @@ def load_riscos(instream):
     return Font(glyphs).label(char_from='latin-1')
 
 
-from .pkfont import _pk_packed_num
-
-def _iter_nybbles(bytestr):
+def _iter_nybbles_le(bytestr):
     """Iterate over a bytes string in 4-bit steps (little-endian)."""
     for byte in bytestr:
         hi, lo = divmod(byte, 16)
         yield lo
         yield hi
-
-
-# this is the same as in pkfont
-def _unpack_bits(raster_data, ink_run, dyn_f, w):
-    """Unpack a packed character definition."""
-    char = Props()
-    char.raster_data = raster_data
-    char.ink_run = ink_run
-    char.dyn_f = dyn_f
-    char.w = w
-    iternyb = _iter_nybbles(char.raster_data)
-    repeat = 0
-    bitmap = []
-    colour = bool(char.ink_run)
-    while True:
-        try:
-            run, new_repeat = _pk_packed_num(iternyb, char.dyn_f)
-            if new_repeat is not None:
-                repeat = new_repeat
-        except StopIteration as e:
-            break
-        # check if we go past a row boundary
-        row_remaining = char.w - (len(bitmap) % char.w)
-        # > The current row is defined as the row on which the
-        # > first pixel of the next run count will lie. The repeat
-        # > count is set back to zero when the last pixel in the
-        # > current row is seen, and the row is sent out
-        if run >= row_remaining:
-            bitmap.extend([colour] * row_remaining)
-            run -= row_remaining
-            # apply row repeats
-            bitmap.extend(bitmap[-char.w:]*repeat)
-            repeat = 0
-        # even if the rest of the run is longer than a row,
-        # there are no more repeat markers
-        bitmap.extend([colour] * run)
-        # flip colour for next run
-        colour = not colour
-    return bitmap
