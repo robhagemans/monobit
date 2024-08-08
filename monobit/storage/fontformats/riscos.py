@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import chain
 
 from monobit.base.binary import ceildiv
 from monobit.base.properties import Props
@@ -307,9 +308,31 @@ _CHAR_DATA_8BIT = le.Struct(
     # word-aligned at the end of the character data
 )
 _CHAR_DATA_12BIT = le.Struct(
+    # packed pairs of signed 12-bit ints. how does this work if little-endian?
+    # it's only specified that "2-byte quantities are little endian"
     x0_y0=le.uint8 * 3,
     xs_ys=le.uint8 * 3,
 )
+
+def _from_12bit_pair(x0_y0):
+    """Convert 12-bit packed pairs to signed int."""
+    # assuming x and y are stored in that order, and 12-bit values are big-endian.
+    x0_y0 = int.from_bytes(char_data.x0_y0, 'big')
+    x0, y0 = divmod(x0_y0, 0x1000)
+    # signed values
+    if x0 & 0x800:
+        x0 = 0x1000 - x0
+    if y0 & 0x800:
+        y0 = 0x1000 - y0
+    return x0, y0
+
+
+def _convert_12bit_char_data(char_data):
+    """Convert 12-bit packed struct to signed int values."""
+    x0, y0 = _from_12bit_pair(char_data.x0_y0)
+    xs, ys = _from_12bit_pair(char_data.xs_ys)
+    return Props(x0=x0, y0=y0, xs=xs, yx=ys)
+
 
 _RISCOS_MAGIC = b'FONT'
 
@@ -349,17 +372,39 @@ def load_riscos(instream):
         # placement which is more tightly bound than
         # horizontal placement.
         offsets = (le.uint32 * 32).read_from(instream)
-        offsets = (*offsets, chunk_end - chunk_start)
+        # zero offsets mean character undefined, remove them but keep ordinal
+        # we need to know the next offset to be able to determine data length
+        index_offsets = tuple(
+            (_i, _offs)
+            for _i, _offs in enumerate(chain(offsets, (chunk_end-chunk_start,)))
+            if _offs != 0
+        )
         logging.debug('%s', offsets)
         # ignoring tables for horizontal/vertical subpixel placement
-        for offs, next in zip(offsets[:-1], offsets[1:]):
+        for (cp, offs), (_, next) in zip(index_offsets[:-1], index_offsets[1:]):
             instream.seek(chunk_start+offs)
             char_flags = _CHAR_FLAGS.read_from(instream)
-            logging.debug('%s', char_flags)
+            logging.debug('%x %s', cp, chr(cp))
+            logging.debug('%s %s', char_flags, bytes(char_flags))
             if char_flags.coords_12bit:
                 char_data = _CHAR_DATA_12BIT.read_from(instream)
+                char_data = _convert_12bit_char_data(char_data)
             else:
                 char_data = _CHAR_DATA_8BIT.read_from(instream)
             logging.debug('%s', char_data)
             char_bytes = instream.read(chunk_start+next-instream.tell())
             logging.debug('%s', char_bytes)
+            if not char_flags.f_value:
+                # f_value == 0 means uncompacted
+                # > 1-bpp uncompacted format
+                # > 1 bit per pixel, bit set => paint in foreground colour, in
+                # > rows from bottom-left to top-right, not aligned until
+                # > word-aligned at the end of the character.
+                # note the assumptioon is also little-endian in bit order,
+                # so the lsb of the first byte maps to the botom left pixel.
+                raster = Raster.from_bytes(
+                    char_bytes, align='bit', bit_order='little',
+                    width=char_data.xs, height=char_data.ys,
+                    bits_per_pixel=(1 if char_flags.data_1bpp else 4),
+                ).flip()
+                logging.debug(raster)
