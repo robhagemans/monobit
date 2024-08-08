@@ -258,7 +258,9 @@ def _convert_char(char):
             char.raster_data, stride=char.w, width=char.w, align='bit',
         )
     else:
-        bitmap = _unpack_bits(char)
+        bitmap = unpack_bits(
+            _iter_nybbles(char.raster_data), char.ink_run, char.dyn_f, char.w
+        )
         raster = Raster.from_vector(
             bitmap, stride=char.w, inklevels=(False, True)
         )
@@ -277,26 +279,25 @@ def _convert_char(char):
     return Glyph(raster, **props)
 
 
-def _unpack_bits(char):
-    """Unpack a packed character definition."""
+def unpack_bits(iternyb, ink_run, dyn_f, width):
+    """Unpack a packed character definition from a iterator of nybble values."""
     # we assume raster data is byte aligned and its length is determined
     # by the package size. PKfonts.pdf states that a character flag can also
     # occur in the middle of a byte but that contradicts Rockicki's tb13pk.pdf
     # which states that the packet size can be used to jump to the next
     # character definition record.
-    iternyb = _iter_nybbles(char.raster_data)
     repeat = 0
     bitmap = []
-    colour = bool(char.ink_run)
+    colour = bool(ink_run)
     while True:
         try:
-            run, new_repeat = _pk_packed_num(iternyb, char.dyn_f)
+            run, new_repeat = _pk_packed_num(iternyb, dyn_f)
             if new_repeat is not None:
                 repeat = new_repeat
         except StopIteration as e:
             break
         # check if we go past a row boundary
-        row_remaining = char.w - (len(bitmap) % char.w)
+        row_remaining = width - (len(bitmap) % width)
         # > The current row is defined as the row on which the
         # > first pixel of the next run count will lie. The repeat
         # > count is set back to zero when the last pixel in the
@@ -305,7 +306,7 @@ def _unpack_bits(char):
             bitmap.extend([colour] * row_remaining)
             run -= row_remaining
             # apply row repeats
-            bitmap.extend(bitmap[-char.w:]*repeat)
+            bitmap.extend(bitmap[-width:]*repeat)
             repeat = 0
         # even if the rest of the run is longer than a row,
         # there are no more repeat markers
