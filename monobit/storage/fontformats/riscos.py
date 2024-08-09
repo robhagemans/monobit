@@ -81,7 +81,7 @@ _CHAR_HEADER = le.Struct(
 )
 
 @loaders.register(
-    name='x90y45',
+    name='riscos-xy',
     # maybe, assumes 4bpp, xdpi 90, ydpi 45 in first entry
     # followed by four nulls in newer but not older files
     magic=(Magic.offset(1) + b'\x04\x5a\x2d',),
