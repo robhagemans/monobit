@@ -6,13 +6,16 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import chain
 
 from monobit.base.binary import ceildiv
 from monobit.base.properties import Props
-from monobit.base.struct import little_endian as le
-from monobit.storage import loaders, Magic
+from monobit.base.struct import little_endian as le, bitfield, flag
+from monobit.storage import loaders, Magic, Regex
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster
+
+from .pkfont import unpack_bits
 
 # https://web.archive.org/web/20210610120924/https://hwiegman.home.xs4all.nl/fileformats/acorn_font/font.htm
 # > (The original information can be found on page 1801 of Volume IV of
@@ -78,7 +81,7 @@ _CHAR_HEADER = le.Struct(
 )
 
 @loaders.register(
-    name='x90y45',
+    name='riscos-xy',
     # maybe, assumes 4bpp, xdpi 90, ydpi 45 in first entry
     # followed by four nulls in newer but not older files
     magic=(Magic.offset(1) + b'\x04\x5a\x2d',),
@@ -86,16 +89,7 @@ _CHAR_HEADER = le.Struct(
 )
 def load_x90y45(instream):
     """Load font from acorn RiscOS x90y45 font files."""
-    # load metrics, if available
-    location = instream.where
-    try:
-        metrics_file = location.open('IntMetrics', mode='r')
-    except FileNotFoundError:
-        header = None
-        metrics = None
-    else:
-        with metrics_file:
-            header, metrics = _read_int_metrics(metrics_file)
+    header, metrics = _load_metrics_if_found(instream)
     index = []
     while True:
         entry = _INDEX_ENTRY.read_from(instream)
@@ -160,14 +154,19 @@ def load_x90y45(instream):
                     round(char_metrics.x_offset*scale_x)
                     - char_entry.x0
                     - char_entry.width
+                ) if char_metrics else None,
+                scalable_width=(
+                    char_metrics.x_offset * scale_x if char_metrics else None
                 ),
-                scalable_width=char_metrics.x_offset * scale_x,
                 codepoint=cp,
             )
             for cp, char_entry, char_data, char_metrics in char_table
         )
-        name = header.name.rstrip(b'\r').decode('latin-1')
-        family, _, subfamily = name.partition('.')
+        if header:
+            name = header.name.rstrip(b'\r').decode('latin-1')
+            family, _, subfamily = name.partition('.')
+        else:
+            family, subfamily = None, None
         fonts.append(Font(
             glyphs,
             family=family,
@@ -224,3 +223,257 @@ def _read_int_metrics(instream):
         in zip(x0, y0, x1, y1, x_offset, y_offset)
     )
     return header, metrics
+
+
+def _load_metrics_if_found(instream):
+    """Load metrics, if available"""
+    location = instream.where
+    try:
+        metrics_file = location.open('IntMetrics', mode='r')
+    except FileNotFoundError:
+        header = None
+        metrics = None
+    else:
+        with metrics_file:
+            header, metrics = _read_int_metrics(metrics_file)
+    return header, metrics
+
+
+###############################################################################
+# new font file format
+
+_NEW_HEADER = le.Struct(
+    # > 4 "FONT" -identification word
+    identification_word='4s',
+    # > 1 Bits per pixel:
+    # >   0 = outlines
+    # >   1 = 1 bpp
+    # >   4 = 4 bpp
+    bits_per_pixel='uint8',
+    # > 1 Version number of file format
+    # >   4: no "don't draw skeleton lines unless smaller than this" byte present
+    # >   5: byte at [table+512] =max pixel size for skeleton lines
+    # >      (0 => always do it)
+    # >   6: byte at [chunk+indexsize] = dependency mask (see below)
+    version='uint8',
+    # > 2 if bpp = 0: design size of font
+    # >   if bpp > 0: flags:
+    # >     bit 0 set - horizontal subpixel placement
+    # >     bit 1 set - vertical subpixel placement
+    flags='uint16',
+    # > 2 xO - font bounding box (16- bit signed)
+    # > 2 yO - units are pixels or design units
+    # > 2 x1-xO : xO, yO inclusive, x1, y1 exclusive
+    # > 2 y1-y0
+    x0='int16',
+    y0='int16',
+    x1='int16',
+    y1='int16',
+    # > 4 file offset of 0...31 chunk (word-aligned)
+    # > 4 file offset of 32...63 chunk
+    # > ...
+    # > 4 file offset of 224...255 chunk
+    # > 4 file offset of end (ie. size of file)
+    # > if offset(n+1) = offset(n), then chunk n is null.
+    offsets=le.uint32*9,
+)
+
+_TABLE = le.Struct(
+    # > 2 n = size of table/scaffold data
+    n='uint16',
+    # > Bitmaps: (n=10 normally - other values are reserved)
+    # > 2 x-size (1/16th point)
+    x_size='uint16',
+    # 2 x-res (dpi)
+    x_res='uint16',
+    # 2 y-size (1/16th point)
+    y_size='uint16',
+    # 2 y-res (dpi)
+    y_res='uint16',
+)
+
+_CHAR_FLAGS = le.Struct(
+    # > 1   flags:
+    # >     bit 0 set => coords are 12-bit, else 8-bit
+    # >     bit 1 set => data is 1-bpp, else 4-bpp
+    # >     bit 2 set => initial pixel is black, else white
+    # >     bit 3 set => data is outline, else bitmap
+    # >     bits 4-7 = 'f' value for char (0 ==> not encoded)
+    coords_12bit=flag,
+    data_1bpp=flag,
+    initial_black=flag,
+    outline=flag,
+    f_value=bitfield('uint8', 4),
+)
+_CHAR_DATA_8BIT = le.Struct(
+    # > 2/3 xO, yO sign-extended 8· or 12- bit coordinates
+    x0='int8',
+    y0='int8',
+    # > 2/3 xs, ys width, height (bbox = xO,yO,xO+xs,yO+ys)
+    xs='int8',
+    ys='int8',
+    # > n   data: (depends on type of file)
+    #           1-bpp uncrunched: rows from bottom to top
+    #           4-bpp uncrunchcd: rows from bottom to top
+    #           1-bpp crunched: list of (packed) run-lengths
+    #           outlines: list of move/line/curve segments
+    # word-aligned at the end of the character data
+)
+_CHAR_DATA_12BIT = le.Struct(
+    # packed pairs of signed 12-bit ints. how does this work if little-endian?
+    # it's only specified that "2-byte quantities are little endian"
+    x0_y0=le.uint8 * 3,
+    xs_ys=le.uint8 * 3,
+)
+
+def _from_12bit_pair(x0_y0):
+    """Convert 12-bit packed pairs to signed int."""
+    # assuming x and y are stored in that order, and 12-bit values are big-endian.
+    x0_y0 = int.from_bytes(char_data.x0_y0, 'big')
+    x0, y0 = divmod(x0_y0, 0x1000)
+    # signed values
+    if x0 & 0x800:
+        x0 = 0x1000 - x0
+    if y0 & 0x800:
+        y0 = 0x1000 - y0
+    return x0, y0
+
+
+def _convert_12bit_char_data(char_data):
+    """Convert 12-bit packed struct to signed int values."""
+    x0, y0 = _from_12bit_pair(char_data.x0_y0)
+    xs, ys = _from_12bit_pair(char_data.xs_ys)
+    return Props(x0=x0, y0=y0, xs=xs, yx=ys)
+
+
+_RISCOS_MAGIC = b'FONT'
+
+@loaders.register(
+    name='riscos',
+    # maybe, assumes 4bpp, xdpi 90, ydpi 45 in first entry
+    # followed by four nulls in newer but not older files
+    magic=(_RISCOS_MAGIC,),
+    patterns=(Regex(r'[fb]\d+x\d+'),),
+)
+def load_riscos(instream):
+    """Load font from acorn RiscOS new-style font files."""
+    metrics_header, metrics = _load_metrics_if_found(instream)
+    header = _NEW_HEADER.read_from(instream)
+    logging.debug('header: %s', header)
+    if header.identification_word != _RISCOS_MAGIC:
+        raise FileFormatError(
+            'Not a RiscOS new font format file: magic bytes '
+            f'{header.identification_word} != {_RISCOS_MAGIC}'
+        )
+    if not header.bits_per_pixel:
+        raise UnsuppportedError('RiscOS Outline fonts not supported')
+    table = _TABLE.read_from(instream)
+    logging.debug('table: %s', table)
+    # NULL-separated description
+    desc = instream.read(header.offsets[0] - instream.tell())
+    logging.debug('%s', desc)
+    glyphs = []
+    for chunk_nr, (chunk_start, chunk_end) in enumerate(
+            zip(header.offsets[:-1], header.offsets[1:])
+        ):
+        logging.debug('%d %d', chunk_start, chunk_end)
+        if chunk_end == chunk_start:
+            continue
+        instream.seek(chunk_start)
+        # > 4 x 32 offset within chunk to character
+        # >        0 => character is not defined
+        # >        x 4 for vertical placement
+        # >        x 4 for horizontal placement
+        # Character index is more tightly bound than vertical
+        # placement which is more tightly bound than
+        # horizontal placement.
+        offsets = (le.uint32 * 32).read_from(instream)
+        # zero offsets mean character undefined, remove them but keep ordinal
+        # we need to know the next offset to be able to determine data length
+        index_offsets = tuple(
+            (_i, _offs)
+            for _i, _offs in enumerate(chain(offsets, (chunk_end-chunk_start,)))
+            if _offs != 0
+        )
+        logging.debug('%s', offsets)
+        # ignoring tables for horizontal/vertical subpixel placement
+        for (cp, offs), (_, next) in zip(index_offsets[:-1], index_offsets[1:]):
+            instream.seek(chunk_start+offs)
+            char_flags = _CHAR_FLAGS.read_from(instream)
+            logging.debug('%x %s', cp, chr(cp))
+            logging.debug('%s %s', char_flags, bytes(char_flags))
+            if char_flags.coords_12bit:
+                char_data = _CHAR_DATA_12BIT.read_from(instream)
+                char_data = _convert_12bit_char_data(char_data)
+            else:
+                char_data = _CHAR_DATA_8BIT.read_from(instream)
+            logging.debug('%s', char_data)
+            char_bytes = instream.read(chunk_start+next-instream.tell())
+            logging.debug('%s', char_bytes)
+            if not char_flags.f_value:
+                # f_value == 0 means uncompacted
+                # > 1-bpp uncompacted format
+                # > 1 bit per pixel, bit set => paint in foreground colour, in
+                # > rows from bottom-left to top-right, not aligned until
+                # > word-aligned at the end of the character.
+                # note the assumptioon is also little-endian in bit order,
+                # so the lsb of the first byte maps to the botom left pixel.
+                raster = Raster.from_bytes(
+                    char_bytes, align='bit', bit_order='little',
+                    width=char_data.xs, height=char_data.ys,
+                    bits_per_pixel=(1 if char_flags.data_1bpp else 4),
+                ).flip()
+            else:
+                # the packing algorithm is the same as in pkfont
+                # except nybbles are taken in little-endian order
+                # and pixels are output from bottom left to top right
+                bits = unpack_bits(
+                    _iter_nybbles_le(char_bytes),
+                    char_flags.initial_black, char_flags.f_value, char_data.xs,
+                )
+                raster = Raster.from_vector(
+                    bits, inklevels=(False, True),
+                    stride=char_data.xs, width=char_data.xs, height=char_data.ys,
+                ).flip()
+            codepoint = cp + 32*chunk_nr
+            if metrics:
+                metrics_index = metrics_header.mapping[codepoint]
+                char_metrics = metrics[metrics_index]
+            else:
+                char_metrics = None
+            scale_x = table.x_size * table.x_res / 16 / 72 / 1000
+            scale_y = table.y_size * table.y_res / 16 / 72 / 1000
+            glyphs.append(Glyph(
+                raster, codepoint=codepoint,
+                shift_up=char_data.y0,
+                left_bearing=char_data.x0,
+                right_bearing=(
+                    round(char_metrics.x_offset*scale_x)
+                    - char_data.x0
+                    - char_data.xs
+                ) if char_metrics else None,
+                scalable_width=(
+                    char_metrics.x_offset * scale_x if char_metrics else None
+                ),
+            ))
+    if metrics_header:
+        name = metrics_header.name.rstrip(b'\r').decode('latin-1')
+        family, _, subfamily = name.partition('.')
+    else:
+        family, subfamily = None, None
+    return Font(
+        glyphs,
+        family=family,
+        subfamily=subfamily or None,
+        dpi=(table.x_res, table.y_res),
+        point_size=table.y_size/16,
+        encoding='latin-1',
+    ).label()
+
+
+def _iter_nybbles_le(bytestr):
+    """Iterate over a bytes string in 4-bit steps (little-endian)."""
+    for byte in bytestr:
+        hi, lo = divmod(byte, 16)
+        yield lo
+        yield hi

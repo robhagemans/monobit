@@ -127,6 +127,8 @@ Proportional-spacing formats
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | G (V)    |
 | Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       | binary | O        |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       | binary | -        |
+| RISCOS x90y45 format  | `riscos-xy`|                             |&check;|       | binary | O G      |
+| RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G (C)    |
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G (C) |
