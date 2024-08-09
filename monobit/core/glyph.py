@@ -448,9 +448,9 @@ class Glyph(HasProps):
     # creation
 
     @classmethod
-    def blank(cls, width=0, height=0, **kwargs):
+    def blank(cls, width=0, height=0, levels=2, **kwargs):
         """Create whitespace glyph."""
-        return cls(Raster.blank(width, height), **kwargs)
+        return cls(Raster.blank(width, height, levels), **kwargs)
 
     @classmethod
     def from_vector(
@@ -467,7 +467,7 @@ class Glyph(HasProps):
     def from_bytes(
             cls, byteseq, width, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
-            byte_swap=0, bit_order='big',
+            byte_swap=0, bit_order='big', bits_per_pixel=1,
             **kwargs
         ):
         """Create glyph from bytes/bytearray/int sequence."""
@@ -475,6 +475,7 @@ class Glyph(HasProps):
             byteseq, width, height,
             align=align, stride=stride, order=order,
             byte_swap=byte_swap, bit_order=bit_order,
+            bits_per_pixel=bits_per_pixel,
         )
         return cls(pixels, **kwargs)
 
@@ -482,7 +483,7 @@ class Glyph(HasProps):
     def from_hex(
             cls, byteseq, width, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
-            byte_swap=0, bit_order='big',
+            byte_swap=0, bit_order='big', bits_per_pixel=1,
             **kwargs
         ):
         """Create glyph from hex string."""
@@ -490,13 +491,14 @@ class Glyph(HasProps):
             byteseq, width, height,
             align=align, stride=stride, order=order,
             byte_swap=byte_swap, bit_order=bit_order,
+            bits_per_pixel=bits_per_pixel,
         )
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_matrix(cls, matrix, *, inklevels=NOT_SET, **kwargs):
+    def from_matrix(cls, matrix, *, inklevels=NOT_SET, levels=2, **kwargs):
         """Create glyph from iterable of iterables."""
-        pixels = Raster.from_matrix(matrix, inklevels=inklevels)
+        pixels = Raster.from_matrix(matrix, inklevels=inklevels, levels=levels)
         return cls(pixels, **kwargs)
 
     @classmethod
@@ -525,11 +527,11 @@ class Glyph(HasProps):
         """Glyph has no ink."""
         return self._pixels.is_blank()
 
-    def as_matrix(self, *, inklevels=(0, 1)):
+    def as_matrix(self, *, inklevels=NOT_SET):
         """Return matrix of user-specified foreground and background objects."""
         return self._pixels.as_matrix(inklevels=inklevels)
 
-    def as_text(self, *, inklevels='.@', start='', end='\n'):
+    def as_text(self, *, inklevels=NOT_SET, start='', end='\n'):
         """Convert glyph to text."""
         return self._pixels.as_text(inklevels=inklevels, start=start, end=end)
 
@@ -537,11 +539,11 @@ class Glyph(HasProps):
         """Convert glyph to a string of quadrant block characters."""
         return self._pixels.as_blocks(resolution)
 
-    def as_vector(self, inklevels=(0, 1)):
+    def as_vector(self, inklevels=NOT_SET):
         """Return flat tuple of user-specified foreground and background objects."""
         return self._pixels.as_vector(inklevels=inklevels)
 
-    def as_bits(self, inklevels=b'\0\1'):
+    def as_bits(self, inklevels=NOT_SET):
         """
         Return flat bits as bytes string.
         `inklevels` may be bytes, tuple of int or tuple of RGB.
