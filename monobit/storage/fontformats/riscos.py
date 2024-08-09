@@ -376,7 +376,6 @@ def load_riscos(instream):
     for chunk_nr, (chunk_start, chunk_end) in enumerate(
             zip(header.offsets[:-1], header.offsets[1:])
         ):
-        logging.debug('%d %d', chunk_start, chunk_end)
         if chunk_end == chunk_start:
             continue
         instream.seek(chunk_start)
@@ -395,21 +394,16 @@ def load_riscos(instream):
             for _i, _offs in enumerate(chain(offsets, (chunk_end-chunk_start,)))
             if _offs != 0
         )
-        logging.debug('%s', offsets)
         # ignoring tables for horizontal/vertical subpixel placement
         for (cp, offs), (_, next) in zip(index_offsets[:-1], index_offsets[1:]):
             instream.seek(chunk_start+offs)
             char_flags = _CHAR_FLAGS.read_from(instream)
-            logging.debug('%x %s', cp, chr(cp))
-            logging.debug('%s %s', char_flags, bytes(char_flags))
             if char_flags.coords_12bit:
                 char_data = _CHAR_DATA_12BIT.read_from(instream)
                 char_data = _convert_12bit_char_data(char_data)
             else:
                 char_data = _CHAR_DATA_8BIT.read_from(instream)
-            logging.debug('%s', char_data)
             char_bytes = instream.read(chunk_start+next-instream.tell())
-            logging.debug('%s', char_bytes)
             if not char_flags.f_value:
                 # f_value == 0 means uncompacted
                 # > 1-bpp uncompacted format
@@ -468,6 +462,7 @@ def load_riscos(instream):
         dpi=(table.x_res, table.y_res),
         point_size=table.y_size/16,
         encoding='latin-1',
+        comment='\n'.join(_l for _l in desc.decode('latin-1').split('\0') if _l)
     ).label()
 
 
