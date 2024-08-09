@@ -90,50 +90,51 @@ Proportional-spacing formats
 | Format                | Short Name | Typical Extension           | Read  | Write | Type   | Features |
 |-----------------------|------------|-----------------------------|-------|-------|--------|----------|
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       | binary | -        |
-| Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       | binary | Mu       |
+| Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       | binary | M        |
 | Amiga font            | `amiga`    |                             |&check;|       | binary | O        |
-| X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;| coded  | U SB MB Ve O |
+| X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;| coded  | U SB MB V O G |
+| BeOS Bitmap Font      | `beos`     |                             |&check;|&check;| binary | U O G    |
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | O        |
-| AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | Mu U SB MB O Ke (CA) |
+| AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | M U SB MB O K G (C) |
 | FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.[specx]ft` |&check;| | binary | -   |
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;| visual | -        |
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       | binary | -        |
 | DosStart!             | `dosstart` | `.dsf`                      |&check;|&check;| coded  | -        |
 | EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;| coded  | -        |
-| Figlet font           | `figlet`   | `.flf`                      |&check;|&check;| visual | (CA)     |
+| Figlet font           | `figlet`   | `.flf`                      |&check;|&check;| visual | (C)      |
 | FZX font              | `fzx`      | `.fzx`                      |&check;|&check;| binary | O        |
-| OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB O (MB Ke) |
+| OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB O (MB K) |
 | Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | O        |
-| GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|&check;| binary | Mu; see `vlir` |
+| GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|&check;| binary | M; see `vlir` |
 | Adafruit GFX font     | `gfxfont`  | `.h`                        |&check;|&check;| coded  | O        |
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
 | HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB O  |
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;| binary | see `nfnt` |
 | Bitmap image [P]      | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | -        |
 | Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | -        |
-| LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | Mu; see `nfnt` |
-| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | Mu Ke; see `nfnt` |
+| LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | M; see `nfnt` |
+| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K; see `nfnt` |
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
-| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | Mu; see `win`, `gpi` |
-| Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB O (CA) |
-| Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       | binary | Mu; see `nfnt` |
-| Palm OS PRC (v1/NFNT) | `palm-prc` | `.prc`                      |&check;|       | binary | Mu; see `nfnt` |
+| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi` |
+| Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB O G (C) |
+| Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt` |
+| Palm OS PRC (v1/NFNT) | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt` |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
-| PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB Ke) |
+| PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       | binary | O        |
-| Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | (Ve CA) |
+| Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | G (V)    |
 | Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       | binary | O        |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       | binary | -        |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
-| SFont                 | `sfont`    |                             |&check;|&check;| image  | (CA)     |
-| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | Mu US SB MB O Ke Ve (CA) |
-| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2) | binary | Mu US SB MB O Ke Ve (CA) |
+| SFont                 | `sfont`    |                             |&check;|&check;| image  | G (C)    |
+| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G (C) |
+| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G (C) |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
 | Bare GEOS font record | `vlir`     |                             |&check;|&check;| binary | O        |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
-| monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | Mu US SB MB O Ke Ve |
+| monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | M US SB MB O K V G |
 
 [P] requires **PIL**  
 [F] requires **fontTools**  
@@ -141,15 +142,16 @@ Proportional-spacing formats
 (1) 16-bit Windows NE container with FNT resource only  
 (2) Bitmap only (OTB)  
 
-Mu multiple-font container  
+M  multiple-font container  
 U  Unicode  
 US Unicode, multi-codepoint sequences  
 SB Single-byte character sets  
 MB Multi-byte character sets  
 O  Overlapping glyphs
-Ke Kerning  
-Ve Vertical metrics  
-CA Colour / Anti-aliasing (not supported by `monobit`)  
+K  Kerning  
+V  Vertical metrics  
+G  Greyscale fonts  
+C  Colour fonts (not supported by `monobit`)  
 
 If the abbreviation is bracketed, the format supports this but it is not implemented.
 
@@ -162,7 +164,7 @@ Character-cell formats
 | 64C                   | `64c`      | `.64c`                      |&check;|&check;| binary | 8x8  | -        |
 | +3DOS                 | `plus3dos` |                             |&check;|&check;| binary | 8x8  | -        |
 | BBC soft font         | `bbc`      |                             |&check;|&check;| esc    | 8x8  | -        |
-| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;| binary | 8xN  | Mu SB    |
+| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;| binary | 8xN  | M SB     |
 | Dashen                | `dashen`   | `.pft`                      |&check;|       | binary | any  | -        |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;| esc    | >4xN | -        |
 | Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       | binary | any  | -        |
@@ -176,7 +178,7 @@ Character-cell formats
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       | binary | 8xN  | -        |
-| NetBSD wsfont C header| `netbsd`   | `.h`                        |&check;|&check;| coded  | any  | Mu SB    |
+| NetBSD wsfont C header| `netbsd`   | `.h`                        |&check;|&check;| coded  | any  | M SB     |
 | Optiks PCR Font       | `pcr`      | `.pcr`                      |&check;|&check;| binary | 8xN  | -        |
 | PC Screen Font        | `psf`      | `.psf` `.psfu`              |&check;|&check;| binary | any (v2) 8xN (v1) | US  |
 | psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       | binary | 8x8, 8x16 | -   |
@@ -204,6 +206,15 @@ Charts (write only)
 
 [P] requires **PIL**  
 [R] requires **reportlab**  
+
+
+Greyscale fonts
+---------------
+
+Greyscale support is experimental. An extension of the YAFF format allows storing
+glyphs with 2 or 4 bits per pixel greyscale (4 or 16 levels). Monobit can
+furter handle 8 bits per pixel (256 levels) but these cannot be stored as a
+visual representation in a YAFF file.
 
 
 Stroke (vector) formats

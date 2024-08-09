@@ -11,8 +11,8 @@ import lzma
 import bz2
 from pathlib import Path
 
+from monobit.base import FileFormatError
 from ..streams import Stream
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 
 

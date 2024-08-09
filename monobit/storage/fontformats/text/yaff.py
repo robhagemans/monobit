@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.text.yaff - monobit-yaff format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -13,13 +13,12 @@ from collections import deque
 from functools import cached_property
 
 from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
 from monobit.storage.magic import Sentinel
 from monobit.core import (
     Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
 )
-from monobit.base import Props
-from monobit.base import Coord, passthrough
+from monobit.core.raster import base_conv
+from monobit.base import Props, Coord, passthrough, FileFormatError
 
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
@@ -154,9 +153,10 @@ def _read_yaff(text_stream):
     font_props = {}
     font_prop_comms = {}
     current_comment = []
+    inklevels = YaffParams.paper + YaffParams.ink
     for block in iter_blocks(text_stream, blocktypes):
         if isinstance(block, (YaffGlyph, YaffPropertyOrGlyph)) and block.is_glyph():
-            glyphs.append(block.get_glyph_value() | Props(
+            glyphs.append(block.get_glyph_value(inklevels) | Props(
                 comment='\n\n'.join(current_comment),
             ))
             current_comment = []
@@ -167,6 +167,13 @@ def _read_yaff(text_stream):
                 logging.debug("yaff signature found, version %s", value)
             else:
                 _set_property(font_props, key, value)
+                if key == 'levels':
+                    levels = int(value, 0)
+                    if levels == 256:
+                        inklevels = ('..', *(f'{_c:02x}' for _c in range(1, 255)), '@@')
+                    else:
+                        _, inklevels = base_conv(levels)
+                        inklevels = YaffParams.paper + inklevels[1:-1] + YaffParams.ink
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -218,20 +225,21 @@ class YaffMultiline(NonEmptyBlock, YaffParams):
 
 
 class YaffGlyph(YaffMultiline):
+    """Glyph with 1.0 label. Monochrome or greyscale."""
 
     label_chars = tuple('"' + "'" + string.digits)
 
     def starts(self, line):
         return line and (line[:1] in self.label_chars) or '+' in line
 
-    def get_value(self):
+    def get_value(self, inklevels):
         labels = tuple(_l[:-1] for _l in self.lines[:self.n_keys])
         lines = (_l[self.indent:] for _l in self.lines[self.n_keys:])
         lines = tuple(_l for _l in lines if _l)
         # locate glyph properties
         i = 0
         for i, line in enumerate(lines):
-            if line[:1] not in (self.paper, self.ink) and set(line) != set(self.empty):
+            if self.separator in line:
                 break
         else:
             i += 1
@@ -257,9 +265,21 @@ class YaffGlyph(YaffMultiline):
                 _set_property(properties, key, value)
         # deal with sized empties (why?)
         if all(set(_line) == set([self.empty]) for _line in raster):
-            raster = Raster.blank(width=len(raster[0])-1, height=len(raster)-1)
+            raster = Raster.blank(
+                width=len(raster[0])-1, height=len(raster)-1,
+                levels=len(inklevels),
+            )
+        # split up pixel groups for 8-bit
+        elif len(inklevels) == 256:
+            raster = Raster.from_matrix(
+                (
+                    tuple(_row[_c:_c+2] for _c in range(0, len(_row), 2))
+                    for _row in raster
+                ),
+                inklevels=inklevels,
+            )
         return Props(
-            pixels=Raster(raster, inklevels=(self.paper, self.ink)),
+            pixels=Raster(raster, inklevels=inklevels),
             labels=labels, **properties
         )
 
@@ -290,6 +310,7 @@ _LABEL_VALUED_KEYS = tuple(
 
 
 class YaffProperty(NonEmptyBlock, YaffParams):
+    """Inline property."""
 
     def starts(self, line):
         return (
@@ -318,6 +339,7 @@ def _strip_quotes(line):
 
 
 class YaffPropertyOrGlyph(YaffMultiline):
+    """Multiline properties, or monochrome glyph with pre-1.0 tag/char label."""
 
     def starts(self, line):
         return line[:1] not in self.whitespace and line[-1:] == self.separator
@@ -406,6 +428,8 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
+        if font.levels != 2:
+            props['levels'] = font.levels
         # transfer font properties in defined order
         font_props = font.get_properties()
         props |= transfer_properties(font_props)
@@ -439,10 +463,15 @@ def _write_glyph(outstream, glyph, global_metrics):
     if not glyph.pixels.width or not glyph.pixels.height:
         glyphtxt = f'{YaffParams.tab}{YaffParams.empty}\n'
     else:
+        if glyph.levels == 256:
+            inklevels = ('..', *(f'{_c:02x}' for _c in range(255)), '@@')
+        else:
+            _, inklevels = base_conv(glyph.levels)
+            inklevels = YaffParams.paper + inklevels[1:-1] + YaffParams.ink
         glyphtxt = glyph.pixels.as_text(
             start=YaffParams.tab,
-            inklevels=(YaffParams.paper, YaffParams.ink),
-            end='\n'
+            inklevels=inklevels,
+            end='\n',
         )
     outstream.write(glyphtxt)
     properties = glyph.get_properties()

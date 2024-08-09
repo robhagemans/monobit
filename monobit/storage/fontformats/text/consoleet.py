@@ -9,7 +9,6 @@ from pathlib import Path
 import logging
 
 from monobit.storage.base import container_loaders, container_savers
-from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph
 
 from ..image.image import loop_load, loop_save

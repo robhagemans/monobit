@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.bmfont - AngelCode BMFont format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -18,10 +18,9 @@ Image = safe_import('PIL.Image')
 
 from monobit.base import Coord, Bounds
 from monobit.encoding import encodings
-from monobit.storage import FileFormatError
-from monobit.base.binary import int_to_bytes, bytes_to_int, ceildiv
+from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
-from monobit.base import Props, reverse_dict
+from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
 from monobit.render import GlyphMap, grid_map
@@ -534,33 +533,39 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
         for image in sheets.values():
             image.close()
         # check if font is monochromatic
-        colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
-        if len(colourset) <= 1:
-            # only one colour found
-            bg, fg = None, colourset[0]
-            # note that if colourset is empty, all char widths/heights must be zero
-        elif len(colourset) > 2:
-            raise FileFormatError(
-                'Greyscale, colour and antialiased fonts not supported.'
-            )
-        elif len(colourset) == 2:
+        colours = list(set(_tup for _sprite in sprites for _tup in _sprite))
+        if len(colours) < 2:
+            raise FileFormatError('No glyphs or only blank glyphs found.')
+        elif len(colours) == 2:
             # use higher intensity (sum of channels) as foreground
-            bg, fg = colourset
+            bg, fg = colours
             if sum(bg) > sum(fg):
-                bg, fg = fg, bg
+                inklevels = fg, bg
+            else:
+                inklevels = bg, fg
+            pixels_per_byte = 8
+        else:
+            if not all(
+                    len(set(_c[:3])) == 1 and not _c[3:] or _c[3] == 255
+                    for _c in colours
+                ):
+                # only greyscale allowed, r==g==b, alpha==255
+                raise UnsupportedError('Colour fonts not supported.')
+            tuple_len = len(colours[0])
+            if tuple_len == 4:
+                inklevels = tuple((_c, _c, _c, 255) for _c in range(256))
+            else:
+                inklevels = tuple((_c,) * tuple_len for _c in range(256))
+            pixels_per_byte = 1
         # extract glyphs
         for char, sprite in zip(chars, sprites):
-            #if char.width and char.height:
-            bits = tuple(_c == fg for _c in sprite)
             if not char.width:
-                glyph = Glyph.blank(width=0, height=char.height)
+                glyph = Glyph.blank(width=0, height=char.height, levels=len(inklevels))
             else:
-                glyph = Glyph.from_matrix(
-                    (
-                        bits[_offs: _offs+char.width]
-                        for _offs in range(0, len(bits), char.width)
-                    ),
-                    inklevels=(False, True),
+                glyph = Glyph.from_vector(
+                    sprite,
+                    stride=char.width,
+                    inklevels=inklevels,
                 )
             # append kernings (this glyph left)
             is_unicode = bool(_to_int(info['unicode']))

@@ -1,7 +1,7 @@
 """
 monobit.render.glyphmap - glyph maps
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -18,7 +18,19 @@ def glyph_to_image(glyph, paper, ink):
     """Create image of single glyph."""
     image_mode = _get_image_mode(paper, ink, paper)
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
-    data = glyph.as_bits(inklevels=(paper, ink))
+    # create ink gradient
+    if isinstance(ink, int):
+        ink = (ink,)
+        paper = (paper,)
+    maxlevel = glyph.levels - 1
+    inklevels = tuple(
+        tuple(
+            (_i * _ink + (maxlevel - _i) * _paper) // maxlevel
+            for _ink, _paper in zip(ink, paper)
+        )
+        for _i in range(glyph.levels)
+    )
+    data = glyph.as_bits(inklevels=inklevels)
     if image_mode in ('RGB', 'RGBA'):
         # itertools grouper idiom, split in groups of 3 or 4 bytes
         iterators = [iter(data)] * len(image_mode)
@@ -118,18 +130,21 @@ class GlyphMap:
         width, height = max_x - min_x, max_y - min_y
         images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
         for entry in self._map:
-            charimg = glyph_to_image(entry.glyph, paper, ink)
+            # we need to treat the background colour as transparent
+            # we create the glyph as a mask and cut it from a solid ink-colour
+            if transparent:
+                mask = glyph_to_image(entry.glyph, 0, 255)
+                colour = Image.new(image_mode, mask.size, ink)
+            else:
+                mask = None
+                colour = glyph_to_image(entry.glyph, paper, ink)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
                 # Image has ttb y coords, we have btt
                 # our character origin is bottom left
                 target = (entry.x-min_x, height-entry.glyph.height+min_y-entry.y)
-            if transparent:
-                mask = charimg
-            else:
-                mask = None
-            images[entry.sheet].paste(charimg, target, mask)
+            images[entry.sheet].paste(colour, target, mask)
         images = tuple(
             _im.resize((self._scale_x*_im.width, self._scale_y*_im.height))
                 .rotate(-90 * self._turns, expand=True)

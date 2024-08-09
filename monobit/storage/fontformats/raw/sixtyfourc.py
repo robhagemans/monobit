@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 

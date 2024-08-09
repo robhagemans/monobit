@@ -22,7 +22,7 @@ from email.policy import SMTP, default
 import mimetypes
 from pathlib import Path
 
-from ..magic import FileFormatError
+from monobit.base import FileFormatError
 from ..base import containers
 from ..containers import FlatFilterContainer
 

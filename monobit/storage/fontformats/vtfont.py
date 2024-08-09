@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from collections import deque
 
-from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Glyph, Font, Char, Raster
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import ceildiv

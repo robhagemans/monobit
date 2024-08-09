@@ -11,7 +11,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import string
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 
 from .draw import load_draw, DrawGlyph, DrawComment, Empty
@@ -76,7 +77,7 @@ def _validate(fonts):
     """Check if font fits in file format."""
     font = ensure_single(fonts)
     if font.spacing not in ('character-cell', 'multi-cell'):
-        raise FileFormatError(
+        raise UnsupportedError(
             'This format only supports character-cell or multi-cell fonts.'
         )
     # fill out character cell including shifts, bearings and line height
