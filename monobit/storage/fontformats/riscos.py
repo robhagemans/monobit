@@ -89,16 +89,7 @@ _CHAR_HEADER = le.Struct(
 )
 def load_x90y45(instream):
     """Load font from acorn RiscOS x90y45 font files."""
-    # load metrics, if available
-    location = instream.where
-    try:
-        metrics_file = location.open('IntMetrics', mode='r')
-    except FileNotFoundError:
-        header = None
-        metrics = None
-    else:
-        with metrics_file:
-            header, metrics = _read_int_metrics(metrics_file)
+    header, metrics = _load_metrics_if_found(instream)
     index = []
     while True:
         entry = _INDEX_ENTRY.read_from(instream)
@@ -163,14 +154,19 @@ def load_x90y45(instream):
                     round(char_metrics.x_offset*scale_x)
                     - char_entry.x0
                     - char_entry.width
+                ) if char_metrics else None,
+                scalable_width=(
+                    char_metrics.x_offset * scale_x if char_metrics else None
                 ),
-                scalable_width=char_metrics.x_offset * scale_x,
                 codepoint=cp,
             )
             for cp, char_entry, char_data, char_metrics in char_table
         )
-        name = header.name.rstrip(b'\r').decode('latin-1')
-        family, _, subfamily = name.partition('.')
+        if header:
+            name = header.name.rstrip(b'\r').decode('latin-1')
+            family, _, subfamily = name.partition('.')
+        else:
+            family, subfamily = None, None
         fonts.append(Font(
             glyphs,
             family=family,
@@ -226,6 +222,20 @@ def _read_int_metrics(instream):
         for _x0, _y0, _x1, _y1, _xoffs, _yoffs
         in zip(x0, y0, x1, y1, x_offset, y_offset)
     )
+    return header, metrics
+
+
+def _load_metrics_if_found(instream):
+    """Load metrics, if available"""
+    location = instream.where
+    try:
+        metrics_file = location.open('IntMetrics', mode='r')
+    except FileNotFoundError:
+        header = None
+        metrics = None
+    else:
+        with metrics_file:
+            header, metrics = _read_int_metrics(metrics_file)
     return header, metrics
 
 
@@ -347,6 +357,7 @@ _RISCOS_MAGIC = b'FONT'
 )
 def load_riscos(instream):
     """Load font from acorn RiscOS new-style font files."""
+    metrics_header, metrics = _load_metrics_if_found(instream)
     header = _NEW_HEADER.read_from(instream)
     logging.debug('header: %s', header)
     if header.identification_word != _RISCOS_MAGIC:
@@ -424,11 +435,40 @@ def load_riscos(instream):
                     bits, inklevels=(False, True),
                     stride=char_data.xs, width=char_data.xs, height=char_data.ys,
                 ).flip()
+            codepoint = cp + 32*chunk_nr
+            if metrics:
+                metrics_index = metrics_header.mapping[codepoint]
+                char_metrics = metrics[metrics_index]
+            else:
+                char_metrics = None
+            scale_x = table.x_size * table.x_res / 16 / 72 / 1000
+            scale_y = table.y_size * table.y_res / 16 / 72 / 1000
             glyphs.append(Glyph(
-                raster, codepoint=cp+32*chunk_nr,
-                shift_up=char_data.y0, left_bearing=char_data.x0
+                raster, codepoint=codepoint,
+                shift_up=char_data.y0,
+                left_bearing=char_data.x0,
+                right_bearing=(
+                    round(char_metrics.x_offset*scale_x)
+                    - char_data.x0
+                    - char_data.xs
+                ) if char_metrics else None,
+                scalable_width=(
+                    char_metrics.x_offset * scale_x if char_metrics else None
+                ),
             ))
-    return Font(glyphs).label(char_from='latin-1')
+    if metrics_header:
+        name = metrics_header.name.rstrip(b'\r').decode('latin-1')
+        family, _, subfamily = name.partition('.')
+    else:
+        family, subfamily = None, None
+    return Font(
+        glyphs,
+        family=family,
+        subfamily=subfamily or None,
+        dpi=(table.x_res, table.y_res),
+        point_size=table.y_size/16,
+        encoding='latin-1',
+    ).label()
 
 
 def _iter_nybbles_le(bytestr):
