@@ -232,7 +232,15 @@ class _Canvas:
         """Convert glyph to a string of block characters."""
         if not self.height:
             return ''
-        return matrix_to_blocks(self._pixels, *resolution)
+        # replace background with paper
+        pixels = tuple(
+            tuple(
+                0 if _pix == -1 else _pix
+                for _pix in _row
+            )
+            for _row in self._pixels
+        )
+        return matrix_to_blocks(pixels, *resolution)
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
