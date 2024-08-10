@@ -499,10 +499,8 @@ class Raster:
         """Convert raster to a string of block characters."""
         if not self.height:
             return ''
-        if self._levels > 2:
-            raise ValueError(f'Can not represent more than 2 shades.')
         matrix = self._as_iter()
-        return matrix_to_blocks(matrix, *resolution)
+        return matrix_to_blocks(matrix, *resolution, levels=self._levels)
 
     ##########################################################################
 

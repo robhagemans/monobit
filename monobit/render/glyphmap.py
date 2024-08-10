@@ -185,11 +185,12 @@ class GlyphMap:
 class _Canvas:
     """Blittable raster for glyph maps."""
 
-    def __init__(self, pixels):
+    def __init__(self, pixels, levels=2):
         """Create raster from tuple of tuples of string."""
         self._pixels = pixels
         self.height = len(pixels)
         self.width = 0 if not pixels else len(pixels[0])
+        self.levels = levels
 
     @classmethod
     def blank(cls, width, height, fill=-1):
@@ -205,6 +206,7 @@ class _Canvas:
         if not raster.width or not self.width:
             return self
         matrix = raster.as_matrix()
+        self.levels = max(self.levels, raster.levels)
         for work_y in reversed(range(raster.height)):
             if 0 <= grid_y + work_y < self.height:
                 row = self._pixels[self.height - (grid_y + work_y) - 1]
@@ -219,6 +221,8 @@ class _Canvas:
             start='', end='\n'
         ):
         """Convert raster to text."""
+        if self.levels > 2:
+            raise ValueError('Text representation of greyscale not available.')
         if not self.height:
             return ''
         colourdict = {-1: border, 0: paper, 1: ink}
@@ -240,7 +244,7 @@ class _Canvas:
             )
             for _row in self._pixels
         )
-        return matrix_to_blocks(pixels, *resolution)
+        return matrix_to_blocks(pixels, *resolution, levels=self.levels)
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
@@ -256,14 +260,17 @@ class _Canvas:
             [_col for _col in _row for _ in range(factor_x)]
             for _row in pixels
         ]
-        return type(self)(pixels)
+        return type(self)(pixels, levels=self.levels)
 
     def flip(self):
         """Reverse pixels vertically."""
-        return type(self)(self._pixels[::-1])
+        return type(self)(self._pixels[::-1], levels=self.levels)
 
     def transpose(self):
         """Transpose glyph."""
-        return type(self)([list(_r) for _r in zip(*self._pixels)])
+        return type(self)(
+            [list(_r) for _r in zip(*self._pixels)],
+            levels=self.levels
+        )
 
     turn = turn_method
