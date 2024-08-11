@@ -128,3 +128,7 @@ Original sources:
 
 ### Derivatives of Hershey Fonts:
 * `hershey.yaff`, `hershey.svg` and `hershey.fon` were created from `hershey-az.jhf` using `monobit`
+
+
+### Derivatives of Konatu:
+* `konatu-ascii.yaff` was created from a subset of `Konatu_10` using `monobit`
