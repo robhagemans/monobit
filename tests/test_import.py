@@ -1325,7 +1325,7 @@ class TestImport(BaseTester):
 
     riscold = 'https://www.lewisgilbert.co.uk/archiology/archives/riscos2/'
 
-    def test_import_riscos_old(self):
+    def test_import_riscos_xy(self):
         """Test importing RiscOs x90y45 files."""
         file = ensure_asset(self.riscold, 'App1.zip')
         font, *_ = monobit.load(file / '!Fonts/Trinity/Medium/x90y45', format='riscos-xy')
@@ -1339,6 +1339,24 @@ class TestImport(BaseTester):
 1571..2883
 """)
 
+
+    riscnew = 'https://gitlab.riscosopen.org/RiscOS/Sources/SystemRes/Fonts/-/raw/master/System/Fixed/'
+
+    def test_import_riscos(self):
+        """Test importing RiscOS new-format files."""
+        file = ensure_asset(self.riscnew, 'f240x120,ff6')
+        font, *_ = monobit.load(file, format='riscos')
+        self.assertEqual(len(font.glyphs), 211)
+        # all glyphs appear to be huge geometric patterns, this one is smallest
+        assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
+.@@@@.
+@@..@@
+@@..@@
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+""")
 
 if __name__ == '__main__':
     unittest.main()
