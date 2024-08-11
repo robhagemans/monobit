@@ -79,6 +79,10 @@ Original sources:
   - Copyright (c) 1992, 1993
     The Regents of the University of California.  All rights reserved.
   - BSD 3-clause licence
+* RISC OS System Fixed `System.Fixed/f240x???`
+  - https://gitlab.riscosopen.org/RiscOS/Sources/SystemRes/Fonts/-/tree/master/System/Fixed
+  - Apache License 2.0
+  
 
 
 ### Derivatives of `4x6`
