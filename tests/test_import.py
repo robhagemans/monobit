@@ -1354,5 +1354,22 @@ class TestImport(BaseTester):
 @@..@@
 """)
 
+    def test_import_beos(self):
+        """Test importing BeOS files."""
+        file = self.font_path / 'Konatu' / 'Konatu_10'
+        font, *_ = monobit.load(file, format='beos')
+        self.assertEqual(len(font.glyphs), 14963)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
+.171.
+17171
+71.17
+7...7
+7...7
+77777
+7...7
+7...7
+""")
+
+
 if __name__ == '__main__':
     unittest.main()

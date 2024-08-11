@@ -82,7 +82,10 @@ Original sources:
 * RISC OS System Fixed `System.Fixed/f240x???`
   - https://gitlab.riscosopen.org/RiscOS/Sources/SystemRes/Fonts/-/tree/master/System/Fixed
   - Apache License 2.0
-  
+* Konatu v. 23 `Konatu/Konatu_10`
+  - https://web.archive.org/web/20100729142655/http://www.masuseki.com/be/konatu/Konatu_ver_23.zip
+  - Author mitimasu@gmail.com
+  - This work is licensed under a Creative Commons Attribution-Share Alike 3.0 License.
 
 
 ### Derivatives of `4x6`
