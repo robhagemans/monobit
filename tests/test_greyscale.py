@@ -68,7 +68,10 @@ class TestGreyscale(BaseTester):
         self._render_greyscale('sfont')
 
     def test_image_greyscale(self):
-        self._render_greyscale('image', load_kwargs=dict(table_size=(32, 3), first_codepoint=0x20))
+        self._render_greyscale(
+            'image',
+            load_kwargs=dict(table_size=(32, 3), first_codepoint=0x20)
+        )
 
 
 if __name__ == '__main__':

@@ -459,6 +459,12 @@ class TestExport(BaseTester):
         """Test exporting EDWIN files."""
         self._export_4x6(format='edwin', count=127, label=b'A')
 
+    # BeOS
+
+    def test_export_beos(self):
+        """Test exporting BeOS files."""
+        self._export_4x6(format='beos')
+
 
 if __name__ == '__main__':
     unittest.main()

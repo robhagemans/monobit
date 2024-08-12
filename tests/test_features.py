@@ -77,7 +77,10 @@ class TestFeatures(BaseTester):
         text1 = monobit.render(prop1, b'testing').as_text(inklevels='.@')
         assert_text_eq(text1, self.proptext)
 
-    def _render_proportional(self, format, *, load_kwargs=(), save_kwargs=()):
+    def _render_proportional(
+            self, format, *, char=False, load_kwargs=(), save_kwargs=(),
+            inklevels='.@',
+        ):
         prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
         monobit.save(
             prop1, self.temp_path / f'wbfont_prop.{format}',
@@ -87,8 +90,12 @@ class TestFeatures(BaseTester):
             self.temp_path / f'wbfont_prop.{format}',
             format=format, **(load_kwargs or {}),
         )
-        text2 = monobit.render(prop2, b'testing').as_text(inklevels='.@')
-        assert_text_eq(text2, self.proptext)
+        if char:
+            text = 'testing'
+        else:
+            text = b'testing'
+        rendered_text = monobit.render(prop2, text).as_text(inklevels=inklevels)
+        assert_text_eq(rendered_text, self.proptext)
 
     def test_yaff_proportional(self):
         self._render_proportional('yaff')
@@ -177,14 +184,10 @@ class TestFeatures(BaseTester):
         self._render_proportional('vfont')
 
     def test_otb_proportional(self):
-        format = 'sfnt'
-        prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
-        monobit.save(prop1, self.temp_path / f'wbfont_prop.{format}', format=format)
-        prop2, *_ = monobit.load(self.temp_path / f'wbfont_prop.{format}', format=format)
-        # need unicode here
-        text2 = monobit.render(prop2, 'testing').as_text(inklevels='.@')
-        assert_text_eq(text2, self.proptext)
+        self._render_proportional('sfnt', char=True)
 
+    def test_beos_proportional(self):
+        self._render_proportional('beos', inklevels='.123456789ABCDE@')
 
     # kerning
 
@@ -285,14 +288,14 @@ class TestFeatures(BaseTester):
 ..@..
 """
 
-    def _render_bearings(self, format, char=False, **save_kwargs):
+    def _render_bearings(self, format, char=False, inklevels='.@', **save_kwargs):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
         monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
         font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
         if char:
-            text = monobit.render(font, '012').as_text(inklevels='.@')
+            text = monobit.render(font, '012').as_text(inklevels=inklevels)
         else:
-            text = monobit.render(font, b'012').as_text(inklevels='.@')
+            text = monobit.render(font, b'012').as_text(inklevels=inklevels)
         assert_text_eq(text, self.bearing_testtext)
 
     # proportional formats that have writers but don't support negative bearings:
@@ -350,6 +353,10 @@ class TestFeatures(BaseTester):
 
     def test_vfont_negbearings(self):
         self._render_bearings('vfont')
+
+    def test_beos_negbearings(self):
+        self._render_bearings('beos', inklevels='.123456789ABCDE@')
+
 
     # vertical negative bearings
 
