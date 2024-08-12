@@ -259,7 +259,7 @@ XXX.
 levels: 4
 
 '-':
-    .123@
+    .12@
 """
 
     def test_render_blocks_4shades(self):
@@ -268,9 +268,8 @@ levels: 4
         text = monobit.render(font, '-').as_blocks((1, 1))
         assert_text_eq(text,
             '\x1b[38;2;0;0;0m\u2588'
-            '\x1b[38;2;7;7;7m\u2588'
-            '\x1b[38;2;14;14;14m\u2588'
-            '\x1b[38;2;21;21;21m\u2588'
+            '\x1b[38;2;85;85;85m\u2588'
+            '\x1b[38;2;170;170;170m\u2588'
             '\x1b[38;2;255;255;255m\u2588\n'
         )
 
