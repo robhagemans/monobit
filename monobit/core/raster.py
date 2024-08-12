@@ -359,6 +359,7 @@ class Raster:
     def as_bytes(
             self, *,
             align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
+            bits_per_pixel=None,
         ):
         """
         Convert raster to flat bytes.
@@ -367,26 +368,39 @@ class Raster:
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
+        bits_per_pixel: bit depth; must be higher than or (default) equal to intrinsic bit depth.
         """
         if not self.height or not self.width:
             return b''
+        raster = self
         if stride is not NOT_SET:
             if align == 'right':
-                raster = self.expand(left=stride-self.width)
+                raster = raster.expand(left=stride-self.width)
             else:
                 # left or bit-aligned
-                raster = self.expand(right=stride-self.width)
-        else:
-            raster = self
+                raster = raster.expand(right=stride-self.width)
+        intr_bpp = (self._levels - 1).bit_length()
+        if bits_per_pixel is None:
+            bits_per_pixel = intr_bpp
+        elif bits_per_pixel < intr_bpp:
+            raise ValueError(
+                f'This raster needs at least {intr_bpp} bits per pixel.'
+            )
+        if bits_per_pixel > intr_bpp:
+            # must be a multiple - choice of 1, 2, 4, 8
+            factor = bits_per_pixel // intr_bpp
+            # widen each pixel to the expected number of bits
+            # e.g 1->2bpp 0 -> 00 1 -> 11
+            #     4->8bpp 5 -> 55 A -> AA
+            raster = raster.stretch(factor_x=factor)
         if align == 'bit':
-            bits_per_pixel = (self._levels - 1).bit_length()
-            base = 2 ** bits_per_pixel
-            pixels_per_byte = 8 // bits_per_pixel
             _, inklevels = base_conv(self._levels)
             bits = ''.join(
                 ''.join(_row)
                 for _row in raster.as_matrix(inklevels=inklevels)
             )
+            base = 2 ** bits_per_pixel
+            pixels_per_byte = 8 // bits_per_pixel
             bytesize = ceildiv(len(bits), pixels_per_byte)
             # left align the bits to byte boundary
             bits = bits.ljust(bytesize * pixels_per_byte, inklevels[0])

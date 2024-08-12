@@ -119,7 +119,6 @@ def load_x90y45(instream):
                 char_metrics = None
             instream.seek(anchor + offset)
             char_entry = _CHAR_HEADER.read_from(instream)
-            logging.debug('char entry: %s', char_entry)
             char_data = instream.read(ceildiv(char_entry.width * char_entry.height, 2))
             char_table.append((cp, char_entry, char_data, char_metrics))
         char_tables.append(char_table)

@@ -165,14 +165,15 @@ class GlyphMap:
 
     def as_text(
             self, *,
-            ink='@', paper='.', border='.',
+            inklevels=' @',
+            border=None,
             start='', end='\n',
             sheet=0,
         ):
         """Convert glyph map to text."""
         canvas = self.to_canvas(sheet=sheet)
         return canvas.as_text(
-            ink=ink, paper=paper, border=border, start=start, end=end
+            inklevels=inklevels, border=border, start=start, end=end
         )
 
     @convert_arguments
@@ -217,15 +218,17 @@ class _Canvas:
 
     def as_text(
             self, *,
-            ink='@', paper='.', border='.',
+            inklevels=' @', border=None,
             start='', end='\n'
         ):
         """Convert raster to text."""
-        if self.levels > 2:
-            raise ValueError('Text representation of greyscale not available.')
         if not self.height:
             return ''
-        colourdict = {-1: border, 0: paper, 1: ink}
+        if not border:
+            border = inklevels[0]
+        colourdict = {-1: border} | {
+            _i: _v for _i, _v in enumerate(inklevels)
+        }
         contents = '\n'.join(
             ''.join(colourdict[_pix] for _pix in _row)
             for _row in self._pixels

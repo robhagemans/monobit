@@ -1,0 +1,1236 @@
+name: Konatu Regular 10
+spacing: proportional
+bounding-box: 8x9
+levels: 16
+family: Konatu
+subfamily: Regular
+point-size: 10
+encoding: unicode
+converter: monobit v0.45
+source-name: Konatu_10
+source-path: home/rob/Projects/bitfont/tools/tests/fonts/Konatu/Konatu_10
+source-format: beos
+
+' ':
+    -
+
+    right-bearing: 3
+    scalable-width: 2.98828125
+
+
+'!':
+    7
+    7
+    7
+    7
+    7
+    7
+    .
+    7
+
+    right-bearing: 1
+    scalable-width: 1.9921875
+
+
+'"':
+    7.7
+    7.7
+
+    right-bearing: 2
+    shift-up: 6
+    scalable-width: 4.98046875
+
+
+'#':
+    .7.7.
+    .7.7.
+    77777
+    .7.7.
+    .7.7.
+    77777
+    .7.7.
+    .7.7.
+
+    scalable-width: 4.98046875
+
+
+'$':
+    ..7..
+    17777
+    7.7..
+    7.7..
+    17771
+    ..7.7
+    ..7.7
+    77771
+    ..7..
+
+    shift-up: -1
+    scalable-width: 4.98046875
+
+
+'%':
+    171.7
+    7.7.7
+    17171
+    ..71.
+    .17..
+    17171
+    7.7.7
+    7.171
+
+    scalable-width: 4.98046875
+
+
+'&':
+    .171..
+    .717..
+    .771..
+    17....
+    717.7.
+    7.1777
+    71..7.
+    17771.
+
+    scalable-width: 5.9765625
+
+
+''':
+    7
+    7
+
+    right-bearing: 1
+    shift-up: 6
+    scalable-width: 1.9921875
+
+
+'(':
+    .17
+    .71
+    17.
+    71.
+    7..
+    71.
+    17.
+    .71
+    .17
+
+    shift-up: -1
+    scalable-width: 2.98828125
+
+
+')':
+    71.
+    17.
+    .71
+    .17
+    ..7
+    .17
+    .71
+    17.
+    71.
+
+    shift-up: -1
+    scalable-width: 2.98828125
+
+
+'*':
+    ..7..
+    7.7.7
+    17771
+    17771
+    7.7.7
+    ..7..
+
+    shift-up: 1
+    scalable-width: 4.98046875
+
+
+'+':
+    ..7..
+    ..7..
+    77777
+    ..7..
+    ..7..
+
+    shift-up: 2
+    scalable-width: 4.98046875
+
+
+',':
+    7
+    7
+
+    right-bearing: 1
+    shift-up: -1
+    scalable-width: 1.9921875
+
+
+'-':
+    7777
+
+    right-bearing: 1
+    shift-up: 4
+    scalable-width: 4.98046875
+
+
+'.':
+    7
+
+    right-bearing: 1
+    scalable-width: 1.9921875
+
+
+'/':
+    ....7
+    ...17
+    ..171
+    ..71.
+    .17..
+    171..
+    71...
+    7....
+
+    scalable-width: 4.98046875
+
+
+'0':
+    1771
+    7117
+    7..7
+    7..7
+    7..7
+    7..7
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'1':
+    17
+    77
+    .7
+    .7
+    .7
+    .7
+    .7
+    .7
+
+    right-bearing: 2
+    left-bearing: 1
+    scalable-width: 4.98046875
+
+
+'2':
+    1771
+    71.7
+    ..17
+    .171
+    171.
+    71..
+    7...
+    7777
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'3':
+    1771
+    71.7
+    ..17
+    .771
+    ..17
+    ...7
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'4':
+    ..17.
+    ..77.
+    .177.
+    17.7.
+    7..7.
+    77777
+    ...7.
+    ...7.
+
+    scalable-width: 4.98046875
+
+
+'5':
+    7777
+    7...
+    7...
+    7771
+    7.17
+    ...7
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'6':
+    1771
+    7117
+    7...
+    7771
+    7.17
+    7..7
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'7':
+    7777
+    ...7
+    ..71
+    ..7.
+    .17.
+    .71.
+    .7..
+    .7..
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'8':
+    1771
+    7..7
+    7..7
+    .77.
+    7117
+    7..7
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'9':
+    1771
+    7117
+    7..7
+    71.7
+    1777
+    ...7
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+':':
+    7
+    .
+    .
+    7
+
+    right-bearing: 1
+    shift-up: 2
+    scalable-width: 1.9921875
+
+
+';':
+    7
+    .
+    .
+    7
+    7
+
+    right-bearing: 1
+    shift-up: 1
+    scalable-width: 1.9921875
+
+
+'<':
+    ...17
+    ..171
+    .171.
+    171..
+    71...
+    171..
+    .171.
+    ..171
+    ...17
+
+    right-bearing: 1
+    left-bearing: -1
+    shift-up: -1
+    scalable-width: 4.98046875
+
+
+'=':
+    7777
+    ....
+    ....
+    7777
+
+    right-bearing: 1
+    shift-up: 2
+    scalable-width: 4.98046875
+
+
+'>':
+    71...
+    171..
+    .171.
+    ..171
+    ...17
+    ..171
+    .171.
+    171..
+    71...
+
+    right-bearing: 1
+    left-bearing: -1
+    shift-up: -1
+    scalable-width: 4.98046875
+
+
+'?':
+    1771
+    71.7
+    7.17
+    .171
+    .71.
+    .7..
+    ....
+    .7..
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'@':
+    177771
+    71..17
+    7.77.7
+    7..7.7
+    7.7.77
+    7.7771
+    71....
+    17777.
+
+    right-bearing: 1
+    scalable-width: 6.97265625
+
+
+'A':
+    .171.
+    17171
+    71.17
+    7...7
+    7...7
+    77777
+    7...7
+    7...7
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'B':
+    77771
+    7..17
+    7..17
+    7777.
+    7..17
+    7...7
+    7..17
+    77771
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'C':
+    .1771.
+    171171
+    71..17
+    7.....
+    7.....
+    71..17
+    171171
+    .1771.
+
+    right-bearing: 1
+    scalable-width: 6.97265625
+
+
+'D':
+    7771.
+    7.171
+    7..17
+    7...7
+    7...7
+    7..17
+    7.171
+    7771.
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'E':
+    77777
+    7....
+    7....
+    7777.
+    7....
+    7....
+    7....
+    77777
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'F':
+    77777
+    7....
+    7....
+    77777
+    7....
+    7....
+    7....
+    7....
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'G':
+    .1771.
+    171171
+    71..17
+    7.....
+    7...77
+    71...7
+    171177
+    .177.7
+
+    right-bearing: 1
+    scalable-width: 6.97265625
+
+
+'H':
+    7...7
+    7...7
+    7...7
+    77777
+    7...7
+    7...7
+    7...7
+    7...7
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'I':
+    7
+    7
+    7
+    7
+    7
+    7
+    7
+    7
+
+    right-bearing: 1
+    scalable-width: 1.9921875
+
+
+'J':
+    ...7
+    ...7
+    ...7
+    ...7
+    ...7
+    7..7
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'K':
+    7..17
+    7.171
+    7.71.
+    771..
+    7.71.
+    7.17.
+    7..71
+    7..17
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'L':
+    7....
+    7....
+    7....
+    7....
+    7....
+    7....
+    7....
+    77777
+
+    scalable-width: 4.98046875
+
+
+'M':
+    7...17
+    71..77
+    77.177
+    77.7.7
+    7717.7
+    7.71.7
+    7.7..7
+    7....7
+
+    right-bearing: 1
+    scalable-width: 6.97265625
+
+
+'N':
+    71..7
+    771.7
+    7.7.7
+    7.7.7
+    7.177
+    7..17
+    7...7
+    7...7
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'O':
+    .1771.
+    171171
+    71..17
+    7....7
+    7....7
+    71..17
+    171171
+    .1771.
+
+    right-bearing: 1
+    scalable-width: 6.97265625
+
+
+'P':
+    77771
+    7..17
+    7..17
+    77771
+    7....
+    7....
+    7....
+    7....
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'Q':
+    .1771.
+    171171
+    71..17
+    7....7
+    7....7
+    71.717
+    17117.
+    .177.7
+
+    right-bearing: 1
+    scalable-width: 6.97265625
+
+
+'R':
+    77771
+    7..17
+    7..17
+    77771
+    7..71
+    7..17
+    7...7
+    7...7
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'S':
+    17771
+    71.17
+    71...
+    1771.
+    ..171
+    7..17
+    71.17
+    17771
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'T':
+    77777
+    ..7..
+    ..7..
+    ..7..
+    ..7..
+    ..7..
+    ..7..
+    ..7..
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'U':
+    7...7
+    7...7
+    7...7
+    7...7
+    7...7
+    7...7
+    71.17
+    17771
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'V':
+    7...7
+    7...7
+    71.17
+    17.71
+    .7.7.
+    .717.
+    .171.
+    ..7..
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'W':
+    7..7..7
+    71.7.17
+    17.7.71
+    .7.7.7.
+    .7.7.7.
+    .71717.
+    .17171.
+    ..7.7..
+
+    scalable-width: 6.97265625
+
+
+'X':
+    71.17
+    17.71
+    .717.
+    .171.
+    .171.
+    .717.
+    17.71
+    71.17
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'Y':
+    7...7
+    71.17
+    17.71
+    .717.
+    .171.
+    ..7..
+    ..7..
+    ..7..
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'Z':
+    77777
+    ....7
+    ..171
+    .171.
+    .71..
+    17...
+    7....
+    77777
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'[':
+    77
+    7.
+    7.
+    7.
+    7.
+    7.
+    7.
+    7.
+    77
+
+    right-bearing: 1
+    shift-up: -1
+    scalable-width: 2.98828125
+
+
+'\':
+    7....
+    71...
+    171..
+    .17..
+    ..71.
+    ..171
+    ...17
+    ....7
+
+    right-bearing: 1
+    left-bearing: -1
+    scalable-width: 4.98046875
+
+
+']':
+    77
+    .7
+    .7
+    .7
+    .7
+    .7
+    .7
+    .7
+    77
+
+    right-bearing: 1
+    shift-up: -1
+    scalable-width: 2.98828125
+
+
+'^':
+    171
+    717
+
+    right-bearing: 1
+    shift-up: 6
+    scalable-width: 3.984375
+
+
+'_':
+    777
+
+    shift-up: -1
+    scalable-width: 2.98828125
+
+
+'`':
+    71
+    17
+
+    right-bearing: 2
+    shift-up: 6
+    scalable-width: 3.984375
+
+
+'a':
+    .771
+    ...7
+    1777
+    71.7
+    1777
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'b':
+    7...
+    7...
+    7...
+    7771
+    7.17
+    7..7
+    7.17
+    7771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'c':
+    1771
+    7117
+    7...
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'d':
+    ...7
+    ...7
+    ...7
+    1777
+    71.7
+    7..7
+    71.7
+    1777
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'e':
+    1771
+    7..7
+    7777
+    7...
+    177.
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'f':
+    .17
+    .71
+    .7.
+    777
+    .7.
+    .7.
+    .7.
+    .7.
+
+    scalable-width: 2.98828125
+
+
+'g':
+    1777
+    71.7
+    71.7
+    1777
+    ...7
+    .771
+
+    right-bearing: 1
+    shift-up: -1
+    scalable-width: 4.98046875
+
+
+'h':
+    7...
+    7...
+    7...
+    7771
+    7.17
+    7..7
+    7..7
+    7..7
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'i':
+    7
+    .
+    7
+    7
+    7
+    7
+    7
+
+    right-bearing: 1
+    scalable-width: 1.9921875
+
+
+'j':
+    7
+    .
+    7
+    7
+    7
+    7
+    7
+    7
+
+    right-bearing: 1
+    shift-up: -1
+    scalable-width: 1.9921875
+
+
+'k':
+    7...
+    7...
+    7.17
+    7.71
+    771.
+    771.
+    7.71
+    7.17
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'l':
+    7
+    7
+    7
+    7
+    7
+    7
+    7
+    7
+
+    right-bearing: 1
+    scalable-width: 1.9921875
+
+
+'m':
+    771771
+    7.7117
+    7.7..7
+    7.7..7
+    7.7..7
+
+    right-bearing: 1
+    scalable-width: 6.97265625
+
+
+'n':
+    7771
+    7.17
+    7..7
+    7..7
+    7..7
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'o':
+    1771
+    7117
+    7..7
+    7117
+    1771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'p':
+    7771
+    7.17
+    7.17
+    7771
+    7...
+    7...
+
+    right-bearing: 1
+    shift-up: -1
+    scalable-width: 4.98046875
+
+
+'q':
+    1777
+    71.7
+    71.7
+    1777
+    ...7
+    ...7
+
+    right-bearing: 1
+    shift-up: -1
+    scalable-width: 4.98046875
+
+
+'r':
+    7.7
+    771
+    71.
+    7..
+    7..
+
+    scalable-width: 2.98828125
+
+
+'s':
+    1777
+    71..
+    1771
+    ..17
+    7771
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'t':
+    .4.
+    .7.
+    .7.
+    777
+    .7.
+    .7.
+    .71
+    .17
+
+    right-bearing: 1
+    scalable-width: 3.984375
+
+
+'u':
+    7..7
+    7..7
+    7..7
+    71.7
+    1777
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'v':
+    7...7
+    71.17
+    17.71
+    .717.
+    .171.
+
+    scalable-width: 4.98046875
+
+
+'w':
+    7.7.7
+    7.7.7
+    71717
+    17171
+    .7.7.
+
+    right-bearing: 1
+    scalable-width: 5.9765625
+
+
+'x':
+    71.17
+    17171
+    .171.
+    17171
+    71.17
+
+    scalable-width: 4.98046875
+
+
+'y':
+    71.17
+    17.71
+    .717.
+    .171.
+    .17..
+    .71..
+
+    shift-up: -1
+    scalable-width: 4.98046875
+
+
+'z':
+    7777
+    ..71
+    171.
+    7...
+    7777
+
+    right-bearing: 1
+    scalable-width: 4.98046875
+
+
+'{':
+    .7
+    .7
+    .7
+    17
+    7.
+    17
+    .7
+    .7
+    .7
+
+    shift-up: -1
+    scalable-width: 1.9921875
+
+
+'|':
+    7
+    7
+    7
+    7
+    7
+    7
+    7
+    7
+    7
+
+    right-bearing: 1
+    shift-up: -1
+    scalable-width: 1.9921875
+
+
+'}':
+    7.
+    7.
+    7.
+    71
+    .7
+    71
+    7.
+    7.
+    7.
+
+    shift-up: -1
+    scalable-width: 1.9921875
+
+
+'~':
+    1717
+    7171
+
+    shift-up: 6
+    scalable-width: 3.984375
+
+
