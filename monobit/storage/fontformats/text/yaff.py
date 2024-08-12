@@ -17,7 +17,7 @@ from monobit.storage.magic import Sentinel
 from monobit.core import (
     Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
 )
-from monobit.core.raster import base_conv
+from monobit.core.raster import INKLEVELS
 from monobit.base import Props, Coord, passthrough, FileFormatError
 
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
@@ -172,7 +172,7 @@ def _read_yaff(text_stream):
                     if levels == 256:
                         inklevels = ('..', *(f'{_c:02x}' for _c in range(1, 255)), '@@')
                     else:
-                        _, inklevels = base_conv(levels)
+                        inklevels = INKLEVELS[levels]
                         inklevels = YaffParams.paper + inklevels[1:-1] + YaffParams.ink
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
@@ -466,7 +466,7 @@ def _write_glyph(outstream, glyph, global_metrics):
         if glyph.levels == 256:
             inklevels = ('..', *(f'{_c:02x}' for _c in range(255)), '@@')
         else:
-            _, inklevels = base_conv(glyph.levels)
+            inklevels = INKLEVELS[glyph.levels]
             inklevels = YaffParams.paper + inklevels[1:-1] + YaffParams.ink
         glyphtxt = glyph.pixels.as_text(
             start=YaffParams.tab,
