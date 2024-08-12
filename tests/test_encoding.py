@@ -99,7 +99,7 @@ class TestEncoding(BaseTester):
     def test_generated_space_charcell(self):
         file = get_stringio(charcell)
         f,  *_ = monobit.load(file)
-        text = monobit.render(f, 'I I').as_text()
+        text = monobit.render(f, 'I I').as_text(inklevels='.@')
         assert_text_eq(text, self.I_I)
 
 
@@ -117,7 +117,7 @@ class TestEncoding(BaseTester):
     def test_generated_space(self):
         file = get_stringio(proportional)
         f,  *_ = monobit.load(file)
-        text = monobit.render(f, 'I I').as_text()
+        text = monobit.render(f, 'I I').as_text(inklevels='.@')
         assert_text_eq(text, self.I_I_prop)
 
 
@@ -135,7 +135,7 @@ class TestEncoding(BaseTester):
     def test_defined_default(self):
         file = get_stringio(charcell)
         f,  *_ = monobit.load(file)
-        text = monobit.render(f, 'IAI').as_text()
+        text = monobit.render(f, 'IAI').as_text(inklevels='.@')
         assert_text_eq(text, self.I_def_I)
 
     I_block_I = """\
@@ -153,7 +153,7 @@ class TestEncoding(BaseTester):
         file = get_stringio(charcell)
         f,  *_ = monobit.load(file)
         f = f.exclude('1')
-        text = monobit.render(f, 'IAI').as_text()
+        text = monobit.render(f, 'IAI').as_text(inklevels='.@')
         assert_text_eq(text, self.I_block_I)
 
 
@@ -161,7 +161,7 @@ class TestEncoding(BaseTester):
         file = get_stringio(charcell)
         f,  *_ = monobit.load(file)
         f = f.exclude('1').modify(word_space=4)
-        text = monobit.render(f, 'IAI').as_text()
+        text = monobit.render(f, 'IAI').as_text(inklevels='.@')
         assert_text_eq(text, self.I_block_I)
 
 
@@ -180,7 +180,7 @@ class TestEncoding(BaseTester):
         file = get_stringio(proportional)
         f,  *_ = monobit.load(file)
         f = f.exclude('1').modify(word_space=4)
-        text = monobit.render(f, 'IAI').as_text()
+        text = monobit.render(f, 'IAI').as_text(inklevels='.@')
         assert_text_eq(text, self.I_smallblock_I)
 
 
