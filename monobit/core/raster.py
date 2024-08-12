@@ -446,10 +446,8 @@ class Raster:
         return self.as_bytes(**kwargs).hex()
 
     @classmethod
-    def from_matrix(cls, matrix, *, inklevels=NOT_SET, levels=2):
+    def from_matrix(cls, matrix, *, inklevels):
         """Create raster from iterable of iterables."""
-        if inklevels is NOT_SET:
-            inklevels = tuple(range(levels))
         if isinstance(inklevels, str):
             pixels = tuple(''.join(_row) for _row in matrix)
             return cls(pixels, inklevels=inklevels)

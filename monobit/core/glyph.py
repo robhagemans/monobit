@@ -501,9 +501,9 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_matrix(cls, matrix, *, inklevels=NOT_SET, levels=2, **kwargs):
+    def from_matrix(cls, matrix, *, inklevels, **kwargs):
         """Create glyph from iterable of iterables."""
-        pixels = Raster.from_matrix(matrix, inklevels=inklevels, levels=levels)
+        pixels = Raster.from_matrix(matrix, inklevels=inklevels)
         return cls(pixels, **kwargs)
 
     @classmethod
