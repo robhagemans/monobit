@@ -545,15 +545,15 @@ class Glyph(HasProps):
         return self._pixels.as_blocks(resolution)
 
     def as_vector(self, inklevels=NOT_SET):
-        """Return flat tuple of user-specified foreground and background objects."""
+        """Return flat tuple of user-specified pixel objects."""
         return self._pixels.as_vector(inklevels=inklevels)
 
-    def as_bits(self, inklevels=NOT_SET):
+    def as_pixels(self, inklevels=NOT_SET):
         """
-        Return flat bits as bytes string.
+        Return bytes, one pixel per byte/char, as defined by `inklevels`.
         `inklevels` may be bytes, tuple of int or tuple of RGB.
         """
-        return self._pixels.as_bits(inklevels=inklevels)
+        return self._pixels.as_pixels(inklevels=inklevels)
 
     def as_byterows(self, *, align='left', bit_order='big'):
         """Convert glyph to rows of bytes."""

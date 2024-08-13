@@ -245,15 +245,18 @@ class Raster:
         return cls.from_matrix(rows, inklevels=inklevels)
 
     def as_vector(self, inklevels=NOT_SET):
-        """Return flat tuple of user-specified foreground and background objects."""
+        """Return flat tuple of user-specified pixel objects."""
         return tuple(
             _c
             for _row in self._as_iter(inklevels=inklevels)
             for _c in _row
         )
 
-    def as_bits(self, inklevels=NOT_SET):
-        """Return flat bits as bytes string. Inklevels must be int or bytes."""
+    def as_pixels(self, inklevels=NOT_SET):
+        """
+        Return bytes, one pixel per byte/char, as defined by `inklevels`.
+        `inklevels` may be bytes, tuple of int or tuple of RGB.
+        """
         if inklevels is NOT_SET:
             inklevels = bytes(range(self._levels))
         elif isinstance(inklevels, bytes):
