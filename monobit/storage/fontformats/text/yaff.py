@@ -81,6 +81,13 @@ class YaffParams:
     quotable = (':', ' ')
     glyphchars = (ink, paper, empty)
 
+    inklevels = {
+        256: ('..', *(f'{_c:02x}' for _c in range(1, 255)), '@@'),
+        16: paper + INKLEVELS[16][1:-1] + ink,
+        4: paper + INKLEVELS[4][1:-1] + ink,
+        2: paper + ink,
+    }
+
 
 # deprecated compatibility synonymms
 _DEPRECATED_SYNONYMS = {
@@ -102,6 +109,7 @@ def _set_property(propsdict, key, value):
             propsdict[key] = value
     else:
         propsdict[key] = value
+
 
 
 ##############################################################################
@@ -153,7 +161,7 @@ def _read_yaff(text_stream):
     font_props = {}
     font_prop_comms = {}
     current_comment = []
-    inklevels = YaffParams.paper + YaffParams.ink
+    inklevels = YaffParams.inklevels[2]
     for block in iter_blocks(text_stream, blocktypes):
         if isinstance(block, (YaffGlyph, YaffPropertyOrGlyph)) and block.is_glyph():
             glyphs.append(block.get_glyph_value(inklevels) | Props(
@@ -168,12 +176,7 @@ def _read_yaff(text_stream):
             else:
                 _set_property(font_props, key, value)
                 if key == 'levels':
-                    levels = int(value, 0)
-                    if levels == 256:
-                        inklevels = ('..', *(f'{_c:02x}' for _c in range(1, 255)), '@@')
-                    else:
-                        inklevels = INKLEVELS[levels]
-                        inklevels = YaffParams.paper + inklevels[1:-1] + YaffParams.ink
+                    inklevels = YaffParams.inklevels[int(value, 0)]
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -362,8 +365,8 @@ class YaffPropertyOrGlyph(YaffMultiline):
         first = self.lines[1].lstrip()
         # multiline block with single key
         # may be property or (deprecated) glyph with plain label
-        # we need to check the contents
-        return first[:1] in (self.ink, self.paper) or set(first) == set(self.empty)
+        # we need to check the contents; allows 2-level glyphs only
+        return first[:1] in self.inklevels[2] or set(first) == set(self.empty)
 
 
 ##############################################################################
@@ -463,14 +466,9 @@ def _write_glyph(outstream, glyph, global_metrics):
     if not glyph.pixels.width or not glyph.pixels.height:
         glyphtxt = f'{YaffParams.tab}{YaffParams.empty}\n'
     else:
-        if glyph.levels == 256:
-            inklevels = ('..', *(f'{_c:02x}' for _c in range(255)), '@@')
-        else:
-            inklevels = INKLEVELS[glyph.levels]
-            inklevels = YaffParams.paper + inklevels[1:-1] + YaffParams.ink
         glyphtxt = glyph.pixels.as_text(
             start=YaffParams.tab,
-            inklevels=inklevels,
+            inklevels=YaffParams.inklevels[glyph.levels],
             end='\n',
         )
     outstream.write(glyphtxt)
