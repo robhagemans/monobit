@@ -640,7 +640,9 @@ def convert_to_nfnt(
     strike_raster = Raster.concatenate(*(_g.pixels for _g in glyph_table))
     # word-align strike
     strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
-    font_strike = strike_raster.as_bytes()
+    font_strike = strike_raster.as_bytes(
+        bits_per_pixel=(font.levels-1).bit_length()
+    )
     # build the width-offset table
     empty = Glyph(wo_offset=255, wo_width=255, levels=font.levels)
     wo_table = b''.join(
