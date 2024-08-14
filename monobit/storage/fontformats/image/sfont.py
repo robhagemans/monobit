@@ -17,6 +17,7 @@ from monobit.core import Font, Glyph
 from monobit.render import GlyphMap
 
 from monobit.storage.utils.limitations import ensure_single
+from .image import identify_inklevels
 
 # see https://github.com/karlb/sfont
 
@@ -46,21 +47,9 @@ if Image:
                 background = rgb
                 break
         spritesheet = image.crop((0, 1, image.width, image.height))
-        colours = set(spritesheet.getdata())
+        colours = spritesheet.getdata()
         # identify colour mode
-        if len(colours) < 2:
-            raise FileFormatError('No glyphs or only blank glyphs found.')
-        elif len(colours) == 2:
-            for rgb in colours:
-                if rgb != background:
-                    foreground = rgb
-                    break
-            inklevels = (background, foreground)
-        else:
-            if not all(len(set(_c)) == 1 for _c in colours):
-                # only greyscale allowed, r==g==b
-                raise UnsupportedError('Colour fonts not supported.')
-            inklevels = tuple((_c, _c, _c) for _c in range(256))
+        inklevels = identify_inklevels(colours, background)
         # find indicator lengths
         groups = tuple(
             (_clr, len(tuple(_g)))
