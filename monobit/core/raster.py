@@ -425,6 +425,11 @@ class Raster:
         """Return iterable of user-specified foreground and background objects."""
         if inklevels == self._inklevels:
             return self._pixels
+        if len(inklevels) < len(self._inklevels):
+            raise ValueError(
+                f'Requires at least {len(inklevels)} greyscale levels.'
+            )
+        inklevels = inklevels[:len(self._inklevels)]
         if isinstance(inklevels, str):
             # optimisation if inklevels consists of individual chars or bytes:
             translator = str.maketrans(''.join(self._inklevels), inklevels)
