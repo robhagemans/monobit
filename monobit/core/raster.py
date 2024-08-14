@@ -315,7 +315,7 @@ class Raster:
     def as_bytes(
             self, *,
             align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
-            bits_per_pixel=None,
+            bits_per_pixel=1,
         ):
         """
         Convert raster to flat bytes.
@@ -324,7 +324,7 @@ class Raster:
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be higher than or (default) equal to intrinsic bit depth.
+        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
         """
         if not self.height or not self.width:
             return b''
@@ -339,9 +339,7 @@ class Raster:
         if bits_per_pixel is None:
             bits_per_pixel = intr_bpp
         elif bits_per_pixel < intr_bpp:
-            raise ValueError(
-                f'This raster needs at least {intr_bpp} bits per pixel.'
-            )
+            raise ValueError(f'Requires at least {intr_bpp} bits per pixel.')
         if bits_per_pixel > intr_bpp:
             # must be a multiple - choice of 1, 2, 4, 8
             factor = bits_per_pixel // intr_bpp
