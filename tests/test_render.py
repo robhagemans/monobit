@@ -277,7 +277,7 @@ levels: 4
 levels: 16
 
 '-':
-    .123456789abcde@
+    .123456789ABCDE@
 """
 
     def test_render_blocks_16shades(self):
@@ -308,7 +308,7 @@ levels: 256
 
 '-':
     ..{}@@
-""".format(''.join(f'{_x:02x}' for _x in range(1, 255)))
+""".format(''.join(f'{_x:02X}' for _x in range(1, 255)))
 
 
     def test_render_blocks_256shades(self):
@@ -321,7 +321,6 @@ levels: 256
                 for _s in range(256)
             ) + '\n'
         )
-
 
 
 if __name__ == '__main__':

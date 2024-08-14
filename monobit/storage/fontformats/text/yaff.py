@@ -82,9 +82,9 @@ class YaffParams:
     glyphchars = (ink, paper, empty)
 
     inklevels = {
-        256: ('..', *(f'{_c:02x}' for _c in range(1, 255)), '@@'),
-        16: paper + INKLEVELS[16][1:-1] + ink,
-        4: paper + INKLEVELS[4][1:-1] + ink,
+        256: ('..', *(f'{_c:02X}' for _c in range(1, 255)), '@@'),
+        16: paper + INKLEVELS[16][1:-1].upper() + ink,
+        4: paper + INKLEVELS[4][1:-1].upper() + ink,
         2: paper + ink,
     }
 
@@ -248,7 +248,7 @@ class YaffGlyph(YaffMultiline):
             i += 1
         if not i:
             raise FileFormatError('Malformed yaff file: expected glyph definition.')
-        raster = lines[:i]
+        raster = tuple(_l.upper() for _l in lines[:i])
         properties = {}
         key = None
         for line in lines[i:]:
