@@ -146,7 +146,7 @@ if Image:
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         keep_empty: keep empty glyphs (default: False)
         """
-        # determine defaults & whether to work with cell-size or table size
+        # appply defaults
         if table_size is None:
             if cell is None:
                 table_size = Coord(32, 8)
@@ -155,30 +155,30 @@ if Image:
                 table_size = Coord(0, 0)
         elif cell is None:
             cell = Coord(0, 0)
-        # maximum number of cells that fits
         img = Image.open(infile)
         img = img.convert('RGB')
-        cell_x, cell_y = cell
-        if cell.x <= 0:
-            if table_size.x <= 0:
-                raise ValueError('Either cell or table size must be specified.')
-            cell_x = ceildiv(img.width, table_size.x*scale.x) - padding.x
-        if cell.y <= 0:
-            if table_size.y <= 0:
-                raise ValueError('Either cell or table size must be specified.')
-            cell_y = ceildiv(img.height, table_size.y*scale.y) - padding.y
-        if not cell_x or not cell_y:
-            raise ValueError('Empty cell. Please specify larger cell size or smaller table size.')
-        logging.debug('Cell size %dx%d', cell_x, cell_y)
-        cell = Coord(cell_x, cell_y)
-        # work out image geometry
-        step_x = cell.x * scale.x + padding.x
-        step_y = cell.y * scale.y + padding.y
-        table_size_x, table_size_y = table_size
-        if table_size.x <= 0:
-            table_size_x = ceildiv(img.width - margin.x, step_x)
-        if table_size.y <= 0:
-            table_size_y = ceildiv(img.height - margin.y, step_y)
+        crops = extract_crops_from_grid(
+            img, table_size, cell, scale, padding, margin, order, direction
+        )
+        if not crops:
+            logging.error('Image too small; no characters found.')
+            return Font()
+        if count > 0:
+            crops = crops[:count]
+        return convert_crops_to_font(
+            enumerate(crops, first_codepoint), background, keep_empty
+        )
+
+
+    def extract_crops_from_grid(
+            img, table_size, cell, scale, padding, margin, order, direction
+        ):
+        """Extract glyph crops from grid-based image."""
+        (
+            cell, step_x, step_y, table_size_x, table_size_y
+        ) = determine_grid_geometry(
+            img.width, img.height, table_size, cell, scale, padding, margin,
+        )
         traverse = grid_traverser(table_size_x, table_size_y, order, direction)
         # extract sub-images
         crops = tuple(
@@ -190,24 +190,47 @@ if Image:
             ))
             for _row, _col in traverse
         )
-        if not crops:
-            logging.error('Image too small; no characters found.')
-            return Font()
-        if count > 0:
-            crops = crops[:count]
         # scale
         crops = tuple(_crop.resize(cell, resample=Image.NEAREST) for _crop in crops)
-        # determine colour mode (2- or 3-colour)
-        colourset = set(img.getdata())
         # three-colour mode - proportional width encoded with border colour
+        colourset = set(img.getdata())
         if len(colourset) >= 3:
             # get border/padding colour
             border = _get_border_colour(img, cell, margin, padding)
             # clip off border colour from cells
             crops = tuple(_crop_border(_crop, border) for _crop in crops)
-        return convert_crops_to_font(
-            enumerate(crops, first_codepoint), background, keep_empty
-        )
+        return crops
+
+
+    def determine_grid_geometry(
+            width, height, table_size, cell, scale, padding, margin,
+        ):
+        """Find cell, step, row and column sizes."""
+        # determine defaults & whether to work with cell-size or table size
+        # maximum number of cells that fits
+        cell_x, cell_y = cell
+        if cell.x <= 0:
+            if table_size.x <= 0:
+                raise ValueError('Either cell or table size must be specified.')
+            cell_x = ceildiv(width, table_size.x*scale.x) - padding.x
+        if cell.y <= 0:
+            if table_size.y <= 0:
+                raise ValueError('Either cell or table size must be specified.')
+            cell_y = ceildiv(height, table_size.y*scale.y) - padding.y
+        if not cell_x or not cell_y:
+            raise ValueError('Empty cell. Please specify larger cell size or smaller table size.')
+        logging.debug('Cell size %dx%d', cell_x, cell_y)
+        cell = Coord(cell_x, cell_y)
+        # work out image geometry
+        step_x = cell.x * scale.x + padding.x
+        step_y = cell.y * scale.y + padding.y
+        table_size_x, table_size_y = table_size
+        if table_size.x <= 0:
+            table_size_x = ceildiv(width - margin.x, step_x)
+        if table_size.y <= 0:
+            table_size_y = ceildiv(height - margin.y, step_y)
+        return cell, step_x, step_y, table_size_x, table_size_y
+
 
     def convert_crops_to_font(enumerated_crops, background, keep_empty):
         """Convert list of glyph images to font."""
