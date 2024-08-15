@@ -11,8 +11,8 @@ import logging
 from monobit.storage.base import container_loaders, container_savers
 from monobit.core import Font, Glyph
 
-from ..image.image import loop_load, loop_save
 from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.perglyph import loop_load, loop_save
 
 
 @container_loaders.register(name='consoleet')
