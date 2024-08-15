@@ -27,6 +27,7 @@ from monobit.render import GlyphMap, grid_map
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
+from .image import identify_inklevels
 from monobit.storage.utils.limitations import ensure_single
 
 
@@ -533,30 +534,9 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
         for image in sheets.values():
             image.close()
         # check if font is monochromatic
-        colours = list(set(_tup for _sprite in sprites for _tup in _sprite))
-        if len(colours) < 2:
-            raise FileFormatError('No glyphs or only blank glyphs found.')
-        elif len(colours) == 2:
-            # use higher intensity (sum of channels) as foreground
-            bg, fg = colours
-            if sum(bg) > sum(fg):
-                inklevels = fg, bg
-            else:
-                inklevels = bg, fg
-            pixels_per_byte = 8
-        else:
-            if not all(
-                    len(set(_c[:3])) == 1 and not _c[3:] or _c[3] == 255
-                    for _c in colours
-                ):
-                # only greyscale allowed, r==g==b, alpha==255
-                raise UnsupportedError('Colour fonts not supported.')
-            tuple_len = len(colours[0])
-            if tuple_len == 4:
-                inklevels = tuple((_c, _c, _c, 255) for _c in range(256))
-            else:
-                inklevels = tuple((_c,) * tuple_len for _c in range(256))
-            pixels_per_byte = 1
+        colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
+        inklevels = identify_inklevels(colours, background='darkest')
+        pixels_per_byte = 8 // (len(inklevels)-1).bit_length()
         # extract glyphs
         for char, sprite in zip(chars, sprites):
             if not char.width:

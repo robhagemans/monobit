@@ -30,7 +30,7 @@ def glyph_to_image(glyph, paper, ink):
         )
         for _i in range(glyph.levels)
     )
-    data = glyph.as_bits(inklevels=inklevels)
+    data = glyph.as_pixels(inklevels=inklevels)
     if image_mode in ('RGB', 'RGBA'):
         # itertools grouper idiom, split in groups of 3 or 4 bytes
         iterators = [iter(data)] * len(image_mode)

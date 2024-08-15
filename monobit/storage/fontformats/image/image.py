@@ -36,6 +36,58 @@ DEFAULT_IMAGE_FORMAT = 'png'
 # darkest           use darkest colour, by sum of RGB values
 # top-left          use colour of top-left pixel in first cell
 
+def identify_inklevels(colours, background):
+    """Identify ink levels from colour set."""
+    colourset = set(colours)
+    if len(colourset) < 2:
+        raise FileFormatError('No glyphs or only blank glyphs found.')
+    elif len(colourset) > 2:
+        # 3 or more non-border colours, must be a greyscale image
+        if not all(
+                len(set(_c[:3])) == 1 and not _c[3:] or _c[3] == 255
+                for _c in colourset
+            ):
+            # only greyscale allowed, r==g==b, alpha==255
+            raise UnsupportedError('Colour fonts not supported.')
+        # get a random element to check colour mode (8/24/32 bit)
+        tuple_len = len(colourset.pop())
+        if tuple_len == 4:
+            # RGBA
+            inklevels = tuple((_c, _c, _c, 255) for _c in range(256))
+        else:
+            # RGB or 8-bit
+            inklevels = tuple((_c,) * tuple_len for _c in range(256))
+        return inklevels
+    else:
+        # 2-colour image
+        if not isinstance(background, str):
+            # background provided
+            paper = background
+        elif background in ('most-common', 'least-common'):
+            colourfreq = Counter(colours)
+            if background == 'most-common':
+                # most common colour in image assumed to be background colour
+                paper, _ = colourfreq.most_common(1)[0]
+            else:
+                # least common colour in image assumed to be background colour
+                paper, _ = colourfreq.most_common()[-1]
+        elif background in ('darkest', 'brightest'):
+            brightness = sorted((sum(_c), _c) for _c in colourset)
+            if background == 'darkest':
+                # darkest colour assumed to be background
+                _, paper = brightness[0]
+            else:
+                # brightest colour assumed to be background
+                _, paper = brightness[-1]
+        elif background == 'top-left':
+            # top-left pixel of first char assumed to be background colour
+            paper = colours[0]
+        else:
+            raise ValueError(f'Background mode `{background}` not supported.')
+        # 2 colour image - not-paper means ink
+        ink = (colourset - {paper}).pop()
+        return paper, ink
+
 
 if Image:
     @loaders.register(
@@ -189,50 +241,10 @@ if Image:
         return None
 
     def _identify_colours(crops, background):
-        """Identify paper and ink colours from cells."""
-        # check that cells are monochrome
-        crops = tuple(tuple(_crop.getdata()) for _crop in crops)
-        colourset = set.union(*(set(_data) for _data in crops))
-        if len(colourset) < 2:
-            raise FileFormatError('No glyphs or only blank glyphs found.')
-        elif len(colourset) > 2:
-            # 3 or more non-border colours, must be a greyscale image
-            if not all(
-                    len(set(_c[:3])) == 1 and not _c[3:] or _c[3] == 255
-                    for _c in colourset
-                ):
-                # only greyscale allowed, r==g==b, alpha==255
-                raise UnsupportedError('Colour fonts not supported.')
-            # get a random element to check colour mode (8/24/32 bit)
-            tuple_len = len(colourset.pop())
-            if tuple_len == 4:
-                # RGBA
-                inklevels = tuple((_c, _c, _c, 255) for _c in range(256))
-            else:
-                # RGB or 8-bit
-                inklevels = tuple((_c,) * tuple_len for _c in range(256))
-            return inklevels
-        else:
-            colourfreq = Counter(_c for _data in crops for _c in _data)
-            brightness = sorted((sum(_v for _v in _c), _c) for _c in colourset)
-            if background == 'most-common':
-                # most common colour in image assumed to be background colour
-                paper, _ = colourfreq.most_common(1)[0]
-            elif background == 'least-common':
-                # least common colour in image assumed to be background colour
-                paper, _ = colourfreq.most_common()[-1]
-            elif background == 'brightest':
-                # brightest colour assumed to be background
-                _, paper = brightness[-1]
-            elif background == 'darkest':
-                # darkest colour assumed to be background
-                _, paper = brightness[0]
-            elif background == 'top-left':
-                # top-left pixel of first char assumed to be background colour
-                paper = crops[0][0]
-            # 2 colour image - not-paper means ink
-            ink = (colourset - {paper}).pop()
-            return paper, ink
+        """Identify ink levels from cells."""
+        crops = (tuple(_crop.getdata()) for _crop in crops)
+        colours = sum(crops, ())
+        return identify_inklevels(colours, background)
 
     def _crop_border(image, border):
         """Remove border area from image."""

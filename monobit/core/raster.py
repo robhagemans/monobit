@@ -10,7 +10,9 @@ import string
 from itertools import zip_longest
 from collections import deque
 
-from monobit.base.binary import ceildiv, reverse_by_group
+from monobit.base.binary import (
+    ceildiv, reverse_by_group, INKLEVELS, bytes_to_pixels,
+)
 from monobit.base import Bounds, Coord, NOT_SET
 from monobit.base.blocks import matrix_to_blocks, blockstr
 
@@ -47,45 +49,6 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
-# these allow for max 36 shades
-_DIGITS = string.digits + string.ascii_lowercase
-
-
-def base_conv(base):
-    """Converter for non-negative number to str in given base."""
-    if base == 2:
-        return (lambda _v: bin(_v)[2:]), _DIGITS[:base]
-    elif base == 8:
-        return (lambda _v: oct(_v)[2:]), _DIGITS[:base]
-    elif base == 10:
-        return str, _DIGITS[:base]
-    elif base == 16:
-        return (lambda _v: hex(_v)[2:]), _DIGITS[:base]
-    else:
-        if base <= 36:
-            inklevels = _DIGITS
-        elif base == 256:
-            inklevels = ''.join(chr(_i) for _i in range(base))
-        else:
-            raise ValueError(f'Unsupported base {base}')
-        def _to_base(value):
-            """Convert nonnegative integer to string in any base up to 256."""
-            if value == 0:
-                return inklevels[0]
-            elif value < 0:
-                raise ValueError('value must be nonegative')
-            # notwithstanding best practice, the str concat here is
-            # twice as fast for relevant input sizes as list or deque
-            # credits to stackoverflow user Gareth
-            # https://stackoverflow.com/questions/2063425/python-elegant-inverse-function-of-intstring-base
-            digits = inklevels[value % base]
-            while value >= base:
-                value //= base
-                digits = inklevels[value % base] + digits
-            return digits
-        return _to_base, inklevels
-
-
 class Raster:
     """Bit matrix."""
 
@@ -101,7 +64,7 @@ class Raster:
             elif width is NOT_SET:
                 width = 0
             if inklevels is NOT_SET:
-                inklevels = _DIGITS[:2]
+                inklevels = '01'
         self._pixels = pixels
         self._width = width
         self._inklevels = inklevels
@@ -188,7 +151,7 @@ class Raster:
     @classmethod
     def blank(cls, width=0, height=0, levels=2):
         """Create uninked raster."""
-        _, inklevels = base_conv(levels)
+        inklevels = INKLEVELS[levels]
         if height == 0:
             return cls(width=width, inklevels=inklevels)
         return cls((inklevels[0] * width,) * height, inklevels=inklevels)
@@ -224,15 +187,18 @@ class Raster:
         return cls.from_matrix(rows, inklevels=inklevels)
 
     def as_vector(self, inklevels=NOT_SET):
-        """Return flat tuple of user-specified foreground and background objects."""
+        """Return flat tuple of user-specified pixel objects."""
         return tuple(
             _c
             for _row in self._as_iter(inklevels=inklevels)
             for _c in _row
         )
 
-    def as_bits(self, inklevels=NOT_SET):
-        """Return flat bits as bytes string. Inklevels must be int or bytes."""
+    def as_pixels(self, inklevels=NOT_SET):
+        """
+        Return bytes, one pixel per byte/char, as defined by `inklevels`.
+        `inklevels` may be bytes, tuple of int or tuple of RGB.
+        """
         if inklevels is NOT_SET:
             inklevels = bytes(range(self._levels))
         elif isinstance(inklevels, bytes):
@@ -303,18 +269,8 @@ class Raster:
                 for _offs in range(height)
             )
         # convert bytes to pixels
-        if levels == 256:
-            inklevels = ''.join(chr(_i) for _i in range(256))
-            bitseq = byteseq.decode('latin-1')
-        else:
-            to_base, inklevels = base_conv(levels)
-            if not byteseq:
-                bitseq = ''
-            else:
-                bitseq = (
-                    to_base(int.from_bytes(byteseq, 'big'))
-                    .zfill(pixels_per_byte*len(byteseq))
-                )
+        bitseq = bytes_to_pixels(byteseq, levels)
+        inklevels = INKLEVELS[levels]
         # per-byte bit swap.
         if bit_order == 'little':
             bitseq = reverse_by_group(bitseq, group_size=pixels_per_byte)
@@ -332,7 +288,7 @@ class Raster:
         """
         if not self.height or not self.width:
             return ()
-        _, inklevels = base_conv(self._levels)
+        inklevels = INKLEVELS[self._levels]
         rows = (
             ''.join(_row)
             for _row in self.as_matrix(inklevels=inklevels)
@@ -359,7 +315,7 @@ class Raster:
     def as_bytes(
             self, *,
             align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
-            bits_per_pixel=None,
+            bits_per_pixel=1,
         ):
         """
         Convert raster to flat bytes.
@@ -368,7 +324,7 @@ class Raster:
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be higher than or (default) equal to intrinsic bit depth.
+        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
         """
         if not self.height or not self.width:
             return b''
@@ -383,9 +339,7 @@ class Raster:
         if bits_per_pixel is None:
             bits_per_pixel = intr_bpp
         elif bits_per_pixel < intr_bpp:
-            raise ValueError(
-                f'This raster needs at least {intr_bpp} bits per pixel.'
-            )
+            raise ValueError(f'Requires at least {intr_bpp} bits per pixel.')
         if bits_per_pixel > intr_bpp:
             # must be a multiple - choice of 1, 2, 4, 8
             factor = bits_per_pixel // intr_bpp
@@ -394,7 +348,7 @@ class Raster:
             #     4->8bpp 5 -> 55 A -> AA
             raster = raster.stretch(factor_x=factor)
         if align == 'bit':
-            _, inklevels = base_conv(self._levels)
+            inklevels = INKLEVELS[self._levels]
             bits = ''.join(
                 ''.join(_row)
                 for _row in raster.as_matrix(inklevels=inklevels)
@@ -446,15 +400,13 @@ class Raster:
         return self.as_bytes(**kwargs).hex()
 
     @classmethod
-    def from_matrix(cls, matrix, *, inklevels=NOT_SET, levels=2):
+    def from_matrix(cls, matrix, *, inklevels):
         """Create raster from iterable of iterables."""
-        if inklevels is NOT_SET:
-            inklevels = tuple(range(levels))
         if isinstance(inklevels, str):
             pixels = tuple(''.join(_row) for _row in matrix)
             return cls(pixels, inklevels=inklevels)
         else:
-            _, str_inklevels = base_conv(len(inklevels))
+            str_inklevels = INKLEVELS[len(inklevels)]
             translator = {_k: _v for _k, _v in zip(inklevels, str_inklevels)}
             # glyph data
             pixels = tuple(
@@ -473,6 +425,11 @@ class Raster:
         """Return iterable of user-specified foreground and background objects."""
         if inklevels == self._inklevels:
             return self._pixels
+        if len(inklevels) < len(self._inklevels):
+            raise ValueError(
+                f'Requires at least {len(inklevels)} greyscale levels.'
+            )
+        inklevels = inklevels[:len(self._inklevels)]
         if isinstance(inklevels, str):
             # optimisation if inklevels consists of individual chars or bytes:
             translator = str.maketrans(''.join(self._inklevels), inklevels)
@@ -500,8 +457,12 @@ class Raster:
         if not self.height:
             return ''
         if inklevels is NOT_SET:
+            if self._levels == 256:
+                raise ValueError(
+                    'No default text representation for 8-bit greyscale'
+                )
             # default text representation uses . for paper and @ for full ink
-            inklevels = '.' + _DIGITS[1:self._levels-1] + '@'
+            inklevels = '.' + INKLEVELS[self._levels][1:-1] + '@'
         rows = self._as_iter(inklevels=inklevels)
         return blockstr(
             start
@@ -530,7 +491,7 @@ class Raster:
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
-        _, inklevels = base_conv(max(_r.levels for _r in row_of_rasters))
+        inklevels = INKLEVELS[max(_r.levels for _r in row_of_rasters)]
         matrices = tuple(
             _raster.as_matrix(inklevels=inklevels)
             for _raster in row_of_rasters
@@ -553,7 +514,7 @@ class Raster:
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
-        _, inklevels = base_conv(max(_r.levels for _r in column_of_rasters))
+        inklevels = INKLEVELS[max(_r.levels for _r in column_of_rasters)]
         matrices = (
             _raster.as_matrix(inklevels=inklevels)
             for _raster in column_of_rasters

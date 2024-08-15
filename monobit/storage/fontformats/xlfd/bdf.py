@@ -522,7 +522,7 @@ def _convert_to_bdf_glyph(glyph, font):
     if not glyph.height:
         glyphdata.append(('BITMAP', ''))
     else:
-        hex = glyph.as_hex().upper()
+        hex = glyph.as_hex(bits_per_pixel=(font.levels-1).bit_length()).upper()
         width = len(hex) // glyph.height
         split_hex = [
             hex[_offs:_offs+width]

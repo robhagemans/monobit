@@ -501,9 +501,9 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_matrix(cls, matrix, *, inklevels=NOT_SET, levels=2, **kwargs):
+    def from_matrix(cls, matrix, *, inklevels, **kwargs):
         """Create glyph from iterable of iterables."""
-        pixels = Raster.from_matrix(matrix, inklevels=inklevels, levels=levels)
+        pixels = Raster.from_matrix(matrix, inklevels=inklevels)
         return cls(pixels, **kwargs)
 
     @classmethod
@@ -545,15 +545,15 @@ class Glyph(HasProps):
         return self._pixels.as_blocks(resolution)
 
     def as_vector(self, inklevels=NOT_SET):
-        """Return flat tuple of user-specified foreground and background objects."""
+        """Return flat tuple of user-specified pixel objects."""
         return self._pixels.as_vector(inklevels=inklevels)
 
-    def as_bits(self, inklevels=NOT_SET):
+    def as_pixels(self, inklevels=NOT_SET):
         """
-        Return flat bits as bytes string.
+        Return bytes, one pixel per byte/char, as defined by `inklevels`.
         `inklevels` may be bytes, tuple of int or tuple of RGB.
         """
-        return self._pixels.as_bits(inklevels=inklevels)
+        return self._pixels.as_pixels(inklevels=inklevels)
 
     def as_byterows(self, *, align='left', bit_order='big'):
         """Convert glyph to rows of bytes."""
@@ -561,7 +561,7 @@ class Glyph(HasProps):
 
     def as_bytes(
             self, *, align='left', stride=NOT_SET, byte_swap=0,
-            bit_order='big', bits_per_pixel=None,
+            bit_order='big', bits_per_pixel=1,
         ):
         """
         Convert raster to flat bytes.
@@ -570,7 +570,7 @@ class Glyph(HasProps):
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be higher than or (default) equal to intrinsic bit depth.
+        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
         """
         return self._pixels.as_bytes(
             align=align, stride=stride, byte_swap=byte_swap,
