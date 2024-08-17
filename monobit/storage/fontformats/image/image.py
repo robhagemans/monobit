@@ -287,44 +287,42 @@ if Image:
 
     def extract_crops_from_strips(img): #, scale, order, direction):
         """Extract glyph crops from strip-based image."""
-        strips, border = chop_vertical(img, border=None)
+        strips, border = chop_strips(img, border=None, vertical=True)
         crops = []
         for strip in strips:
-            strip_crops = chop_horizontal(strip, border)
+            strip_crops, _ = chop_strips(strip, border, vertical=False)
             crops.extend(strip_crops)
         return crops
 
-    def chop_vertical(img, border):
+
+    def chop_strips(img, border, vertical):
+        """Slice up image into strips by border colour."""
+        if vertical:
+            scan_range = range(img.height)
+        else:
+            scan_range = range(img.width)
         strips = []
-        last_row = 0
-        for i_row in range(img.height):
-            row = img.crop((0, i_row, img.width, i_row+1))
-            colours = row.getcolors()
+        last_line = 0
+        for i_line in scan_range:
+            if vertical:
+                line = img.crop((0, i_line, img.width, i_line+1))
+            else:
+                line = img.crop((i_line, 0, i_line+1, img.height))
+            colours = line.getcolors()
             # identify border colour
             # the first full row of one colour is deemed to be border
             if len(colours) == 1 and border is None or colours[0][1] == border:
                 # found full row of one colour
                 if border is None:
                     border = colours[0][1]
-                if i_row - last_row:
-                    strip = img.crop((0, last_row, img.width, i_row))
+                if i_line - last_line:
+                    if vertical:
+                        strip = img.crop((0, last_line, img.width, i_line))
+                    else:
+                        strip = img.crop((last_line, 0, i_line, img.height))
                     strips.append(strip)
-                last_row = i_row + 1
+                last_line = i_line + 1
         return strips, border
-
-    def chop_horizontal(strip, border):
-        crops = []
-        last_col = 0
-        for i_col in range(strip.width):
-            col = strip.crop((i_col, 0, i_col+1, strip.height))
-            colours = col.getcolors()
-            if len(colours) == 1 and colours[0][1] == border:
-                if i_col - last_col:
-                    crop = strip.crop((last_col, 0, i_col, strip.height))
-                    crops.append(crop)
-                last_col = i_col + 1
-        return crops
-
 
 
     ###########################################################################
