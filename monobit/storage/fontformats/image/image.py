@@ -130,15 +130,17 @@ if Image:
             order:str='row-major',
             direction:Coord=Coord(1, -1),
             keep_empty:bool=False,
+            grid:bool=False,
         ):
         """
-        Extract font from grid-based image.
+        Extract font from image.
 
-        cell: glyph raster size X,Y. 0 or negative: calculate from table_size (default)
-        margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
-        padding: number of pixels in X,Y direction between glyph (default: 0x0)
+        grid: extract on a rigid grid (default: False)
+        cell: (grid) glyph raster size X,Y. 0 or negative: calculate from table_size (default)
+        margin: (grid) number of pixels in X,Y direction around glyph chart (default: 0x0)
+        padding: (grid) number of pixels in X,Y direction between glyph (default: 1x1)
+        table_size: (grid) number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis. (default: 32x8).
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
-        table_size: number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis. (default: 32x8).
         count: maximum number of glyphs to extract (within constraints of table_size). 0 or negative means extract all (default).
         background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
         first_codepoint: codepoint value assigned to first glyph (default: 0)
@@ -148,9 +150,12 @@ if Image:
         """
         with Image.open(infile) as img:
             img = img.convert('RGB')
-            crops = extract_crops_from_grid(
-                img, table_size, cell, scale, padding, margin, order, direction
-            )
+            if grid:
+                crops = extract_crops_from_grid(
+                    img, table_size, cell, scale, padding, margin, order, direction
+                )
+            else:
+                crops = extract_crops_from_strips(img)
         if not crops:
             logging.error('Could not extract glyphs from image.')
             return Font()
