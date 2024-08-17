@@ -108,5 +108,5 @@ def grid_traverser(columns, rows, order, direction):
     if order.startswith('r'):
         return product(y_traverse, x_traverse)
     elif order.startswith('c'):
-        return product(x_traverse, y_traverse)
+        return (reversed(_p) for _p in product(x_traverse, y_traverse))
     raise ValueError(f'order should start with one of `r`, `c`, not `{order}`.')
