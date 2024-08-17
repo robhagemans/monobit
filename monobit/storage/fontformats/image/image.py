@@ -155,7 +155,7 @@ if Image:
                     img, table_size, cell, scale, padding, margin, order, direction
                 )
             else:
-                crops = extract_crops_from_strips(img)
+                crops = extract_crops_from_strips(img, order, direction)
         if not crops:
             logging.error('Could not extract glyphs from image.')
             return Font()
@@ -296,12 +296,23 @@ if Image:
         return image
 
 
-    def extract_crops_from_strips(img): #, scale, order, direction):
+    def extract_crops_from_strips(img, order, direction):
         """Extract glyph crops from strip-based image."""
-        strips, border = chop_strips(img, border=None, vertical=True)
+        # we extract left-to-right or top-to-bottom
+        direction = direction[0], -direction[1]
+        if order.startswith('r'):
+            vertical = True, False
+            direction = direction[::-1]
+        else:
+            vertical = False, True
+        strips, border = chop_strips(img, border=None, vertical=vertical[0])
+        if direction[0] == -1:
+            strips = strips[::-1]
         crops = []
         for strip in strips:
-            strip_crops, _ = chop_strips(strip, border, vertical=False)
+            strip_crops, _ = chop_strips(strip, border, vertical=vertical[1])
+            if direction[1] == -1:
+                crops = crops[::-1]
             crops.extend(strip_crops)
         return crops
 
