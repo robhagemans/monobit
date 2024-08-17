@@ -103,7 +103,7 @@ class TestCharCell(BaseTester):
     def test_export_png_r(self):
         """Test exporting image files."""
         self._test_export_charcell_reduced(
-            'image', first_codepoint=0x20, cell=(8, 8),
+            'image', grid=True, first_codepoint=0x20, cell=(8, 8),
         )
 
     def test_export_cpi_r(self):
