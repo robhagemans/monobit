@@ -284,6 +284,39 @@ if Image:
                 break
         return image
 
+
+    def extract_crops_from_strips(img): #, scale, order, direction):
+        """Extract glyph crops from strip-based image."""
+        # identify border colour
+        # the first full row of one colour is deemed to be border
+        border = None
+        strips = []
+        last_row = 0
+        for i_row in range(img.height):
+            row = img.crop((0, i_row, img.width, i_row+1))
+            colours = row.getcolors()
+            if len(colours) == 1 and border is None or colours[0][1] == border:
+                # found full row of one colour
+                if border is None:
+                    border = colours[0][1]
+                if i_row - last_row:
+                    strip = img.crop((0, last_row, img.width, i_row))
+                    strips.append(strip)
+                last_row = i_row + 1
+        crops = []
+        for strip in strips:
+            last_col = 0
+            for i_col in range(strip.width):
+                col = strip.crop((i_col, 0, i_col+1, strip.height))
+                colours = col.getcolors()
+                if len(colours) == 1 and colours[0][1] == border:
+                    if i_col - last_col:
+                        crop = strip.crop((last_col, 0, i_col, strip.height))
+                        crops.append(crop)
+                    last_col = i_col + 1
+        return crops
+
+
     ###########################################################################
 
     @savers.register(linked=load_image)
