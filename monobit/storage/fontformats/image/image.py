@@ -146,11 +146,11 @@ if Image:
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         keep_empty: keep empty glyphs (default: False)
         """
-        img = Image.open(infile)
-        img = img.convert('RGB')
-        crops = extract_crops_from_grid(
-            img, table_size, cell, scale, padding, margin, order, direction
-        )
+        with Image.open(infile) as img:
+            img = img.convert('RGB')
+            crops = extract_crops_from_grid(
+                img, table_size, cell, scale, padding, margin, order, direction
+            )
         if not crops:
             logging.error('Image too small; no characters found.')
             return Font()
