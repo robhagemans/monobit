@@ -224,6 +224,8 @@ class _Canvas:
         """Convert raster to text."""
         if not self.height:
             return ''
+        if self.levels > len(inklevels):
+            raise ValueError(f'Requires at least {self.levels} greyscale levels.')
         if not border:
             border = inklevels[0]
         colourdict = {-1: border} | {
