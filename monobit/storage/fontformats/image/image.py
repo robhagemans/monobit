@@ -299,15 +299,16 @@ if Image:
         """Slice up image into strips by border colour."""
         if vertical:
             scan_range = range(img.height)
+            def _get_slice(start, stop):
+                return (0, start, img.width, stop)
         else:
             scan_range = range(img.width)
+            def _get_slice(start, stop):
+                return (start, 0, stop, img.height)
         strips = []
         last_line = 0
         for i_line in scan_range:
-            if vertical:
-                line = img.crop((0, i_line, img.width, i_line+1))
-            else:
-                line = img.crop((i_line, 0, i_line+1, img.height))
+            line = img.crop(_get_slice(i_line, i_line+1))
             colours = line.getcolors()
             # identify border colour
             # the first full row of one colour is deemed to be border
@@ -316,10 +317,7 @@ if Image:
                 if border is None:
                     border = colours[0][1]
                 if i_line - last_line:
-                    if vertical:
-                        strip = img.crop((0, last_line, img.width, i_line))
-                    else:
-                        strip = img.crop((last_line, 0, i_line, img.height))
+                    strip = img.crop(_get_slice(last_line, i_line))
                     strips.append(strip)
                 last_line = i_line + 1
         return strips, border
