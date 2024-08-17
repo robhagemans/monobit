@@ -13,7 +13,7 @@ from monobit.base import safe_import
 ttLib = safe_import('fontTools.ttLib')
 loaded = ttLib is not None
 
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError
 
 
 def register_extensions():
@@ -123,14 +123,14 @@ else:
         return sblm
 
 
-    def _create_bitmap_size_table(ppem, hori, vert):
+    def _create_bitmap_size_table(ppem, hori, vert, depth):
         """Create the BitmapSize record."""
         # this is not contructed by any compile() method as far as I can see
         # > The line metrics are not used directly by the rasterizer, but are available to applications that want to parse the EBLC table.
         bst = BitmapSizeTable()
         bst.colorRef = 0
         bst.flags = 0x01  # hori | 0x02 for vert
-        bst.bitDepth = 1
+        bst.bitDepth = depth
         # ppem need to be the same both ways for fontforge
         bst.ppemX = ppem
         bst.ppemY = ppem

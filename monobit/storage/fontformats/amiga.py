@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.amiga - Amiga font format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,10 +9,10 @@ import os
 import logging
 from pathlib import Path
 
-from monobit.storage import loaders, savers, FileFormatError, Regex
+from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import flag, bitfield, big_endian as be
-from monobit.base import Props, Coord
+from monobit.base import Props, Coord, FileFormatError, UnsupportedError
 
 
 @loaders.register(
@@ -30,7 +30,7 @@ def load_amiga_fc(f):
         logging.debug('Amiga FCH using TFontContents')
         contentsarray = _T_FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
     elif fch.fch_FileID == _NONBITMAP_ID:
-        raise FileFormatError('IntelliFont Amiga outline fonts not supported.')
+        raise UnsupportedError('IntelliFont Amiga outline fonts not supported.')
     else:
         raise FileFormatError(
             'Not an Amiga Font Contents file: '
@@ -70,7 +70,7 @@ def load_amiga(instream, tags=()):
 
 @savers.register(linked=load_amiga)
 def save_amiga(pack, outstream):
-    raise FileFormatError('Saving to Amiga disk font file not supported.')
+    raise UnsupportedError('Saving to Amiga disk font file not supported.')
 
 
 ###################################################################################################
@@ -386,7 +386,7 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
 def _convert_amiga_props(amiga_props):
     """Convert AmigaFont properties into yaff properties."""
     if amiga_props.tf_Style.FSF_COLORFONT:
-        raise FileFormatError('Amiga ColorFont not supported')
+        raise UnsupportedError('Amiga ColorFont not supported')
     props = Props()
     name = bytes(amiga_props.dfh_Name).decode(_ENCODING).strip()
     if name:

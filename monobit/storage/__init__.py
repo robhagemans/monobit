@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from .base import loaders, savers
 from .fontfiles import load, save
-from .magic import FileFormatError, Regex, Glob, Magic
+from .magic import Regex, Glob, Magic
 from .streams import Stream, KeepOpen, get_stringio, get_bytesio
 from . import streams
 

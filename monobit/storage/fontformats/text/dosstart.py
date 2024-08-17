@@ -9,7 +9,8 @@ import logging
 import string
 from io import StringIO
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster, StrokePath
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
 
@@ -42,7 +43,7 @@ def load_dosstart(instream):
     elif format == 1:
         glyphs = _read_dsf_format_1(instream, ascent)
     else:
-        raise FileFormatError(f'Unknown DosStart font format {format}')
+        raise UnsupportedError(f'Unknown DosStart font format {format}')
     return Font(glyphs, **props).label(char_from='ascii')
 
 

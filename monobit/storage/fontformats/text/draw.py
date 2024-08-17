@@ -9,7 +9,6 @@ import logging
 import string
 
 from monobit.storage.base import loaders, savers
-from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph, Tag, Char
 from monobit.encoding import encodings
 from monobit.base.binary import align

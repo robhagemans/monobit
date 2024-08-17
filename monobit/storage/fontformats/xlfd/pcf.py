@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.xlfd.pcf - X11 portable compiled format
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,7 +9,7 @@ import logging
 from itertools import accumulate
 
 from monobit.base.struct import big_endian as be, little_endian as le
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.base import Props
 from monobit.core import Font, Glyph, Raster, Tag, Codepoint
 from monobit.base.binary import align, ceildiv

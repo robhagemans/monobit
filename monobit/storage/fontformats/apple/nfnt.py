@@ -1,7 +1,7 @@
 """
 monobit.storage.formats.apple.nfnt - Mac FONT/NFNT fonts
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 
 NFNT writer based on the Apple IIgs writer
@@ -15,11 +15,9 @@ from itertools import chain, accumulate
 from monobit.base.binary import bytes_to_bits
 from monobit.base.struct import bitfield, big_endian as be, little_endian as le
 from monobit.core import Font, Glyph, KernTable, Char, Raster
-from monobit.storage import FileFormatError
 from monobit.storage import loaders, savers
 from monobit.encoding import EncodingName
-from monobit.base import Props
-from monobit.base import NOT_SET
+from monobit.base import Props, NOT_SET, UnsupportedError
 
 from .fond import fixed_to_float
 from ..common import MAC_ENCODING
@@ -256,8 +254,8 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         logging.debug('Empty FONT/NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)
-    if fontrec.fontType.depth or fontrec.fontType.has_fctb:
-        raise FileFormatError('Anti-aliased or colour fonts not supported.')
+    if fontrec.fontType.has_fctb:
+        raise UnsupportedError('Colour fonts not supported.')
     # read char tables & bitmaps
     # table offsets
     strike_offset = offset + NFNTHeader.size
@@ -293,27 +291,27 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     if fontrec.fontType.has_height_table:
         height_table = HeightEntry.array(n_chars).from_bytes(data, height_offset)
     # parse bitmap strike
-    bitmap_strike = bytes_to_bits(strike)
-    rows = [
-        bitmap_strike[_offs:_offs+fontrec.rowWords*16]
-        for _offs in range(0, len(bitmap_strike), fontrec.rowWords*16)
-    ]
+    bits_per_pixel = 2**fontrec.fontType.depth
+    bitmap_strike = Raster.from_bytes(
+        strike, stride=fontrec.rowWords*16//bits_per_pixel,
+        bits_per_pixel=bits_per_pixel
+    )
     # if the font was compressed, we need to XOR the bitmap rows
+    # compressed strikes are LISA-only - no need to support greyscale
     if compressed:
+        rows = bitmap_strike.as_matrix(inklevels=(False, True))
         xoredrows = rows
         rows = [xoredrows[0]]
         for row in xoredrows[1:]:
             rows.append(tuple(_r ^ _p for _r, _p in zip(row, rows[-1])))
+        bitmap_strike = Raster.from_matrix(rows, inklevels=(False, True))
     # extract width from width/offset table
     # (do we need to consider the width table, if defined?)
-    locs = [_loc.offset for _loc in loc_table]
-    glyphs = [
-        Glyph.from_matrix(
-            [_row[_offs:_next] for _row in rows],
-            inklevels=(False, True),
-        )
+    locs = tuple(_loc.offset for _loc in loc_table)
+    glyphs = tuple(
+        Glyph(bitmap_strike.crop(left=_offs, right=bitmap_strike.width-_next))
         for _offs, _next in zip(locs[:-1], locs[1:])
-    ]
+    )
     # add glyph metrics
     # scalable-width table
     if fontrec.fontType.has_width_table:
@@ -507,7 +505,7 @@ def subset_for_nfnt(font, resample_encoding):
         # this affects mac-japanese, mac-korean which have multibyte codepoints
         font = font.subset(range(0, 256))
     if not font.glyphs:
-        raise FileFormatError('No suitable characters for NFNT font')
+        raise UnsupportedError('No suitable characters for NFNT font')
     # add the default glyph at the end
     font = font.append(glyphs=(default,))
     return font
@@ -551,10 +549,11 @@ def _calculate_nfnt_glyph_metrics(glyphs):
     )
     # check that glyph widths and offsets fit
     if any(_g.wo_width >= 255 for _g in glyphs if _g):
-        raise FileFormatError('NFNT character width must be < 255')
+        raise UnsupportedError('NFNT character width must be < 255')
     if any(_g.wo_offset >= 255 for _g in glyphs if _g):
-        raise FileFormatError('NFNT character offset must be < 255')
-    empty = Glyph(wo_offset=255, wo_width=255)
+        raise UnsupportedError('NFNT character offset must be < 255')
+    levels = max((_g.levels for _g in glyphs if _g), default=2)
+    empty = Glyph(wo_offset=255, wo_width=255, levels=levels)
     glyphs = tuple(empty if _g is None else _g for _g in glyphs)
     return glyphs
 
@@ -568,12 +567,14 @@ def generate_nfnt_header(font, endian):
     first_char = int(min(font.get_codepoints()))
     last_char = int(max(font.get_codepoints()))
     # generate NFNT header
+    depth = ((font.levels - 1).bit_length() -1).bit_length()
     fontrec = NFNTHeader(
         # this seems to be always 0x9000, 0xb000
         # even if docs say reserved_15 should be 0
         # we don't provide a scalable width or height tables
         fontType=FontType(
             reserved_15=1, reserved_12=1,
+            depth=depth,
             fixed_width=font.spacing in ('monospace', 'character-cell'),
         ),
         firstChar=first_char,
@@ -639,9 +640,11 @@ def convert_to_nfnt(
     strike_raster = Raster.concatenate(*(_g.pixels for _g in glyph_table))
     # word-align strike
     strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
-    font_strike = strike_raster.as_bytes()
+    font_strike = strike_raster.as_bytes(
+        bits_per_pixel=(font.levels-1).bit_length()
+    )
     # build the width-offset table
-    empty = Glyph(wo_offset=255, wo_width=255)
+    empty = Glyph(wo_offset=255, wo_width=255, levels=font.levels)
     wo_table = b''.join(
         # glyph.wo_width and .wo_offset set in normalise_metrics
         bytes(WOEntry(width=_g.wo_width, offset=_g.wo_offset))
@@ -688,7 +691,8 @@ def convert_to_nfnt(
     if ndescent_is_high and owt_loc_high:
         fontrec.nDescent = owt_loc_high
     # fill in the rowWords, indicating that we do have a strike.
-    fontrec.rowWords = strike_raster.width // 16
+    pixels_per_byte = 8 // (font.levels - 1).bit_length()
+    fontrec.rowWords = strike_raster.width // (2 * pixels_per_byte)
     # fbr = max width from origin (including whitespace) and right kerned pixels
     # for IIgs header
     fbr_extent = max(

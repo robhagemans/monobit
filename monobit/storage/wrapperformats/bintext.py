@@ -12,7 +12,6 @@ from io import BytesIO
 from pathlib import Path
 
 from ..streams import Stream, DelayedWriterStream
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 
 

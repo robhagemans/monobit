@@ -10,8 +10,9 @@ import logging
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import align
 
+from monobit.base import FileFormatError
 from ..streams import Stream
-from ..magic import FileFormatError, Magic
+from ..magic import Magic
 from ..base import containers
 from ..containers import FlatFilterContainer
 

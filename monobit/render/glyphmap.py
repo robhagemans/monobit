@@ -1,7 +1,7 @@
 """
 monobit.render.glyphmap - glyph maps
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -18,7 +18,19 @@ def glyph_to_image(glyph, paper, ink):
     """Create image of single glyph."""
     image_mode = _get_image_mode(paper, ink, paper)
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
-    data = glyph.as_bits(inklevels=(paper, ink))
+    # create ink gradient
+    if isinstance(ink, int):
+        ink = (ink,)
+        paper = (paper,)
+    maxlevel = glyph.levels - 1
+    inklevels = tuple(
+        tuple(
+            (_i * _ink + (maxlevel - _i) * _paper) // maxlevel
+            for _ink, _paper in zip(ink, paper)
+        )
+        for _i in range(glyph.levels)
+    )
+    data = glyph.as_pixels(inklevels=inklevels)
     if image_mode in ('RGB', 'RGBA'):
         # itertools grouper idiom, split in groups of 3 or 4 bytes
         iterators = [iter(data)] * len(image_mode)
@@ -118,18 +130,21 @@ class GlyphMap:
         width, height = max_x - min_x, max_y - min_y
         images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
         for entry in self._map:
-            charimg = glyph_to_image(entry.glyph, paper, ink)
+            # we need to treat the background colour as transparent
+            # we create the glyph as a mask and cut it from a solid ink-colour
+            if transparent:
+                mask = glyph_to_image(entry.glyph, 0, 255)
+                colour = Image.new(image_mode, mask.size, ink)
+            else:
+                mask = None
+                colour = glyph_to_image(entry.glyph, paper, ink)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
                 # Image has ttb y coords, we have btt
                 # our character origin is bottom left
                 target = (entry.x-min_x, height-entry.glyph.height+min_y-entry.y)
-            if transparent:
-                mask = charimg
-            else:
-                mask = None
-            images[entry.sheet].paste(charimg, target, mask)
+            images[entry.sheet].paste(colour, target, mask)
         images = tuple(
             _im.resize((self._scale_x*_im.width, self._scale_y*_im.height))
                 .rotate(-90 * self._turns, expand=True)
@@ -150,14 +165,15 @@ class GlyphMap:
 
     def as_text(
             self, *,
-            ink='@', paper='.', border='.',
+            inklevels=' @',
+            border=None,
             start='', end='\n',
             sheet=0,
         ):
         """Convert glyph map to text."""
         canvas = self.to_canvas(sheet=sheet)
         return canvas.as_text(
-            ink=ink, paper=paper, border=border, start=start, end=end
+            inklevels=inklevels, border=border, start=start, end=end
         )
 
     @convert_arguments
@@ -170,11 +186,12 @@ class GlyphMap:
 class _Canvas:
     """Blittable raster for glyph maps."""
 
-    def __init__(self, pixels):
+    def __init__(self, pixels, levels=2):
         """Create raster from tuple of tuples of string."""
         self._pixels = pixels
         self.height = len(pixels)
         self.width = 0 if not pixels else len(pixels[0])
+        self.levels = levels
 
     @classmethod
     def blank(cls, width, height, fill=-1):
@@ -190,6 +207,7 @@ class _Canvas:
         if not raster.width or not self.width:
             return self
         matrix = raster.as_matrix()
+        self.levels = max(self.levels, raster.levels)
         for work_y in reversed(range(raster.height)):
             if 0 <= grid_y + work_y < self.height:
                 row = self._pixels[self.height - (grid_y + work_y) - 1]
@@ -200,13 +218,19 @@ class _Canvas:
 
     def as_text(
             self, *,
-            ink='@', paper='.', border='.',
+            inklevels=' @', border=None,
             start='', end='\n'
         ):
         """Convert raster to text."""
         if not self.height:
             return ''
-        colourdict = {-1: border, 0: paper, 1: ink}
+        if self.levels > len(inklevels):
+            raise ValueError(f'Requires at least {self.levels} greyscale levels.')
+        if not border:
+            border = inklevels[0]
+        colourdict = {-1: border} | {
+            _i: _v for _i, _v in enumerate(inklevels)
+        }
         contents = '\n'.join(
             ''.join(colourdict[_pix] for _pix in _row)
             for _row in self._pixels
@@ -217,7 +241,15 @@ class _Canvas:
         """Convert glyph to a string of block characters."""
         if not self.height:
             return ''
-        return matrix_to_blocks(self._pixels, *resolution)
+        # replace background with paper
+        pixels = tuple(
+            tuple(
+                0 if _pix == -1 else _pix
+                for _pix in _row
+            )
+            for _row in self._pixels
+        )
+        return matrix_to_blocks(pixels, *resolution, levels=self.levels)
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
@@ -233,14 +265,17 @@ class _Canvas:
             [_col for _col in _row for _ in range(factor_x)]
             for _row in pixels
         ]
-        return type(self)(pixels)
+        return type(self)(pixels, levels=self.levels)
 
     def flip(self):
         """Reverse pixels vertically."""
-        return type(self)(self._pixels[::-1])
+        return type(self)(self._pixels[::-1], levels=self.levels)
 
     def transpose(self):
         """Transpose glyph."""
-        return type(self)([list(_r) for _r in zip(*self._pixels)])
+        return type(self)(
+            [list(_r) for _r in zip(*self._pixels)],
+            levels=self.levels
+        )
 
     turn = turn_method

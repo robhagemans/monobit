@@ -8,9 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from io import BytesIO
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Glyph, Font
-from monobit.base import Props, reverse_dict
+from monobit.base import Props, reverse_dict, FileFormatError
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 from monobit.encoding import EncodingName

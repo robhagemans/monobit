@@ -139,7 +139,7 @@ class Canvas:
 
     def as_raster(self):
         """Convert to immutable raster."""
-        return Raster.from_matrix(self._pixels)
+        return Raster.from_matrix(self._pixels, inklevels=(0, 1))
 
     def draw_pixel(self, x, y):
         """Draw a pixel."""

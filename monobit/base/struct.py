@@ -53,6 +53,9 @@ TYPES = {
 
     'char': ctypes.c_char,
     's': ctypes.c_char,
+
+    'float': ctypes.c_float,
+    'double': ctypes.c_double,
 }
 
 class bitfield:

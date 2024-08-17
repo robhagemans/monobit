@@ -14,7 +14,7 @@
     .@@......@@..........................@@.
 
 
-The `yaff` font file format, version 1.0.1
+The `yaff` font file format, version 1.0.3
 ==========================================
 
 Design aims
@@ -32,8 +32,8 @@ The `yaff` format has the following design aims:
 - **Able to represent Unicode fonts as well as codepage fonts.**
 
 Non-aims include:
-- Colour/greyscale fonts and anti-aliasing. It has to stop somewhere.
-- Performance. Bitmap fonts are small; computers are fast and have tons of memory.
+- Colour fonts.  
+- Performance.  
 
 
 Example
@@ -205,7 +205,6 @@ labels, all are considered to point to the glyph that follows.
 A *label* must be followed by a separator `:`, optional whitespace, and a line ending.
 * The label must be given at the start of the line. Leading whitespace is not allowed.
 * A label has one of three types: *character*, *codepoint*, or *tag*.
-* Multiple labels of the same type are allowed, but deprecated.
 
 If a label starts with an ASCII digit, it is a *codepoint*.
 * A codepoint label may consist of multiple elements, separated by commas and optional whitespace.
@@ -240,13 +239,6 @@ Examples of valid character labels are `'A'`, `'À'`, `'安'` (all of which are 
 (a grapheme sequence consisting of multiple non-ASCII characters), its equivalent `u+0924, u+0947`,
 and `'ffi'` (multiple characters enclosed in single quotes).
 
-It is also possible, but deprecated, to create a character label as a label that:
-* starts with a character that is not in 7-bit ASCII, **or**
-* consists of a single Unicode character that is not an ASCII digit
-
-Examples of deprecated character labels are the unquoted `A`, `À`, `安` (all of which are single characters), `ते`
-(a grapheme sequence consisting of multiple non-ASCII characters)
-
 If a label:
 * is enclosed in double quote characters `"`
 
@@ -254,10 +246,6 @@ it is a *tag*.
 * Tags are case-sensitive and may contain any kind of character.
 * If a label starts and ends with a double-quote character `"`,
   these quotes are stripped and the tag consists of everything in between.
-
-It is also possible, but deprecated, to create a tag as a label that
-* starts with an ASCII letter, is at least 2 characters long, and consists only of
-ASCII letters, ASCII digits, the underscore `_`, the dash `-`, or the full stop `.`,
 
 
 ##### Glyphs
@@ -423,7 +411,11 @@ _Encoding parameters_ affect how text is converted into glyphs.
 - `word-boundary`: label indicating the glyph to be used as a word boundary. Usually u+0020 (space).
 
 
-##### Stroke definitions
+##### Experimental features
+
+The features in this section are experimental. They are not yet part of the stable `yaff` specification.
+
+###### Stroke definitions
 
 - `path` is a glyph property that contains a stroke sequence describing
     how to draw the glyph. The stroke path is defined as a sequence of straight lines
@@ -436,6 +428,52 @@ _Encoding parameters_ affect how text is converted into glyphs.
     a scaling factor, which may differ between x and y directions but must be
     constant across path elements. The glyph bitmap to which the `path` property
     attaches may be empty (`-`) or a realisation of the stroke drawing.
+
+
+###### Greyscale bitmaps
+
+By default, all pixels in a glyph are either inked or uninked.
+It is however possible to define glyphs with intermediate greyscale levels. Use of this
+feature requires a `levels` property to be set at font level.
+- `levels` is the number of greyscale levels for glyphs in the font.
+   Permissible values are `2`, `4`, `16`, or `256`.
+
+Greyscale glyph definitions take the same form as monochrome glyphs, except that
+multiple characters are used to represent ink levels.
+
+For 2-, 4- and 16-level glyphs, one character represents one pixel; a fully uninked
+pixel is represented by `.` while a fully inked pixel is represented by `@`.
+Intermediate greyscale levels are represented by:
+- for 4-level, the digits `1` and `2`
+- for 16-level, digits from the hexadecimal range `1` -- `E`.
+
+For 256-level glyphs, two characters represent one pixel; a fully uninked
+pixel is represented by `..` while a fully inked pixel is represented by `@@`.
+Intermediate greyscale levels are represented by 2-digit hexadecimal numbers
+in the range `01` -- `FE`.
+
+Greyscale fonts must not use deprecated labelling features as it will not be possible
+to recognise a glyph definition by its contents alone.
+
+
+##### Deprecated labelling features
+
+The following labelling features are recognised for backward compatibility, but
+should not be used in new files. They are not allowed if the `yaff` version
+targeted is 1.0 or greater.
+
+* Multiple labels of the same type are allowed, but deprecated.
+
+It is also possible, but deprecated, to create a character label as a label that:
+* starts with a character that is not in 7-bit ASCII, **or**
+* consists of a single Unicode character that is not an ASCII digit
+
+Examples of deprecated character labels are the unquoted `A`, `À`, `安` (all of which are single characters), `ते`
+(a grapheme sequence consisting of multiple non-ASCII characters)
+
+It is also possible, but deprecated, to create a tag as a label that
+* starts with an ASCII letter, is at least 2 characters long, and consists only of
+ASCII letters, ASCII digits, the underscore `_`, the dash `-`, or the full stop `.`,
 
 
 ##### Deprecated properties
