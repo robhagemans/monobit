@@ -152,8 +152,16 @@ if Image:
                 img, table_size, cell, scale, padding, margin, order, direction
             )
         if not crops:
-            logging.error('Image too small; no characters found.')
+            logging.error('Could not extract glyphs from image.')
             return Font()
+        # scale
+        crops = tuple(
+            _crop.resize(
+                (_crop.width // scale.x, _crop.height // scale.y),
+                resample=Image.NEAREST,
+            )
+            for _crop in crops
+        )
         if count > 0:
             crops = crops[:count]
         return convert_crops_to_font(
@@ -190,8 +198,6 @@ if Image:
             ))
             for _row, _col in traverse
         )
-        # scale
-        crops = tuple(_crop.resize(cell, resample=Image.NEAREST) for _crop in crops)
         # three-colour mode - proportional width encoded with border colour
         colourset = set(img.getdata())
         if len(colourset) >= 3:
