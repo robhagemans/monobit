@@ -146,15 +146,6 @@ if Image:
         direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
         keep_empty: keep empty glyphs (default: False)
         """
-        # appply defaults
-        if table_size is None:
-            if cell is None:
-                table_size = Coord(32, 8)
-                cell = Coord(0, 0)
-            else:
-                table_size = Coord(0, 0)
-        elif cell is None:
-            cell = Coord(0, 0)
         img = Image.open(infile)
         img = img.convert('RGB')
         crops = extract_crops_from_grid(
@@ -174,6 +165,15 @@ if Image:
             img, table_size, cell, scale, padding, margin, order, direction
         ):
         """Extract glyph crops from grid-based image."""
+        # appply defaults
+        if table_size is None:
+            if cell is None:
+                table_size = Coord(32, 8)
+                cell = Coord(0, 0)
+            else:
+                table_size = Coord(0, 0)
+        elif cell is None:
+            cell = Coord(0, 0)
         (
             cell, step_x, step_y, table_size_x, table_size_y
         ) = determine_grid_geometry(
