@@ -342,6 +342,9 @@ if Image:
                     strip = img.crop(_get_slice(last_line, i_line))
                     strips.append(strip)
                 last_line = i_line + 1
+        if i_line + 1 - last_line:
+            strip = img.crop(_get_slice(last_line, i_line+1))
+            strips.append(strip)
         return strips, border
 
 
@@ -364,7 +367,7 @@ if Image:
         Export font to grid-based image.
 
         image_format: image file format (default: png)
-        columns: number of columns in glyph chart (default: 32)
+        major_count: number of columns in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
         padding: number of pixels in X,Y direction between glyph (default: 1x1)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
