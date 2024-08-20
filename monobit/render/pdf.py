@@ -39,7 +39,7 @@ if reportlab:
     def save_pdf(
             fonts, outstream,
             columns:int=16, margin:Coord=Coord(0, 0), padding:Coord=Coord(3, 3),
-            order:str='row-major', direction:Coord=Coord(1, -1),
+            direction:str='left-to-right top-to-bottom',
             codepoint_range:tuple[Codepoint]=None,
             rows_per_page:int=16, max_labels:int=1,
         ):
@@ -67,8 +67,7 @@ if reportlab:
         height = font.raster_size.y + padding.y + max_labels
         rows = ceildiv(len(font.glyphs), columns)
         # output glyph map
-        direction = Coord(direction.x, -direction.y)
-        traverse = grid_traverser(columns, rows, order, direction)
+        traverse = grid_traverser(columns, rows, direction, invert_y=True)
 
         # use rows_per_page=None or 0 to force all glyphs on one page
         rows_per_page = rows_per_page or rows

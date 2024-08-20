@@ -127,8 +127,7 @@ if Image:
             count:int=0,
             background:str='most-common',
             first_codepoint:int=0,
-            order:str='row-major',
-            direction:Coord=Coord(1, -1),
+            direction:str='left-to-right top-to-bottom',
             keep_empty:bool=False,
             grid:bool=False,
         ):
@@ -144,18 +143,17 @@ if Image:
         count: maximum number of glyphs to extract (within constraints of table_size). 0 or negative means extract all (default).
         background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
         first_codepoint: codepoint value assigned to first glyph (default: 0)
-        order: start with "r" for row-major order (default), "c" for column-major order
-        direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
+        direction: two-part string, default 'left-to-right top-to-bottom'
         keep_empty: keep empty glyphs (default: False)
         """
         with Image.open(infile) as img:
             img = img.convert('RGB')
             if grid:
                 crops = extract_crops_from_grid(
-                    img, table_size, cell, scale, padding, margin, order, direction
+                    img, table_size, cell, scale, padding, margin, direction
                 )
             else:
-                crops = extract_crops_from_strips(img, order, direction)
+                crops = extract_crops_from_strips(img, direction)
         if not crops:
             logging.error('Could not extract glyphs from image.')
             return Font()
@@ -175,7 +173,7 @@ if Image:
 
 
     def extract_crops_from_grid(
-            img, table_size, cell, scale, padding, margin, order, direction
+            img, table_size, cell, scale, padding, margin, direction
         ):
         """Extract glyph crops from grid-based image."""
         # appply defaults
@@ -192,7 +190,7 @@ if Image:
         ) = determine_grid_geometry(
             img.width, img.height, table_size, cell, scale, padding, margin,
         )
-        traverse = grid_traverser(table_size_x, table_size_y, order, direction)
+        traverse = grid_traverser(table_size_x, table_size_y, direction)
         # extract sub-images
         crops = tuple(
             img.crop((
@@ -296,22 +294,20 @@ if Image:
         return image
 
 
-    def extract_crops_from_strips(img, order, direction):
+    def extract_crops_from_strips(img, direction):
         """Extract glyph crops from strip-based image."""
         # we extract left-to-right or top-to-bottom
-        direction = direction[0], -direction[1]
-        if order.startswith('r'):
-            vertical = True, False
-            direction = direction[::-1]
-        else:
-            vertical = False, True
-        strips, border = chop_strips(img, border=None, vertical=vertical[0])
-        if direction[0] == -1:
+        glyph_dir, _, line_dir = direction.lower().partition(' ')
+        glyph_dir = glyph_dir[:1] or 'l'
+        line_dir = line_dir[:1] or 't'
+        vertical = glyph_dir in ('t', 'b')
+        strips, border = chop_strips(img, border=None, vertical=not vertical)
+        if glyph_dir in ('r', 'b'):
             strips = strips[::-1]
         crops = []
         for strip in strips:
-            strip_crops, _ = chop_strips(strip, border, vertical=vertical[1])
-            if direction[1] == -1:
+            strip_crops, _ = chop_strips(strip, border, vertical=vertical)
+            if line_dir in ('r', 'b'):
                 crops = crops[::-1]
             crops.extend(strip_crops)
         return crops
@@ -358,8 +354,7 @@ if Image:
             margin:Coord=Coord(0, 0),
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
-            order:str='row-major',
-            direction:Coord=Coord(1, -1),
+            direction:str='left-to-right top-to-bottom',
             border:RGB=RGB(32, 32, 32), paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
         ):
@@ -371,8 +366,7 @@ if Image:
         margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
         padding: number of pixels in X,Y direction between glyph (default: 1x1)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
-        order: start with "r" for row-major order (default), "c" for column-major order
-        direction: X, Y direction where +1, -1 (default) means left-to-right, top-to-bottom
+        direction: two-part string, default 'left-to-right top-to-bottom'
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
@@ -381,7 +375,7 @@ if Image:
         font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
         font = font.stretch(*scale)
-        glyph_map = grid_map(font, columns, margin, padding, order, direction)
+        glyph_map = grid_map(font, columns, margin, padding, direction)
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink, transparent=False
         )

@@ -23,7 +23,7 @@ DEFAULT_IMAGE_FORMAT = 'png'
 def save_chart(
         fonts, outstream,
         columns:int=16, margin:Coord=(0, 0), padding:Coord=(0, 0),
-        order:str='row-major', direction:Coord=(1, -1),
+        direction:str='left-to-right top-to-bottom',
         codepoint_range:tuple[Codepoint]=None, style:str='text',
         **kwargs
     ):
@@ -34,7 +34,7 @@ def save_chart(
     if more_than_one:
         raise ValueError('Can only chart a single font.')
     font = prepare_for_grid_map(font, columns, codepoint_range)
-    output = grid_map(font, columns, margin, padding, order, direction)
+    output = grid_map(font, columns, margin, padding, direction)
     if style == 'text':
         outstream.text.write(output.as_text(**kwargs))
     elif style == 'blocks':
@@ -71,7 +71,8 @@ def prepare_for_grid_map(font, columns=32, codepoint_range=None):
 def grid_map(
         font,
         columns=32, margin=(0, 0), padding=(0, 0),
-        order='row-major', direction=(1, -1),
+        direction='left-to-right top-to-bottom',
+        invert_y=False,
     ):
     """Create glyph map for font chart matrix."""
     padding = Coord(*padding)
@@ -81,7 +82,7 @@ def grid_map(
     step_y = font.raster_size.y + padding.y
     rows = ceildiv(len(font.glyphs), columns)
     # output glyph map
-    traverse = grid_traverser(columns, rows, order, direction)
+    traverse = grid_traverser(columns, rows, direction, invert_y)
     glyph_map = GlyphMap(
         Props(
             glyph=_glyph, sheet=0,
@@ -95,21 +96,33 @@ def grid_map(
     return glyph_map
 
 
-def grid_traverser(columns, rows, order, direction):
-    """Traverse a glyph chart in the specified order and directions."""
-    dir_x, dir_y = direction
-    if not dir_x or not dir_y:
-        raise ValueError('direction values must not be 0.')
-    if dir_x > 0:
+def grid_traverser(columns, rows, direction, invert_y=False):
+    """
+    Traverse a glyph chart in the specified order and directions.
+
+    direction: a pair of characters of the form 'a b'
+               where a, b can be 'l', 'r', 't', 'b'
+    invert_y: positive is down
+    """
+    glyph_dir, _, line_dir = direction.lower().partition(' ')
+    glyph_dir = glyph_dir[:1] or 'l'
+    line_dir = line_dir[:1] or 't'
+    vertical = glyph_dir in ('t', 'b')
+    if vertical:
+        dir_y, dir_x = glyph_dir, line_dir
+    else:
+        dir_x, dir_y = glyph_dir, line_dir
+    if dir_x == 'l':
         x_traverse = range(columns)
     else:
         x_traverse = range(columns-1, -1, -1)
-    if dir_y > 0:
-        y_traverse = range(rows)
-    else:
+    if dir_y == 't':
         y_traverse = range(rows-1, -1, -1)
-    if order.startswith('r'):
-        return product(y_traverse, x_traverse)
-    elif order.startswith('c'):
+    else:
+        y_traverse = range(rows)
+    if invert_y:
+        y_traverse = reversed(y_traverse)
+    if vertical:
         return (reversed(_p) for _p in product(x_traverse, y_traverse))
-    raise ValueError(f'order should start with one of `r`, `c`, not `{order}`.')
+    else:
+        return product(y_traverse, x_traverse)

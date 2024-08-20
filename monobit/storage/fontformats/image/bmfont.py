@@ -671,12 +671,12 @@ def _create_bmfont(
         font = font.label(char_from=encoding)
     # map glyphs to image
     if grid:
-        margin  = Coord(padding.left, padding.top)
+        margin = Coord(padding.left, padding.top)
         glyph_map = grid_map(
             font,
             columns=32, margin=margin, padding=spacing,
             # direction - note Image coordinates are ltr, ttb
-            order='row-major', direction=(1, 1),
+            direction='l t', invert_y=True,
         )
     else:
         # crop glyphs
