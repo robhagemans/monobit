@@ -16,6 +16,9 @@ from ..plumbing import scriptable
 from .glyphmap import GlyphMap
 
 
+DEFAULT_IMAGE_FORMAT = 'png'
+
+
 @savers.register(name='chart')
 def save_chart(
         fonts, outstream,
