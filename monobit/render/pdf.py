@@ -18,6 +18,7 @@ from monobit.base import Coord
 from monobit.base.binary import ceildiv
 from monobit.core import Codepoint, Char, Tag
 from monobit.encoding.unicode import is_printable
+from monobit.storage.utils.limitations import ensure_single
 from .chart import prepare_for_grid_map, grid_traverser
 
 
@@ -46,9 +47,7 @@ if reportlab:
         """
         Export font to chart in Portable Document Format (PDF).
         """
-        font, *more_than_one = fonts
-        if more_than_one:
-            raise ValueError('Can only chart a single font.')
+        font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
 
         canvas = Canvas(outstream)
@@ -59,55 +58,66 @@ if reportlab:
         # margins and title position
         margin_x, margin_y = 28*mm, 30*mm
         title_y = 5*mm
+
         # width and height of usable area, in points
         chart_width = page_x - 2*margin_x
         chart_height = page_y - 2*margin_y - title_y
 
         width = font.raster_size.x + padding.x
         height = font.raster_size.y + padding.y + max_labels
-        rows = ceildiv(len(font.glyphs), columns)
-        # output glyph map
-        traverse = grid_traverser(columns, rows, direction, invert_y=True)
 
+        # FIXME assumes horizontal-first
+        rows = ceildiv(len(font.glyphs), columns)
         # use rows_per_page=None or 0 to force all glyphs on one page
         rows_per_page = rows_per_page or rows
+
         # width and height of a pixel, in points
         xpix = chart_width / columns / width
         ypix = chart_height / rows_per_page / height
-        for glyph, (row, col) in zip(font.glyphs, traverse):
-            work_row = row % rows_per_page
-            # create new page?
-            if not work_row and not col:
-                if row:
-                    canvas.showPage()
-                canvas.translate(margin_x, margin_y)
-                canvas.setLineWidth(xpix/10)
-                canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
-                canvas.setFillColorRGB(0, 0, 0)
-                if not row:
-                    canvas.setFont('Helvetica-Bold', title_y)
-                    canvas.drawString(0, chart_height + title_y, font.name)
-                # text is the height of one glyph pixel
-                canvas.setFont('Helvetica', ypix)
-            orig_x = col * xpix * width
-            orig_y = (rows_per_page-work_row-1) * ypix * height
-            # draw label
-            for count, label in enumerate(glyph.get_labels()):
-                if count >= max_labels:
-                    break
-                canvas.drawString(
-                    orig_x,
-                    orig_y + (font.raster_size.y + count + 1) * ypix,
-                    _format_label(label)
-                )
-            # draw glyph
-            pixels = glyph.as_matrix()
-            for y in range(len(pixels)):
-                for x in range(len(pixels[y])):
-                    canvas.rect(
-                        orig_x+x*xpix, orig_y+(len(pixels)-y-1)*ypix,
-                        xpix, ypix,
-                        fill=pixels[y][x]
+
+        glyphs_per_page = rows_per_page * columns
+        glyph_groups = (
+            font.glyphs[_s : _s + glyphs_per_page]
+            for _s in range(0, len(font.glyphs), glyphs_per_page)
+        )
+
+        # draw title on first page
+        canvas.translate(margin_x, margin_y)
+        canvas.setFont('Helvetica-Bold', title_y)
+        canvas.drawString(0, chart_height + title_y, font.name)
+        canvas.translate(-margin_x, -margin_y)
+
+        # draw pages
+        for group in glyph_groups:
+            canvas.translate(margin_x, margin_y)
+            canvas.setLineWidth(xpix/10)
+            canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
+            canvas.setFillColorRGB(0, 0, 0)
+            # text is the height of one glyph pixel
+            canvas.setFont('Helvetica', ypix)
+
+            # output glyph map
+            traverse = grid_traverser(columns, rows_per_page, direction, invert_y=True)
+            for glyph, (row, col) in zip(group, traverse):
+                orig_x = col * xpix * width
+                orig_y = (rows_per_page-row-1) * ypix * height
+                # draw label
+                for count, label in enumerate(glyph.get_labels()):
+                    if count >= max_labels:
+                        break
+                    canvas.drawString(
+                        orig_x,
+                        orig_y + (font.raster_size.y + count + 1) * ypix,
+                        _format_label(label)
                     )
-        canvas.showPage()
+                # draw glyph
+                pixels = glyph.as_matrix()
+                for y in range(len(pixels)):
+                    for x in range(len(pixels[y])):
+                        canvas.rect(
+                            orig_x+x*xpix, orig_y+(len(pixels)-y-1)*ypix,
+                            xpix, ypix,
+                            fill=pixels[y][x]
+                        )
+            canvas.showPage()
         canvas.save()
