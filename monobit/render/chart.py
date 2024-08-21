@@ -83,17 +83,13 @@ def grid_map(
     rows = ceildiv(len(font.glyphs), columns)
     # output glyph map
     traverse = grid_traverser(columns, rows, direction, invert_y)
-    glyph_map = GlyphMap(
+    return GlyphMap(
         Props(
             glyph=_glyph, sheet=0,
             x=margin.x + col*step_x, y=margin.y + row*step_y,
         )
         for _glyph, (row, col) in zip(font.glyphs, traverse)
     )
-    # determine image geometry
-    width = columns * step_x + 2 * margin.x - padding.x
-    height = rows * step_y + 2 * margin.y - padding.y
-    return glyph_map
 
 
 def grid_traverser(columns, rows, direction, invert_y=False):
