@@ -362,7 +362,7 @@ if Image:
         Export font to grid-based image.
 
         image_format: image file format (default: png)
-        major_count: number of columns in glyph chart (default: 32)
+        columns: number of columns in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
         padding: number of pixels in X,Y direction between glyph (default: 1x1)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
@@ -375,7 +375,12 @@ if Image:
         font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
         font = font.stretch(*scale)
-        glyph_map = grid_map(font, columns, margin, padding, direction)
+        glyph_map = grid_map(
+            font,
+            columns=columns, rows=ceildiv(len(font.glyphs), columns),
+            margin=margin, padding=padding,
+            direction=direction,
+        )
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink, transparent=False
         )

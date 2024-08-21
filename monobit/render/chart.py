@@ -13,6 +13,7 @@ from ..base import Props, Coord
 from ..core import Codepoint
 from ..storage import savers
 from ..plumbing import scriptable
+from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
 
 
@@ -30,11 +31,14 @@ def save_chart(
     """
     Export font to text- or image-based chart.
     """
-    font, *more_than_one = fonts
-    if more_than_one:
-        raise ValueError('Can only chart a single font.')
+    font = ensure_single(fonts)
     font = prepare_for_grid_map(font, columns, codepoint_range)
-    output = grid_map(font, columns, margin, padding, direction)
+    output = grid_map(
+        font,
+        columns=columns, rows=ceildiv(len(font.glyphs), columns),
+        margin=margin, padding=padding,
+        direction=direction,
+    )
     if style == 'text':
         outstream.text.write(output.as_text(**kwargs))
     elif style == 'blocks':
@@ -69,8 +73,9 @@ def prepare_for_grid_map(font, columns=32, codepoint_range=None):
 
 
 def grid_map(
-        font,
-        columns=32, margin=(0, 0), padding=(0, 0),
+        font, *,
+        columns=32, rows=8,
+        margin=(0, 0), padding=(0, 0),
         direction='left-to-right top-to-bottom',
         invert_y=False,
     ):
@@ -80,7 +85,7 @@ def grid_map(
     # work out image geometry
     step_x = font.raster_size.x + padding.x
     step_y = font.raster_size.y + padding.y
-    rows = ceildiv(len(font.glyphs), columns)
+    # rows = ceildiv(len(font.glyphs), columns)
     # output glyph map
     traverse = grid_traverser(columns, rows, direction, invert_y)
     return GlyphMap(

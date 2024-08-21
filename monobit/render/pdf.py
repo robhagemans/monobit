@@ -16,10 +16,10 @@ if reportlab:
 from monobit.storage import savers
 from monobit.base import Coord
 from monobit.base.binary import ceildiv
-from monobit.core import Codepoint, Char, Tag
+from monobit.core import Font, Codepoint, Char, Tag
 from monobit.encoding.unicode import is_printable
 from monobit.storage.utils.limitations import ensure_single
-from .chart import prepare_for_grid_map, grid_traverser
+from .chart import prepare_for_grid_map, grid_map
 
 
 def _format_label(label):
@@ -38,11 +38,13 @@ if reportlab:
         patterns=('*.pdf',),
     )
     def save_pdf(
-            fonts, outstream,
-            columns:int=16, margin:Coord=Coord(0, 0), padding:Coord=Coord(3, 3),
+            fonts, outstream, *,
+            columns:int=16,
+            padding:Coord=Coord(3, 3),
             direction:str='left-to-right top-to-bottom',
             codepoint_range:tuple[Codepoint]=None,
-            rows_per_page:int=16, max_labels:int=1,
+            rows_per_page:int=16,
+            max_labels:int=1,
         ):
         """
         Export font to chart in Portable Document Format (PDF).
@@ -63,8 +65,10 @@ if reportlab:
         chart_width = page_x - 2*margin_x
         chart_height = page_y - 2*margin_y - title_y
 
+        # width and height of glyph box, in "pixels"
+        padding = Coord(padding.x, padding.y + max_labels)
         width = font.raster_size.x + padding.x
-        height = font.raster_size.y + padding.y + max_labels
+        height = font.raster_size.y + padding.y
 
         # FIXME assumes horizontal-first
         rows = ceildiv(len(font.glyphs), columns)
@@ -90,32 +94,37 @@ if reportlab:
         # draw pages
         for group in glyph_groups:
             canvas.translate(margin_x, margin_y)
-            canvas.setLineWidth(xpix/10)
+            canvas.setLineWidth(xpix / 10)
             canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
             canvas.setFillColorRGB(0, 0, 0)
             # text is the height of one glyph pixel
             canvas.setFont('Helvetica', ypix)
 
             # output glyph map
-            traverse = grid_traverser(columns, rows_per_page, direction, invert_y=True)
-            for glyph, (row, col) in zip(group, traverse):
-                orig_x = col * xpix * width
-                orig_y = (rows_per_page-row-1) * ypix * height
+            glyph_map = grid_map(
+                Font(group),
+                columns=columns,
+                rows=rows_per_page,
+                direction=direction,
+                padding=padding,
+            )
+            for record in glyph_map.get_records():
                 # draw label
-                for count, label in enumerate(glyph.get_labels()):
+                for count, label in enumerate(record.glyph.get_labels()):
                     if count >= max_labels:
                         break
                     canvas.drawString(
-                        orig_x,
-                        orig_y + (font.raster_size.y + count + 1) * ypix,
+                        record.x * xpix,
+                        (record.y + font.raster_size.y + count + 1) * ypix,
                         _format_label(label)
                     )
                 # draw glyph
-                pixels = glyph.as_matrix()
+                pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
                         canvas.rect(
-                            orig_x+x*xpix, orig_y+(len(pixels)-y-1)*ypix,
+                            (record.x + x) * xpix,
+                            (record.y + record.glyph.height - y - 1) * ypix,
                             xpix, ypix,
                             fill=pixels[y][x]
                         )

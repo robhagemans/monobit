@@ -182,6 +182,10 @@ class GlyphMap:
         canvas = self.to_canvas(sheet=0)
         return canvas.as_blocks(resolution)
 
+    def get_records(self):
+        """Return glyph records with position."""
+        return tuple(self._map)
+
 
 class _Canvas:
     """Blittable raster for glyph maps."""
