@@ -74,26 +74,38 @@ def prepare_for_grid_map(font, columns=32, codepoint_range=None):
 
 def grid_map(
         font, *,
-        columns=32, rows=8,
+        # set either rows or columns to None or 0 to mean 'as many as neededs'
+        columns=32, rows=None,
         margin=(0, 0), padding=(0, 0),
         direction='left-to-right top-to-bottom',
         invert_y=False,
     ):
-    """Create glyph map for font chart matrix."""
+    """
+    Create glyph grid(s) for font charts.
+    """
     padding = Coord(*padding)
     margin = Coord(*margin)
     # work out image geometry
     step_x = font.raster_size.x + padding.x
     step_y = font.raster_size.y + padding.y
-    # rows = ceildiv(len(font.glyphs), columns)
-    # output glyph map
-    traverse = grid_traverser(columns, rows, direction, invert_y)
+    rows = rows or ceildiv(len(font.glyphs), columns)
+    columns = columns or ceildiv(len(font.glyphs), rows)
+    glyphs_per_page = rows * columns
+    glyph_pages = tuple(
+        font.glyphs[_s : _s + glyphs_per_page]
+        for _s in range(0, len(font.glyphs), glyphs_per_page)
+    )
+    # output glyph maps
     return GlyphMap(
         Props(
-            glyph=_glyph, sheet=0,
+            glyph=_glyph, sheet=_sheet,
             x=margin.x + col*step_x, y=margin.y + row*step_y,
         )
-        for _glyph, (row, col) in zip(font.glyphs, traverse)
+        for _sheet, _glyph_page in enumerate(glyph_pages)
+        for _glyph, (row, col) in zip(
+            _glyph_page,
+            grid_traverser(columns, rows, direction, invert_y)
+        )
     )
 
 

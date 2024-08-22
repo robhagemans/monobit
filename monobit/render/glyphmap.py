@@ -182,9 +182,9 @@ class GlyphMap:
         canvas = self.to_canvas(sheet=0)
         return canvas.as_blocks(resolution)
 
-    def get_records(self):
-        """Return glyph records with position."""
-        return tuple(self._map)
+    def get_sheet(self, sheet=0):
+        """Return glyph records for a given sheet."""
+        return tuple(_e for _e in self._map if _e.sheet == sheet)
 
 
 class _Canvas:

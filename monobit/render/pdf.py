@@ -40,10 +40,10 @@ if reportlab:
     def save_pdf(
             fonts, outstream, *,
             columns:int=16,
+            rows:int=16,
             padding:Coord=Coord(3, 3),
             direction:str='left-to-right top-to-bottom',
             codepoint_range:tuple[Codepoint]=None,
-            rows_per_page:int=16,
             max_labels:int=1,
         ):
         """
@@ -52,7 +52,6 @@ if reportlab:
         font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
 
-        canvas = Canvas(outstream)
         # assume A4
         # note mm is a constant defining number of points in a millimetre
         # 1 point = 1/72 in
@@ -70,21 +69,21 @@ if reportlab:
         width = font.raster_size.x + padding.x
         height = font.raster_size.y + padding.y
 
-        # FIXME assumes horizontal-first
-        rows = ceildiv(len(font.glyphs), columns)
-        # use rows_per_page=None or 0 to force all glyphs on one page
-        rows_per_page = rows_per_page or rows
+        # construct grid pages
+        glyph_map = grid_map(
+            font,
+            columns=columns,
+            rows=rows,
+            direction=direction,
+            padding=padding,
+        )
+        max_sheet, min_x, min_y, max_x, max_y = glyph_map.get_bounds()
 
         # width and height of a pixel, in points
         xpix = chart_width / columns / width
-        ypix = chart_height / rows_per_page / height
+        ypix = chart_height / rows / height
 
-        glyphs_per_page = rows_per_page * columns
-        glyph_groups = (
-            font.glyphs[_s : _s + glyphs_per_page]
-            for _s in range(0, len(font.glyphs), glyphs_per_page)
-        )
-
+        canvas = Canvas(outstream)
         # draw title on first page
         canvas.translate(margin_x, margin_y)
         canvas.setFont('Helvetica-Bold', title_y)
@@ -92,7 +91,7 @@ if reportlab:
         canvas.translate(-margin_x, -margin_y)
 
         # draw pages
-        for group in glyph_groups:
+        for sheet in range(max_sheet+1):
             canvas.translate(margin_x, margin_y)
             canvas.setLineWidth(xpix / 10)
             canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
@@ -100,15 +99,8 @@ if reportlab:
             # text is the height of one glyph pixel
             canvas.setFont('Helvetica', ypix)
 
-            # output glyph map
-            glyph_map = grid_map(
-                Font(group),
-                columns=columns,
-                rows=rows_per_page,
-                direction=direction,
-                padding=padding,
-            )
-            for record in glyph_map.get_records():
+            # output glyph grid
+            for record in glyph_map.get_sheet(sheet):
                 # draw label
                 for count, label in enumerate(record.glyph.get_labels()):
                     if count >= max_labels:
