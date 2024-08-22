@@ -65,7 +65,11 @@ if reportlab:
         fill_page: fill out usable space, ignoring pixel aspect ratio (default: False)
         """
         font = ensure_single(fonts)
-        font = prepare_for_grid_map(font, columns, codepoint_range)
+        if direction[:1].lower() in ('t', 'b'):
+            glyphs_per_line = rows
+        else:
+            glyphs_per_line = columns
+        font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
 
         # assume A4
         # note mm is a constant defining number of points in a millimetre

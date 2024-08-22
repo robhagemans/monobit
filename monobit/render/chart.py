@@ -23,7 +23,7 @@ DEFAULT_IMAGE_FORMAT = 'png'
 @savers.register(name='chart')
 def save_chart(
         fonts, outstream, *,
-        columns:int=16,
+        glyphs_per_line:int=16,
         margin:Coord=(0, 0),
         padding:Coord=(1, 1),
         direction:str='left-to-right top-to-bottom',
@@ -34,7 +34,7 @@ def save_chart(
     """
     Export font to text- or image-based chart.
 
-    columns: number of columns in glyph chart (default: 16)
+    glyphs_per_line: number of glyphs per line in glyph chart (default: 16)
     margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
     padding: number of pixels in X,Y direction between glyphs (default: 1x1)
     direction: two-part string, default 'left-to-right top-to-bottom'
@@ -42,10 +42,14 @@ def save_chart(
     style: output style; 'image', 'blocks' or 'text' (default)
     """
     font = ensure_single(fonts)
-    font = prepare_for_grid_map(font, columns, codepoint_range)
+    font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
+    if direction[:1].lower() in ('t', 'b'):
+        rows, columns = glyphs_per_line, None
+    else:
+        columns, rows = glyphs_per_line, None
     output = grid_map(
         font,
-        columns=columns, rows=ceildiv(len(font.glyphs), columns),
+        columns=columns, rows=rows,
         margin=margin, padding=padding,
         direction=direction,
     )
@@ -65,14 +69,14 @@ def save_chart(
         )
 
 
-def prepare_for_grid_map(font, columns=32, codepoint_range=None):
+def prepare_for_grid_map(font, glyphs_per_line=32, codepoint_range=None):
     """Resample and equalise font for grid representation."""
     font = font.equalise_horizontal()
     if not codepoint_range:
         try:
             codepoint_range = range(
                 # start at a codepoint that is a multiple of the number of columns
-                columns * (int(min(font.get_codepoints())) // columns),
+                glyphs_per_line * (int(min(font.get_codepoints())) // glyphs_per_line),
                 int(max(font.get_codepoints()))+1
             )
         except ValueError:
