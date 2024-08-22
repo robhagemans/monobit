@@ -48,6 +48,7 @@ if reportlab:
             page_size:Coord=Coord(210, 297),
             margin:Coord=Coord(25, 25),
             title:str='{name}',
+            fill_page:bool=False,
         ):
         """
         Export font to chart in Portable Document Format (PDF).
@@ -61,6 +62,7 @@ if reportlab:
         page_size: page size X,Y in millimetres (default 210x297 for A4)
         margin: margin X,Y in millimetres (default 25x25)
         title: title template, using font properties (default: '{name}')
+        fill_page: fill out usable space, ignoring pixel aspect ratio (default: False)
         """
         font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
@@ -93,6 +95,19 @@ if reportlab:
         xpix = chart_width / (max_x - min_x)
         # reserve space for labels at the top (min and max exclude padding)
         ypix = chart_height / (max_y - min_y + max_labels + 1)
+
+        if not fill_page:
+            # enforce pixel aspect ratio
+            xpix_aspect = (ypix * font.pixel_aspect.x) / font.pixel_aspect.y
+            ypix_aspect = (xpix * font.pixel_aspect.y) / font.pixel_aspect.x
+            if ypix_aspect <= ypix:
+                margin_y += chart_height * (1 - ypix_aspect / ypix)
+                chart_height *= ypix_aspect / ypix
+                ypix = ypix_aspect
+            else:
+                margin_x += 0.5 * chart_width * (1 - xpix_aspect / xpix)
+                chart_width *= xpix_aspect / xpix
+                xpix = xpix_aspect
 
         canvas = Canvas(outstream)
         # draw title on first page
