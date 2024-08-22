@@ -47,6 +47,7 @@ if reportlab:
             max_labels:int=1,
             page_size=Coord(210, 297),
             margin=Coord(25, 25),
+            title:str='{name}',
         ):
         """
         Export font to chart in Portable Document Format (PDF).
@@ -59,6 +60,7 @@ if reportlab:
         max_labels: maximum number of labels to show per glyph (default: 1)
         page_size: page size X,Y in millimetres (default 210x297 for A4)
         margin: margin X,Y in millimetres (default 25x25)
+        title: title template, using font properties (default: '{name}')
         """
         font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
@@ -96,7 +98,10 @@ if reportlab:
         # draw title on first page
         canvas.translate(margin_x, margin_y)
         canvas.setFont('Helvetica-Bold', title_y)
-        canvas.drawString(0, chart_height + title_y, font.name)
+        canvas.drawString(
+            0, chart_height + title_y,
+            font.format_properties(title),
+        )
         canvas.translate(-margin_x, -margin_y)
 
         # draw pages
