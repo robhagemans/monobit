@@ -10,7 +10,7 @@ from pathlib import Path
 
 from ..base.binary import ceildiv
 from ..base import Props, Coord
-from ..core import Codepoint
+from ..core import Codepoint, Glyph
 from ..storage import savers
 from ..plumbing import scriptable
 from monobit.storage.utils.limitations import ensure_single
@@ -96,7 +96,7 @@ def grid_map(
         for _s in range(0, len(font.glyphs), glyphs_per_page)
     )
     # output glyph maps
-    return GlyphMap(
+    glyph_map = GlyphMap(
         Props(
             glyph=_glyph, sheet=_sheet,
             x=margin.x + col*step_x, y=margin.y + row*step_y,
@@ -107,6 +107,15 @@ def grid_map(
             grid_traverser(columns, rows, direction, invert_y)
         )
     )
+    # use blank glyphs for grid bounds
+    glyph_map.append_glyph(Glyph(), margin.x, margin.y, sheet=0)
+    glyph_map.append_glyph(
+        Glyph(),
+        margin.x + columns*step_x - padding.x,
+        margin.y + rows*step_y - padding.y,
+        sheet=0
+    )
+    return glyph_map
 
 
 def grid_traverser(columns, rows, direction, invert_y=False):

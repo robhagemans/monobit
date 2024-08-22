@@ -60,14 +60,8 @@ if reportlab:
         margin_x, margin_y = 28*mm, 30*mm
         title_y = 5*mm
 
-        # width and height of usable area, in points
-        chart_width = page_x - 2*margin_x
-        chart_height = page_y - 2*margin_y - title_y
-
-        # width and height of glyph box, in "pixels"
+        # create extra padding space to allow for labels
         padding = Coord(padding.x, padding.y + max_labels)
-        width = font.raster_size.x + padding.x
-        height = font.raster_size.y + padding.y
 
         # construct grid pages
         glyph_map = grid_map(
@@ -79,9 +73,13 @@ if reportlab:
         )
         max_sheet, min_x, min_y, max_x, max_y = glyph_map.get_bounds()
 
+        # width and height of usable area, in points
+        chart_width = page_x - 2*margin_x
+        chart_height = page_y - 2*margin_y - title_y
         # width and height of a pixel, in points
-        xpix = chart_width / columns / width
-        ypix = chart_height / rows / height
+        xpix = chart_width / (max_x - min_x)
+        # reserve space for labels at the top (min and max exclude padding)
+        ypix = chart_height / (max_y - min_y + max_labels + 1)
 
         canvas = Canvas(outstream)
         # draw title on first page
