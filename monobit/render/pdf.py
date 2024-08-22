@@ -45,8 +45,8 @@ if reportlab:
             direction:str='left-to-right top-to-bottom',
             codepoint_range:tuple[Codepoint]=None,
             max_labels:int=1,
-            page_size=Coord(210, 297),
-            margin=Coord(25, 25),
+            page_size:Coord=Coord(210, 297),
+            margin:Coord=Coord(25, 25),
             title:str='{name}',
         ):
         """
@@ -106,6 +106,7 @@ if reportlab:
 
         # draw pages
         for sheet in range(max_sheet+1):
+            canvas.setPageSize((page_x, page_y))
             canvas.translate(margin_x, margin_y)
             canvas.setLineWidth(xpix / 10)
             canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
