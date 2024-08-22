@@ -167,8 +167,7 @@ if reportlab:
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
                         canvas.rect(
-                            (record.x + x) * xpix
-                            + xpix * (font.raster_size.x - record.glyph.raster_size.x if right_align else 0),
+                            (record.x + x) * xpix,
                             (record.y + record.glyph.height - y - 1) * ypix,
                             xpix, ypix,
                             fill=pixels[y][x]

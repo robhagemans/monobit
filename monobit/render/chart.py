@@ -109,11 +109,18 @@ def grid_map(
         font.glyphs[_s : _s + glyphs_per_page]
         for _s in range(0, len(font.glyphs), glyphs_per_page)
     )
+    # horizontal alignment
+    # note that prepare_for_grid_map has equallised glyphs horizontally
+    dir_0, _, dir_1 = direction.partition(' ')
+    right_align = dir_0[:1] == 'r' or dir_1[:1] == 'r'
     # output glyph maps
     glyph_map = GlyphMap(
         Props(
             glyph=_glyph, sheet=_sheet,
-            x=margin.x + col*step_x,
+            x=(
+                margin.x + col*step_x
+                + (font.raster_size.x - _glyph.width if right_align else 0)
+            ),
             y=margin.y + row*step_y,
         )
         for _sheet, _glyph_page in enumerate(glyph_pages)
