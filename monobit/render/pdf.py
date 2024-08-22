@@ -45,6 +45,8 @@ if reportlab:
             direction:str='left-to-right top-to-bottom',
             codepoint_range:tuple[Codepoint]=None,
             max_labels:int=1,
+            page_size=Coord(210, 297),
+            margin=Coord(25, 25),
         ):
         """
         Export font to chart in Portable Document Format (PDF).
@@ -55,6 +57,8 @@ if reportlab:
         direction: two-part string, default 'left-to-right top-to-bottom'
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
         max_labels: maximum number of labels to show per glyph (default: 1)
+        page_size: page size X,Y in millimetres (default 210x297 for A4)
+        margin: margin X,Y in millimetres (default 25x25)
         """
         font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
@@ -62,10 +66,10 @@ if reportlab:
         # assume A4
         # note mm is a constant defining number of points in a millimetre
         # 1 point = 1/72 in
-        page_x, page_y = 210*mm, 297*mm
+        page_x, page_y = page_size.x*mm, page_size.y*mm
         # margins and title position
-        margin_x, margin_y = 28*mm, 30*mm
-        title_y = 5*mm
+        title_y = (margin.y // 5)*mm
+        margin_x, margin_y = margin.x*mm, margin.y*mm + title_y
 
         # create extra padding space to allow for labels
         padding = Coord(padding.x, padding.y + max_labels)
