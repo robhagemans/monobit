@@ -108,11 +108,11 @@ def grid_map(
         )
     )
     # use blank glyphs for grid bounds
-    glyph_map.append_glyph(Glyph(), margin.x, margin.y, sheet=0)
+    glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     glyph_map.append_glyph(
         Glyph(),
-        margin.x + columns*step_x - padding.x,
-        margin.y + rows*step_y - padding.y,
+        2 * margin.x + columns*step_x - padding.x,
+        2 * margin.y + rows*step_y - padding.y,
         sheet=0
     )
     return glyph_map
