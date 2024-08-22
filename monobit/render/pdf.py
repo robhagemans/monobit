@@ -113,14 +113,25 @@ if reportlab:
                 chart_width *= xpix_aspect / xpix
                 xpix = xpix_aspect
 
+        # horizontal alignment
+        # note that prepare_for_grid_map has equallised glyphs horizontally
+        dir_0, _, dir_1 = direction.partition(' ')
+        right_align = dir_0[:1] == 'r' or dir_1[:1] == 'r'
+
         canvas = Canvas(outstream)
         # draw title on first page
         canvas.translate(margin_x, margin_y)
         canvas.setFont('Helvetica-Bold', title_y)
-        canvas.drawString(
-            0, chart_height + title_y,
-            font.format_properties(title),
-        )
+        if right_align:
+            canvas.drawRightString(
+                chart_width, chart_height + title_y,
+                font.format_properties(title),
+            )
+        else:
+            canvas.drawString(
+                0, chart_height + title_y,
+                font.format_properties(title),
+            )
         canvas.translate(-margin_x, -margin_y)
 
         # draw pages
@@ -139,17 +150,25 @@ if reportlab:
                 for count, label in enumerate(record.glyph.get_labels()):
                     if count >= max_labels:
                         break
-                    canvas.drawString(
-                        record.x * xpix,
-                        (record.y + font.raster_size.y + count + 1) * ypix,
-                        _format_label(label)
-                    )
+                    if right_align:
+                        canvas.drawRightString(
+                            (record.x + font.raster_size.x) * xpix,
+                            (record.y + font.raster_size.y + count + 1) * ypix,
+                            _format_label(label)
+                        )
+                    else:
+                        canvas.drawString(
+                            record.x * xpix,
+                            (record.y + font.raster_size.y + count + 1) * ypix,
+                            _format_label(label)
+                        )
                 # draw glyph
                 pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
                         canvas.rect(
-                            (record.x + x) * xpix,
+                            (record.x + x) * xpix
+                            + xpix * (font.raster_size.x - record.glyph.raster_size.x if right_align else 0),
                             (record.y + record.glyph.height - y - 1) * ypix,
                             xpix, ypix,
                             fill=pixels[y][x]

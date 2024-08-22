@@ -113,7 +113,8 @@ def grid_map(
     glyph_map = GlyphMap(
         Props(
             glyph=_glyph, sheet=_sheet,
-            x=margin.x + col*step_x, y=margin.y + row*step_y,
+            x=margin.x + col*step_x,
+            y=margin.y + row*step_y,
         )
         for _sheet, _glyph_page in enumerate(glyph_pages)
         for _glyph, (row, col) in zip(
