@@ -166,11 +166,14 @@ if reportlab:
                 pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
+                        fill = 1 - pixels[y][x] / font.levels
+                        canvas.setFillColorRGB(fill, fill, fill)
                         canvas.rect(
                             (record.x + x) * xpix,
                             (record.y + record.glyph.height - y - 1) * ypix,
                             xpix, ypix,
-                            fill=pixels[y][x]
+                            fill=bool(pixels[y][x])
                         )
+                        canvas.setFillColorRGB(0, 0, 0)
             canvas.showPage()
         canvas.save()
