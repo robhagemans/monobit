@@ -22,14 +22,24 @@ DEFAULT_IMAGE_FORMAT = 'png'
 
 @savers.register(name='chart')
 def save_chart(
-        fonts, outstream,
-        columns:int=16, margin:Coord=(0, 0), padding:Coord=(0, 0),
+        fonts, outstream, *,
+        columns:int=16,
+        margin:Coord=(0, 0),
+        padding:Coord=(1, 1),
         direction:str='left-to-right top-to-bottom',
-        codepoint_range:tuple[Codepoint]=None, style:str='text',
+        codepoint_range:tuple[Codepoint]=None,
+        style:str='text',
         **kwargs
     ):
     """
     Export font to text- or image-based chart.
+
+    columns: number of columns in glyph chart (default: 16)
+    margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
+    padding: number of pixels in X,Y direction between glyphs (default: 1x1)
+    direction: two-part string, default 'left-to-right top-to-bottom'
+    codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+    style: output style; 'image', 'blocks' or 'text' (default)
     """
     font = ensure_single(fonts)
     font = prepare_for_grid_map(font, columns, codepoint_range)

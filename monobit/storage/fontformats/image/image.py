@@ -362,9 +362,9 @@ if Image:
         Export font to grid-based image.
 
         image_format: image file format (default: png)
-        columns: number of columns in glyph chart (default: 32)
-        margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
-        padding: number of pixels in X,Y direction between glyph (default: 1x1)
+        columns: number of columns in glyph grid (default: 32)
+        margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
+        padding: number of pixels in X,Y direction between glyphs (default: 1x1)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
         direction: two-part string, default 'left-to-right top-to-bottom'
         paper: background colour R,G,B 0--255 (default: 0,0,0)

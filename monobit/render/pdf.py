@@ -48,6 +48,13 @@ if reportlab:
         ):
         """
         Export font to chart in Portable Document Format (PDF).
+
+        columns: number of columns in glyph chart (default: 16)
+        rows: number of columns in glyph chart (default: 16)
+        padding: number of pixels in X,Y direction between glyphs (default: 3x3)
+        direction: two-part string, default 'left-to-right top-to-bottom'
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+        max_labels: maximum number of labels to show per glyph (default: 1)
         """
         font = ensure_single(fonts)
         font = prepare_for_grid_map(font, columns, codepoint_range)
