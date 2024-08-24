@@ -43,13 +43,9 @@ def save_chart(
     """
     font = ensure_single(fonts)
     font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
-    if direction[:1].lower() in ('t', 'b'):
-        rows, columns = glyphs_per_line, None
-    else:
-        columns, rows = glyphs_per_line, None
     output = grid_map(
         font,
-        columns=columns, rows=rows,
+        glyphs_per_line=glyphs_per_line,
         margin=margin, padding=padding,
         direction=direction,
     )
@@ -88,8 +84,10 @@ def prepare_for_grid_map(font, glyphs_per_line=32, codepoint_range=None):
 
 def grid_map(
         font, *,
-        # set either rows or columns to None or 0 to mean 'as many as neededs'
-        columns=32, rows=None,
+        # glyphs_per_line chooses rows/cols depending on render direction
+        # set either rows or columns to None or 0 to mean 'as many as needed'
+        glyphs_per_line=None,
+        columns=None, rows=None,
         margin=(0, 0), padding=(0, 0),
         direction='left-to-right top-to-bottom',
         invert_y=False,
@@ -102,6 +100,16 @@ def grid_map(
     # work out image geometry
     step_x = font.raster_size.x + padding.x
     step_y = font.raster_size.y + padding.y
+    if glyphs_per_line:
+        if rows or cols:
+            raise ValueError(
+                'Either `glyphs_per_line` or (`rows`, `columns`) can be set, '
+                'but not both.'
+            )
+        if direction[:1].lower() in ('t', 'b'):
+            rows, columns = glyphs_per_line, None
+        else:
+            columns, rows = glyphs_per_line, None
     rows = rows or ceildiv(len(font.glyphs), columns)
     columns = columns or ceildiv(len(font.glyphs), rows)
     glyphs_per_page = rows * columns
@@ -109,8 +117,9 @@ def grid_map(
         font.glyphs[_s : _s + glyphs_per_page]
         for _s in range(0, len(font.glyphs), glyphs_per_page)
     )
-    # horizontal alignment
-    # note that prepare_for_grid_map has equallised glyphs horizontally
+    # horizontal alignment (left or right)
+    # note that prepare_for_grid_map has equalised glyphs to the same height
+    # so vertical alignment is not needed
     dir_0, _, dir_1 = direction.partition(' ')
     right_align = dir_0[:1] == 'r' or dir_1[:1] == 'r'
     # output glyph maps
