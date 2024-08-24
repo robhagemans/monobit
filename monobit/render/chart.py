@@ -26,6 +26,7 @@ def save_chart(
         glyphs_per_line:int=16,
         margin:Coord=(0, 0),
         padding:Coord=(1, 1),
+        scale:Coord=Coord(1, 1),
         direction:str='left-to-right top-to-bottom',
         codepoint_range:tuple[Codepoint]=None,
         style:str='text',
@@ -37,12 +38,14 @@ def save_chart(
     glyphs_per_line: number of glyphs per line in glyph chart (default: 16)
     margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
     padding: number of pixels in X,Y direction between glyphs (default: 1x1)
+    scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
     direction: two-part string, default 'left-to-right top-to-bottom'
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
     style: output style; 'image', 'blocks' or 'text' (default)
     """
     font = ensure_single(fonts)
     font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
+    font = font.stretch(*scale)
     output = grid_map(
         font,
         glyphs_per_line=glyphs_per_line,
@@ -101,7 +104,7 @@ def grid_map(
     step_x = font.raster_size.x + padding.x
     step_y = font.raster_size.y + padding.y
     if glyphs_per_line:
-        if rows or cols:
+        if rows or columns:
             raise ValueError(
                 'Either `glyphs_per_line` or (`rows`, `columns`) can be set, '
                 'but not both.'
