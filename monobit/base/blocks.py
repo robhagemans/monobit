@@ -89,6 +89,14 @@ BLOCKS[(1, 3)] = {
     for _2 in range(2)
 }
 
+BLOCKS[(1, 4)] = {
+    (_0, _1, _2, _3): BLOCKS[(2, 4)][(_0, _0, _1, _1, _2, _2, _3, _3)]
+    for _0 in range(2)
+    for _1 in range(2)
+    for _2 in range(2)
+    for _3 in range(2)
+}
+
 
 def matrix_to_blocks(matrix, ncols, nrows, levels):
     """Convert bit matrix to a string of block characters."""

@@ -25,9 +25,9 @@ def save_chart(
         padding:Coord=(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str='left-to-right top-to-bottom',
+        border:str=' ',
+        inklevels:tuple[str]=(' ', '@'),
         codepoint_range:tuple[Codepoint]=None,
-        style:str='text',
-        **kwargs
     ):
     """
     Export font to text- or image-based chart.
@@ -37,10 +37,11 @@ def save_chart(
     padding: number of pixels in X,Y direction between glyphs (default: 1x1)
     scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
     direction: two-part string, default 'left-to-right top-to-bottom'
+    border: character to use for border pixels (default: space)
+    inklevels: characters to use for pixels (default: space, '2')
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
-    style: output style; 'image', 'blocks' or 'text' (default)
     """
-    output = create_chart(
+    glyph_map = create_chart(
         fonts,
         glyphs_per_line=glyphs_per_line,
         margin=margin,
@@ -49,14 +50,43 @@ def save_chart(
         direction=direction,
         codepoint_range=codepoint_range,
     )
-    if style == 'text':
-        outstream.text.write(output.as_text(**kwargs))
-    elif style == 'blocks':
-        outstream.text.write(output.as_blocks(**kwargs))
-    else:
-        raise ValueError(
-            f"`style` must be one of 'text', 'blocks'; not {style!r}"
-        )
+    outstream.text.write(
+        glyph_map.as_text(border=border, inklevels=inklevels)
+    )
+
+
+@savers.register(name='blocks')
+def save_blocks(
+        fonts, outstream, *,
+        glyphs_per_line:int=16,
+        margin:Coord=(0, 0),
+        padding:Coord=(1, 1),
+        scale:Coord=Coord(1, 1),
+        direction:str='left-to-right top-to-bottom',
+        resolution:Coord=Coord(1, 1),
+        codepoint_range:tuple[Codepoint]=None,
+    ):
+    """
+    Export font to text- or image-based chart.
+
+    glyphs_per_line: number of glyphs per line in glyph chart (default: 16)
+    margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
+    padding: number of pixels in X,Y direction between glyphs (default: 1x1)
+    scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+    direction: two-part string, default 'left-to-right top-to-bottom'
+    resolution: blocks per text character; 1x1 (default), 1x2, 1x3, 1x4, 2x1, 2x3, 2x4
+    codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+    """
+    glyph_map = create_chart(
+        fonts,
+        glyphs_per_line=glyphs_per_line,
+        margin=margin,
+        padding=padding,
+        scale=scale,
+        direction=direction,
+        codepoint_range=codepoint_range,
+    )
+    outstream.text.write(glyph_map.as_blocks(resolution=resolution))
 
 
 def create_chart(
