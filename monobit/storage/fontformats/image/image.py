@@ -18,9 +18,7 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import (
-    prepare_for_grid_map, grid_map, grid_traverser, glyph_to_image
-)
+from monobit.render import create_chart, glyph_to_image, grid_traverser
 from monobit.storage.utils.limitations import ensure_single
 from monobit.storage.utils.perglyph import loop_load, loop_save
 
@@ -374,14 +372,14 @@ if Image:
         border: border colour R,G,B 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
         """
-        font = ensure_single(fonts)
-        font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
-        font = font.stretch(*scale)
-        glyph_map = grid_map(
-            font,
+        glyph_map = create_chart(
+            fonts,
             glyphs_per_line=glyphs_per_line,
-            margin=margin, padding=padding,
+            margin=margin,
+            padding=padding,
+            scale=scale,
             direction=direction,
+            codepoint_range=codepoint_range,
         )
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink, transparent=False

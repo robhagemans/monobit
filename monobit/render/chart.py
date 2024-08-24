@@ -17,9 +17,6 @@ from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
 
 
-DEFAULT_IMAGE_FORMAT = 'png'
-
-
 @savers.register(name='chart')
 def save_chart(
         fonts, outstream, *,
@@ -43,32 +40,47 @@ def save_chart(
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
     style: output style; 'image', 'blocks' or 'text' (default)
     """
-    font = ensure_single(fonts)
-    font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
-    font = font.stretch(*scale)
-    output = grid_map(
-        font,
+    output = create_chart(
+        fonts,
         glyphs_per_line=glyphs_per_line,
-        margin=margin, padding=padding,
+        margin=margin,
+        padding=padding,
+        scale=scale,
         direction=direction,
+        codepoint_range=codepoint_range,
     )
     if style == 'text':
         outstream.text.write(output.as_text(**kwargs))
     elif style == 'blocks':
         outstream.text.write(output.as_blocks(**kwargs))
-    elif style == 'image':
-        img = output.as_image(**kwargs)
-        try:
-            img.save(outstream, format=Path(outstream.name).suffix[1:])
-        except (KeyError, ValueError, TypeError):
-            img.save(outstream, format=DEFAULT_IMAGE_FORMAT)
     else:
         raise ValueError(
-            f"`style` must be one of 'text', 'blocks', 'image's; not {style!r}"
+            f"`style` must be one of 'text', 'blocks'; not {style!r}"
         )
 
 
-def prepare_for_grid_map(font, glyphs_per_line=32, codepoint_range=None):
+def create_chart(
+        fonts, *,
+        glyphs_per_line,
+        margin,
+        padding,
+        scale,
+        direction,
+        codepoint_range,
+    ):
+    """Create chart glyph map of font."""
+    font = ensure_single(fonts)
+    font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
+    font = font.stretch(*scale)
+    return grid_map(
+        font,
+        glyphs_per_line=glyphs_per_line,
+        margin=margin, padding=padding,
+        direction=direction,
+    )
+
+
+def prepare_for_grid_map(font, glyphs_per_line, codepoint_range):
     """Resample and equalise font for grid representation."""
     font = font.equalise_horizontal()
     if not codepoint_range:
