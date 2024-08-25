@@ -42,7 +42,7 @@ if reportlab:
             glyphs_per_line:int=16,
             lines_per_page:int=16,
             padding:Coord=Coord(3, 3),
-            direction:str='left-to-right top-to-bottom',
+            direction:str=None,
             codepoint_range:tuple[Codepoint]=None,
             max_labels:int=1,
             page_size:Coord=Coord(210, 297),
@@ -56,7 +56,7 @@ if reportlab:
         glyphs_per_line: number of glyphs in primary direction (default: 16)
         lines_per_page: number of lines in secondary direction (default: 16)
         padding: number of pixels in X,Y direction between glyphs (default: 3x3)
-        direction: two-part string, default 'left-to-right top-to-bottom'
+        direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
         max_labels: maximum number of labels to show per glyph (default: 1)
         page_size: page size X,Y in millimetres (default 210x297 for A4)
@@ -110,7 +110,8 @@ if reportlab:
                 xpix = xpix_aspect
 
         # horizontal alignment
-        # note that prepare_for_grid_map has equallised glyphs horizontally
+        # note that prepare_for_grid_map has equalised glyphs horizontally
+        direction = direction or font.direction
         dir_0, _, dir_1 = direction.partition(' ')
         right_align = dir_0[:1] == 'r' or dir_1[:1] == 'r'
 

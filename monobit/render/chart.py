@@ -24,7 +24,7 @@ def save_chart(
         margin:Coord=(0, 0),
         padding:Coord=(1, 1),
         scale:Coord=Coord(1, 1),
-        direction:str='left-to-right top-to-bottom',
+        direction:str=None,
         border:str=' ',
         inklevels:tuple[str]=(' ', '@'),
         codepoint_range:tuple[Codepoint]=None,
@@ -36,7 +36,7 @@ def save_chart(
     margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
     padding: number of pixels in X,Y direction between glyphs (default: 1x1)
     scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
-    direction: two-part string, default 'left-to-right top-to-bottom'
+    direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
     border: character to use for border pixels (default: space)
     inklevels: characters to use for pixels (default: space, '2')
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
@@ -62,7 +62,7 @@ def save_blocks(
         margin:Coord=(0, 0),
         padding:Coord=(1, 1),
         scale:Coord=Coord(1, 1),
-        direction:str='left-to-right top-to-bottom',
+        direction:str=None,
         resolution:Coord=Coord(1, 1),
         codepoint_range:tuple[Codepoint]=None,
     ):
@@ -73,7 +73,7 @@ def save_blocks(
     margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
     padding: number of pixels in X,Y direction between glyphs (default: 1x1)
     scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
-    direction: two-part string, default 'left-to-right top-to-bottom'
+    direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
     resolution: blocks per text character; 1x1 (default), 1x2, 1x3, 1x4, 2x1, 2x3, 2x4
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
     """
@@ -136,7 +136,7 @@ def grid_map(
         glyphs_per_line=None,
         lines_per_page=None,
         margin=(0, 0), padding=(0, 0),
-        direction='left-to-right top-to-bottom',
+        direction=None,
         invert_y=False,
     ):
     """
@@ -147,6 +147,7 @@ def grid_map(
     # work out image geometry
     step_x = font.raster_size.x + padding.x
     step_y = font.raster_size.y + padding.y
+    direction = direction or font.direction
     if direction[:1].lower() in ('t', 'b'):
         rows, columns = glyphs_per_line, lines_per_page
     else:
