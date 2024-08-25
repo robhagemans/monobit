@@ -166,7 +166,7 @@ if reportlab:
                 pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
-                        fill = 1 - pixels[y][x] / font.levels
+                        fill = 1 - pixels[y][x] / (font.levels-1)
                         canvas.setFillColorRGB(fill, fill, fill)
                         canvas.rect(
                             (record.x + x) * xpix,
