@@ -204,10 +204,7 @@ class _Canvas:
         return cls(canvas)
 
     def blit(self, raster, grid_x, grid_y):
-        """
-        Draw a matrix onto a canvas
-        (leaving exising ink in place, depending on operator).
-        """
+        """Draw a matrix onto a canvas, leaving existing ink in place."""
         if not raster.width or not self.width:
             return self
         matrix = raster.as_matrix()
@@ -217,7 +214,11 @@ class _Canvas:
                 row = self._pixels[self.height - (grid_y + work_y) - 1]
                 for work_x, ink in enumerate(matrix[raster.height - work_y - 1]):
                     if 0 <= grid_x + work_x < self.width:
-                        row[grid_x + work_x] = max(ink, row[grid_x + work_x])
+                        # grayscale will be additive until full-ink level
+                        row[grid_x + work_x] = min(
+                            self.levels - 1,
+                            max(0, ink) + max(0, row[grid_x + work_x]),
+                        )
         return self
 
     def as_text(
