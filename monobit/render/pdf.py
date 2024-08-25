@@ -19,7 +19,7 @@ from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint, Char, Tag
 from monobit.encoding.unicode import is_printable
 from monobit.storage.utils.limitations import ensure_single
-from .chart import prepare_for_grid_map, grid_map
+from .chart import create_chart
 
 
 def _format_label(label):
@@ -39,8 +39,8 @@ if reportlab:
     )
     def save_pdf(
             fonts, outstream, *,
-            columns:int=16,
-            rows:int=16,
+            glyphs_per_line:int=16,
+            lines_per_page:int=16,
             padding:Coord=Coord(3, 3),
             direction:str='left-to-right top-to-bottom',
             codepoint_range:tuple[Codepoint]=None,
@@ -53,8 +53,8 @@ if reportlab:
         """
         Export font to chart in Portable Document Format (PDF).
 
-        columns: number of columns in glyph chart (default: 16)
-        rows: number of columns in glyph chart (default: 16)
+        glyphs_per_line: number of glyphs in primary direction (default: 16)
+        lines_per_page: number of lines in secondary direction (default: 16)
         padding: number of pixels in X,Y direction between glyphs (default: 3x3)
         direction: two-part string, default 'left-to-right top-to-bottom'
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
@@ -64,12 +64,21 @@ if reportlab:
         title: title template, using font properties (default: '{name}')
         fill_page: fill out usable space, ignoring pixel aspect ratio (default: False)
         """
-        font = ensure_single(fonts)
-        if direction[:1].lower() in ('t', 'b'):
-            glyphs_per_line = rows
-        else:
-            glyphs_per_line = columns
-        font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
+        # create extra padding space to allow for labels
+        padding = Coord(padding.x, padding.y + max_labels)
+        # construct grid pages
+        glyph_map = create_chart(
+            fonts,
+            glyphs_per_line=glyphs_per_line,
+            lines_per_page=lines_per_page,
+            direction=direction,
+            padding=padding,
+            codepoint_range=codepoint_range,
+            margin=(0, 0),
+            scale=(1, 1),
+        )
+        max_sheet, min_x, min_y, max_x, max_y = glyph_map.get_bounds()
+        font, *_ = fonts
 
         # assume A4
         # note mm is a constant defining number of points in a millimetre
@@ -78,19 +87,6 @@ if reportlab:
         # margins and title position
         title_y = (margin.y // 5)*mm
         margin_x, margin_y = margin.x*mm, margin.y*mm + title_y
-
-        # create extra padding space to allow for labels
-        padding = Coord(padding.x, padding.y + max_labels)
-
-        # construct grid pages
-        glyph_map = grid_map(
-            font,
-            columns=columns,
-            rows=rows,
-            direction=direction,
-            padding=padding,
-        )
-        max_sheet, min_x, min_y, max_x, max_y = glyph_map.get_bounds()
 
         # width and height of usable area, in points
         chart_width = page_x - 2*margin_x

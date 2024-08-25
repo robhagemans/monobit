@@ -97,6 +97,7 @@ def create_chart(
         scale,
         direction,
         codepoint_range,
+        lines_per_page=None,
     ):
     """Create chart glyph map of font."""
     font = ensure_single(fonts)
@@ -105,6 +106,7 @@ def create_chart(
     return grid_map(
         font,
         glyphs_per_line=glyphs_per_line,
+        lines_per_page=lines_per_page,
         margin=margin, padding=padding,
         direction=direction,
     )
@@ -130,9 +132,9 @@ def prepare_for_grid_map(font, glyphs_per_line, codepoint_range):
 def grid_map(
         font, *,
         # glyphs_per_line chooses rows/cols depending on render direction
-        # set either rows or columns to None or 0 to mean 'as many as needed'
+        # set to None or 0 to mean 'as many as needed'
         glyphs_per_line=None,
-        columns=None, rows=None,
+        lines_per_page=None,
         margin=(0, 0), padding=(0, 0),
         direction='left-to-right top-to-bottom',
         invert_y=False,
@@ -145,16 +147,11 @@ def grid_map(
     # work out image geometry
     step_x = font.raster_size.x + padding.x
     step_y = font.raster_size.y + padding.y
-    if glyphs_per_line:
-        if rows or columns:
-            raise ValueError(
-                'Either `glyphs_per_line` or (`rows`, `columns`) can be set, '
-                'but not both.'
-            )
-        if direction[:1].lower() in ('t', 'b'):
-            rows, columns = glyphs_per_line, None
-        else:
-            columns, rows = glyphs_per_line, None
+    if direction[:1].lower() in ('t', 'b'):
+        rows, columns = glyphs_per_line, lines_per_page
+    else:
+        columns, rows = glyphs_per_line, lines_per_page
+    # at most one of these may be None or 0
     rows = rows or ceildiv(len(font.glyphs), columns)
     columns = columns or ceildiv(len(font.glyphs), rows)
     glyphs_per_page = rows * columns
