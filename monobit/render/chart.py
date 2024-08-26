@@ -103,13 +103,22 @@ def create_chart(
     font = ensure_single(fonts)
     font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
     font = font.stretch(*scale)
-    return grid_map(
+    glyph_map = grid_map(
         font,
         glyphs_per_line=glyphs_per_line,
         lines_per_page=lines_per_page,
         margin=margin, padding=padding,
         direction=direction,
     )
+    for entry in glyph_map:
+        if entry.glyph.get_labels():
+            glyph_map.append_label(
+                entry.glyph.get_labels()[0],
+                entry.x,
+                entry.y + entry.glyph.height + 1,
+                entry.sheet,
+            )
+    return glyph_map
 
 
 def prepare_for_grid_map(font, glyphs_per_line, codepoint_range):
