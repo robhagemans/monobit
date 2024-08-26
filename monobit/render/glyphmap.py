@@ -190,9 +190,10 @@ class GlyphMap:
 class _Canvas:
     """Blittable raster for glyph maps."""
 
-    def __init__(self, pixels, levels=2):
+    def __init__(self, pixels, levels=2, labels=()):
         """Create raster from tuple of tuples of string."""
         self._pixels = pixels
+        self._labels = list(labels)
         self.height = len(pixels)
         self.width = 0 if not pixels else len(pixels[0])
         self.levels = levels
@@ -221,6 +222,10 @@ class _Canvas:
                         )
         return self
 
+    def write(self, text, x, y):
+        """Add a text label onto the canvas"""
+        self._labels.append((text, x, y))
+
     def as_text(
             self, *,
             inklevels=' @', border=None,
@@ -236,10 +241,20 @@ class _Canvas:
         colourdict = {-1: border} | {
             _i: _v for _i, _v in enumerate(inklevels)
         }
-        contents = '\n'.join(
-            ''.join(colourdict[_pix] for _pix in _row)
+        matrix = [
+            [colourdict[_pix] for _pix in _row]
             for _row in self._pixels
-        )
+        ]
+        # write out labels
+        for text, x, y in self._labels:
+            if y < 0 or y > self.height - 1:
+                continue
+            text = list(text)
+            if x + len(text) > self.width:
+                text = text[:self.width-x-len(text)]
+            matrix[self.height - y - 1][x : x+len(text)] = text
+        # join all text together
+        contents = '\n'.join(''.join(_row) for _row in matrix)
         return blockstr(''.join((start, contents, end)))
 
     def as_blocks(self, resolution=(2, 2)):
@@ -270,17 +285,33 @@ class _Canvas:
             [_col for _col in _row for _ in range(factor_x)]
             for _row in pixels
         ]
-        return type(self)(pixels, levels=self.levels)
+        # adjust labels
+        labels = [
+            (_text, _x*factor_x, _y*factor_y)
+            for _text, _x, _y in self._labels
+        ]
+        return type(self)(pixels, levels=self.levels, labels=labels)
 
     def flip(self):
         """Reverse pixels vertically."""
-        return type(self)(self._pixels[::-1], levels=self.levels)
+        # adjust labels
+        labels = [
+            (_text, _x, self.height-_y-1)
+            for _text, _x, _y in self._labels
+        ]
+        return type(self)(self._pixels[::-1], levels=self.levels, labels=labels)
 
     def transpose(self):
         """Transpose glyph."""
+        # adjust labels
+        labels = [
+            (_text, _y, _x)
+            for _text, _x, _y in self._labels
+        ]
         return type(self)(
             [list(_r) for _r in zip(*self._pixels)],
-            levels=self.levels
+            levels=self.levels,
+            labels=labels,
         )
 
     turn = turn_method
