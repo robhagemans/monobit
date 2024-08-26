@@ -66,6 +66,7 @@ class GlyphMap:
 
     def __init__(self, map=()):
         self._map = list(map)
+        self._labels = []
         self._turns = 0
         self._scale_x = 1
         self._scale_y = 1
@@ -89,6 +90,10 @@ class GlyphMap:
     def append_glyph(self, glyph, x, y, sheet=0):
         """Insert glyph in glyph map."""
         self._map.append(Props(glyph=glyph, x=x, y=y, sheet=sheet))
+
+    def append_label(self, text, x, y, sheet=0):
+        """Insert glyph in glyph map."""
+        self._labels.append(Props(text=text, x=x, y=y, sheet=sheet))
 
     def reorder(self, mapping):
         """Rearrange glyphs through index mapping."""
@@ -117,6 +122,9 @@ class GlyphMap:
         for entry in self._map:
             if entry.sheet == sheet:
                 canvas.blit(entry.glyph, entry.x - min_x, entry.y - min_y)
+        for entry in self._labels:
+            if entry.sheet == sheet:
+                canvas.write(entry.text, entry.x - min_x, entry.y - min_y)
         return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
     def to_images(
