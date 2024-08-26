@@ -98,8 +98,8 @@ BLOCKS[(1, 4)] = {
 }
 
 
-def matrix_to_blocks(matrix, ncols, nrows, levels):
-    """Convert bit matrix to a string of block characters."""
+def matrix_to_blockmatrix(matrix, ncols, nrows, levels):
+    """Convert bit matrix to a matrix of block characters."""
     if levels > 2:
         if (ncols, nrows) != (1, 1):
             raise ValueError(
@@ -127,10 +127,17 @@ def matrix_to_blocks(matrix, ncols, nrows, levels):
             *(matrix[_ofs::nrows] for _ofs in range(nrows)), fillvalue=()
         )
     )
-    blocks = '\n'.join(
-        ''.join(blockdict[_bitblock] for _bitblock in _row)
+    block_matrix = [
+        [blockdict[_bitblock] for _bitblock in _row]
         for _row in bitblockrows
-    )
+    ]
+    return block_matrix
+
+
+def matrix_to_blocks(matrix, ncols, nrows, levels):
+    """Convert bit matrix to a string of block characters."""
+    block_matrix = matrix_to_blockmatrix(matrix, ncols, nrows, levels)
+    blocks = '\n'.join(''.join(_row) for _row in block_matrix)
     return blockstr(blocks + '\n')
 
 

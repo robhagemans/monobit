@@ -111,6 +111,7 @@ def create_chart(
         direction=direction,
     )
     for entry in glyph_map:
+        # FIXME alignment, label formatting; adjust padding
         if entry.glyph.get_labels():
             glyph_map.append_label(
                 entry.glyph.get_labels()[0],

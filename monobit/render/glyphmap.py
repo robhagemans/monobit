@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base.blocks import matrix_to_blocks, blockstr
+from monobit.base.blocks import matrix_to_blockmatrix, blockstr
 from ..base import Props, Coord
 from ..core.raster import turn_method
 from ..plumbing import convert_arguments
@@ -234,6 +234,21 @@ class _Canvas:
         """Add a text label onto the canvas"""
         self._labels.append((text, x, y))
 
+    def _write_labels_to_matrix(self, matrix, resolution=Coord(1, 1)):
+        """Write labels to text or blocks matrix."""
+        if not matrix:
+            return
+        for text, x, y in self._labels:
+            x //= resolution.x
+            y //= resolution.y
+            if y < 0 or y > len(matrix) - 1:
+                continue
+            width = len(matrix[0])
+            text = list(text)
+            if x + len(text) > self.width:
+                text = text[:self.width-x-len(text)]
+            matrix[len(matrix) - y - 1][x : x+len(text)] = text
+
     def as_text(
             self, *,
             inklevels=' @', border=None,
@@ -254,18 +269,12 @@ class _Canvas:
             for _row in self._pixels
         ]
         # write out labels
-        for text, x, y in self._labels:
-            if y < 0 or y > self.height - 1:
-                continue
-            text = list(text)
-            if x + len(text) > self.width:
-                text = text[:self.width-x-len(text)]
-            matrix[self.height - y - 1][x : x+len(text)] = text
+        self._write_labels_to_matrix(matrix)
         # join all text together
         contents = '\n'.join(''.join(_row) for _row in matrix)
         return blockstr(''.join((start, contents, end)))
 
-    def as_blocks(self, resolution=(2, 2)):
+    def as_blocks(self, resolution=Coord(2, 2)):
         """Convert glyph to a string of block characters."""
         if not self.height:
             return ''
@@ -277,7 +286,13 @@ class _Canvas:
             )
             for _row in self._pixels
         )
-        return matrix_to_blocks(pixels, *resolution, levels=self.levels)
+        block_matrix = matrix_to_blockmatrix(
+            pixels, *resolution, levels=self.levels
+        )
+        # write out labels
+        self._write_labels_to_matrix(block_matrix, resolution=resolution)
+        blocks = '\n'.join(''.join(_row) for _row in block_matrix)
+        return blockstr(blocks + '\n')
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
