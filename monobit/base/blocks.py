@@ -152,4 +152,4 @@ def _matrix_to_blocks_greyscale(matrix, levels):
 def _get_block(value, levels):
     """Get block at given grey level."""
     shade = value * 255 // (levels-1)
-    return f'\x1b[38;2;{shade};{shade};{shade}m\u2588'
+    return f'\x1b[38;2;{shade};{shade};{shade}m\u2588\x1b[0m'
