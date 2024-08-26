@@ -185,9 +185,9 @@ class GlyphMap:
         )
 
     @convert_arguments
-    def as_blocks(self, resolution:Coord=(2, 2)):
+    def as_blocks(self, resolution:Coord=(2, 2), sheet=0):
         """Convert glyph map to a string of quadrant block characters."""
-        canvas = self.to_canvas(sheet=0)
+        canvas = self.to_canvas(sheet=sheet)
         return canvas.as_blocks(resolution)
 
     def get_sheet(self, sheet=0):
