@@ -111,7 +111,8 @@ def create_chart(
     ):
     """Create chart glyph map of font."""
     font = ensure_single(fonts)
-    font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
+    font = font.equalise_horizontal()
+    font = grid_resample(font, glyphs_per_line, codepoint_range)
     font = font.stretch(*scale)
     # create extra padding space to allow for labels
     if max_labels:
@@ -167,9 +168,8 @@ def format_label(label):
 ###############################################################################
 # grid functions
 
-def prepare_for_grid_map(font, glyphs_per_line, codepoint_range):
-    """Resample and equalise font for grid representation."""
-    font = font.equalise_horizontal()
+def grid_resample(font, glyphs_per_line, codepoint_range):
+    """Resample font for grid representation."""
     if not codepoint_range:
         try:
             codepoint_range = range(
@@ -216,7 +216,7 @@ def grid_map(
         for _s in range(0, len(font.glyphs), glyphs_per_page)
     )
     # horizontal alignment (left or right)
-    # note that prepare_for_grid_map has equalised glyphs to the same height
+    # note that we have equalised glyphs to the same height
     # so vertical alignment is not needed
     right_align = aligns_right(direction)
     # output glyph maps

@@ -99,7 +99,7 @@ if reportlab:
                 xpix = xpix_aspect
 
         # horizontal alignment
-        # note that prepare_for_grid_map has equalised glyphs horizontally
+        # note that create_chart has equalised glyphs horizontally
         direction = direction or font.direction
         right_align = aligns_right(direction)
 
