@@ -158,10 +158,10 @@ def aligns_right(direction):
 def format_label(label):
     """Format glyph label for charts."""
     if isinstance(label, Char):
-        if is_printable(label.value):
-            return f'u+{ord(label):04x} {label.value}'
-        else:
-            return f'u+{ord(label):04x}'
+        ucstr = ', '.join(f'u+{ord(_uc):04x}' for _uc in label.value)
+        if all(is_printable(_uc) for _uc in label.value):
+            return f'{ucstr} {label.value}'
+        return ucstr
     return str(label)
 
 
