@@ -112,7 +112,8 @@ def create_chart(
     font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
     font = font.stretch(*scale)
     # create extra padding space to allow for labels
-    padding = Coord(padding.x, padding.y + max_labels)
+    padding = Coord(padding.x, padding.y + max_labels + 1)
+    margin = Coord(margin.x, margin.y + max_labels + 1)
     glyph_map = grid_map(
         font,
         glyphs_per_line=glyphs_per_line,
