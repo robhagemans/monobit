@@ -92,6 +92,7 @@ def save_blocks(
         direction=direction,
         codepoint_range=codepoint_range,
         max_labels=max_labels,
+        label_height=resolution.y,
     )
     outstream.text.write(glyph_map.as_blocks(resolution=resolution))
 
@@ -106,14 +107,19 @@ def create_chart(
         codepoint_range,
         lines_per_page=None,
         max_labels=0,
+        label_height=1,
     ):
     """Create chart glyph map of font."""
     font = ensure_single(fonts)
     font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
     font = font.stretch(*scale)
     # create extra padding space to allow for labels
-    padding = Coord(padding.x, padding.y + max_labels + 1)
-    margin = Coord(margin.x, margin.y + max_labels + 1)
+    if max_labels:
+        label_padding = (max_labels+1) * label_height
+    else:
+        label_padding = 0
+    padding = Coord(padding.x, padding.y + label_padding)
+    margin = Coord(margin.x, margin.y + label_padding)
     glyph_map = grid_map(
         font,
         glyphs_per_line=glyphs_per_line,
@@ -129,7 +135,7 @@ def create_chart(
             glyph_map.append_label(
                 format_label(label),
                 entry.x,
-                entry.y + entry.glyph.height + count + 1,
+                label_height * (ceildiv(entry.y + entry.glyph.height, label_height) + (count + 1)),
                 entry.sheet,
             )
     return glyph_map
