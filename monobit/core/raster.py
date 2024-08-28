@@ -14,7 +14,7 @@ from monobit.base.binary import (
     ceildiv, reverse_by_group, INKLEVELS, bytes_to_pixels,
 )
 from monobit.base import Bounds, Coord, NOT_SET
-from monobit.base.blocks import matrix_to_blocks, blockstr
+from monobit.base.blocks import matrix_to_blockmatrix, blockstr
 
 
 # turn function for Raster, Glyph and Font
@@ -475,7 +475,10 @@ class Raster:
         if not self.height:
             return ''
         matrix = self._as_iter()
-        return matrix_to_blocks(matrix, *resolution, levels=self._levels)
+        block_matrix = matrix_to_blockmatrix(matrix, *resolution, levels=self._levels)
+        blocks = '\n'.join(''.join(_row) for _row in block_matrix)
+        return blockstr(blocks + '\n')
+
 
     ##########################################################################
 

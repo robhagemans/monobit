@@ -134,13 +134,6 @@ def matrix_to_blockmatrix(matrix, ncols, nrows, levels):
     return block_matrix
 
 
-def matrix_to_blocks(matrix, ncols, nrows, levels):
-    """Convert bit matrix to a string of block characters."""
-    block_matrix = matrix_to_blockmatrix(matrix, ncols, nrows, levels)
-    blocks = '\n'.join(''.join(_row) for _row in block_matrix)
-    return blockstr(blocks + '\n')
-
-
 def _matrix_to_blocks_greyscale(matrix, levels):
     """Convert bit matrix to a string of block characters."""
     return [
