@@ -194,6 +194,10 @@ class GlyphMap:
         """Return glyph records for a given sheet."""
         return tuple(_e for _e in self._map if _e.sheet == sheet)
 
+    def get_sheet_labels(self, sheet=0):
+        """Return labels for a given sheet."""
+        return tuple(_e for _e in self._labels if _e.sheet == sheet)
+
 
 class _Canvas:
     """Blittable raster for glyph maps."""

@@ -18,7 +18,7 @@ from monobit.base import Coord
 from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
-from .chart import create_chart, format_label
+from .chart import create_chart, aligns_right
 
 
 if reportlab:
@@ -54,8 +54,6 @@ if reportlab:
         title: title template, using font properties (default: '{name}')
         fill_page: fill out usable space, ignoring pixel aspect ratio (default: False)
         """
-        # create extra padding space to allow for labels
-        padding = Coord(padding.x, padding.y + max_labels)
         # construct grid pages
         glyph_map = create_chart(
             fonts,
@@ -64,8 +62,9 @@ if reportlab:
             direction=direction,
             padding=padding,
             codepoint_range=codepoint_range,
-            margin=(0, 0),
-            scale=(1, 1),
+            margin=Coord(0, 0),
+            scale=Coord(1, 1),
+            max_labels=max_labels,
         )
         max_sheet, min_x, min_y, max_x, max_y = glyph_map.get_bounds()
         font, *_ = fonts
@@ -102,8 +101,7 @@ if reportlab:
         # horizontal alignment
         # note that prepare_for_grid_map has equalised glyphs horizontally
         direction = direction or font.direction
-        dir_0, _, dir_1 = direction.partition(' ')
-        right_align = dir_0[:1] == 'r' or dir_1[:1] == 'r'
+        right_align = aligns_right(direction)
 
         canvas = Canvas(outstream)
         # draw title on first page
@@ -133,22 +131,6 @@ if reportlab:
 
             # output glyph grid
             for record in glyph_map.get_sheet(sheet):
-                # draw label
-                for count, label in enumerate(record.glyph.get_labels()):
-                    if count >= max_labels:
-                        break
-                    if right_align:
-                        canvas.drawRightString(
-                            (record.x + font.raster_size.x) * xpix,
-                            (record.y + font.raster_size.y + count + 1) * ypix,
-                            format_label(label)
-                        )
-                    else:
-                        canvas.drawString(
-                            record.x * xpix,
-                            (record.y + font.raster_size.y + count + 1) * ypix,
-                            format_label(label)
-                        )
                 # draw glyph
                 pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
@@ -162,5 +144,11 @@ if reportlab:
                             fill=bool(pixels[y][x])
                         )
                         canvas.setFillColorRGB(0, 0, 0)
+            for label in glyph_map.get_sheet_labels(sheet):
+                # draw label
+                if label.right_align:
+                    canvas.drawRightString(label.x*xpix, label.y*ypix, label.text)
+                else:
+                    canvas.drawString(label.x*xpix, label.y*ypix, label.text)
             canvas.showPage()
         canvas.save()
