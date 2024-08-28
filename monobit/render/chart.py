@@ -8,11 +8,12 @@ licence: https://opensource.org/licenses/MIT
 from itertools import product
 from pathlib import Path
 
-from ..base.binary import ceildiv
-from ..base import Props, Coord
-from ..core import Codepoint, Glyph
-from ..storage import savers
-from ..plumbing import scriptable
+from monobit.base.binary import ceildiv
+from monobit.base import Props, Coord
+from monobit.core import Codepoint, Glyph, Char
+from monobit.storage import savers
+from monobit.plumbing import scriptable
+from monobit.encoding.unicode import is_printable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
 
@@ -21,13 +22,14 @@ from .glyphmap import GlyphMap
 def save_chart(
         fonts, outstream, *,
         glyphs_per_line:int=16,
-        margin:Coord=(0, 0),
-        padding:Coord=(1, 1),
+        margin:Coord=Coord(0, 0),
+        padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
         border:str=' ',
         inklevels:tuple[str]=(' ', '@'),
         codepoint_range:tuple[Codepoint]=None,
+        max_labels:int=1,
     ):
     """
     Export font to text- or image-based chart.
@@ -40,6 +42,7 @@ def save_chart(
     border: character to use for border pixels (default: space)
     inklevels: characters to use for pixels (default: space, '2')
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+    max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
         fonts,
@@ -49,6 +52,7 @@ def save_chart(
         scale=scale,
         direction=direction,
         codepoint_range=codepoint_range,
+        max_labels=max_labels,
     )
     outstream.text.write(
         glyph_map.as_text(border=border, inklevels=inklevels)
@@ -59,12 +63,13 @@ def save_chart(
 def save_blocks(
         fonts, outstream, *,
         glyphs_per_line:int=16,
-        margin:Coord=(0, 0),
-        padding:Coord=(1, 1),
+        margin:Coord=Coord(0, 0),
+        padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
         resolution:Coord=Coord(1, 1),
         codepoint_range:tuple[Codepoint]=None,
+        max_labels:int=1,
     ):
     """
     Export font to text- or image-based chart.
@@ -76,6 +81,7 @@ def save_blocks(
     direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
     resolution: blocks per text character; 1x1 (default), 1x2, 1x3, 1x4, 2x1, 2x3, 2x4
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+    max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
         fonts,
@@ -85,6 +91,7 @@ def save_blocks(
         scale=scale,
         direction=direction,
         codepoint_range=codepoint_range,
+        max_labels=max_labels,
     )
     outstream.text.write(glyph_map.as_blocks(resolution=resolution))
 
@@ -98,11 +105,14 @@ def create_chart(
         direction,
         codepoint_range,
         lines_per_page=None,
+        max_labels=0,
     ):
     """Create chart glyph map of font."""
     font = ensure_single(fonts)
     font = prepare_for_grid_map(font, glyphs_per_line, codepoint_range)
     font = font.stretch(*scale)
+    # create extra padding space to allow for labels
+    padding = Coord(padding.x, padding.y + max_labels)
     glyph_map = grid_map(
         font,
         glyphs_per_line=glyphs_per_line,
@@ -111,16 +121,31 @@ def create_chart(
         direction=direction,
     )
     for entry in glyph_map:
-        # FIXME alignment, label formatting; adjust padding
-        if entry.glyph.get_labels():
+        for count, label in enumerate(entry.glyph.get_labels()):
+            if count >= max_labels:
+                break
+            # TODO alignment
             glyph_map.append_label(
-                entry.glyph.get_labels()[0],
+                format_label(label),
                 entry.x,
-                entry.y + entry.glyph.height + 1,
+                entry.y + entry.glyph.height + count + 1,
                 entry.sheet,
             )
     return glyph_map
 
+
+def format_label(label):
+    """Format glyph label for charts."""
+    if isinstance(label, Char):
+        if is_printable(label.value):
+            return f'u+{ord(label):04x} {label.value}'
+        else:
+            return f'u+{ord(label):04x}'
+    return str(label)
+
+
+###############################################################################
+# grid functions
 
 def prepare_for_grid_map(font, glyphs_per_line, codepoint_range):
     """Resample and equalise font for grid representation."""

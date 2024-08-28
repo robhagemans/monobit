@@ -16,19 +16,9 @@ if reportlab:
 from monobit.storage import savers
 from monobit.base import Coord
 from monobit.base.binary import ceildiv
-from monobit.core import Font, Codepoint, Char, Tag
-from monobit.encoding.unicode import is_printable
+from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
-from .chart import create_chart
-
-
-def _format_label(label):
-    if isinstance(label, Char):
-        if is_printable(label.value):
-            return f'u+{ord(label):04x} {label.value}'
-        else:
-            return f'u+{ord(label):04x}'
-    return str(label)
+from .chart import create_chart, format_label
 
 
 if reportlab:
@@ -151,13 +141,13 @@ if reportlab:
                         canvas.drawRightString(
                             (record.x + font.raster_size.x) * xpix,
                             (record.y + font.raster_size.y + count + 1) * ypix,
-                            _format_label(label)
+                            format_label(label)
                         )
                     else:
                         canvas.drawString(
                             record.x * xpix,
                             (record.y + font.raster_size.y + count + 1) * ypix,
-                            _format_label(label)
+                            format_label(label)
                         )
                 # draw glyph
                 pixels = record.glyph.as_matrix()
