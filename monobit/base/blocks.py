@@ -98,7 +98,7 @@ BLOCKS[(1, 4)] = {
 }
 
 
-def matrix_to_blockmatrix(matrix, ncols, nrows, levels):
+def matrix_to_blocks(matrix, ncols, nrows, levels):
     """Convert bit matrix to a matrix of block characters."""
     if levels > 2:
         if (ncols, nrows) != (1, 1):
@@ -106,7 +106,7 @@ def matrix_to_blockmatrix(matrix, ncols, nrows, levels):
                 f'Unsupported block resolution: {ncols}x{nrows} '
                 f'at {levels} grey levels'
             )
-        return _matrix_to_blocks_greyscale(matrix, levels)
+        return matrix_to_shades(matrix, levels)
     try:
         blockdict = BLOCKS[(ncols, nrows)]
     except KeyError:
@@ -134,7 +134,7 @@ def matrix_to_blockmatrix(matrix, ncols, nrows, levels):
     return block_matrix
 
 
-def _matrix_to_blocks_greyscale(matrix, levels):
+def matrix_to_shades(matrix, levels):
     """Convert bit matrix to a string of block characters."""
     return [
         [_get_block(_bitblock, levels) for _bitblock in _row]

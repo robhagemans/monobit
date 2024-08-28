@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base.blocks import matrix_to_blockmatrix, blockstr
+from monobit.base.blocks import matrix_to_blocks, blockstr
 from ..base import Props, Coord
 from ..core.raster import turn_method
 from ..plumbing import convert_arguments
@@ -295,9 +295,7 @@ class _Canvas:
             )
             for _row in self._pixels
         )
-        block_matrix = matrix_to_blockmatrix(
-            pixels, *resolution, levels=self.levels
-        )
+        block_matrix = matrix_to_blocks(pixels, *resolution, levels=self.levels)
         # write out labels
         self._write_labels_to_matrix(block_matrix, resolution=resolution)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
