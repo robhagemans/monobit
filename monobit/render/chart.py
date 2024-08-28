@@ -72,7 +72,7 @@ def save_blocks(
         direction:str=None,
         resolution:Coord=Coord(1, 1),
         codepoint_range:tuple[Codepoint]=None,
-        grid_poitioning:bool=False,
+        grid_positioning:bool=False,
         max_labels:int=1,
     ):
     """

@@ -357,6 +357,7 @@ if Image:
             paper:RGB=RGB(0, 0, 0),
             ink:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
+            grid_positioning:bool=True,
         ):
         """
         Export font to grid-based image.
@@ -371,6 +372,7 @@ if Image:
         ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
         """
         glyph_map = create_chart(
             fonts,
@@ -380,6 +382,7 @@ if Image:
             scale=scale,
             direction=direction,
             codepoint_range=codepoint_range,
+            grid_positioning=grid_positioning,
         )
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink, transparent=False
