@@ -91,9 +91,9 @@ class GlyphMap:
         """Insert glyph in glyph map."""
         self._map.append(Props(glyph=glyph, x=x, y=y, sheet=sheet))
 
-    def append_label(self, text, x, y, sheet=0):
+    def append_label(self, text, x, y, *, sheet=0, right_align=False):
         """Insert glyph in glyph map."""
-        self._labels.append(Props(text=text, x=x, y=y, sheet=sheet))
+        self._labels.append(Props(text=text, x=x, y=y, sheet=sheet, right_align=right_align))
 
     def reorder(self, mapping):
         """Rearrange glyphs through index mapping."""
@@ -124,7 +124,7 @@ class GlyphMap:
                 canvas.blit(entry.glyph, entry.x - min_x, entry.y - min_y)
         for entry in self._labels:
             if entry.sheet == sheet:
-                canvas.write(entry.text, entry.x - min_x, entry.y - min_y)
+                canvas.write(entry.text, entry.x - min_x, entry.y - min_y, entry.right_align)
         return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
     def to_images(
@@ -230,24 +230,29 @@ class _Canvas:
                         )
         return self
 
-    def write(self, text, x, y):
+    def write(self, text, x, y, right_align=False):
         """Add a text label onto the canvas"""
-        self._labels.append((text, x, y))
+        self._labels.append((text, x, y, right_align))
 
     def _write_labels_to_matrix(self, matrix, resolution=Coord(1, 1)):
         """Write labels to text or blocks matrix."""
         if not matrix:
             return
-        for text, x, y in self._labels:
+        for text, x, y, right_align in self._labels:
             x //= resolution.x
             y //= resolution.y
             if y < 0 or y > len(matrix) - 1:
                 continue
             width = len(matrix[0])
             text = list(text)
-            if x + len(text) > self.width:
-                text = text[:self.width-x-len(text)]
-            matrix[len(matrix) - y - 1][x : x+len(text)] = text
+            if right_align:
+                if x - len(text) < 0:
+                    text = text[:-x+len(text)]
+                matrix[len(matrix) - y - 1][x-len(text) : x] = text
+            else:
+                if x + len(text) > self.width:
+                    text = text[:self.width-x-len(text)]
+                matrix[len(matrix) - y - 1][x : x+len(text)] = text
 
     def as_text(
             self, *,
@@ -310,8 +315,8 @@ class _Canvas:
         ]
         # adjust labels
         labels = [
-            (_text, _x*factor_x, _y*factor_y)
-            for _text, _x, _y in self._labels
+            (_text, _x*factor_x, _y*factor_y, _ralign)
+            for _text, _x, _y, _ralign in self._labels
         ]
         return type(self)(pixels, levels=self.levels, labels=labels)
 
@@ -319,8 +324,8 @@ class _Canvas:
         """Reverse pixels vertically."""
         # adjust labels
         labels = [
-            (_text, _x, self.height-_y-1)
-            for _text, _x, _y in self._labels
+            (_text, _x, self.height-_y-1, _ralign)
+            for _text, _x, _y, _ralign in self._labels
         ]
         return type(self)(self._pixels[::-1], levels=self.levels, labels=labels)
 
@@ -328,8 +333,8 @@ class _Canvas:
         """Transpose glyph."""
         # adjust labels
         labels = [
-            (_text, _y, _x)
-            for _text, _x, _y in self._labels
+            (_text, _y, _x, _ralign)
+            for _text, _x, _y, _ralign in self._labels
         ]
         return type(self)(
             [list(_r) for _r in zip(*self._pixels)],

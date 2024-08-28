@@ -127,18 +127,31 @@ def create_chart(
         margin=margin, padding=padding,
         direction=direction,
     )
+    right_align = aligns_right(direction)
     for entry in glyph_map:
         for count, label in enumerate(entry.glyph.get_labels()):
             if count >= max_labels:
                 break
-            # TODO alignment
+            if right_align:
+                x = entry.x + font.raster_size.x
+            else:
+                x = entry.x
             glyph_map.append_label(
                 format_label(label),
-                entry.x,
+                x,
                 label_height * (ceildiv(entry.y + entry.glyph.height, label_height) + (count + 1)),
-                entry.sheet,
+                sheet=entry.sheet,
+                right_align=right_align,
             )
     return glyph_map
+
+
+def aligns_right(direction):
+    """Determine if a given direction is right-aligning."""
+    if not direction:
+        return False
+    dir_0, _, dir_1 = direction.lower().partition(' ')
+    return dir_0[:1] == 'r' or dir_1[:1] == 'r'
 
 
 def format_label(label):
@@ -205,8 +218,7 @@ def grid_map(
     # horizontal alignment (left or right)
     # note that prepare_for_grid_map has equalised glyphs to the same height
     # so vertical alignment is not needed
-    dir_0, _, dir_1 = direction.partition(' ')
-    right_align = dir_0[:1] == 'r' or dir_1[:1] == 'r'
+    right_align = aligns_right(direction)
     # output glyph maps
     glyph_map = GlyphMap(
         Props(
