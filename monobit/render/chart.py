@@ -29,6 +29,7 @@ def save_chart(
         border:str=' ',
         inklevels:tuple[str]=(' ', '@'),
         codepoint_range:tuple[Codepoint]=None,
+        grid_positioning:bool=False,
         max_labels:int=1,
     ):
     """
@@ -42,6 +43,7 @@ def save_chart(
     border: character to use for border pixels (default: space)
     inklevels: characters to use for pixels (default: space, '2')
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
@@ -52,6 +54,7 @@ def save_chart(
         scale=scale,
         direction=direction,
         codepoint_range=codepoint_range,
+        grid_positioning=grid_positioning,
         max_labels=max_labels,
     )
     outstream.text.write(
@@ -69,6 +72,7 @@ def save_blocks(
         direction:str=None,
         resolution:Coord=Coord(1, 1),
         codepoint_range:tuple[Codepoint]=None,
+        grid_poitioning:bool=False,
         max_labels:int=1,
     ):
     """
@@ -80,7 +84,8 @@ def save_blocks(
     scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
     direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
     resolution: blocks per text character; 1x1 (default), 1x2, 1x3, 1x4, 2x1, 2x3, 2x4
-    codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+    codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
@@ -92,6 +97,7 @@ def save_blocks(
         direction=direction,
         codepoint_range=codepoint_range,
         max_labels=max_labels,
+        grid_positioning=grid_positioning,
         label_height=resolution.y,
     )
     outstream.text.write(glyph_map.as_blocks(resolution=resolution))
@@ -108,11 +114,15 @@ def create_chart(
         lines_per_page=None,
         max_labels=0,
         label_height=1,
+        grid_positioning=False,
     ):
     """Create chart glyph map of font."""
     font = ensure_single(fonts)
     font = font.equalise_horizontal()
-    font = grid_resample(font, glyphs_per_line, codepoint_range)
+    if grid_positioning:
+        font = grid_resample(font, glyphs_per_line, codepoint_range)
+    elif codepoint_range:
+        font = font.subset(codepoint_range)
     font = font.stretch(*scale)
     # create extra padding space to allow for labels
     if max_labels:

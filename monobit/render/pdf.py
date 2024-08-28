@@ -34,6 +34,7 @@ if reportlab:
             padding:Coord=Coord(3, 3),
             direction:str=None,
             codepoint_range:tuple[Codepoint]=None,
+            grid_positioning:bool=False,
             max_labels:int=1,
             page_size:Coord=Coord(210, 297),
             margin:Coord=Coord(25, 25),
@@ -48,6 +49,7 @@ if reportlab:
         padding: number of pixels in X,Y direction between glyphs (default: 3x3)
         direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
         max_labels: maximum number of labels to show per glyph (default: 1)
         page_size: page size X,Y in millimetres (default 210x297 for A4)
         margin: margin X,Y in millimetres (default 25x25)
@@ -62,6 +64,7 @@ if reportlab:
             direction=direction,
             padding=padding,
             codepoint_range=codepoint_range,
+            grid_positioning=grid_positioning,
             margin=Coord(0, 0),
             scale=Coord(1, 1),
             max_labels=max_labels,
