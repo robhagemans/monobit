@@ -133,7 +133,7 @@ def create_chart(
             if count >= max_labels:
                 break
             if right_align:
-                x = entry.x + font.raster_size.x
+                x = entry.x + entry.glyph.width
             else:
                 x = entry.x
             glyph_map.append_label(
