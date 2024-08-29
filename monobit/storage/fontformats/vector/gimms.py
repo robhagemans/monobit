@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.vector.gimms - GIMMS.BIN
+monobit.storage.fontformats.vector.gimms - GIMMS.BIN
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

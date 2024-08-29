@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.apple.dfont - MacOS suitcases and resources
+monobit.storage.fontformats.apple.dfont - MacOS suitcases and resources
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

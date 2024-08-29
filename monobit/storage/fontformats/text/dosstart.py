@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.dosstart - DosStart! format
+monobit.storage.fontformats.text.dosstart - DosStart! format
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

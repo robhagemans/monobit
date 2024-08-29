@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.xbin - XBIN font section
+monobit.storage.fontformats.raw.xbin - XBIN font section
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

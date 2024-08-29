@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.tarzip - tar and zip containers
+monobit.storage.containerformats.tarzip - tar and zip containers
 
 (c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

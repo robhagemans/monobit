@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.vfont - BSD/SunOS vfont format
+monobit.storage.fontformats.vfont - BSD/SunOS vfont format
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text - text-based font formats
+monobit.storage.fontformats.text - text-based font formats
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

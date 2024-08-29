@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.vector.borland - Borland Graphics Interface .CHR files
+monobit.storage.fontformats.vector.borland - Borland Graphics Interface .CHR files
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

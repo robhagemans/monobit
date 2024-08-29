@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.directory - directory traversal
+monobit.storage.containerformats.directory - directory traversal
 
 (c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

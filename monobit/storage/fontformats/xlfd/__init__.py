@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.xlfd - formats based on X Logical Font Description
+monobit.storage.fontformats.xlfd - formats based on X Logical Font Description
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

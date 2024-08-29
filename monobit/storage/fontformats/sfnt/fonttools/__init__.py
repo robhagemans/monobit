@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.sfnt.fonttools - fontTools interface and extensions
+monobit.storage.fontformats.sfnt.fonttools - fontTools interface and extensions
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

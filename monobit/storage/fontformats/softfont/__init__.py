@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.softfonr - terminal softfonts
+monobit.storage.fontformats.softfonr - terminal softfonts
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

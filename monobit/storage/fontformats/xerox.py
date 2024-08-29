@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.alto - Xerox Alto font formats
+monobit.storage.fontformats.alto - Xerox Alto font formats
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

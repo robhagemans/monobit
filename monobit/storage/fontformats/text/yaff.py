@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.yaff - monobit-yaff format
+monobit.storage.fontformats.text.yaff - monobit-yaff format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

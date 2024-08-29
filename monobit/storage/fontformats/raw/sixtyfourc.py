@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.sixtyfourc - .64C files
+monobit.storage.fontformats.raw.sixtyfourc - .64C files
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

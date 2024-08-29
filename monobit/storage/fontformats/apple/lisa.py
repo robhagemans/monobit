@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.apple.lisa - Apple Lisa fonts
+monobit.storage.fontformats.apple.lisa - Apple Lisa fonts
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

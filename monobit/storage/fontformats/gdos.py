@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.gdos - Atari GDOS/GEM format
+monobit.storage.fontformats.gdos - Atari GDOS/GEM format
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

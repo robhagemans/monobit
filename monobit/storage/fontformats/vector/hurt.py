@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.vector.hurt - read Hershey fonts in Jim Hurt's format
+monobit.storage.fontformats.vector.hurt - read Hershey fonts in Jim Hurt's format
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

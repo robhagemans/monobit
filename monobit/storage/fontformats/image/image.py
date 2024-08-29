@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.image.image - fonts stored in image files
+monobit.storage.fontformats.image.image - fonts stored in image files
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.pilfont - PILfont format
+monobit.storage.fontformats.pilfont - PILfont format
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

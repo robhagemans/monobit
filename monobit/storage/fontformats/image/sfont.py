@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.sfont - SDL SFont format
+monobit.storage.fontformats.sfont - SDL SFont format
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.signum - Signum! 2 editor and printer font formats
+monobit.storage.fontformats.signum - Signum! 2 editor and printer font formats
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

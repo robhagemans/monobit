@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.hex - Unifont Hex format
+monobit.storage.fontformats.text.hex - Unifont Hex format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

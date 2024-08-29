@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.plus3dos - +3DOS header
+monobit.storage.fontformats.raw.plus3dos - +3DOS header
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.consoleet - consoleet / vfontas / hxtools format
+monobit.storage.fontformats.text.consoleet - consoleet / vfontas / hxtools format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

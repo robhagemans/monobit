@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.optiks - OPTIKS PCR fonts
+monobit.storage.fontformats.raw.optiks - OPTIKS PCR fonts
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

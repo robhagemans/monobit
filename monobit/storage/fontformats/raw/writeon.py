@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.writeon - Hercules Write On!
+monobit.storage.fontformats.raw.writeon - Hercules Write On!
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

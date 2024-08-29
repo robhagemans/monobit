@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.uselibarchive - archive formats supported by libarchive
+monobit.storage.containerformats.uselibarchive - archive formats supported by libarchive
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

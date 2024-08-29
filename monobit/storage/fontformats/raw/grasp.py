@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.grasp - GRASP / PCPaint character-cell "old format"
+monobit.storage.fontformats.raw.grasp - GRASP / PCPaint character-cell "old format"
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.psf2txt - PSF2TXT format
+monobit.storage.fontformats.text.psf2txt - PSF2TXT format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.draw - hexdraw format
+monobit.storage.fontformats.text.draw - hexdraw format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

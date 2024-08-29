@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.fon.os2 - read OS/2 GPI bitmap fonts and LX containers
+monobit.storage.fontformats.fon.os2 - read OS/2 GPI bitmap fonts and LX containers
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

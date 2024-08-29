@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.riscos - Acorn RiscOS fonts
+monobit.storage.fontformats.riscos - Acorn RiscOS fonts
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.chiwriter - ChiWriter, GRASP, PCPaint, FONTRIX (for IBM)
+monobit.storage.fontformats.chiwriter - ChiWriter, GRASP, PCPaint, FONTRIX (for IBM)
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

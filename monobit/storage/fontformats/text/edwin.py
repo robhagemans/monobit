@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.edwin - EDWIN bitmap font format
+monobit.storage.fontformats.text.edwin - EDWIN bitmap font format
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.softfont.wyse - Wyse-60 soft font
+monobit.storage.fontformats.softfont.wyse - Wyse-60 soft font
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

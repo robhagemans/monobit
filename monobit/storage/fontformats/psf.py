@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.psf - PC Screen Font format
+monobit.storage.fontformats.psf - PC Screen Font format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

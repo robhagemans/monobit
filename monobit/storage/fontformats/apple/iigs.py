@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.apple.iigs - Apple IIgs font file
+monobit.storage.fontformats.apple.iigs - Apple IIgs font file
 
 (c) 2023 Kelvin Sherlock
 licence: https://opensource.org/licenses/MIT

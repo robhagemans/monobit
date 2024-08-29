@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.sfnt - TrueType/OpenType and related formats
+monobit.storage.fontformats.sfnt - TrueType/OpenType and related formats
 
 (c) 2022--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

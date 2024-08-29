@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.fon.fon - Windows and OS/2 FON files
+monobit.storage.fontformats.fon.fon - Windows and OS/2 FON files
 
 (c) 2019--2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

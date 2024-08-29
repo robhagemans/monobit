@@ -1,5 +1,5 @@
 f"""
-monobit.storage.formats.fontx - DOS/V FONTX2 format
+monobit.storage.fontformats.fontx - DOS/V FONTX2 format
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

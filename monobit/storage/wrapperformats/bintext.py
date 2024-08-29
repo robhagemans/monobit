@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.bintext - text-encoded binary formats
+monobit.storage.wrapperformats.bintext - text-encoded binary formats
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

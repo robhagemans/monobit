@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.pcl - HP PCL soft fonts
+monobit.storage.fontformats.pcl - HP PCL soft fonts
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

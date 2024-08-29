@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.raw - raw binary font files
+monobit.storage.fontformats.raw.raw - raw binary font files
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

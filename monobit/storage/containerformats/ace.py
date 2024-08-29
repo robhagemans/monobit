@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.ace - ace aechive reader
+monobit.storage.containerformats.ace - ace aechive reader
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

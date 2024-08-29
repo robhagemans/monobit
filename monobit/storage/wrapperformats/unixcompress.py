@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.unixcompress - compress (.Z) encoding
+monobit.storage.wrapperformats.unixcompress - compress (.Z) encoding
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

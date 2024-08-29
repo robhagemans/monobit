@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.yencode - yEncode format
+monobit.storage.containerformats.yencode - yEncode format
 
 (c) 2024 Rob Hagemans
 

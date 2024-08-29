@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.prebuilt - Adobe BE/LE Prebuilt Format
+monobit.storage.fontformats.prebuilt - Adobe BE/LE Prebuilt Format
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

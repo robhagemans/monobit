@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.fon.os2.ne - read OS/2 NE containers
+monobit.storage.fontformats.fon.os2.ne - read OS/2 NE containers
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.pkfont - TeX packed font font files
+monobit.storage.fontformats.pkfont - TeX packed font font files
 
 (c) 2023 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

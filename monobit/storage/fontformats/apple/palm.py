@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.apple.palm - Palm OS databases and NFNT font resources
+monobit.storage.fontformats.apple.palm - Palm OS databases and NFNT font resources
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.dashen - Dashen font
+monobit.storage.fontformats.dashen - Dashen font
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

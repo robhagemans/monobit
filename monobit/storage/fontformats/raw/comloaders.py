@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.comloaders - executable font loaders
+monobit.storage.fontformats.raw.comloaders - executable font loaders
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

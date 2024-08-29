@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.amiga - Amiga font format
+monobit.storage.fontformats.amiga - Amiga font format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.beos - BeOS Bitmap Font
+monobit.storage.fontformats.beos - BeOS Bitmap Font
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

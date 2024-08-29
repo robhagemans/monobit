@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.binhex - BinHex containers
+monobit.storage.containerformats.binhex - BinHex containers
 
 (c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.drhalo - Dr. Halo / Dr. Genius font files
+monobit.storage.fontformats.raw.drhalo - Dr. Halo / Dr. Genius font files
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

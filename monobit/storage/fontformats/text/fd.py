@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.fd - mkwinfont .fd format
+monobit.storage.fontformats.text.fd - mkwinfont .fd format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
