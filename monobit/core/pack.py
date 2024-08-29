@@ -1,7 +1,7 @@
 """
 monobit.core.pack - collection of fonts
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

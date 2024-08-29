@@ -1,7 +1,7 @@
 """
 monobit.base.blocks - output pixels as text using block elements
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

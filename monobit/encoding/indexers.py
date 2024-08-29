@@ -1,7 +1,7 @@
 """
 monobit.encoding.indexers - codepoint indexers
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

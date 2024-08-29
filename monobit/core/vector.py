@@ -1,7 +1,7 @@
 """
 monobit.core.vector - single-stroke vector font support
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

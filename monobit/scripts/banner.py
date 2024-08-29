@@ -1,6 +1,6 @@
 """
 Print a banner using a bitmap font
-(c) 2019--2023 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+(c) 2019--2024 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
 
