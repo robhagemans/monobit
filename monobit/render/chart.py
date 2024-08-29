@@ -33,7 +33,7 @@ def save_chart(
         max_labels:int=1,
     ):
     """
-    Export font to text- or image-based chart.
+    Export font to text chart.
 
     glyphs_per_line: number of glyphs per line in glyph chart (default: 16)
     margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
@@ -76,7 +76,7 @@ def save_blocks(
         max_labels:int=1,
     ):
     """
-    Export font to text- or image-based chart.
+    Export font to blocks chart.
 
     glyphs_per_line: number of glyphs per line in glyph chart (default: 16)
     margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
@@ -101,6 +101,45 @@ def save_blocks(
         label_height=resolution.y,
     )
     outstream.text.write(glyph_map.as_blocks(resolution=resolution))
+
+
+@savers.register(name='shades')
+def save_shades(
+        fonts, outstream, *,
+        glyphs_per_line:int=16,
+        margin:Coord=Coord(0, 0),
+        padding:Coord=Coord(1, 1),
+        scale:Coord=Coord(1, 1),
+        direction:str=None,
+        codepoint_range:tuple[Codepoint]=None,
+        grid_positioning:bool=False,
+        max_labels:int=1,
+    ):
+    """
+    Export font to ansi-coloured blocks chart.
+
+    glyphs_per_line: number of glyphs per line in glyph chart (default: 16)
+    margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
+    padding: number of pixels in X,Y direction between glyphs (default: 1x1)
+    scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+    direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
+    codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    max_labels: maximum number of labels to show per glyph (default: 1)
+    """
+    glyph_map = create_chart(
+        fonts,
+        glyphs_per_line=glyphs_per_line,
+        margin=margin,
+        padding=padding,
+        scale=scale,
+        direction=direction,
+        codepoint_range=codepoint_range,
+        max_labels=max_labels,
+        grid_positioning=grid_positioning,
+    )
+    outstream.text.write(glyph_map.as_shades())
+
 
 
 def create_chart(

@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base.blocks import matrix_to_blocks, blockstr
+from monobit.base.blocks import matrix_to_blocks, matrix_to_shades, blockstr
 from ..base import Props, Coord
 from ..core.raster import turn_method
 from ..plumbing import convert_arguments
@@ -190,6 +190,11 @@ class GlyphMap:
         canvas = self.to_canvas(sheet=sheet)
         return canvas.as_blocks(resolution)
 
+    def as_shades(self, sheet=0):
+        """Convert glyph map to ansi coloured block characters."""
+        canvas = self.to_canvas(sheet=sheet)
+        return canvas.as_shades()
+
     def get_sheet(self, sheet=0):
         """Return glyph records for a given sheet."""
         return tuple(_e for _e in self._map if _e.sheet == sheet)
@@ -263,7 +268,7 @@ class _Canvas:
             inklevels=' @', border=None,
             start='', end='\n'
         ):
-        """Convert raster to text."""
+        """Convert glyph map to text."""
         if not self.height:
             return ''
         if self.levels > len(inklevels):
@@ -284,7 +289,7 @@ class _Canvas:
         return blockstr(''.join((start, contents, end)))
 
     def as_blocks(self, resolution=Coord(2, 2)):
-        """Convert glyph to a string of block characters."""
+        """Convert glyph map to a string of block characters."""
         if not self.height:
             return ''
         # replace background with paper
@@ -296,8 +301,16 @@ class _Canvas:
             for _row in self._pixels
         )
         block_matrix = matrix_to_blocks(pixels, *resolution, levels=self.levels)
-        # write out labels
         self._write_labels_to_matrix(block_matrix, resolution=resolution)
+        blocks = '\n'.join(''.join(_row) for _row in block_matrix)
+        return blockstr(blocks + '\n')
+
+    def as_shades(self):
+        """Convert glyph map to a string of block characters with ansi colours."""
+        if not self.height:
+            return ''
+        block_matrix = matrix_to_shades(self._pixels, levels=self.levels)
+        self._write_labels_to_matrix(block_matrix)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')
 

@@ -137,12 +137,15 @@ def matrix_to_blocks(matrix, ncols, nrows, levels):
 def matrix_to_shades(matrix, levels):
     """Convert bit matrix to a string of block characters."""
     return [
-        [_get_block(_bitblock, levels) for _bitblock in _row]
+        [_get_shade(_bitblock, levels) for _bitblock in _row]
         for _row in matrix
     ]
 
 
-def _get_block(value, levels):
+def _get_shade(value, levels):
     """Get block at given grey level."""
+    if value < 0:
+        # border colour
+        return f'\x1b[0m '
     shade = value * 255 // (levels-1)
     return f'\x1b[38;2;{shade};{shade};{shade}m\u2588\x1b[0m'
