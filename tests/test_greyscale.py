@@ -44,7 +44,7 @@ class TestGreyscale(BaseTester):
             text = 'te'
         else:
             text = b'te'
-        rendered_text = monobit.render(font2, text).as_blocks((1, 1))
+        rendered_text = monobit.render(font2, text).as_shades(border=(0,0,0))
         assert_text_eq(ascii(rendered_text), self.sampletext)
 
     def test_yaff_greyscale(self):

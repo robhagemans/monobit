@@ -262,10 +262,10 @@ levels: 4
     .12@
 """
 
-    def test_render_blocks_4shades(self):
-        """Render 1x1 blocks format, 4 ink levels"""
+    def test_render_4shades(self):
+        """Render 1x1 shaded blocks format, 4 ink levels"""
         font, *_ = monobit.load(get_stringio(self.shades_4))
-        text = monobit.render(font, '-').as_blocks((1, 1))
+        text = monobit.render(font, '-').as_shades(border=(0,0,0))
         assert_text_eq(text,
             '\x1b[38;2;0;0;0m\u2588\x1b[0m'
             '\x1b[38;2;85;85;85m\u2588\x1b[0m'
@@ -280,10 +280,10 @@ levels: 16
     .123456789ABCDE@
 """
 
-    def test_render_blocks_16shades(self):
-        """Render 1x1 blocks format, 16 ink levels"""
+    def test_render_16shades(self):
+        """Render 1x1 shaded blocks format, 16 ink levels"""
         font, *_ = monobit.load(get_stringio(self.shades_16))
-        text = monobit.render(font, '-').as_blocks((1, 1))
+        text = monobit.render(font, '-').as_shades(border=(0,0,0))
         assert_text_eq(text,
             '\x1b[38;2;0;0;0m\u2588\x1b[0m'
             '\x1b[38;2;17;17;17m\u2588\x1b[0m'
@@ -311,10 +311,10 @@ levels: 256
 """.format(''.join(f'{_x:02X}' for _x in range(1, 255)))
 
 
-    def test_render_blocks_256shades(self):
-        """Render 1x1 blocks format, 16 ink levels"""
+    def test_render_256shades(self):
+        """Render 1x1 shaded blocks format, 256 ink levels"""
         font, *_ = monobit.load(get_stringio(self.shades_256))
-        text = monobit.render(font, '-').as_blocks((1, 1))
+        text = monobit.render(font, '-').as_shades(border=(0,0,0))
         assert_text_eq(text,
             ''.join(
                 f'\x1b[38;2;{_s};{_s};{_s}m\u2588\x1b[0m'
