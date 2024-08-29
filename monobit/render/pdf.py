@@ -51,7 +51,7 @@ if reportlab:
         lines_per_page: number of lines in secondary direction (default: 16)
         padding: number of pixels in X,Y direction between glyphs (default: 3x3)
         direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
-        pixel_border: colour of lines around pixel squares R,G,B, 0--255 (default: 127,127,127)
+        pixel_border: colour of lines around pixel squares R,G,B, 0--255. use -1,-1,-1 for no border (default: 127,127,127)
         paper: background colour R,G,B 0--255 (default: 255,255,255)
         ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
@@ -79,7 +79,7 @@ if reportlab:
         font, *_ = fonts
 
         # assume A4
-        # note mm is a constant defining number of points in a millimetre
+        # note mm is a )constant defining number of points in a millimetre
         # 1 point = 1/72 in
         page_x, page_y = page_size.x*mm, page_size.y*mm
         # margins and title position
@@ -143,13 +143,16 @@ if reportlab:
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
                         fill = pixels[y][x] / (font.levels-1)
-                        canvas.setStrokeColorRGB(*(
-                            _c / 255 for _c in pixel_border
-                        ))
-                        canvas.setFillColorRGB(*(
+                        fill_rgb = tuple(
                             _i * fill/255 + _p * (1-fill)/255
                             for _i, _p in zip(ink, paper)
-                        ))
+                        )
+                        if all(_c > 0 for _c in pixel_border):
+                            stroke_rgb = tuple(_c / 255 for _c in pixel_border)
+                        else:
+                            stroke_rgb = fill_rgb
+                        canvas.setStrokeColorRGB(*stroke_rgb)
+                        canvas.setFillColorRGB(*fill_rgb)
                         canvas.rect(
                             (record.x + x) * xpix,
                             (record.y + record.glyph.height - y - 1) * ypix,
