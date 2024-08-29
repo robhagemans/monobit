@@ -161,6 +161,10 @@ class Location:
         self.resolved = False
 
     @property
+    def root(self):
+        return self._path_objects[0]
+
+    @property
     def _leaf(self):
         """Object (stream or container) at the end of path."""
         try:
