@@ -9,7 +9,7 @@ from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
 from monobit.base.blocks import matrix_to_blocks, matrix_to_shades, blockstr
-from ..base import Props, Coord
+from ..base import Props, Coord, RGB
 from ..core.raster import turn_method
 from ..plumbing import convert_arguments
 
@@ -185,15 +185,18 @@ class GlyphMap:
         )
 
     @convert_arguments
-    def as_blocks(self, resolution:Coord=(2, 2), sheet=0):
+    def as_blocks(self, *, resolution:Coord=Coord(2, 2), sheet=0):
         """Convert glyph map to a string of quadrant block characters."""
         canvas = self.to_canvas(sheet=sheet)
         return canvas.as_blocks(resolution)
 
-    def as_shades(self, sheet=0):
+    def as_shades(
+            self, *,
+            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None, sheet=0,
+        ):
         """Convert glyph map to ansi coloured block characters."""
         canvas = self.to_canvas(sheet=sheet)
-        return canvas.as_shades()
+        return canvas.as_shades(paper=paper, ink=ink, border=border)
 
     def get_sheet(self, sheet=0):
         """Return glyph records for a given sheet."""
@@ -305,11 +308,14 @@ class _Canvas:
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')
 
-    def as_shades(self):
+    def as_shades(self, *, paper, ink, border):
         """Convert glyph map to a string of block characters with ansi colours."""
         if not self.height:
             return ''
-        block_matrix = matrix_to_shades(self._pixels, levels=self.levels)
+        block_matrix = matrix_to_shades(
+            self._pixels, levels=self.levels,
+            paper=paper, ink=ink, border=border,
+        )
         self._write_labels_to_matrix(block_matrix)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')

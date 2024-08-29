@@ -9,7 +9,7 @@ from itertools import product
 from pathlib import Path
 
 from monobit.base.binary import ceildiv
-from monobit.base import Props, Coord
+from monobit.base import Props, Coord, RGB
 from monobit.core import Codepoint, Glyph, Char
 from monobit.storage import savers
 from monobit.plumbing import scriptable
@@ -111,6 +111,9 @@ def save_shades(
         padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
+        border:RGB=None,
+        paper:RGB=RGB(0, 0, 0),
+        ink:RGB=RGB(255, 255, 255),
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=False,
         max_labels:int=1,
@@ -138,7 +141,7 @@ def save_shades(
         max_labels=max_labels,
         grid_positioning=grid_positioning,
     )
-    outstream.text.write(glyph_map.as_shades())
+    outstream.text.write(glyph_map.as_shades(paper=paper, border=border, ink=ink))
 
 
 

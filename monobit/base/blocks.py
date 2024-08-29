@@ -101,12 +101,9 @@ BLOCKS[(1, 4)] = {
 def matrix_to_blocks(matrix, ncols, nrows, levels):
     """Convert bit matrix to a matrix of block characters."""
     if levels > 2:
-        if (ncols, nrows) != (1, 1):
-            raise ValueError(
-                f'Unsupported block resolution: {ncols}x{nrows} '
-                f'at {levels} grey levels'
-            )
-        return matrix_to_shades(matrix, levels)
+        raise ValueError(
+            f"Greyscale levels not supported in 'blocks' output, use 'shades'."
+        )
     try:
         blockdict = BLOCKS[(ncols, nrows)]
     except KeyError:
@@ -134,18 +131,30 @@ def matrix_to_blocks(matrix, ncols, nrows, levels):
     return block_matrix
 
 
-def matrix_to_shades(matrix, levels):
+def matrix_to_shades(matrix, levels, *, paper, ink, border):
     """Convert bit matrix to a string of block characters."""
     return [
-        [_get_shade(_bitblock, levels) for _bitblock in _row]
+        [_get_shade(_bitblock, levels, paper, ink, border) for _bitblock in _row]
         for _row in matrix
     ]
 
 
-def _get_shade(value, levels):
+def _get_shade(value, levels, paper, ink, border):
     """Get block at given grey level."""
     if value < 0:
         # border colour
-        return f'\x1b[0m '
-    shade = value * 255 // (levels-1)
-    return f'\x1b[38;2;{shade};{shade};{shade}m\u2588\x1b[0m'
+        if border is None:
+            return f'\x1b[0m '
+        else:
+            return _ansi_rgb(*border) + '\u2588\x1b[0m'
+    maxlevel = levels - 1
+    shade = tuple(
+        (value * _ink + (maxlevel - value) * _paper) // maxlevel
+        for _ink, _paper in zip(ink, paper)
+    )
+    return _ansi_rgb(*shade) + '\u2588\x1b[0m'
+
+
+def _ansi_rgb(r, g, b):
+    """Get ansi-escape code for RGB colour."""
+    return f'\x1b[38;2;{r};{g};{b}m'
