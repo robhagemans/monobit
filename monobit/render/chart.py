@@ -13,7 +13,7 @@ from monobit.base import Props, Coord, RGB
 from monobit.core import Codepoint, Glyph, Char
 from monobit.storage import savers
 from monobit.plumbing import scriptable
-from monobit.encoding.unicode import is_printable
+from monobit.encoding.unicode import is_showable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
 
@@ -214,7 +214,7 @@ def format_label(label):
     """Format glyph label for charts."""
     if isinstance(label, Char):
         ucstr = ', '.join(f'u+{ord(_uc):04x}' for _uc in label.value)
-        if all(is_printable(_uc) for _uc in label.value):
+        if all(is_showable(_uc) for _uc in label.value):
             return f'{ucstr} {label.value}'
         return ucstr
     return str(label)

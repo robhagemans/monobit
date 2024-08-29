@@ -12,7 +12,7 @@ from itertools import count
 from monobit.base.binary import ceildiv, int_to_bytes, bytes_to_int
 from monobit.base import to_int
 from monobit.base import CONVERTERS
-from monobit.encoding.unicode import is_printable
+from monobit.encoding.unicode import is_showable
 
 
 def is_enclosed(from_str, char):
@@ -127,7 +127,7 @@ class Char(str, Label):
 
     def __str__(self):
         """Convert to unicode label str for yaff."""
-        if all(is_printable(_uc) for _uc in self):
+        if all(is_showable(_uc) for _uc in self):
             return f"'{super().__str__()}'"
         return ', '.join(f'u+{ord(_uc):04x}' for _uc in self)
 

@@ -31,14 +31,26 @@ def is_graphical(char):
         for _c in char
     )
 
+
+def is_showable(char):
+    """Check if a char should be shown in yaff files."""
+    return (not char) or char == ' ' or is_graphical(char) and all(
+        # we keep everything that is_graphical except PUA, Other/Format, Not Assigned, Space Separator
+        # anything excluded will be shown as u+XXXX
+        unicodedata.category(_c) not in ('Co', 'Cf', 'Cn', 'Zs')
+        for _c in char
+    )
+
+
 def is_printable(char):
     """Check if a char should be printed - nothing ambiguous or unrepresentable in there."""
     return (not char) or is_graphical(char) and all(
         # we keep everything that is_graphical except PUA, Other/Format, Not Assigned
-        # anything excluded will be shown as REPLACEMENT CHARACTER
+        # anything excluded will be shown as REPLACEMENT CHARACTER in codepage charts
         unicodedata.category(_c) not in ('Co', 'Cf', 'Cn')
         for _c in char
     )
+
 
 def is_blank(char):
     """Check if a sequence is whitespace or non-graphical."""
