@@ -197,14 +197,20 @@ Character-cell formats
 MC multi-cell glyphs
 
 
-Charts (write only)
--------------------
+Charts
+------
 
-| Format                | Short Name |
-|-----------------------|------------|
-| Text or blocks        | `chart`    |
-| Image [P]             | `chart`    |
-| PDF chart [R]         | `pdf`      |
+These formats output a table of glyphs. PDF, text and block charts are write-only,
+image charts can be read through the `image` reader.
+
+
+| Format            | Short Name |
+|-------------------|------------|
+| Text              | `chart`    |
+| Block elements    | `blocks`   |
+| ANSI colours      | `shades`   |
+| Image [P]         | `image`    |
+| PDF [R]           | `pdf`      |
 
 [P] requires **PIL**  
 [R] requires **reportlab**  

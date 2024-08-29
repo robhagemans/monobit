@@ -454,7 +454,11 @@ class TestImport(BaseTester):
 
     def test_import_png(self):
         """Test importing image files."""
-        font, *_ = monobit.load(self.font_path / '4x6.png', cell=(4, 6), count=919, padding=(0,0), first_codepoint=0x1f)
+        font, *_ = monobit.load(
+            self.font_path / '4x6.png',
+            grid=True, cell=(4, 6), padding=(0,0),
+            first_codepoint=0x1f, count=919,
+        )
         self.assertEqual(len(font.glyphs), 919)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 

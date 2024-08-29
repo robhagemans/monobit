@@ -189,8 +189,8 @@ class TestExport(BaseTester):
         """Test exporting image files."""
         self._export_4x6(
             format='image', count=192, label=b'A',
-            save_kwargs=dict(codepoint_range=range(256)),
-            load_kwargs=dict(cell=(4, 6)),
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True),
+            load_kwargs=dict(grid=True, cell=(4, 6)),
         )
 
     def test_export_imageset(self):
