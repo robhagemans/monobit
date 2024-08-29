@@ -14,7 +14,7 @@ if reportlab:
     from reportlab.pdfgen.canvas import Canvas
 
 from monobit.storage import savers
-from monobit.base import Coord
+from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
@@ -33,6 +33,9 @@ if reportlab:
             lines_per_page:int=16,
             padding:Coord=Coord(3, 3),
             direction:str=None,
+            pixel_border:RGB=RGB(127, 127, 127),
+            ink:RGB=RGB(0, 0, 0),
+            paper:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
             grid_positioning:bool=False,
             max_labels:int=1,
@@ -48,6 +51,9 @@ if reportlab:
         lines_per_page: number of lines in secondary direction (default: 16)
         padding: number of pixels in X,Y direction between glyphs (default: 3x3)
         direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
+        pixel_border: colour of lines around pixel squares R,G,B, 0--255 (default: 127,127,127)
+        paper: background colour R,G,B 0--255 (default: 255,255,255)
+        ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
         max_labels: maximum number of labels to show per glyph (default: 1)
@@ -127,8 +133,6 @@ if reportlab:
             canvas.setPageSize((page_x, page_y))
             canvas.translate(margin_x, margin_y)
             canvas.setLineWidth(xpix / 10)
-            canvas.setStrokeColorRGB(0.5, 0.5, 0.5)
-            canvas.setFillColorRGB(0, 0, 0)
             # text is the height of one glyph pixel
             canvas.setFont('Helvetica', ypix)
 
@@ -138,15 +142,22 @@ if reportlab:
                 pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
-                        fill = 1 - pixels[y][x] / (font.levels-1)
-                        canvas.setFillColorRGB(fill, fill, fill)
+                        fill = pixels[y][x] / (font.levels-1)
+                        canvas.setStrokeColorRGB(*(
+                            _c / 255 for _c in pixel_border
+                        ))
+                        canvas.setFillColorRGB(*(
+                            _i * fill/255 + _p * (1-fill)/255
+                            for _i, _p in zip(ink, paper)
+                        ))
                         canvas.rect(
                             (record.x + x) * xpix,
                             (record.y + record.glyph.height - y - 1) * ypix,
                             xpix, ypix,
-                            fill=bool(pixels[y][x])
+                            fill=True,
                         )
                         canvas.setFillColorRGB(0, 0, 0)
+            canvas.setStrokeColorRGB(0, 0, 0)
             for label in glyph_map.get_sheet_labels(sheet):
                 # draw label
                 if label.right_align:

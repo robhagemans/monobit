@@ -126,6 +126,9 @@ def save_shades(
     padding: number of pixels in X,Y direction between glyphs (default: 1x1)
     scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
     direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
+    paper: background colour R,G,B 0--255 (default: 0,0,0)
+    ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
+    border: border colour R,G,B 0--255 (default: terminal background)
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
     grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
     max_labels: maximum number of labels to show per glyph (default: 1)
