@@ -207,9 +207,10 @@ image charts can be read through the `image` reader.
 | Format            | Short Name |
 |-------------------|------------|
 | Text              | `chart`    |
-| Blocks            | `blocks`   |
+| Block elements    | `blocks`   |
+| ANSI colours      | `shades`   |
 | Image [P]         | `image`    |
-| PDF chart [R]     | `pdf`      |
+| PDF [R]           | `pdf`      |
 
 [P] requires **PIL**  
 [R] requires **reportlab**  

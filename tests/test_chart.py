@@ -30,6 +30,12 @@ class TestChart(BaseTester):
         monobit.save(self.fixed4x6, txt_file, format='blocks')
         self.assertTrue(os.path.getsize(txt_file) > 0)
 
+    def test_export_shades(self):
+        """Test exporting blocks chart."""
+        txt_file = self.temp_path / '4x6.txt'
+        monobit.save(self.fixed4x6, txt_file, format='shades')
+        self.assertTrue(os.path.getsize(txt_file) > 0)
+
 
 if __name__ == '__main__':
     unittest.main()
