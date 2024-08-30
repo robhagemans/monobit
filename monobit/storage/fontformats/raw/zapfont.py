@@ -14,7 +14,7 @@ from monobit.base.struct import little_endian as le, bitfield
 from monobit.base.binary import ceildiv
 
 from .raw import load_bitmap, save_bitmap
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_charcell, make_contiguous
 
 
 ###############################################################################
@@ -65,3 +65,25 @@ def load_zapfont(instream):
     )
     font = font.modify(source_format='ZapFont')
     return font
+
+
+@savers.register(linked=load_zapfont)
+def save_zapfont(fonts, outstream):
+    """Save a !Zapfont."""
+    font = ensure_single(fonts)
+    font = ensure_charcell(font)
+    font = make_contiguous(font, missing='space')
+    header = _ZAP_HEADER(
+        magic=_ZAP_MAGIC,
+        width=font.cell_size.x,
+        height=font.cell_size.y,
+        first=int(min(font.get_codepoints())),
+        last=int(max(font.get_codepoints()))+1,
+    )
+    outstream.write(bytes(header))
+    save_bitmap(
+        outstream, font,
+        msb='right',
+        align='right',
+        byte_swap=ceildiv(header.width, 8),
+    )
