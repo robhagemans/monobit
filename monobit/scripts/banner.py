@@ -139,12 +139,16 @@ def main():
         )
     )
     parser.add_argument(
-        '--image',  action='store_true',
+        '--image', action='store_true',
         help=('output as image')
     )
     parser.add_argument(
-        '--blocks',  nargs='?', const='1x1', default='',
+        '--blocks', nargs='?', const='1x1', default='',
         help=('output as block element characters of given XxY density. Default: 1x1')
+    )
+    parser.add_argument(
+        '--shades', action='store_true',
+        help=('output as ANSI-coloured 1x1 block element characters')
     )
     # font / glyph effects
     parser.add_argument(
@@ -254,6 +258,11 @@ def main():
             if args.blocks:
                 resolution = tuple(int(_v) for _v in args.blocks.split('x'))
                 text = glyph_map.as_blocks(resolution)
+            elif args.shades:
+                ink = RGB.create(args.ink or (255, 255, 255))
+                paper = RGB.create(args.paper or (0, 0, 0))
+                border = RGB.create(args.border) if args.border else paper
+                text = glyph_map.as_shades(paper=paper, ink=ink, border=border)
             else:
                 ink = args.ink or '@'
                 paper = args.paper or '.'
