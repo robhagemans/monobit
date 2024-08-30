@@ -10,7 +10,7 @@ from typing import NamedTuple
 
 from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
-from monobit.base import Props, reverse_dict, extend_string
+from monobit.base import Props, reverse_dict
 from monobit.core import Font, Glyph
 from monobit.encoding import encodings
 
