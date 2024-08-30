@@ -1,7 +1,7 @@
 """
 monobit.base.properties - property structures
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

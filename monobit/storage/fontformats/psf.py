@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.psf - PC Screen Font format
+monobit.storage.fontformats.psf - PC Screen Font format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,7 +9,8 @@ import logging
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import bitfield, flag, little_endian as le
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
@@ -203,7 +204,7 @@ _PSF1_HEADER = le.Struct(
 def _write_psf1(font, outstream, count):
     """Write a PSF version 1 file."""
     if font.cell_size.x != 8:
-        raise FileFormatError(
+        raise UnsupportedError(
             f'This format only supports 8xN character-cell fonts.'
         )
     # we need exactly 256 or 512 glyphs

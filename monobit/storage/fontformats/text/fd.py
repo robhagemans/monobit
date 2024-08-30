@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.fd - mkwinfont .fd format
+monobit.storage.fontformats.text.fd - mkwinfont .fd format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,6 @@ import logging
 import string
 
 from monobit.storage.base import loaders, savers
-from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph
 from monobit.base import Props
 from ..common import (
@@ -86,7 +85,8 @@ def _read_mkwinfont(text_stream):
                 font_comments.extend(current_comment)
                 current_comment = []
             glyphs.append(Glyph(
-                block.get_value(), _0='0', _1='1',
+                block.get_value(),
+                inklevels='01',
                 codepoint=glyph_props.pop('char', b''),
                 comment='\n\n'.join(current_comment),
             ))
@@ -194,7 +194,7 @@ def _write_mkwinfont(font, outstream):
         else:
             outstream.write(f'char {codepoint}\n')
             outstream.write(f'width {glyph.advance_width}\n')
-            outstream.write(glyph.as_text(paper='0', ink='1'))
+            outstream.write(glyph.as_text(inklevels='01'))
             outstream.write('\n')
 
 

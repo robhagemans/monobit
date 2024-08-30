@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.basic - binary files embedded in BASIC source files
+monobit.storage.wrapperformats.basic - binary files embedded in BASIC source files
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,6 @@ import logging
 from pathlib import Path
 from io import BytesIO
 
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 from ..streams import Stream, DelayedWriterStream
 

@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.signum - Signum! 2 editor and printer font formats
+monobit.storage.fontformats.signum - Signum! 2 editor and printer font formats
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,9 +9,10 @@ import logging
 from pathlib import Path
 
 from monobit.base.struct import big_endian as be
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Raster
-from monobit.base.binary import ceildiv, bytes_to_bits
+from monobit.base import FileFormatError
+from monobit.base.binary import ceildiv
 
 
 # editor font
@@ -67,7 +68,7 @@ def load_signum(instream):
         params = _PARAMS[magic]
     except KeyError:
         raise FileFormatError(
-            'Not a Signum file: signature {magic} does not match'
+            f'Not a Signum file: signature {magic} does not match'
         )
     return _read_signum(instream, **params)
 

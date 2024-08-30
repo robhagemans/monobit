@@ -99,6 +99,7 @@ class GlyphProperties:
     advance_height: int
     width: int
     height: int
+    levels: int
     ink_bounds: Bounds
     bounding_box: Coord
     padding: Bounds
@@ -142,6 +143,10 @@ class Glyph(HasProps):
     def height(self):
         """Raster height of glyph."""
         return self._pixels.height
+
+    @checked_property
+    def levels(self):
+        return self._pixels.levels
 
     @checked_property
     def ink_bounds(self):
@@ -196,19 +201,19 @@ class Glyph(HasProps):
     def __init__(
             self, pixels=(), *,
             labels=(), codepoint=b'', char='', tag='', comment='',
-            _0=NOT_SET, _1=NOT_SET, _trustme=False,
+            inklevels=NOT_SET, _trustme=False,
             **properties
         ):
         """Create glyph from tuple of tuples."""
         super().__init__()
         if _trustme:
-            self._pixels = Raster(pixels, _0=_0, _1=_1)
+            self._pixels = Raster(pixels, inklevels=inklevels)
             self._labels = labels
             self._comment = comment
             self._set_properties(properties)
             return
         # raster data
-        self._pixels = Raster(pixels, _0=_0, _1=_1)
+        self._pixels = Raster(pixels, inklevels=inklevels)
         # labels
         labels = (
             Char(char), Codepoint(codepoint), Tag(tag),
@@ -262,7 +267,7 @@ class Glyph(HasProps):
             self, pixels=NOT_SET, *,
             labels=NOT_SET, tag=NOT_SET, char=NOT_SET, codepoint=NOT_SET,
             comment=NOT_SET,
-            _0=NOT_SET, _1=NOT_SET,
+            inklevels=NOT_SET,
             **kwargs
         ):
         """Return a copy of the glyph with changes."""
@@ -448,18 +453,18 @@ class Glyph(HasProps):
     # creation
 
     @classmethod
-    def blank(cls, width=0, height=0, **kwargs):
+    def blank(cls, width=0, height=0, levels=2, **kwargs):
         """Create whitespace glyph."""
-        return cls(((0,) * width,) * height, **kwargs)
+        return cls(Raster.blank(width, height, levels), **kwargs)
 
     @classmethod
     def from_vector(
             cls, bitseq, *, stride, width=NOT_SET, align='left',
-            _0=NOT_SET, _1=NOT_SET, **kwargs
+            inklevels=NOT_SET, **kwargs
         ):
         """Create glyph from flat immutable sequence representing bits."""
         pixels = Raster.from_vector(
-            bitseq, stride=stride, width=width, align=align, _0=_0, _1=_1
+            bitseq, stride=stride, width=width, align=align, inklevels=inklevels
         )
         return cls(pixels, **kwargs)
 
@@ -467,7 +472,7 @@ class Glyph(HasProps):
     def from_bytes(
             cls, byteseq, width, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
-            byte_swap=0, bit_order='big',
+            byte_swap=0, bit_order='big', bits_per_pixel=1,
             **kwargs
         ):
         """Create glyph from bytes/bytearray/int sequence."""
@@ -475,20 +480,37 @@ class Glyph(HasProps):
             byteseq, width, height,
             align=align, stride=stride, order=order,
             byte_swap=byte_swap, bit_order=bit_order,
+            bits_per_pixel=bits_per_pixel,
         )
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_hex(cls, hexstr, width, height=NOT_SET, *, align='left', **kwargs):
+    def from_hex(
+            cls, byteseq, width, height=NOT_SET,
+            *, align='left', order='row-major', stride=NOT_SET,
+            byte_swap=0, bit_order='big', bits_per_pixel=1,
+            **kwargs
+        ):
         """Create glyph from hex string."""
-        pixels = Raster.from_hex(hexstr, width, height, align=align)
+        pixels = Raster.from_hex(
+            byteseq, width, height,
+            align=align, stride=stride, order=order,
+            byte_swap=byte_swap, bit_order=bit_order,
+            bits_per_pixel=bits_per_pixel,
+        )
+        return cls(pixels, **kwargs)
+
+    @classmethod
+    def from_matrix(cls, matrix, *, inklevels, **kwargs):
+        """Create glyph from iterable of iterables."""
+        pixels = Raster.from_matrix(matrix, inklevels=inklevels)
         return cls(pixels, **kwargs)
 
     @classmethod
     def from_path(cls, path, *, advance_width=None, **kwargs):
         """Draw the StrokePath and create a Glyph."""
         strokepath = StrokePath(path)
-        raster = Raster(strokepath.draw())
+        raster = strokepath.draw()
         if advance_width is None:
             advance_width = strokepath.bounds.right
         return cls(
@@ -510,33 +532,36 @@ class Glyph(HasProps):
         """Glyph has no ink."""
         return self._pixels.is_blank()
 
-    def as_matrix(self, *, ink=1, paper=0):
+    def as_matrix(self, *, inklevels=NOT_SET):
         """Return matrix of user-specified foreground and background objects."""
-        return self._pixels.as_matrix(ink=ink, paper=paper)
+        return self._pixels.as_matrix(inklevels=inklevels)
 
-    def as_text(self, *, ink='@', paper='.', start='', end='\n'):
+    def as_text(self, *, inklevels=NOT_SET, start='', end='\n'):
         """Convert glyph to text."""
-        return self._pixels.as_text(ink=ink, paper=paper, start=start, end=end)
+        return self._pixels.as_text(inklevels=inklevels, start=start, end=end)
 
     def as_blocks(self, resolution=(2, 2)):
         """Convert glyph to a string of quadrant block characters."""
         return self._pixels.as_blocks(resolution)
 
-    def as_vector(self, ink=1, paper=0):
-        """Return flat tuple of user-specified foreground and background objects."""
-        return self._pixels.as_vector(ink=ink, paper=paper)
+    def as_vector(self, inklevels=NOT_SET):
+        """Return flat tuple of user-specified pixel objects."""
+        return self._pixels.as_vector(inklevels=inklevels)
 
-    def as_bits(self, ink=1, paper=0):
-        """Return flat bits as bytes string. Ink, paper may be of type int or RGB"""
-        return self._pixels.as_bits(ink=ink, paper=paper)
+    def as_pixels(self, inklevels=NOT_SET):
+        """
+        Return bytes, one pixel per byte/char, as defined by `inklevels`.
+        `inklevels` may be bytes, tuple of int or tuple of RGB.
+        """
+        return self._pixels.as_pixels(inklevels=inklevels)
 
-    def as_byterows(self, *, align='left'):
+    def as_byterows(self, *, align='left', bit_order='big'):
         """Convert glyph to rows of bytes."""
-        return self._pixels.as_byterows(align=align)
+        return self._pixels.as_byterows(align=align, bit_order=bit_order)
 
     def as_bytes(
             self, *, align='left', stride=NOT_SET, byte_swap=0,
-            bit_order='big',
+            bit_order='big', bits_per_pixel=1,
         ):
         """
         Convert raster to flat bytes.
@@ -545,14 +570,16 @@ class Glyph(HasProps):
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
+        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
         """
         return self._pixels.as_bytes(
-            align=align, stride=stride, byte_swap=byte_swap, bit_order=bit_order,
+            align=align, stride=stride, byte_swap=byte_swap,
+            bit_order=bit_order, bits_per_pixel=bits_per_pixel,
         )
 
-    def as_hex(self, *, align='left'):
+    def as_hex(self, **kwargs):
         """Convert glyph to hex string."""
-        return self._pixels.as_hex(align=align)
+        return self._pixels.as_hex(**kwargs)
 
 
     ##########################################################################

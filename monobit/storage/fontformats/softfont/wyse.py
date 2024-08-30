@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.softfont.wyse - Wyse-60 soft font
+monobit.storage.fontformats.softfont.wyse - Wyse-60 soft font
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -10,9 +10,9 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Raster, Glyph
-from monobit.base import Coord
+from monobit.base import Coord, FileFormatError
 
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 

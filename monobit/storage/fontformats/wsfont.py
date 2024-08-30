@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.wsfont - NetBSD wsfont binaries and C headers
+monobit.storage.fontformats.wsfont - NetBSD wsfont binaries and C headers
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,9 +8,9 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from io import BytesIO
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Glyph, Font
-from monobit.base import Props, reverse_dict
+from monobit.base import Props, reverse_dict, FileFormatError
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 from monobit.encoding import EncodingName

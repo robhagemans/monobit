@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.tarzip - tar and zip containers
+monobit.storage.containerformats.tarzip - tar and zip containers
 
 (c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -13,10 +13,11 @@ import time
 from pathlib import Path, PurePosixPath
 from itertools import chain
 
+from monobit.base import FileFormatError
 from ..containers import Archive
 from ..base import containers
 from ..streams import KeepOpen, Stream
-from ..magic import FileFormatError, Magic
+from ..magic import Magic
 
 
 class ZipTarBase(Archive):

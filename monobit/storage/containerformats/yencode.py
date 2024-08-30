@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.yencode - yEncode format
+monobit.storage.containerformats.yencode - yEncode format
 
 (c) 2024 Rob Hagemans
 
@@ -32,9 +32,9 @@ from binascii import crc32
 from monobit.base import safe_import
 yenc = safe_import('yenc')
 
-from ..magic import FileFormatError, Sentinel
+from monobit.base import FileFormatError, Props
+from ..magic import Sentinel
 from ..base import containers
-from ...base import Props
 from ..containers import SerialContainer
 
 

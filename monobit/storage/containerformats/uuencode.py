@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.uuencode - UUEncode format
+monobit.storage.containerformats.uuencode - UUEncode format
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -36,7 +36,8 @@ import binascii
 from io import BytesIO
 from pathlib import Path
 
-from ..magic import FileFormatError, Sentinel
+from monobit.base import FileFormatError
+from ..magic import Sentinel
 from ..base import containers
 from ..containers import SerialContainer
 

@@ -189,8 +189,8 @@ class TestExport(BaseTester):
         """Test exporting image files."""
         self._export_4x6(
             format='image', count=192, label=b'A',
-            save_kwargs=dict(codepoint_range=range(256)),
-            load_kwargs=dict(cell=(4, 6)),
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True),
+            load_kwargs=dict(grid=True, cell=(4, 6)),
         )
 
     def test_export_imageset(self):
@@ -458,6 +458,12 @@ class TestExport(BaseTester):
     def test_export_edwin(self):
         """Test exporting EDWIN files."""
         self._export_4x6(format='edwin', count=127, label=b'A')
+
+    # BeOS
+
+    def test_export_beos(self):
+        """Test exporting BeOS files."""
+        self._export_4x6(format='beos')
 
 
 if __name__ == '__main__':

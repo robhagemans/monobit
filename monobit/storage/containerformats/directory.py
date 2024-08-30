@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.directory - directory traversal
+monobit.storage.containerformats.directory - directory traversal
 
 (c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -40,6 +40,9 @@ class Directory(Container):
 
     def __repr__(self):
         return f"{type(self).__name__}('{self._path}')"
+
+    def __str__(self):
+        return str(self._path)
 
     def decode(self, name):
         return self.open(name, mode='r')

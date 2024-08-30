@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.compressors - single-file compression wrappers
+monobit.storage.wrapperformats.compressors - single-file compression wrappers
 
 (c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,8 +11,8 @@ import lzma
 import bz2
 from pathlib import Path
 
+from monobit.base import FileFormatError
 from ..streams import Stream
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 
 
@@ -29,7 +29,7 @@ def decode_gzip(instream):
     stream = gzip.open(instream, mode='rb')
     try:
         stream.peek(0)
-    except BadGzipFile as e:
+    except gzip.BadGzipFile as e:
         raise FileFormatError(e) from e
     name = Path(instream.name).stem
     return Stream(stream, mode='r', name=name)
@@ -70,7 +70,7 @@ def _decode_lzma_or_xz(instream):
     stream = lzma.open(instream, mode='rb')
     try:
         stream.peek(0)
-    except LZMAError as e:
+    except lzma.LZMAError as e:
         raise FileFormatError(e) from e
     name = Path(instream.name).stem
     return Stream(stream, mode='r', name=name)

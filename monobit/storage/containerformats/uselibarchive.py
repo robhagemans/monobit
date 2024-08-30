@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.uselibarchive - archive formats supported by libarchive
+monobit.storage.containerformats.uselibarchive - archive formats supported by libarchive
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -15,7 +15,7 @@ if libarchive:
     from libarchive.entry import FileType
 
 
-from ..magic import FileFormatError
+from monobit.base import FileFormatError
 from ..base import containers
 from ..containers import FlatFilterContainer
 
@@ -24,6 +24,8 @@ if libarchive:
 
     class LibArchiveContainer(FlatFilterContainer):
         """Container for formats supported by libarchive."""
+
+        libarchive_format = ''
 
         def decode(self, name):
             """Extract file from archive."""

@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.vector.svg - svg writer for vector fonts
+monobit.storage.fontformats.vector.svg - svg writer for vector fonts
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,8 +10,9 @@ import logging
 from math import ceil
 import xml.etree.ElementTree as etree
 
-from monobit.storage import loaders, savers, FileFormatError
-from monobit.base import Props, reverse_dict
+from monobit.storage import loaders, savers
+from monobit.storage.utils.limitations import ensure_single
+from monobit.base import Props, reverse_dict, FileFormatError
 from monobit.core import Font, Glyph, StrokePath
 
 from ..common import WEIGHT_MAP, WEIGHT_REVERSE_MAP
@@ -165,9 +166,7 @@ def attr_str(attr_dict, indent=0, sep='\n'):
 @savers.register(linked=load_svg)
 def save_svg(fonts, outfile):
     """Export vector font to Scalable Vector Graphics font."""
-    if len(fonts) > 1:
-        raise FileFormatError('Can only export one font to SVG file.')
-    font = fonts[0]
+    font = ensure_single(fonts)
     # matching whitespace doesn't work as label thinks path-only glyphs are empty
     font = font.label(match_whitespace=False)
     if not any('path' in _g.get_properties() for _g in font.glyphs):

@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.sourcecoded - binary files embedded in C/Python/JS source files
+monobit.storage.containerformats.sourcecoded - binary files embedded in C/Python/JS source files
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,7 @@ import string
 import logging
 from pathlib import Path
 
-from ..magic import FileFormatError
+from monobit.base import FileFormatError
 from ..base import containers
 from ..containers import SerialTextContainer
 from ..utils.source import (

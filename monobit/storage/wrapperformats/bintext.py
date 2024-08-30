@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.bintext - text-encoded binary formats
+monobit.storage.wrapperformats.bintext - text-encoded binary formats
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -12,7 +12,6 @@ from io import BytesIO
 from pathlib import Path
 
 from ..streams import Stream, DelayedWriterStream
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 
 

@@ -1,7 +1,7 @@
 """
 monobit.core.vector - single-stroke vector font support
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -119,28 +119,31 @@ class StrokePath:
                 canvas.draw_line(x, y, x+dx, y+dy)
             x += dx
             y += dy
-        return Raster(canvas)
+        return canvas.as_raster()
 
 
-class Canvas(Raster):
+class Canvas:
     """Mutable raster for line draw operations."""
 
-    _inner = list
-    _outer = list
-    _0 = 0
-    _1 = 1
-    _itemtype = int
+    def __init__(self, pixels):
+        """Create raster from tuple of tuples of string."""
+        self._pixels = pixels
+        self.height = len(pixels)
+        self.width = 0 if not pixels else len(pixels[0])
 
     @classmethod
     def blank(cls, width, height):
         """Create a canvas in background colour."""
-        canvas = [[cls._0]*width for _ in range(height)]
-        # setting 0 and 1 will make Raster init leave the input alone
-        return cls(canvas, _0=cls._0, _1=cls._1)
+        canvas = [[0]*width for _ in range(height)]
+        return cls(canvas)
+
+    def as_raster(self):
+        """Convert to immutable raster."""
+        return Raster.from_matrix(self._pixels, inklevels=(0, 1))
 
     def draw_pixel(self, x, y):
         """Draw a pixel."""
-        self._pixels[self.height - y - 1][x] = self._1
+        self._pixels[self.height - y - 1][x] = 1
 
     def draw_line(self, x0, y0, x1, y1):
         """Draw a line between the given points."""

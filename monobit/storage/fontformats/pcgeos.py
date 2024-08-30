@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.pcgeos - PC/GEOS 2.0+ (aka GeoWorks, NewDeal, BreadBox)
+monobit.storage.fontformats.pcgeos - PC/GEOS 2.0+ (aka GeoWorks, NewDeal, BreadBox)
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,11 +9,11 @@ import logging
 from itertools import accumulate
 
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
-from monobit.base import Props, reverse_dict
+from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.base.struct import StructError, bitfield, flag, little_endian as le
-from monobit.base.binary import ceildiv, align
+from monobit.base.binary import ceildiv
 
 from monobit.storage.utils.limitations import make_contiguous
 
@@ -348,10 +348,10 @@ def load_pcgeos(instream):
     logging.debug('FontFileInfo: %s', font_file_info)
     if font_file_info.FFI_signature != _BSWF_SIG:
         if font_file_info.FFI_signature[:2] == b'\xEF\xBE':
-            raise FileFormatError('PC/GEOS v1.2 fonts not supported.')
+            raise UnsupportedError('PC/GEOS v1.2 fonts not supported.')
         if font_file_info.FFI_signature[:2] == b'\x80\x10':
-            raise FileFormatError('PC/GEOS v1.0 fonts not supported.')
-        raise FileformatError('Not a PC-GEOS font file: incorrect signature')
+            raise UnsupportedError('PC/GEOS v1.0 fonts not supported.')
+        raise FileFormatError('Not a PC-GEOS font file: incorrect signature')
     font_info = _FontInfo.read_from(instream)
     logging.debug('FontInfo: %s', font_info)
     if font_info.FI_maker != 0:
@@ -632,7 +632,7 @@ def _create_pcgeos_font_section(font):
 def _prepare_pcgeos(fonts):
     """Validate fonts for storing in PC-GEOS format; extract metadata."""
     if len(set(_f.family for _f in fonts)) > 1:
-        raise FileFormatError(
+        raise UnsupportedError(
             'PC-GEOS font file can only store fonts from one family.'
         )
     common_props = _get_metadata(fonts[0])

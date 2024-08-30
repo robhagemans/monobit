@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.bmfont - AngelCode BMFont format
+monobit.storage.fontformats.bmfont - AngelCode BMFont format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -18,16 +18,16 @@ Image = safe_import('PIL.Image')
 
 from monobit.base import Coord, Bounds
 from monobit.encoding import encodings
-from monobit.storage import FileFormatError
-from monobit.base.binary import int_to_bytes, bytes_to_int, ceildiv
+from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
-from monobit.base import Props, reverse_dict
+from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
 from monobit.render import GlyphMap, grid_map
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
+from .image import identify_inklevels
 from monobit.storage.utils.limitations import ensure_single
 
 
@@ -534,31 +534,19 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
         for image in sheets.values():
             image.close()
         # check if font is monochromatic
-        colourset = list(set(_tup for _sprite in sprites for _tup in _sprite))
-        if len(colourset) <= 1:
-            # only one colour found
-            bg, fg = None, colourset[0]
-            # note that if colourset is empty, all char widths/heights must be zero
-        elif len(colourset) > 2:
-            raise FileFormatError(
-                'Greyscale, colour and antialiased fonts not supported.'
-            )
-        elif len(colourset) == 2:
-            # use higher intensity (sum of channels) as foreground
-            bg, fg = colourset
-            if sum(bg) > sum(fg):
-                bg, fg = fg, bg
+        colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
+        inklevels = identify_inklevels(colours, background='darkest')
+        pixels_per_byte = 8 // (len(inklevels)-1).bit_length()
         # extract glyphs
         for char, sprite in zip(chars, sprites):
-            #if char.width and char.height:
-            bits = tuple(_c == fg for _c in sprite)
             if not char.width:
-                glyph = Glyph.blank(width=0, height=char.height)
+                glyph = Glyph.blank(width=0, height=char.height, levels=len(inklevels))
             else:
-                glyph = Glyph(tuple(
-                    bits[_offs: _offs+char.width]
-                    for _offs in range(0, len(bits), char.width)
-                ))
+                glyph = Glyph.from_vector(
+                    sprite,
+                    stride=char.width,
+                    inklevels=inklevels,
+                )
             # append kernings (this glyph left)
             is_unicode = bool(_to_int(info['unicode']))
             if is_unicode:
@@ -683,12 +671,15 @@ def _create_bmfont(
         font = font.label(char_from=encoding)
     # map glyphs to image
     if grid:
-        margin  = Coord(padding.left, padding.top)
+        margin = Coord(padding.left, padding.top)
+        columns = 32
         glyph_map = grid_map(
             font,
-            columns=32, margin=margin, padding=spacing,
+            glyphs_per_line=columns,
+            lines_per_page=ceildiv(len(font.glyphs), columns),
+            margin=margin, padding=spacing,
             # direction - note Image coordinates are ltr, ttb
-            order='row-major', direction=(1, 1),
+            direction='l t', invert_y=True,
         )
     else:
         # crop glyphs

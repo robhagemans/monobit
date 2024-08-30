@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.text.edwin - EDWIN bitmap font format
+monobit.storage.fontformats.text.edwin - EDWIN bitmap font format
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -13,7 +13,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import string
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph, Raster
 from monobit.base.binary import ceildiv
 

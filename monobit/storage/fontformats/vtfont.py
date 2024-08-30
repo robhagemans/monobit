@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.vtfont - FreeBSD vt consolve font file
+monobit.storage.fontformats.vtfont - FreeBSD vt consolve font file
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from collections import deque
 
-from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Glyph, Font, Char, Raster
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import ceildiv

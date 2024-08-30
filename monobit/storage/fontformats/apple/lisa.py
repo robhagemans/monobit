@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.apple.lisa - Apple Lisa fonts
+monobit.storage.fontformats.apple.lisa - Apple Lisa fonts
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,7 +9,7 @@ import logging
 
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import align
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 
 from .nfnt import extract_nfnt, convert_nfnt
@@ -60,6 +60,7 @@ def load_lisa(instream):
                 source_format=f'[Lisa] {font.source_format}',
             )
             fonts.append(font)
-        except (ValueError, FileFormatError):
+        except (FileFormatError, UnsupportedError) as e:
+            logging.warning("Could not load resource '%s': %s", name, e)
             pass
     return fonts

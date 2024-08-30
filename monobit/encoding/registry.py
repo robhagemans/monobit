@@ -1,7 +1,7 @@
 """
 monobit.encoding.registry - encoding registry
 
-(c) 2020--2023 Rob Hagemans
+(c) 2020--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

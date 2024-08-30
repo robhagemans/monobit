@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.email - files embedded in email messages
+monobit.storage.containerformats.email - files embedded in email messages
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -22,7 +22,7 @@ from email.policy import SMTP, default
 import mimetypes
 from pathlib import Path
 
-from ..magic import FileFormatError
+from monobit.base import FileFormatError
 from ..base import containers
 from ..containers import FlatFilterContainer
 

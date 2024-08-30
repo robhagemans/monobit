@@ -1,15 +1,15 @@
 """
-monobit.storage.formats.xlfd.bdf - Adobe Glyph Bitmap Distribution Format
+monobit.storage.fontformats.xlfd.bdf - Adobe Glyph Bitmap Distribution Format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 
 from monobit.base.binary import ceildiv
-from monobit.storage import loaders, savers, FileFormatError
-from monobit.base import Coord
+from monobit.storage import loaders, savers
+from monobit.base import Coord, FileFormatError, UnsupportedError
 from monobit.core import Font, Raster, Glyph, Char, Codepoint, Tag
 from monobit.encoding import encodings, NotFoundError
 from monobit.storage.utils.limitations import ensure_single
@@ -115,19 +115,12 @@ def _read_bdf_glyphs(instream):
         glyph_props |= propdict
         glyph_props['COMMENT'] = '\n'.join(comments)
         glyph_props = {_k: _v for _k, _v in glyph_props.items() if _v is not None}
-        # convert from hex-string to raster
         width, height, _, _ = glyph_props['BBX']
         hexstr = ''.join(
-            # remove excess bytes on each hex line
-            instream.readline().strip()[:ceildiv(width, 8)*2]
+            instream.readline()
             for _ in range(height)
         )
-        try:
-            raster = Raster.from_hex(hexstr, width, height)
-        except ValueError as e:
-            logging.warning(f'Could not read glyph `{tag}` {hexstr}: {e}')
-        else:
-            bdf_glyphs.append(glyph_props | {'raster': raster})
+        bdf_glyphs.append(glyph_props | {'hex': hexstr})
         line = instream.readline()
         if not line.startswith('ENDCHAR'):
             raise FileFormatError(f'Expected ENDCHAR, not {line}')
@@ -217,10 +210,6 @@ def _extract_known_bdf_properties(bdf_props):
 def _convert_bdf_properties(bdf_props):
     """Convert BDF global properties."""
     size, xdpi, ydpi, *depth_info = bdf_props['SIZE']
-    if depth_info and depth_info[0] != 1:
-        # Microsoft greymap extension of BDF, FontForge "BDF 2.3"
-        # https://fontforge.org/docs/techref/BDFGrey.html
-        raise FileFormatError('Greymap BDF not supported.')
     properties = {
         'source_format': f"BDF v{bdf_props['STARTFONT']}",
         'point_size': size,
@@ -254,14 +243,36 @@ def _convert_bdf_glyphs(bdf_glyphs, global_metrics, bdf_props):
         )
     glyphs = []
     for props in bdf_glyphs:
-        raster = props.pop('raster')
-        # fall back to glabal metrics, if not defined per-glyph
+        # decode raster hex string
+        hexstr = props.pop('hex')
+        if len(bdf_props['SIZE']) == 4:
+            # Microsoft greymap extension of BDF, FontForge "BDF 2.3"
+            # https://fontforge.org/docs/techref/BDFGrey.html
+            depth = bdf_props['SIZE'][3]
+            if depth not in (1, 2, 4, 8):
+                raise UnsupportedError(f'{depth}-bits per pixel not supported.')
+        else:
+            depth = 1
+        width, height, _, _ = props['BBX']
+        hexlines = tuple(_line.strip() for _line in hexstr.splitlines())
+        # use the stride to deal with over-wide definitions
+        if hexlines:
+            stride = (8 // depth) * len(hexlines[0]) // 2
+        else:
+            stride = 0
+        raster = Raster.from_hex(
+            ''.join(hexlines), width, height,
+            stride=stride, bits_per_pixel=depth,
+        )
+        # convert glyph metrics
+        # fall back to global metrics, if not defined per-glyph
         props = global_metrics | props
         new_props = {}
         if bdf_props['METRICSSET'] != 1:
             new_props.update(_convert_horiz_metrics(raster.width, props, bdf_props))
         if bdf_props['METRICSSET'] in (1, 2):
             new_props.update(_convert_vert_metrics(raster.height, props, bdf_props))
+        # convert labels
         labels = _convert_bdf_labels(props)
         glyphs.append(Glyph(
             raster, labels=labels, comment=props['COMMENT'], **new_props
@@ -325,7 +336,7 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
     new_props['top_bearing'] = top_bearing
     new_props['bottom_bearing'] = bottom_bearing
     swidth1_x, swidth1_y = props['SWIDTH1']
-    new_props['scalable_height'] = swidth_to_pixel(
+    new_props['scalable_height'] = -swidth_to_pixel(
         swidth1_y, point_size=bdf_props['SIZE'][0], dpi=bdf_props['SIZE'][2]
     )
     if new_props['scalable_height'] == advance_height:
@@ -339,25 +350,28 @@ def _convert_vert_metrics(glyph_height, props, bdf_props):
 
 def swidth_to_pixel(swidth, point_size, dpi):
     """DWIDTH = SWIDTH * points/1000 * dpi / 72"""
-    return swidth * (point_size / 1000) * (dpi / 72)
-
+    dwidth = point_size * (dpi / 72) * swidth / 1000
+    # swidth is rounded at 1/1000 points, dwidth is pixel-valued
+    # snap to integer allowing relative error of 1/100 of pixel size
+    whole = round(dwidth)
+    if whole == 0:
+        return dwidth
+    return round(dwidth / whole, 2) * whole
 
 ##############################################################################
 # BDF writer
 
 def pixel_to_swidth(dwidth, point_size, dpi):
     """SWIDTH = DWIDTH / ( points/1000 * dpi / 72 )"""
-    return int(
-        round(dwidth / (point_size / 1000) / (dpi / 72))
-    )
+    swidth = dwidth / (point_size / 1000) / (dpi / 72)
+    return int(round(swidth))
 
 
 def _save_bdf(font, outstream):
-    """Write one font to X11 BDF 2.1."""
+    """Write one font to BDF."""
     # property table
     xlfd_props = create_xlfd_properties(font)
     xlfd_name = create_xlfd_name(xlfd_props)
-    bdf_props = _convert_to_bdf_properties(font, xlfd_name)
     # minimize glyphs to ink-bounds (BBX) before storing, except "cell" fonts
     if font.spacing not in ('character-cell', 'multi-cell'):
         font = font.reduce()
@@ -368,8 +382,9 @@ def _save_bdf(font, outstream):
         _convert_to_bdf_glyph(glyph, font)
         for glyph in font.glyphs
     )
+    bdf_props = _convert_to_bdf_properties(font, xlfd_name, glyphs)
     # write out
-    for key, value in bdf_props:
+    for key, value in bdf_props.items():
         if value:
             outstream.write(f'{key} {value}\n')
     if xlfd_props:
@@ -379,20 +394,35 @@ def _save_bdf(font, outstream):
         outstream.write('ENDPROPERTIES\n')
     outstream.write(f'CHARS {len(glyphs)}\n')
     for glyph in glyphs:
-        for key, value in glyph:
+        for key, value in glyph.items():
             outstream.write(f'{key} {value}\n')
         outstream.write('ENDCHAR\n')
     outstream.write('ENDFONT\n')
 
 
-def _convert_to_bdf_properties(font, xlfd_name):
+def _convert_to_bdf_properties(font, xlfd_name, glyphs):
+    # version 2.2 supports vertical metrics
+    # and glyph names longer than 14 characters
+    if (
+            font.has_vertical_metrics()
+            or any(len(_g['STARTCHAR']) > 14 for _g in glyphs)
+        ):
+        version = '2.2'
+    else:
+        version = '2.1'
+    size_str = f'{font.point_size} {font.dpi.x} {font.dpi.y}'
+    if font.levels > 2:
+        # greyscale font is always 2.3 (microsoft extension of bdf)
+        version = '2.3'
+        depth = (font.levels - 1).bit_length()
+        size_str += f' {depth}'
     bdf_props = [
-        ('STARTFONT', '2.1'),
+        ('STARTFONT', version),
     ] + [
         ('COMMENT', _comment) for _comment in font.get_comment().splitlines()
     ] + [
         ('FONT', xlfd_name),
-        ('SIZE', f'{font.point_size} {font.dpi.x} {font.dpi.y}'),
+        ('SIZE', size_str),
         (
             # per the example in the BDF spec,
             # the first two coordinates in FONTBOUNDINGBOX
@@ -405,7 +435,7 @@ def _convert_to_bdf_properties(font, xlfd_name):
     ]
     if font.has_vertical_metrics():
         bdf_props.append(('METRICSSET', '2'))
-    return bdf_props
+    return dict(bdf_props)
 
 
 def _get_glyph_encvalue(glyph, is_unicode):
@@ -492,11 +522,11 @@ def _convert_to_bdf_glyph(glyph, font):
     if not glyph.height:
         glyphdata.append(('BITMAP', ''))
     else:
-        hex = glyph.as_hex().upper()
+        hex = glyph.as_hex(bits_per_pixel=(font.levels-1).bit_length()).upper()
         width = len(hex) // glyph.height
         split_hex = [
             hex[_offs:_offs+width]
             for _offs in range(0, len(hex), width)
         ]
         glyphdata.append(('BITMAP', '\n' + '\n'.join(split_hex)))
-    return glyphdata
+    return dict(glyphdata)

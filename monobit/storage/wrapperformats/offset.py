@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.offset - binary files at offset in binary files
+monobit.storage.wrapperformats.offset - binary files at offset in binary files
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

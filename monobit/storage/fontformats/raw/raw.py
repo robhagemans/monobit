@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.raw - raw binary font files
+monobit.storage.fontformats.raw.raw - raw binary font files
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,11 +9,11 @@ import logging
 from itertools import zip_longest
 from pathlib import PurePath
 
-from monobit.base.binary import ceildiv, bytes_to_bits
+from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError, Regex, Glob
+from monobit.storage import Regex, Glob
 from monobit.core import Font, Glyph, Raster
-from monobit.base import Coord, NOT_SET
+from monobit.base import Coord, NOT_SET, FileFormatError
 from monobit.storage.utils.limitations import ensure_charcell
 
 # patterns
@@ -299,7 +299,7 @@ def save_bitmap(
         bitmap = Raster.stack(*rasters)
         glyphrows = (bitmap,)
     else:
-        # contruct rows (itertools.grouper recipe)
+        # construct rows (itertools.grouper recipe)
         args = [iter(rasters)] * strike_count
         grouped = zip_longest(*args, fillvalue=Glyph())
         glyphrows = (

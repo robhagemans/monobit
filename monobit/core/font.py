@@ -92,6 +92,8 @@ class FontProperties:
     # maximum raster (not necessarily ink) width/height
     raster_size: Coord
     raster: Bounds
+    # greyscale levels
+    levels: int
     # width, height of the character cell
     cell_size: Coord
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
@@ -431,6 +433,11 @@ class Font(HasProps):
             self.raster.right - self.raster.left,
             self.raster.top - self.raster.bottom
         )
+
+    @checked_property
+    def levels(self):
+        """Number of ink levels."""
+        return max((_g.levels for _g in self.glyphs), default=2)
 
     @checked_property
     def cell_size(self):
@@ -846,7 +853,7 @@ class Font(HasProps):
                 for _p in ('line_width', 'left_extent', 'right_extent')
             ):
             return True
-        return any(_g.has_vertical_metrics for _g in self.glyphs)
+        return any(_g.has_vertical_metrics() for _g in self.glyphs)
 
     ##########################################################################
     # glyph access
@@ -949,18 +956,18 @@ class Font(HasProps):
         if self.glyphs and self.spacing in ('character-cell', 'multi-cell'):
             return Glyph.blank(
                 width=self.cell_size.x, height=self.cell_size.y,
-                shift_up=self.glyphs[0].shift_up
+                shift_up=self.glyphs[0].shift_up, levels=self.levels,
             )
         # pylint: disable=invalid-unary-operand-type
         return Glyph.blank(
             width=self.word_space, height=self.pixel_size,
-            shift_up=-self.descent
+            shift_up=-self.descent, levels=self.levels,
         )
 
     @cache
     def get_empty_glyph(self):
         """Get blank glyph with zero advance_width and advance_height."""
-        return Glyph.blank()
+        return Glyph.blank(levels=self.levels)
 
 
     ##########################################################################

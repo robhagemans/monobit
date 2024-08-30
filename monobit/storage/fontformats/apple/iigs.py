@@ -1,23 +1,19 @@
 """
-monobit.storage.formats.apple.iigs - Apple IIgs font file
+monobit.storage.fontformats.apple.iigs - Apple IIgs font file
 
 (c) 2023 Kelvin Sherlock
 licence: https://opensource.org/licenses/MIT
 
-modifications (c) 2023 Rob Hagemans
+modifications (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import io
 import logging
 
-from monobit.base.binary import bytes_to_bits, align
 from monobit.base.struct import bitfield, little_endian as le
-from monobit.base import struct
-from monobit.base import Coord
-from monobit.base import NOT_SET
+from monobit.base import struct, Coord, NOT_SET, UnsupportedError
 from monobit.storage import loaders, savers
-from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph, KernTable
 from monobit.encoding import EncodingName
 
@@ -183,7 +179,7 @@ def _save_iigs(outstream, font, version, resample_encoding):
     else:
         extra = b''
         if owt_loc_high:
-            raise FileFormatError(
+            raise UnsupportedError(
                 'Bitmap strike too large for IIgs v1.1, use v1.5 instead.'
             )
     # write out name field, headers and NFNT

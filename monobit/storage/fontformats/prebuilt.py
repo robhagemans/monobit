@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.prebuilt - Adobe BE/LE Prebuilt Format
+monobit.storage.fontformats.prebuilt - Adobe BE/LE Prebuilt Format
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,7 +10,7 @@ from itertools import cycle
 
 from monobit.base.struct import bitfield, little_endian as le, big_endian as be
 from monobit.base import Props
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 from monobit.encoding import encodings
 
@@ -251,6 +251,8 @@ def _convert_from_pf(pf_props, pf_masks):
             Glyph.from_bytes(
                 _m.maskData, width=_m.width, height=_m.height,
                 align='left' if pf_props.byteOrder else 'right',
+                # assume higher depth means grayscale
+                levels=2**_matrix.depth,
                 tag=_name.decode('latin-1'),
                 ## horizontal
                 left_bearing=-_m.maskOffset.hx,
@@ -267,8 +269,6 @@ def _convert_from_pf(pf_props, pf_masks):
             for _m, _name, _width in zip(_strike, pf_props.names, pf_props.widths)
         )
         for _strike, _matrix in zip(pf_masks, pf_props.matrices)
-        # assume higher depth means colour or grayscale
-        if _matrix.depth == 1
     )
     if len(strikes) < len(pf_masks):
         logging.warning(

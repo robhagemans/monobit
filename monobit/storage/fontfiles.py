@@ -15,8 +15,8 @@ from contextlib import contextmanager
 from ..constants import MONOBIT
 from ..core import Font, Pack
 from ..plumbing import scriptable, manage_arguments
-from ..base import Any
-from .magic import MagicRegistry, FileFormatError
+from ..base import Any, FileFormatError, UnsupportedError
+from .magic import MagicRegistry
 from .location import open_location, iter_funcs_from_registry
 from .base import (
     DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,
@@ -106,7 +106,7 @@ def _annotate_fonts_with_source(
     # convert font or pack to pack
     pack = Pack(fonts)
     filename = _sanitise_filesystem_name(Path(filename).name)
-    filepath = _sanitise_filesystem_name(str(location.path))
+    filepath = _sanitise_filesystem_name(str(location.root) + str(location.path))
     # source format argumets
     loader_args = ' '.join(
         f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'
@@ -161,7 +161,7 @@ def load_all(root_location, *, format='', **kwargs):
                 pack = _load_stream(
                     location.get_stream(), format=format, **kwargs
                 )
-            except FileFormatError as exc:
+            except (FileFormatError, UnsupportedError) as exc:
                 logging.debug('Could not load `%s`: %s', location, exc)
             else:
                 packs += Pack(pack)
@@ -275,5 +275,5 @@ def save_all(
                     format=format,
                     **kwargs
                 )
-        except FileFormatError as e:
+        except (FileFormatError, UnsupportedError) as e:
             logging.error('Could not save `%s`: %s', filename, e)

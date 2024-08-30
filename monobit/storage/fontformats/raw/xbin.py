@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.xbin - XBIN font section
+monobit.storage.fontformats.raw.xbin - XBIN font section
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,7 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.storage import loaders, savers, Magic
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
@@ -54,7 +55,7 @@ def load_xbin(instream):
             f'Not an XBIN file: incorrect signature {header.magic}.'
         )
     if not header.font:
-        raise FileFormatError('XBIN file contains no font.')
+        raise UnsupportedError('XBIN file contains no font.')
     height = header.fontsize
     if header.has_512_chars:
         count = 512

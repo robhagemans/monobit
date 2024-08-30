@@ -1,5 +1,5 @@
 """
-monobit.storage.containers.ace - ace aechive reader
+monobit.storage.containerformats.ace - ace aechive reader
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,7 +11,8 @@ from pathlib import PurePosixPath
 from monobit.base import safe_import
 acefile = safe_import('acefile')
 
-from ..magic import FileFormatError, Magic
+from monobit.base import FileFormatError
+from ..magic import Magic
 from ..base import containers
 from ..streams import Stream
 from ..containers import Archive

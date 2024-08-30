@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.cpi - DOS Codepage Information format
+monobit.storage.fontformats.cpi - DOS Codepage Information format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -13,7 +13,8 @@ from itertools import accumulate
 from monobit.base import Props, passthrough
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le, sizeof
-from monobit.storage import loaders, savers, FileFormatError, Magic
+from monobit.storage import loaders, savers, Magic
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 
 
@@ -80,7 +81,7 @@ def save_cp(
     fonts = _make_fit(fonts, codepage_prefix)
     cpdata, _ = _convert_to_cp(fonts)
     if len(cpdata) > 1:
-        raise FileFormatError(
+        raise UnsupportedError(
             'All fonts in a single .cp file must have the same encoding.'
         )
     _write_cp(outstream, cpdata[0], format=format)
@@ -203,7 +204,8 @@ def _parse_cpi(data, *, pointer_type):
             or (cpi_header.id0 == 0x7f and cpi_header.id == _ID_DR)
         ):
         raise FileFormatError(
-            f'Not a valid CPI file: unrecognised CPI signature 0x{cpi_header.id0:02X} "{cpi_header.id}".'
+            'Not a valid CPI file: unrecognised CPI signature '
+            f'0x{cpi_header.id0:02X} "{cpi_header.id}".'
         )
     if cpi_header.id == _ID_DR:
         # read the extended DRFONT header - determine size first
@@ -223,7 +225,7 @@ def _parse_cpi(data, *, pointer_type):
                 data, cpeh_offset, cpi_header.id, drdos_effh=drdos_effh,
                 pointer_type=pointer_type
             )
-        except FileFormatError as e:
+        except (FileFormatError, UnsupportedError) as e:
             logging.error('Could not parse font in CPI file: %s', e)
         else:
             fonts += cp_fonts
@@ -325,7 +327,7 @@ def _read_cp_header(data, start_offset, format, standalone, *, pointer_type):
     logging.debug('cpeh: %s', cpeh)
     if cpeh.device_type == _DT_PRINTER:
         # printer fonts apparently hold printer-specific escape sequences
-        raise FileFormatError(
+        raise UnsupportedError(
             'Printer CPI codepages not supported: '
             f'codepage {cpeh.codepage}, device `{cpeh.device_name}`'
         )
@@ -452,7 +454,7 @@ def _make_fit(fonts, codepage_prefix):
     fonts = (_make_one_fit(_font, codepage_prefix) for _font in fonts)
     fonts = tuple(_font for _font in fonts if _font)
     if not fonts:
-        raise FileFormatError(
+        raise UnsupportedError(
             'CPI format can only store 8xN character-cell fonts'
             ' encoded with a numbered codepage.'
         )

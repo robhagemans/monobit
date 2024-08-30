@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.xlfd.xlfd - X11 Logical Font Description
+monobit.storage.fontformats.xlfd.xlfd - X11 Logical Font Description
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

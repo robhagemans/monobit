@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.pilfont - PILfont format
+monobit.storage.fontformats.pilfont - PILfont format
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,7 +11,8 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph
 from monobit.base.struct import big_endian as be
 from monobit.render import GlyphMap
@@ -73,7 +74,8 @@ if Image:
                 glyphs.append(
                     Glyph.from_vector(
                         tuple(crop.getdata()),
-                        stride=crop.width, _0=0, _1=255,
+                        stride=crop.width,
+                        inklevels=(0, 255),
                         codepoint=cp,
                         left_bearing=metric.dst_x0,
                         right_bearing=metric.dwx - metric.dst_x1,

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.geos - C64 GEOS font files
+monobit.storage.fontformats.geos - C64 GEOS font files
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,10 +9,11 @@ import logging
 from datetime import datetime
 from itertools import count, accumulate
 
-from monobit.storage import loaders, savers, Stream, Magic, FileFormatError
+from monobit.storage import loaders, savers, Stream, Magic
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
-from monobit.base.binary import ceildiv, align
+from monobit.base.binary import ceildiv
 
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
 
@@ -558,19 +559,19 @@ def _write_geos(
 def _prepare_geos(fonts):
     """Validate fonts for storing in GEOS convert format; extract metadata."""
     if len(set(_f.family for _f in fonts)) > 1:
-        raise FileFormatError(
+        raise UnsupportedError(
             'GEOS font file can only store fonts from one family.'
         )
     if len(set(_f.pixel_size for _f in fonts)) != len(fonts):
-        raise FileFormatError(
+        raise UnsupportedError(
             'GEOS font file can only store fonts with distinct pixel sizes.'
         )
     if len(fonts) > 15:
-        raise FileFormatError(
+        raise UnsupportedError(
             'GEOS font file can only store at most 15 pixel sizes.'
         )
     if max(_f.pixel_size for _f in fonts) > 63:
-        raise FileFormatError(
+        raise UnsupportedError(
             'GEOS font file can only store fonts of up to 63 pixels tall.'
         )
     common_props = _get_metadata(fonts[0])
@@ -698,5 +699,5 @@ _FONT_ICON = """\
 
 def _make_icon():
     """Create standard icon."""
-    icon = Glyph.from_vector(_FONT_ICON, stride=25, width=24, _0='.', _1='@')
+    icon = Raster.from_vector(_FONT_ICON, stride=25, width=24, inklevels='.@')
     return icon.as_bytes()

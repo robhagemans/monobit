@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.fon.os2.lx - read OS/2 LX containers
+monobit.storage.fontformats.fon.os2.lx - read OS/2 LX containers
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 
 
@@ -18,7 +18,7 @@ notice for gpifont.c and os2res.h:
 
 import logging
 
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError
 from monobit.base.struct import little_endian as le
 
 from .gpifont import parse_os2_font_directory

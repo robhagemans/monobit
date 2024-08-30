@@ -1,6 +1,6 @@
 """
 Print a banner using a bitmap font
-(c) 2019--2023 Rob Hagemans, licence: https://opensource.org/licenses/MIT
+(c) 2019--2024 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
 
@@ -76,6 +76,12 @@ def main():
         )
     )
     parser.add_argument(
+        '--inklevels', type=str, default='',
+        help=(
+            'characters to use for greyscale ink levels.'
+        )
+    )
+    parser.add_argument(
         '--border', type=str, default='',
         help=(
             'character or colour to use for border '
@@ -133,12 +139,16 @@ def main():
         )
     )
     parser.add_argument(
-        '--image',  action='store_true',
+        '--image', action='store_true',
         help=('output as image')
     )
     parser.add_argument(
-        '--blocks',  nargs='?', const='2x2', default='',
-        help=('output as block element characters')
+        '--blocks', nargs='?', const='1x1', default='',
+        help=('output as block element characters of given XxY density. Default: 1x1')
+    )
+    parser.add_argument(
+        '--shades', action='store_true',
+        help=('output as ANSI-coloured 1x1 block element characters')
     )
     # font / glyph effects
     parser.add_argument(
@@ -180,6 +190,7 @@ def main():
         args.paper = unescape(args.paper)
         args.border = unescape(args.border)
         args.text = unescape(args.text)
+        args.inklevels = unescape(args.inklevels)
         #######################################################################
         # take first font from pack
         font, *_ = monobit.load(args.font, format=args.format)
@@ -238,7 +249,7 @@ def main():
             ink = RGB.create(args.ink or (0, 0, 0))
             paper = RGB.create(args.paper or (255, 255, 255))
             border = RGB.create(args.border) if args.border else paper
-            image = glyph_map.as_image(ink=ink, paper=paper, border=border)
+            image = glyph_map.as_image(paper=paper, ink=ink, border=border)
             if args.output:
                 image.save(args.output)
             else:
@@ -247,11 +258,17 @@ def main():
             if args.blocks:
                 resolution = tuple(int(_v) for _v in args.blocks.split('x'))
                 text = glyph_map.as_blocks(resolution)
+            elif args.shades:
+                ink = RGB.create(args.ink or (255, 255, 255))
+                paper = RGB.create(args.paper or (0, 0, 0))
+                border = RGB.create(args.border) if args.border else paper
+                text = glyph_map.as_shades(paper=paper, ink=ink, border=border)
             else:
                 ink = args.ink or '@'
                 paper = args.paper or '.'
+                inklevels = args.inklevels or (paper, ink)
                 border = args.border or paper
-                text = glyph_map.as_text(ink=ink, paper=paper, border=border) + '\n'
+                text = glyph_map.as_text(inklevels=inklevels, border=border) + '\n'
             if not args.output:
                 sys.stdout.write(text)
             else:

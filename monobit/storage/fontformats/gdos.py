@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.gdos - Atari GDOS/GEM format
+monobit.storage.fontformats.gdos - Atari GDOS/GEM format
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,8 +10,8 @@ from itertools import accumulate
 
 from monobit.base.struct import bitfield, little_endian as le, big_endian as be, sizeof
 from monobit.base.binary import bytes_to_bits, ceildiv
-from monobit.base import Props
-from monobit.storage import loaders, savers, FileFormatError, Magic
+from monobit.base import Props, FileFormatError
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Raster
 
 from monobit.storage.utils.limitations import ensure_single
@@ -403,14 +403,15 @@ def _read_gdos_glyphs(data, header, ext_header, off_table, hor_table, endian):
     else:
         strike = _read_strike(data, header)
     # extract glyphs
-    pixels = [
-        [_row[_loc.offset:_next.offset] for _row in strike]
+    pixels = (
+        tuple(_row[_loc.offset:_next.offset] for _row in strike)
         for _loc, _next in zip(off_table[:-1], off_table[1:])
-    ]
+    )
     glyphs = [
-        Glyph(
+        Glyph.from_matrix(
             _pix, codepoint=_ord,
-            left_bearing=-_hor_table.pre, right_bearing=-_hor_table.post
+            left_bearing=-_hor_table.pre, right_bearing=-_hor_table.post,
+            inklevels=(False, True),
         )
         for _ord, (_pix, _hor_table) in enumerate(
             zip(pixels, hor_table),
@@ -499,7 +500,7 @@ def _read_compressed_strike(data, header, ext_header, endian):
         max = 2**16
         if n_zeros > max:
             # error
-            raise FileFormatError('could not read compressed bitmap.')
+            raise FileFormatError('Could not read compressed bitmap.')
         elif n_zeros == max:
             # special case, no alternation
             bits.extend([False]*(max-1))
@@ -620,13 +621,9 @@ def _convert_to_gdos(font, endianness):
 def _generate_bitmap_strike(glyphs):
     """Generate horizontal bitmap strike."""
     # all glyphs have been brought to the same height previously
-    matrices = tuple(_g.as_matrix() for _g in glyphs)
-    strike = tuple(
-        sum((_m[_row] for _m in matrices), ())
-        for _row in range(glyphs[0].height)
-    )
-    offsets = (0,) + tuple(accumulate(_g.width for _g in glyphs))
-    return Raster(strike, _0=0, _1=1), offsets
+    strike = Raster.concatenate(*(_g.pixels for _g in glyphs))
+    offsets = tuple(accumulate((_g.width for _g in glyphs), initial=0))
+    return strike, offsets
 
 def _write_gdos(outstream, header, glyphs, endianness):
     """Write gdos properties and glyphs to binary file."""

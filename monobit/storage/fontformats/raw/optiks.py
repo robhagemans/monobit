@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.optiks - OPTIKS PCR fonts
+monobit.storage.fontformats.raw.optiks - OPTIKS PCR fonts
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,9 +7,10 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
+from monobit.base import UnsupportedError
 
 from .raw import load_bitmap, save_bitmap
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell, make_contiguous
@@ -56,7 +57,7 @@ def save_pcr(fonts, outstream):
     font = ensure_single(fonts)
     font = ensure_charcell(font)
     if font.cell_size.x != 8:
-        raise FileFormatError(
+        raise UnsupportedError(
             'This format only supports 8xN character-cell fonts.'
         )
     font = make_contiguous(font, full_range=range(256), missing='space')

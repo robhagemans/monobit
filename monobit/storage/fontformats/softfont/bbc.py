@@ -1,14 +1,14 @@
 """
-monobit.storage.formats.softfont.bbc - Acorn BBC vfont format
+monobit.storage.fontformats.softfont.bbc - Acorn BBC vfont format
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 
-from monobit.base import Props
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.base import Props, FileFormatError
+from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell
@@ -52,6 +52,10 @@ def _read_bbc(instream):
         # the next 8 bytes represent an 8x8 glyph
         glyphbytes = instream.read(8)
         glyphs.append(Glyph.from_bytes(glyphbytes, width=8, codepoint=cp))
+    if not glyphs:
+        raise FileFormatError(
+            'Not a BBC soft font: VDU 0x17 sequence not found.'
+        )
     return glyphs
 
 

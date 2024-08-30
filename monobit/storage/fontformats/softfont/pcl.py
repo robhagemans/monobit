@@ -1,17 +1,17 @@
 """
-monobit.storage.formats.pcl - HP PCL soft fonts
+monobit.storage.fontformats.pcl - HP PCL soft fonts
 
-(c) 2023 Rob Hagemans
+(c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 from io import BytesIO
 
-from monobit.storage import loaders, savers, FileFormatError, Magic
+from monobit.storage import loaders, savers, Magic
 from monobit.base.struct import big_endian as be, bitfield
 from monobit.core import Glyph, Raster, Font
-from monobit.base import Props, reverse_dict
+from monobit.base import Props, reverse_dict, UnsupportedError
 from monobit.encoding import EncodingName
 
 from monobit.storage.utils.limitations import ensure_single
@@ -33,7 +33,7 @@ def load_hppcl(instream):
     if fontdef.descriptor_format not in (
             _HEADER_FMT_BITMAP, 5, 6, 7, 9, 12, 16, _HEADER_FMT_RES_BITMAP
         ):
-        raise FileFormatError('PCL soft font is not a bitmap font.')
+        raise UnsupportedError('PCL soft font is not a bitmap font.')
     glyphdefs = _read_hppcl_glyphs(instream)
     props = _convert_hppcl_props(fontdef, copyright)
     glyphs = _convert_hppcl_glyphs(glyphdefs)
@@ -574,7 +574,7 @@ def _convert_hppcl_glyph(code, chardef, glyphbytes):
                 outrow.extend([bit] * ord(n))
                 bit = not bit
             outbits.extend(outrow * ord(repeats))
-        raster = Raster(outbits, _0=False, _1=True)
+        raster = Raster.from_matrix(outbits, inklevels=(False, True))
     else:
         raster = Raster.from_bytes(
             glyphbytes, width=chardef.character_width,
@@ -592,7 +592,7 @@ def _convert_hppcl_glyph(code, chardef, glyphbytes):
             right_bearing=chardef.delta_x//4 - chardef.top_offset - 1,
         )
     else:
-        raise FileFormatError('Unsupported orientation')
+        raise UnsupportedError('Unsupported orientation')
     props.update(dict(
         codepoint=code,
         #chardef=Props(**vars(chardef)),
@@ -676,7 +676,7 @@ def _read_hppcl_glyphs(instream):
         size = bytestr_to_int(sizestr)
         common = _LASERJET_CHAR_COMMON.read_from(instream)
         if common.format != _CHAR_FMT_LASERJET:
-            raise FileFormatError(
+            raise UnsupportedError(
                 f'Unsupported charcter definition format ({common.format}.'
             )
         if common.continuation:

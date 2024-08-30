@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.plus3dos - +3DOS header
+monobit.storage.fontformats.raw.plus3dos - +3DOS header
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,7 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, Magic, FileFormatError
+from monobit.storage import loaders, savers, Magic
+from monobit.base import FileFormatError
 from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 

@@ -7,24 +7,24 @@ licence: https://opensource.org/licenses/MIT
 
 from monobit.base import Coord
 from monobit.core import Glyph
-from monobit.base import FileFormatError
+from monobit.base import UnsupportedError
 
 
 def ensure_single(fonts):
     font, *more = fonts
     if more:
-        raise FileFormatError('This format can only store one font per file.')
+        raise UnsupportedError('This format can only store one font per file.')
     return font
 
 
 def ensure_charcell(font, cell_size=None):
     # check if font is fixed-width and fixed-height
     if font.spacing != 'character-cell':
-        raise FileFormatError(
+        raise UnsupportedError(
             'This format only supports character-cell fonts.'
         )
     if cell_size and font.cell_size != cell_size:
-        raise FileFormatError(
+        raise UnsupportedError(
             f'This format only supports {Coord(cell_size)} character-cell fonts.'
         )
     # fill out character cell including shifts, bearings and line height

@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.dosstart - DosStart! format
+monobit.storage.fontformats.text.dosstart - DosStart! format
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,8 @@ import logging
 import string
 from io import StringIO
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster, StrokePath
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
 
@@ -42,7 +43,7 @@ def load_dosstart(instream):
     elif format == 1:
         glyphs = _read_dsf_format_1(instream, ascent)
     else:
-        raise FileFormatError(f'Unknown DosStart font format {format}')
+        raise UnsupportedError(f'Unknown DosStart font format {format}')
     return Font(glyphs, **props).label(char_from='ascii')
 
 
@@ -65,7 +66,7 @@ def _read_dsf_format_1(instream, ascent):
         width = int(code[:3])
         height = int(code[3:6])
         raster = Raster.from_vector(
-            code[6:].strip(), stride=width, _0='G', _1='H'
+            code[6:].strip(), stride=width, inklevels='GH'
         )
         # sample file has short bit string
         raster = raster.expand(top=height-raster.height)
@@ -86,7 +87,7 @@ def _write_dsf_format_1(font, outstream):
         # code
         outstream.write(b'%03d%03d' % (glyph.width, glyph.height))
         # glyph def
-        outstream.write(b''.join(glyph.as_vector(ink=b'H', paper=b'G')))
+        outstream.write(b''.join(glyph.as_vector(inklevels=(b'G', b'H'))))
         # advance
         outstream.write(b', %d \r\n' % (glyph.advance_width,))
 

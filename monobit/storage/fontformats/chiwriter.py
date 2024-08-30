@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.chiwriter - ChiWriter, GRASP, PCPaint, FONTRIX (for IBM)
+monobit.storage.fontformats.chiwriter - ChiWriter, GRASP, PCPaint, FONTRIX (for IBM)
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,10 +7,11 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, FileFormatError, Magic
+from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
+from monobit.base import FileFormatError
 
 
 ###############################################################################
@@ -141,7 +142,9 @@ def load_chiwriter(instream, filetype:int=None):
         formatstr = f'FONTRIX / PCPaint / GRASP / ChiWriter v3'
     else:
         # other values => old format, where this is a size field
-        raise FileFormatError('Not a new-format FONTRIX/GRASP/PCPaint/ChiWriter file')
+        raise FileFormatError(
+            'Not a new-format FONTRIX/GRASP/PCPaint/ChiWriter file'
+        )
     widths = le.uint8.array(header.numchars).from_bytes(data, woffset)
     logging.debug(widths)
     shift_up = -(header.vsize-header.baseline) if header.baseline else None

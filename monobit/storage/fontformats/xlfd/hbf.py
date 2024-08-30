@@ -1,15 +1,15 @@
 """
-monobit.storage.formats.xlfd.hbf - Hanzi Bitmap File Format
+monobit.storage.fontformats.xlfd.hbf - Hanzi Bitmap File Format
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 from pathlib import Path
 
-from monobit.storage import loaders, savers, FileFormatError
-from monobit.base import Coord
+from monobit.storage import loaders, savers
+from monobit.base import Coord, UnsupportedError
 from monobit.core import Font, Glyph
 from monobit.base.binary import ceildiv
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell
@@ -426,10 +426,10 @@ def _get_code_ranges(font):
     """Determine contiguous ranges."""
     cps = font.get_codepoints()
     if not cps:
-        raise FileFormatError('No storable glyphs in font.')
+        raise UnsupportedError('No storable glyphs in font.')
     n_bytes = len(max(cps))
     if n_bytes not in (2, 3):
-        raise FileFormatError('HBF can only store 2- or 3-byte code ranges.')
+        raise UnsupportedError('HBF can only store 2- or 3-byte code ranges.')
     # only store full-length codepoints and store in order
     cps = sorted(_cp for _cp in cps if len(_cp) == n_bytes)
     # determine byte-2 ranges

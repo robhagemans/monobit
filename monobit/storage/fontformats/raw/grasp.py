@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.grasp - GRASP / PCPaint character-cell "old format"
+monobit.storage.fontformats.raw.grasp - GRASP / PCPaint character-cell "old format"
 
 (c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,7 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv

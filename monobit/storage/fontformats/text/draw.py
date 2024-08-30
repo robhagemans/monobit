@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.draw - hexdraw format
+monobit.storage.fontformats.text.draw - hexdraw format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,7 +9,6 @@ import logging
 import string
 
 from monobit.storage.base import loaders, savers
-from monobit.storage import FileFormatError
 from monobit.core import Font, Glyph, Tag, Char
 from monobit.encoding import encodings
 from monobit.base.binary import align
@@ -131,7 +130,9 @@ def _save_draw(font, outstream, *, ink, paper, unicode):
                 ascii(char)
             )
         else:
-            glyphtxt = glyph.as_text(start='\t', ink=ink, paper=paper, end='\n')
+            glyphtxt = glyph.as_text(
+                start='\t', inklevels=(paper, ink), end='\n'
+            )
             outstream.write(f'\n{ord(char):04x}:')
             outstream.write(glyphtxt)
 
@@ -279,7 +280,7 @@ class DrawGlyph(NonEmptyBlock):
             lines = [value] + lines
         lines = tuple(_l.strip() for _l in lines)
         return Glyph(
-            lines, _0=self.paper, _1=self.ink,
+            lines, inklevels=(self.paper, self.ink),
             labels=(self.convert_key(key),),
         )
 

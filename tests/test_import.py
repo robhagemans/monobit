@@ -454,7 +454,11 @@ class TestImport(BaseTester):
 
     def test_import_png(self):
         """Test importing image files."""
-        font, *_ = monobit.load(self.font_path / '4x6.png', cell=(4, 6), count=919, padding=(0,0), first_codepoint=0x1f)
+        font, *_ = monobit.load(
+            self.font_path / '4x6.png',
+            grid=True, cell=(4, 6), padding=(0,0),
+            first_codepoint=0x1f, count=919,
+        )
         self.assertEqual(len(font.glyphs), 919)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
@@ -1320,6 +1324,55 @@ class TestImport(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6.edwin.fnt', format='edwin')
         self.assertEqual(len(font.glyphs), 127)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
+    # RiscOS old format
+
+    riscold = 'https://www.lewisgilbert.co.uk/archiology/archives/riscos2/'
+
+    def test_import_riscos_xy(self):
+        """Test importing RiscOs x90y45 files."""
+        file = ensure_asset(self.riscold, 'App1.zip')
+        font, *_ = monobit.load(file / '!Fonts/Trinity/Medium/x90y45', format='riscos-xy')
+        self.assertEqual(len(font.glyphs), 224)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), """\
+....141...
+...16c71..
+..1533c5..
+.156447d4.
+1571..2883
+""")
+
+
+    def test_import_riscos(self):
+        """Test importing RiscOS new-format files."""
+        file = self.font_path / 'System.Fixed' / 'f240x120'
+        font, *_ = monobit.load(file, format='riscos')
+        self.assertEqual(len(font.glyphs), 211)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
+.@@@@.
+@@..@@
+@@..@@
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+""")
+
+    def test_import_beos(self):
+        """Test importing BeOS files."""
+        file = self.font_path / 'Konatu' / 'Konatu_10'
+        font, *_ = monobit.load(file, format='beos')
+        self.assertEqual(len(font.glyphs), 14963)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
+.171.
+17171
+71.17
+7...7
+7...7
+77777
+7...7
+7...7
+""")
 
 
 if __name__ == '__main__':

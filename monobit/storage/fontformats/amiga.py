@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.amiga - Amiga font format
+monobit.storage.fontformats.amiga - Amiga font format
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,11 +9,10 @@ import os
 import logging
 from pathlib import Path
 
-from monobit.base.binary import bytes_to_bits
-from monobit.storage import loaders, savers, FileFormatError, Regex
-from monobit.core import Font, Glyph
+from monobit.storage import loaders, savers, Regex
+from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import flag, bitfield, big_endian as be
-from monobit.base import Props, Coord
+from monobit.base import Props, Coord, FileFormatError, UnsupportedError
 
 
 @loaders.register(
@@ -31,7 +30,7 @@ def load_amiga_fc(f):
         logging.debug('Amiga FCH using TFontContents')
         contentsarray = _T_FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
     elif fch.fch_FileID == _NONBITMAP_ID:
-        raise FileFormatError('IntelliFont Amiga outline fonts not supported.')
+        raise UnsupportedError('IntelliFont Amiga outline fonts not supported.')
     else:
         raise FileFormatError(
             'Not an Amiga Font Contents file: '
@@ -71,7 +70,7 @@ def load_amiga(instream, tags=()):
 
 @savers.register(linked=load_amiga)
 def save_amiga(pack, outstream):
-    raise FileFormatError('Saving to Amiga disk font file not supported.')
+    raise UnsupportedError('Saving to Amiga disk font file not supported.')
 
 
 ###################################################################################################
@@ -328,26 +327,25 @@ def _read_strike(f, props):
     else:
         kerning = [0] * nchars
     # bitmap strike
-    strike = [
-        bytes_to_bits(data[_offset : _offset+props.tf_Modulo])
-        for _offset in range(
-            loc + props.tf_CharData,
-            loc + props.tf_CharData + props.tf_Modulo*props.tf_YSize,
-            props.tf_Modulo
-        )
-    ]
+    strike = Raster.from_bytes(
+        data[
+            loc + props.tf_CharData
+            : loc + props.tf_CharData + props.tf_Modulo*props.tf_YSize
+        ],
+        height=props.tf_YSize,
+    )
     # extract glyphs
-    pixels = [
-        [_row[_loc.offset:_loc.offset+_loc.width] for _row in strike]
+    pixels = (
+        strike.crop(left=_loc.offset, right=strike.width-_loc.offset-_loc.width)
         for _loc in locs
-    ]
-    glyphs = [
+    )
+    glyphs = tuple(
         Glyph(_pix, codepoint=_ord, kerning=_kern, spacing=_spc)
         for _ord, (_pix, _kern, _spc) in enumerate(
             zip(pixels, kerning, spacing),
             start=props.tf_LoChar
         )
-    ]
+    )
     return glyphs
 
 
@@ -388,7 +386,7 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
 def _convert_amiga_props(amiga_props):
     """Convert AmigaFont properties into yaff properties."""
     if amiga_props.tf_Style.FSF_COLORFONT:
-        raise FileFormatError('Amiga ColorFont not supported')
+        raise UnsupportedError('Amiga ColorFont not supported')
     props = Props()
     name = bytes(amiga_props.dfh_Name).decode(_ENCODING).strip()
     if name:

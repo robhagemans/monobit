@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.raw.comloaders - executable font loaders
+monobit.storage.fontformats.raw.comloaders - executable font loaders
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -7,7 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, Magic, FileFormatError
+from monobit.storage import loaders, Magic
+from monobit.base import FileFormatError
 from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
@@ -218,7 +219,7 @@ def load_letafont(instream):
     ),
     patterns=('*.com',),
 )
-def load_letafont(instream):
+def load_udg(instream):
     """Load a UDG .COM font."""
     instream.read(114)
     font = load_bitmap(

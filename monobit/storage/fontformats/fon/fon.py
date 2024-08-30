@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.fon.fon - Windows and OS/2 FON files
+monobit.storage.fontformats.fon.fon - Windows and OS/2 FON files
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -9,7 +9,7 @@ import logging
 
 from monobit.storage import loaders, savers
 from monobit.storage import Stream
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError, UnsupportedError
 
 from monobit.storage.fontformats.sfnt import load_sfnt, SFNT_MAGIC
 
@@ -96,7 +96,7 @@ def load_mzfon(instream, all_type_ids:bool=False):
                 logging.warning(
                     'Resource format not recognised: signature `%s`', magic
                 )
-        except FileFormatError as e:
+        except (FileFormatError, UnsupportedError) as e:
             logging.warning('Failed to convert font resource: %s', e)
     fonts = tuple(
         font.modify(source_format=f'[{format_name}] {font.source_format}')

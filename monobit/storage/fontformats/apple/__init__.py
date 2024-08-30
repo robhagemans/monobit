@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.apple - Mac OS and other NFNT-based font formats
+monobit.storage.fontformats.apple - Mac OS and other NFNT-based font formats
 
-(c) 2019--2023 Rob Hagemans
+(c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

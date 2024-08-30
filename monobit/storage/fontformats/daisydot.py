@@ -1,7 +1,7 @@
 """
-monobit.storage.formats.daisydot - Daisy Dot II/III NLQ format
+monobit.storage.fontformats.daisydot - Daisy Dot II/III NLQ format
 
-(c) 2022--2023 Rob Hagemans
+(c) 2022--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,7 +10,8 @@ from pathlib import Path
 
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import ceildiv, bytes_to_bits
-from monobit.storage import loaders, savers, FileFormatError
+from monobit.storage import loaders, savers
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph, Raster
 
 
@@ -77,8 +78,9 @@ def _parse_daisy2(data):
         pass1 = bytes_to_bits(data[ofs+width+1:ofs+2*width+1])
         bits = tuple(_b for _pair in zip(pass0, pass1) for _b in _pair)
         glyphs.append(
-            Glyph.from_vector(bits, stride=16, codepoint=cp)
-            .transpose(adjust_metrics=False)
+            Glyph.from_vector(
+                bits, stride=16, codepoint=cp, inklevels=(False, True)
+            ).transpose(adjust_metrics=False)
         )
         # separated by a \x9b
         ofs += 2*width + 2
@@ -103,7 +105,9 @@ def _parse_daisy3(data):
         ]
         bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
         # we transpose, so stride is based on row height which is fixed
-        matrix = Raster.from_vector(bits, stride=16).transpose().as_matrix()
+        raster = Raster.from_vector(
+            bits, stride=16, inklevels=(False, True)
+        ).transpose()
         ofs += 2*width
         if double:
             passes = [
@@ -112,10 +116,13 @@ def _parse_daisy3(data):
             ]
             ofs += 2*width
             bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
-            matrix += (
-                Raster.from_vector(bits, stride=16).transpose().as_matrix()
+            raster = Raster.stack(
+                raster,
+                Raster.from_vector(
+                    bits, stride=16, inklevels=(False, True)
+                ).transpose(),
             )
-        glyphs.append(Glyph(matrix, codepoint=cp))
+        glyphs.append(Glyph(raster, codepoint=cp))
         # in dd3, not separated by a \x9b
     dd3_props = _DD3_FINAL.from_bytes(data, ofs)
     # extend non-doubled glyphs
@@ -183,8 +190,7 @@ def _parse_daisy_mag(data, name, location):
         _, _, new_glyphs = _parse_daisy3(data)
         glyphs = tuple(
             Glyph(
-               # _g1.transpose().as_matrix() + _g2.transpose().as_matrix(),
-               _g1.as_matrix() + _g2.as_matrix(),
+                Raster.stack(_g1.pixels, _g2.pixels),
                 codepoint=_g1.codepoint
             )
             #.transpose(adjust_metrics=False)

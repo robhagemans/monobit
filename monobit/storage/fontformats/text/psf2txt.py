@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.text.psf2txt - PSF2TXT format
+monobit.storage.fontformats.text.psf2txt - PSF2TXT format
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,11 +9,11 @@ import logging
 import string
 
 from monobit.storage.base import loaders, savers
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError
 from monobit.core import Font, Glyph, Char
 from monobit.base import Props
 
-from .draw import NonEmptyBlock, Empty, iter_blocks, equal_firsts
+from .draw import NonEmptyBlock, Empty, iter_blocks, equal_firsts, Unparsed
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 
 
@@ -71,7 +71,7 @@ def _write_psf2txt(font, outstream):
         outstream.write(f'%\n// Character {i}\n')
         outstream.write('Bitmap: ')
         outstream.write(
-            glyph.as_text(start='', end=' \\\n        ', paper='-', ink='#')
+            glyph.as_text(start='', end=' \\\n        ', inklevels='-#')
             .rstrip(' \\\n        ')
         )
         outstream.write('\n')
@@ -110,7 +110,7 @@ def _read_psf2txt(text_stream):
         elif isinstance(block, PTProperties):
             current_props.update(block.get_value())
         elif isinstance(block, PTGlyph):
-            glyphs.append(Glyph(block.get_value(), _0='-', _1='#'))
+            glyphs.append(Glyph(block.get_value(), inklevels='-#'))
         elif isinstance(block, PTLabel):
             glyphs[-1] = glyphs[-1].modify(labels=block.get_value())
         elif isinstance(block, Unparsed):

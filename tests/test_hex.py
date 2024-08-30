@@ -39,7 +39,7 @@ class TestHex(BaseTester):
             '........',
             '........',
             '........',
-        ), labels=(' ',), _0='.', _1='@')
+        ), labels=(' ',), inklevels='.@')
         assert f.get_glyph(' ') == space, f.get_glyph(' ')
         u = Glyph((
             '........',
@@ -50,7 +50,7 @@ class TestHex(BaseTester):
             '.@@..@@.',
             '..@@@@@.',
             '........',
-        ), labels=('u',), _0='.', _1='@')
+        ), labels=('u',), inklevels='.@')
         assert f.get_glyph('u') == u, f.get_glyph('u')
 
 

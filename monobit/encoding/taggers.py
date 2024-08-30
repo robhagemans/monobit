@@ -1,7 +1,7 @@
 """
 monobit.encoding.taggers - glyph tagging
 
-(c) 2020--2023 Rob Hagemans
+(c) 2020--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -10,7 +10,7 @@ from pathlib import Path
 from importlib.resources import files
 from functools import partial, wraps, cached_property
 
-from .unicode import unicode_name, is_printable
+from .unicode import unicode_name, is_showable
 from ..core.labels import to_label, Tag, Char, Codepoint
 from ..base import reverse_dict
 from .base import NotFoundError, Encoder, register_reader
@@ -69,7 +69,7 @@ class DescriptionTagger(Encoder):
             return Tag()
         char = char.value
         name = unicode_name(char)
-        if is_printable(char):
+        if is_showable(char):
             return Tag('[{}] {}'.format(char, name))
         return Tag(name)
 
@@ -81,9 +81,9 @@ class CharTagger(Encoder):
         super().__init__(name='char')
 
     def tag(self, *labels):
-        """Get printable char."""
+        """Get showable char."""
         char = _get_char(labels).value
-        if is_printable(char):
+        if is_showable(char):
             return Tag(char)
         return Tag()
 

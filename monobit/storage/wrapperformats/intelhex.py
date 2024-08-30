@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.intelhex - binary files embedded in Intel Hex files
+monobit.storage.wrapperformats.intelhex - binary files embedded in Intel Hex files
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,8 +9,8 @@ import logging
 from pathlib import Path
 from io import BytesIO
 
+from monobit.base import FileFormatError
 from ..streams import Stream, DelayedWriterStream
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 from ...base.binary import ceildiv
 
@@ -103,7 +103,7 @@ def _do_encode_intel(data, outstream, *, chunk_size):
                 return
             sum_bytes = sum(payload)
             # skip over null chunks, except the last to ensure file length
-            if not sum_bytes and len(payload) == chunksize:
+            if not sum_bytes and len(payload) == chunk_size:
                 continue
             offset_hi, offset_lo = divmod(offset, 0x10000)
             if offset_hi > extended_address:

@@ -1,7 +1,7 @@
 """
-monobit.storage.containers.binhex - BinHex containers
+monobit.storage.containerformats.binhex - BinHex containers
 
-(c) 2021--2023 Rob Hagemans
+(c) 2021--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
@@ -11,8 +11,9 @@ from itertools import zip_longest
 from functools import partial
 
 from monobit.base.struct import big_endian as be, little_endian as le
+from monobit.base import FileFormatError
 from ..streams import Stream
-from ..magic import FileFormatError, Magic, Sentinel
+from ..magic import Magic, Sentinel
 from ..base import containers
 from ..containers import FlatFilterContainer
 

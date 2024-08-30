@@ -1,5 +1,5 @@
 """
-monobit.storage.wrappers.unixcompress - compress (.Z) encoding
+monobit.storage.wrapperformats.unixcompress - compress (.Z) encoding
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -13,7 +13,6 @@ from monobit.base import safe_import
 ncompress = safe_import('ncompress')
 
 from ..streams import Stream, DelayedWriterStream
-from ..magic import FileFormatError
 from ..base import encoders, decoders
 
 

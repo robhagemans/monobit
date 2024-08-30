@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.vector.gimms - GIMMS.BIN
+monobit.storage.fontformats.vector.gimms - GIMMS.BIN
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -12,7 +12,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.storage import loaders, savers, Magic
-from monobit.storage import FileFormatError
+from monobit.base import FileFormatError
 from monobit.base.struct import StructError, big_endian as be
 from monobit.core import Font, Glyph, StrokePath, StrokeMove
 
