@@ -103,7 +103,7 @@ def _do_encode_intel(data, outstream, *, chunk_size):
                 return
             sum_bytes = sum(payload)
             # skip over null chunks, except the last to ensure file length
-            if not sum_bytes and len(payload) == chunksize:
+            if not sum_bytes and len(payload) == chunk_size:
                 continue
             offset_hi, offset_lo = divmod(offset, 0x10000)
             if offset_hi > extended_address:

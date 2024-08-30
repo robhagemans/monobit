@@ -219,7 +219,7 @@ def load_letafont(instream):
     ),
     patterns=('*.com',),
 )
-def load_letafont(instream):
+def load_udg(instream):
     """Load a UDG .COM font."""
     instream.read(114)
     font = load_bitmap(

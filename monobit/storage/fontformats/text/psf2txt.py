@@ -13,7 +13,7 @@ from monobit.base import FileFormatError
 from monobit.core import Font, Glyph, Char
 from monobit.base import Props
 
-from .draw import NonEmptyBlock, Empty, iter_blocks, equal_firsts
+from .draw import NonEmptyBlock, Empty, iter_blocks, equal_firsts, Unparsed
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 
 

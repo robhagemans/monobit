@@ -18,7 +18,7 @@ from types import SimpleNamespace
 from monobit.base.binary import ceildiv, align
 from monobit.base.struct import little_endian as le
 from monobit.storage import loaders, savers
-from monobit.base import reverse_dict, FileFormatError, Props
+from monobit.base import reverse_dict, FileFormatError, UnsupportedError, Props
 from monobit.core import Font, Glyph, Raster, StrokePath
 from monobit.storage.utils.limitations import ensure_single
 

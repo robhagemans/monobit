@@ -440,7 +440,7 @@ if Image:
         def _save_image_glyph(glyph, imgfile):
             img = glyph_to_image(glyph, paper, ink)
             try:
-                img.save(imgfile, format=image_format or Path(outfile).suffix[1:])
+                img.save(imgfile, format=image_format or Path(imgfile).suffix[1:])
             except (KeyError, ValueError, TypeError):
                 img.save(imgfile, format=DEFAULT_IMAGE_FORMAT)
 

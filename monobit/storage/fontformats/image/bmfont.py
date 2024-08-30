@@ -672,9 +672,11 @@ def _create_bmfont(
     # map glyphs to image
     if grid:
         margin = Coord(padding.left, padding.top)
+        columns = 32
         glyph_map = grid_map(
             font,
-            columns=32, rows=ceildiv(len(font.glyphs), rows),
+            glyphs_per_line=columns,
+            lines_per_page=ceildiv(len(font.glyphs), columns),
             margin=margin, padding=spacing,
             # direction - note Image coordinates are ltr, ttb
             direction='l t', invert_y=True,

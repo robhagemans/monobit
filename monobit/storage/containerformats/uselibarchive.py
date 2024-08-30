@@ -25,6 +25,8 @@ if libarchive:
     class LibArchiveContainer(FlatFilterContainer):
         """Container for formats supported by libarchive."""
 
+        libarchive_format = ''
+
         def decode(self, name):
             """Extract file from archive."""
             return super().decode(name)

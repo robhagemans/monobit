@@ -245,7 +245,7 @@ def main():
             ink = RGB.create(args.ink or (0, 0, 0))
             paper = RGB.create(args.paper or (255, 255, 255))
             border = RGB.create(args.border) if args.border else paper
-            image = glyph_map.as_image(inklevels=(paper, ink), border=border)
+            image = glyph_map.as_image(paper=paper, ink=ink, border=border)
             if args.output:
                 image.save(args.output)
             else:

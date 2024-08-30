@@ -29,7 +29,7 @@ def decode_gzip(instream):
     stream = gzip.open(instream, mode='rb')
     try:
         stream.peek(0)
-    except BadGzipFile as e:
+    except gzip.BadGzipFile as e:
         raise FileFormatError(e) from e
     name = Path(instream.name).stem
     return Stream(stream, mode='r', name=name)
@@ -70,7 +70,7 @@ def _decode_lzma_or_xz(instream):
     stream = lzma.open(instream, mode='rb')
     try:
         stream.peek(0)
-    except LZMAError as e:
+    except lzma.LZMAError as e:
         raise FileFormatError(e) from e
     name = Path(instream.name).stem
     return Stream(stream, mode='r', name=name)

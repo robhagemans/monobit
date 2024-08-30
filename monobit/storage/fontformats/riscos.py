@@ -328,7 +328,7 @@ _CHAR_DATA_12BIT = le.Struct(
 def _from_12bit_pair(x0_y0):
     """Convert 12-bit packed pairs to signed int."""
     # assuming x and y are stored in that order, and 12-bit values are big-endian.
-    x0_y0 = int.from_bytes(char_data.x0_y0, 'big')
+    x0_y0 = int.from_bytes(x0_y0, 'big')
     x0, y0 = divmod(x0_y0, 0x1000)
     # signed values
     if x0 & 0x800:
@@ -365,7 +365,7 @@ def load_riscos(instream):
             f'{header.identification_word} != {_RISCOS_MAGIC}'
         )
     if not header.bits_per_pixel:
-        raise UnsuppportedError('RiscOS Outline fonts not supported')
+        raise UnsupportedError('RiscOS Outline fonts not supported')
     table = _TABLE.read_from(instream)
     logging.debug('table: %s', table)
     # NULL-separated description
