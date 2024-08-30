@@ -162,7 +162,10 @@ class Location:
 
     @property
     def root(self):
-        return self._path_objects[0]
+        if self._path_objects:
+            return self._path_objects[0]
+        else:
+            return ''
 
     @property
     def _leaf(self):
