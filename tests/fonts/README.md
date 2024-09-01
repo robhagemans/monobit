@@ -86,6 +86,19 @@ Original sources:
   - https://web.archive.org/web/20100729142655/http://www.masuseki.com/be/konatu/Konatu_ver_23.zip
   - Author mitimasu@gmail.com
   - This work is licensed under a Creative Commons Attribution-Share Alike 3.0 License.
+* 10x20 ZapFont `10x20(X),1bd`
+  - https://github.com/jaylett/zap/blob/master/dists/fonts/!ZapFonts/Fonts
+  - https://github.com/jaylett/zap/blob/master/dists/fonts/!ZapFonts/Fonts/Copyright%2Cfff
+  - Copyright 1989-1991 Network Computing Devices, Inc.
+    NCD is a registered trademark of Network Computing Devices, Inc.  
+  - 3-clause BSD licence
+* 9x18 UCS ZapFont `09x18.0,1bd`
+  - https://github.com/jaylett/zap/blob/master/dists/fonts/!ZapFonts/Fonts
+  - https://github.com/jaylett/zap/blob/master/dists/fonts/!ZapFonts/Fonts/Copyright%2Cfff
+  - From Markus Kuhn's Unicode Font collection, converted by Christian Ludlam
+  using bdf2zap, and the Acorn extensions to Latin1 added using Zed.
+  <http://www.cl.cam.ac.uk/~mgk25/>	christian@zap.tartarus.org
+  - Markus Kuhn's fonts are in the public domain https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html
 
 
 ### Derivatives of `4x6`
