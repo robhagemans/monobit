@@ -72,7 +72,7 @@ def save_zapfont(fonts, outstream):
     """Save a !Zapfont."""
     font = ensure_single(fonts)
     font = ensure_charcell(font)
-    font = make_contiguous(font, missing='space')
+    font = make_contiguous(font, supported_range=range(0, 256), missing='space')
     header = _ZAP_HEADER(
         magic=_ZAP_MAGIC,
         width=font.cell_size.x,
