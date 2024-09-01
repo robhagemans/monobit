@@ -465,6 +465,12 @@ class TestExport(BaseTester):
         """Test exporting BeOS files."""
         self._export_4x6(format='beos')
 
+    # ZapFont
+
+    def test_export_zapfont(self):
+        """Test exporting ZapFont files."""
+        self._export_4x6(format='zapfont', count=256)
+
 
 if __name__ == '__main__':
     unittest.main()
