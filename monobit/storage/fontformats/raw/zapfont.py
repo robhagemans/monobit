@@ -63,8 +63,8 @@ def load_zapfont(instream):
         align='right',
         byte_swap=ceildiv(header.width, 8),
     )
-    font = font.modify(source_format='ZapFont')
-    return font
+    font = font.modify(source_format='ZapFont', encoding='latin-1')
+    return font.label()
 
 
 @savers.register(linked=load_zapfont)
