@@ -186,14 +186,14 @@ def save_zapredraw(fonts, outstream):
     # first chunk, fill with risc-os encoding
     riscos = encodings['risc-os']
     for cp in range(256):
-        glyph = font.get_glyph(riscos.char(cp), missing='space')
+        glyph = font.get_glyph(char=riscos.char(cp), missing='space')
         outstream.write(_zap_glyph(glyph.pixels))
     # other chunks
     for chunk, codepoints, translation_table in chunk_map[1:]:
         # may be empty
         outstream.write(bytes(translation_table))
         for cp in codepoints:
-            glyph = font.get_glyph(chr(chunk*0x100 + cp), missing='space')
+            glyph = font.get_glyph(char=chr(chunk*0x100 + cp), missing='space')
             outstream.write(_zap_glyph(glyph.pixels))
 
 
