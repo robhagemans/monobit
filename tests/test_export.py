@@ -465,6 +465,17 @@ class TestExport(BaseTester):
         """Test exporting BeOS files."""
         self._export_4x6(format='beos')
 
+    # ZapFont
+
+    def test_export_zapfont(self):
+        """Test exporting ZapFont files."""
+        self._export_4x6(format='zapfont', count=256)
+
+    def test_export_zapredraw(self):
+        """Test exporting ZapRedraw UCS files."""
+        # ZRUF file repeats some glyphs in C0/C1 control char positions
+        self._export_4x6(format='zapredraw', count=984)
+
 
 if __name__ == '__main__':
     unittest.main()

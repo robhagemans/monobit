@@ -1375,5 +1375,44 @@ class TestImport(BaseTester):
 """)
 
 
+    def test_import_zapredraw(self):
+        """Test importing ZapRedraw UCS files."""
+        file = self.font_path / '09x18.0,1bd'
+        font, *_ = monobit.load(file, format='zapredraw')
+        self.assertEqual(len(font.glyphs), 4824)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
+...@...
+..@.@..
+..@.@..
+..@.@..
+.@...@.
+.@@@@@.
+.@...@.
+@.....@
+@.....@
+@.....@
+""")
+
+    def test_import_zapfont(self):
+        """Test importing ZapFont files."""
+        file = self.font_path / '10x20(X),1bd'
+        font, *_ = monobit.load(file, format='zapfont')
+        self.assertEqual(len(font.glyphs), 256)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(),  """\
+...@@...
+..@@@@..
+.@@..@@.
+.@@..@@.
+@@....@@
+@@....@@
+@@....@@
+@@@@@@@@
+@@....@@
+@@....@@
+@@....@@
+@@....@@
+@@....@@
+""")
+
 if __name__ == '__main__':
     unittest.main()
