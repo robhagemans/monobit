@@ -190,6 +190,8 @@ def save_zapredraw(fonts, outstream):
         outstream.write(_zap_glyph(glyph.pixels))
     # other chunks
     for chunk, codepoints, translation_table in chunk_map[1:]:
+        # may be empty
+        outstream.write(bytes(translation_table))
         for cp in codepoints:
             glyph = font.get_glyph(chr(chunk*0x100 + cp), missing='space')
             outstream.write(_zap_glyph(glyph.pixels))
