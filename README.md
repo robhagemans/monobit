@@ -193,7 +193,7 @@ Character-cell formats
 | Wyse-60 soft font     | `wyse`     |                             |&check;|&check;| esc    | 8x16 | -        |
 | XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;| binary | 8X<=32 | -        |
 | ZapFont (old format)  | `zapfont`  | `,1bd`                      |&check;|&check;| binary | any  | -        |
-| ZapRedraw UCS         | `zapredraw`| `,1bd`                      |&check;|       | binary | any  | U        |
+| ZapRedraw UCS         | `zapredraw`| `,1bd`                      |&check;|&check;| binary | any  | U        |
 
 
 MC multi-cell glyphs
