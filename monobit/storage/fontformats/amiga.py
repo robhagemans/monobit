@@ -20,15 +20,15 @@ from monobit.base import Props, Coord, FileFormatError, UnsupportedError
     magic=(b'\x0f\0', b'\x0f\2'),
     patterns=('*.font',),
 )
-def load_amiga_fc(f):
+def load_amiga_fc(instream):
     """Load font from Amiga disk font contents (.FONT) file."""
-    fch = _FONT_CONTENTS_HEADER.read_from(f)
+    fch = _FONT_CONTENTS_HEADER.read_from(instream)
     if fch.fch_FileID == _FCH_ID:
         logging.debug('Amiga FCH using FontContents')
-        contentsarray = _FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
+        contentsarray = (_FONT_CONTENTS*fch.fch_NumEntries).read_from(instream)
     elif fch.fch_FileID == _TFCH_ID:
         logging.debug('Amiga FCH using TFontContents')
-        contentsarray = _T_FONT_CONTENTS.array(fch.fch_NumEntries).read_from(f)
+        contentsarray = (_T_FONT_CONTENTS*fch.fch_NumEntries).read_from(instream)
     elif fch.fch_FileID == _NONBITMAP_ID:
         raise UnsupportedError('IntelliFont Amiga outline fonts not supported.')
     else:
@@ -53,24 +53,14 @@ def load_amiga_fc(f):
         else:
             tags = ()
         # note case insensitive match on open (amiga os is case-insensitive
-        with f.where.open(name, 'r') as stream:
-            pack.append(_load_amiga(stream, tags))
+        with instream.where.open(name, 'r') as stream:
+            font = load_amiga(stream)
+            if tags:
+                tagstr = ' '.join(f'{tags.ti_Tag:04x}:{tags.ti_Data:04x}')
+                font = font.modify(amiga=f'tags {tagstr}')
+            pack.append(font)
     return pack
 
-
-@loaders.register(
-    name='amiga',
-    magic=(b'\0\0\x03\xf3',),
-    # digits-only filename
-    patterns=(Regex(r'\d+'),),
-)
-def load_amiga(instream, tags=()):
-    """Load font from Amiga disk font file."""
-    return _load_amiga(instream, tags)
-
-@savers.register(linked=load_amiga)
-def save_amiga(pack, outstream):
-    raise UnsupportedError('Saving to Amiga disk font file not supported.')
 
 
 ###################################################################################################
@@ -170,7 +160,6 @@ _AMIGA_HEADER = be.Struct(
     dfh_FileID='H',
     dfh_Revision='H',
     dfh_Segment='i',
-    # use array of bytes instead of char, to preserve tags post NUL
     dfh_Name=be.char * _MAXFONTNAME,
     # struct Message at start of struct TextFont
     # struct Message http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
@@ -237,14 +226,20 @@ _TAG_ITEM = be.Struct(
 # read Amiga font
 
 
-def _load_amiga(f, tags):
+@loaders.register(
+    name='amiga',
+    magic=(b'\0\0\x03\xf3',),
+    # digits-only filename
+    patterns=(Regex(r'\d+'),),
+)
+def load_amiga(instream):
     """Load font from Amiga disk font file."""
     # read & ignore header
-    _read_header(f)
-    amiga_props, glyphs = _read_font_hunk(f)
-    if tags:
-        tagstr = ' '.join(f'{tags.ti_Tag:04x}:{tags.ti_Data:04x}')
-        amiga_props.amiga = f'tags {tagstr}'
+    library_names, hfh1, hunk_sizes = _read_header(instream)
+    logging.debug('library names: %s', library_names)
+    logging.debug('header: %s', hfh1)
+    logging.debug('sizes: %s', hunk_sizes)
+    amiga_props, glyphs = _read_font_hunk(instream)
     logging.info('Amiga properties:')
     for name, value in vars(amiga_props).items():
         logging.info('    %s: %s', name, value)
@@ -259,6 +254,7 @@ def _load_amiga(f, tags):
 
 
 def _read_library_names(f):
+    """Read resident libraries section of header hunk."""
     library_names = []
     while True:
         num_longs = int(be.uint32.read_from(f))
