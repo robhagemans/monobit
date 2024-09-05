@@ -48,6 +48,12 @@ class TestExport(BaseTester):
         self.assertEqual(len(font.glyphs), count)
         self.assertEqual(font.get_glyph(label).reduce().as_text(), self.fixed4x6_A)
 
+    # Amiga
+
+    def test_export_beos(self):
+        """Test exporting BeOS files."""
+        self._export_4x6(format='amiga')
+
     # BDF
 
     def test_export_bdf(self):

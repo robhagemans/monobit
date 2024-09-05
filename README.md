@@ -90,8 +90,8 @@ Proportional-spacing formats
 | Format                | Short Name | Typical Extension           | Read  | Write | Type   | Features |
 |-----------------------|------------|-----------------------------|-------|-------|--------|----------|
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       | binary | -        |
-| Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       | binary | M        |
-| Amiga font            | `amiga`    |                             |&check;|       | binary | O        |
+| Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|       | binary | M; see `amiga` |
+| Amiga font            | `amiga`    |                             |&check;|&check;| binary | O (C G)  |
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;| coded  | U SB MB V O G |
 | BeOS Bitmap Font      | `beos`     |                             |&check;|&check;| binary | U O G    |
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | O        |

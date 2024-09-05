@@ -72,11 +72,6 @@ class TestFeatures(BaseTester):
 ........................................@@@@@..
 """
 
-    def test_amiga_proportional(self):
-        prop1, *_ = monobit.load(self.font_path / 'wbfont.amiga/wbfont_prop.font')
-        text1 = monobit.render(prop1, b'testing').as_text(inklevels='.@')
-        assert_text_eq(text1, self.proptext)
-
     def _render_proportional(
             self, format, *, char=False, load_kwargs=(), save_kwargs=(),
             inklevels='.@',
@@ -96,6 +91,9 @@ class TestFeatures(BaseTester):
             text = b'testing'
         rendered_text = monobit.render(prop2, text).as_text(inklevels=inklevels)
         assert_text_eq(rendered_text, self.proptext)
+
+    def test_amiga_proportional(self):
+        self._render_proportional('amiga')
 
     def test_yaff_proportional(self):
         self._render_proportional('yaff')
@@ -311,6 +309,9 @@ class TestFeatures(BaseTester):
 
     def test_yaff_negbearings(self):
         self._render_bearings('yaff')
+
+    def test_yaff_negbearings(self):
+        self._render_bearings('amiga')
 
     def test_bdf_negbearings(self):
         self._render_bearings('bdf')
