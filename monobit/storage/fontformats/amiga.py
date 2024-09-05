@@ -496,7 +496,7 @@ def save_amiga(fonts, outstream):
         # struct DiskFontHeader
         dfh_NextSegment=hunk_size,
         # \* MOVEQ #0,D0 : RTS	*/
-        dfh_ReturnCode=0x70644e75,
+        dfh_ReturnCode=0x70ff4e75,
         # struct Node
         dfh_ln_Succ=0,
         dfh_ln_Pred=0,
