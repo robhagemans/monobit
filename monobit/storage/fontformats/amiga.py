@@ -8,11 +8,14 @@ licence: https://opensource.org/licenses/MIT
 import os
 import logging
 from pathlib import Path
+from itertools import accumulate
 
 from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import flag, bitfield, big_endian as be
+from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, FileFormatError, UnsupportedError
+from monobit.storage.utils.limitations import ensure_single, make_contiguous
 
 
 @loaders.register(
@@ -415,3 +418,131 @@ def _convert_amiga_props(amiga_props):
     props.default_char = 'default'
     props.bold_smear = amiga_props.tf_BoldSmear
     return props
+
+
+###############################################################################
+# Amiga writer
+
+@savers.register(linked=load_amiga)
+def save_amiga(fonts, outstream):
+    """Write Amiga font file."""
+    font = ensure_single(fonts)
+    # font = font.equalise_horizontal()
+    default = font.get_default_glyph()
+    font = font.resample(encoding=_ENCODING, missing=None)
+    # all amiga font's I've seen explicitly fill out the missing glyphs
+    # rather than using the loc table to point to the default glyph
+    font = make_contiguous(font, missing='default')
+    if font.levels > 2:
+        raise ValueError('Greyscale fonts not supported')
+    # get range of glyphs, mark missing with sentinel
+    coderange = range(
+        int(min(font.get_codepoints())),
+        int(max(font.get_codepoints())) + 1,
+    )
+    glyphs = [font.get_glyph(_cp, missing=None) for _cp in coderange]
+    glyphs.append(default)
+    # equalise glyph heights and upshifts (only; don't touch bearings)
+    add_shift_up = max(0, -min(_g.shift_up for _g in glyphs))
+    glyphs = tuple(
+        _g.expand(
+            # bring all glyphs to same height
+            top=max(0, font.line_height - _g.height - _g.shift_up - add_shift_up),
+            # expand by positive shift to make all upshifts equal
+            bottom=_g.shift_up + add_shift_up,
+        )
+        for _g in glyphs
+    )
+    # create font strike
+    strike_raster = Raster.concatenate(*(_g.pixels for _g in glyphs if _g))
+    # word-align strike
+    strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
+    fontData = strike_raster.as_bytes()
+    # create width-offset table
+    widths = tuple(_g.width if _g else 0 for _g in glyphs)
+    offsets = accumulate(widths, initial=0)
+    fontLoc = b''.join(
+        bytes(_LOC_ENTRY(offset=_offset, width=_width))
+        for _width, _offset in zip(widths, offsets)
+    )
+    fontSpace = bytes((be.int16 * len(glyphs))(*(
+        _g.advance_width for _g in glyphs
+    )))
+    # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DE.html
+    # > On the Amiga, kerning refers
+    # > to the number pixels to leave blank before rendering a glyph.
+    fontKern =  bytes((be.int16 * len(glyphs))(*(
+        _g.left_bearing for _g in glyphs
+    )))
+    # generate headers
+    # hunk_size equals (file length - 76) / 4
+    # so the reference point is 52 bytes into the AMIGA_HEADER
+    # which is 10 bytes before the end of the font name (?)
+    hunk_size = ceildiv((
+            12 + _HUNK_FILE_HEADER_1.size + _AMIGA_HEADER.size
+            + len(fontData) + len(fontLoc) + len(fontSpace) + len(fontKern)
+            - 76
+        ), 4
+    )
+    file_header = (
+        # hunk id
+        bytes(be.uint32(_HUNK_HEADER))
+        # empty list (resident library names)
+        + bytes(be.uint32(0))
+        + bytes(_HUNK_FILE_HEADER_1(table_size=1, first_hunk=0, last_hunk=0))
+        + bytes(be.uint32(hunk_size))
+    )
+    anchor = _AMIGA_HEADER.size - 4
+    font_header = _AMIGA_HEADER(
+        # struct DiskFontHeader
+        dfh_NextSegment=hunk_size,
+        # \* MOVEQ #0,D0 : RTS	*/
+        dfh_ReturnCode=0x70644e75,
+        # struct Node
+        dfh_ln_Succ=0,
+        dfh_ln_Pred=0,
+        dfh_ln_Type=12,
+        dfh_ln_Pri=0,
+        # name length?
+        dfh_ln_Name=26,
+        dfh_FileID=3968,
+        dfh_Revision=int(font.revision),
+        dfh_Segment=0,
+        dfh_Name=font.name[:_MAXFONTNAME].encode(_ENCODING, 'replace'),
+        # struct Message at start of struct TextFont
+        tf_ln_Succ=0,
+        tfs_ln_Pred=0,
+        tf_ln_Type=12,
+        tf_ln_Pri=0,
+        tf_ln_Name=26,
+        tf_mn_ReplyPort=0,
+        tf_mn_Length=0,
+        # struct TextFont
+        tf_YSize=font.glyphs[0].height,
+        #TODO
+        tf_Style=_TF_STYLE(),
+        #TODO
+        tf_Flags=_TF_FLAGS(
+            FPF_PROPORTIONAL=font.spacing not in ('character-cell', 'monospace'),
+        ),
+        tf_XSize=int(font.average_width),
+        # shift_up=1-(amiga_props.tf_YSize - amiga_props.tf_Baseline)
+        tf_Baseline=font.glyphs[0].shift_up + font.glyphs[0].height - 1,
+        tf_BoldSmear=font.bold_smear,
+        tf_Accessors=0,
+        tf_LoChar=int(min(font.get_codepoints())),
+        tf_HiChar=int(max(font.get_codepoints())),
+        tf_CharData=anchor,
+        tf_Modulo=strike_raster.width // 8,
+        tf_CharLoc=anchor + len(fontData),
+        tf_CharSpace=anchor + len(fontData) + len(fontLoc),
+        tf_CharKern=anchor + len(fontData) + len(fontLoc) + len(fontSpace),
+    )
+    # write out
+    outstream.write(file_header)
+    outstream.write(bytes(be.uint32(_HUNK_CODE)))
+    outstream.write(bytes(font_header))
+    outstream.write(fontData)
+    outstream.write(fontLoc)
+    outstream.write(fontSpace)
+    outstream.write(fontKern)
