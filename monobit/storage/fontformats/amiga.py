@@ -475,15 +475,15 @@ def save_amiga(fonts, outstream):
         _g.left_bearing for _g in glyphs
     )))
     # generate headers
-    # hunk_size equals (file length - 76) / 4
-    # so the reference point is 52 bytes into the AMIGA_HEADER
-    # which is 10 bytes before the end of the font name (?)
-    hunk_size = ceildiv((
-            12 + _HUNK_FILE_HEADER_1.size + _AMIGA_HEADER.size
-            + len(fontData) + len(fontLoc) + len(fontSpace) + len(fontKern)
-            - 76
+    # hunk_size is number of 4-byte words after the last hunk_size field
+    # which doubles as the nextSegment field below
+    anchor = _AMIGA_HEADER.size - 4
+    hunk_size, padding = divmod((
+            anchor+len(fontData)+len(fontLoc)+len(fontSpace)+len(fontKern)
         ), 4
     )
+    if padding:
+        hunk_size += 1
     file_header = (
         # hunk id
         bytes(be.uint32(_HUNK_HEADER))
@@ -492,7 +492,6 @@ def save_amiga(fonts, outstream):
         + bytes(_HUNK_FILE_HEADER_1(table_size=1, first_hunk=0, last_hunk=0))
         + bytes(be.uint32(hunk_size))
     )
-    anchor = _AMIGA_HEADER.size - 4
     font_header = _AMIGA_HEADER(
         # struct DiskFontHeader
         dfh_NextSegment=hunk_size,
@@ -554,3 +553,5 @@ def save_amiga(fonts, outstream):
     outstream.write(fontLoc)
     outstream.write(fontSpace)
     outstream.write(fontKern)
+    outstream.write(bytes(padding))
+    outstream.write(bytes(be.uint32(_HUNK_END)))
