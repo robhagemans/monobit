@@ -519,11 +519,19 @@ def save_amiga(fonts, outstream):
         tf_mn_Length=0,
         # struct TextFont
         tf_YSize=font.glyphs[0].height,
-        #TODO
-        tf_Style=_TF_STYLE(),
-        #TODO
+        tf_Style=_TF_STYLE(
+            FSF_BOLD=font.weight == 'bold',
+            FSF_ITALIC=font.slant == 'italic',
+            FSF_EXTENDED=font.setwidth == 'expanded',
+            FSF_UNDERLINED='underline' in font.decoration,
+        ),
         tf_Flags=_TF_FLAGS(
+            FPF_DESIGNED=1,
+            FPF_DISKFONT=1,
             FPF_PROPORTIONAL=font.spacing not in ('character-cell', 'monospace'),
+            FPF_REVPATH=font.direction == 'right_to_left',
+            FPF_TALLDOT=font.pixel_aspect.y > font.pixel_aspect.x,
+            FPF_WIDEDOT=font.pixel_aspect.x > font.pixel_aspect.y,
         ),
         tf_XSize=int(font.average_width),
         # shift_up=1-(amiga_props.tf_YSize - amiga_props.tf_Baseline)
