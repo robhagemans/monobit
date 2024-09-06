@@ -310,7 +310,7 @@ class TestFeatures(BaseTester):
     def test_yaff_negbearings(self):
         self._render_bearings('yaff')
 
-    def test_yaff_negbearings(self):
+    def test_amiga_negbearings(self):
         self._render_bearings('amiga')
 
     def test_bdf_negbearings(self):
