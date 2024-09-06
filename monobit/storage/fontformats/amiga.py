@@ -222,9 +222,12 @@ _TAG_ITEM = be.Struct(
     ti_Data='uint32',
 )
 
+# location table entry
+_LOC_ENTRY = be.Struct(offset='uint16', width='uint16')
+
+
 ###################################################################################################
 # read Amiga font
-
 
 @loaders.register(
     name='amiga',
@@ -308,8 +311,7 @@ def _read_strike(f, props):
     # location data
     # one additional for default glyph
     nchars = (props.tf_HiChar - props.tf_LoChar + 1) + 1
-    loc_struct = be.Struct(offset='H', width='H')
-    locs = loc_struct.array(nchars).from_bytes(data, loc + props.tf_CharLoc)
+    locs = _LOC_ENTRY.array(nchars).from_bytes(data, loc + props.tf_CharLoc)
     # spacing table
     # spacing can be negative
     if props.tf_Flags.FPF_PROPORTIONAL and props.tf_CharSpace:
