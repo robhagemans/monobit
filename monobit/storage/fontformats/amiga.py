@@ -18,54 +18,6 @@ from monobit.base import Props, Coord, FileFormatError, UnsupportedError
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
 
 
-@loaders.register(
-    name='amiga-fc',
-    magic=(b'\x0f\0', b'\x0f\2'),
-    patterns=('*.font',),
-)
-def load_amiga_fc(instream):
-    """Load font from Amiga disk font contents (.FONT) file."""
-    fch = _FONT_CONTENTS_HEADER.read_from(instream)
-    if fch.fch_FileID == _FCH_ID:
-        logging.debug('Amiga FCH using FontContents')
-        contentsarray = (_FONT_CONTENTS*fch.fch_NumEntries).read_from(instream)
-    elif fch.fch_FileID == _TFCH_ID:
-        logging.debug('Amiga FCH using TFontContents')
-        contentsarray = (_T_FONT_CONTENTS*fch.fch_NumEntries).read_from(instream)
-    elif fch.fch_FileID == _NONBITMAP_ID:
-        raise UnsupportedError('IntelliFont Amiga outline fonts not supported.')
-    else:
-        raise FileFormatError(
-            'Not an Amiga Font Contents file: '
-            f'incorrect magic bytes 0x{fch.fch_FileID:04X} '
-            f'not in (0x{_FCH_ID:04X}, 0x{_TFCH_ID:04X}).'
-        )
-    pack = []
-    for fc in contentsarray:
-        # we'll get ysize, style and flags from the file itself, we just need a path.
-        name = fc.fc_FileName.decode(_ENCODING)
-        #/*
-        #*  if tfc_TagCount is non-zero, tfc_FileName is overlaid with
-        #*  Text Tags starting at:  (struct TagItem *)
-        #*      &amp;tfc_FileName[MAXFONTPATH-(tfc_TagCount*sizeof(struct TagItem))]
-        #*/
-        if fch.fch_FileID == _TFCH_ID and fc.tfc_TagCount:
-            tag_start = _MAXFONTPATH - fc.tfc_TagCount * _TAG_ITEM.size
-            name = name[:tag_start]
-            tags = _TAG_ITEM.array(fc.tfc_TagCount).from_bytes(fc.tfc_FileName[tag_start:])
-        else:
-            tags = ()
-        # note case insensitive match on open (amiga os is case-insensitive
-        with instream.where.open(name, 'r') as stream:
-            font = load_amiga(stream)
-            if tags:
-                tagstr = ' '.join(f'{tags.ti_Tag:04x}:{tags.ti_Data:04x}')
-                font = font.modify(amiga=f'tags {tagstr}')
-            pack.append(font)
-    return pack
-
-
-
 ###################################################################################################
 # AmigaOS font format
 #
@@ -210,7 +162,7 @@ _FONT_CONTENTS = be.Struct(
 # struct TFontContents
 # extra tags stored at the back of the tfc_FileName field
 _T_FONT_CONTENTS = be.Struct(
-    tfc_FileName=be.char * (_MAXFONTPATH-2),
+    tfc_FileName=be.uint8 * (_MAXFONTPATH-2),
     tfc_TagCount='uword',
     tfc_YSize='uword',
     tfc_Style='ubyte',
@@ -231,6 +183,49 @@ _LOC_ENTRY = be.Struct(offset='uint16', width='uint16')
 
 ###################################################################################################
 # read Amiga font
+
+@loaders.register(
+    name='amiga-fc',
+    magic=(b'\x0f\0', b'\x0f\2'),
+    patterns=('*.font',),
+)
+def load_amiga_fc(instream):
+    """Load fonts from Amiga disk font contents (.FONT) file."""
+    fch = _FONT_CONTENTS_HEADER.read_from(instream)
+    if fch.fch_FileID == _FCH_ID:
+        pass
+    elif fch.fch_FileID == _TFCH_ID:
+        logging.debug('Amiga font contents using TFontContents structure')
+    elif fch.fch_FileID == _NONBITMAP_ID:
+        raise UnsupportedError('IntelliFont Amiga outline fonts not supported.')
+    else:
+        raise FileFormatError(
+            'Not an Amiga font contents file: '
+            f'incorrect magic bytes 0x{fch.fch_FileID:04X} '
+            f'not in (0x{_FCH_ID:04X}, 0x{_TFCH_ID:04X}).'
+        )
+    # treat all files as FontConntents, not TFontContents
+    # - the types are backwards compatible assuming name is null-terminated
+    # - TFontContents only add aspect ratio information encoding in tags
+    # - They don't seem to occur in the wild (e.g. aminet has no TFCG fonts)
+    # from http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DB.html#line65
+    # > Currently, out of all
+    # > the system standard bitmap fonts (those loaded from bitmaps on disk or
+    # > ROM, not scaled from a bitmap or outline), only one has a built in
+    # > aspect ratio: Topaz-9.
+    contentsarray = (_FONT_CONTENTS*fch.fch_NumEntries).read_from(instream)
+    pack = []
+    for fc in contentsarray:
+        # we'll get ysize, style and flags from the file itself, we just need a path.
+        name = fc.fc_FileName.decode(_ENCODING)
+        # note case insensitive match on open (amiga os is case-insensitive)
+        try:
+            with instream.where.open(name, 'r') as stream:
+                pack.append(load_amiga(stream))
+        except EnvironmentError as exc:
+            logging.error("Could not open Amiga font file '%s': %s", name, exc)
+    return pack
+
 
 @loaders.register(
     name='amiga',
