@@ -155,8 +155,8 @@ _FONT_CONTENTS_HEADER = be.Struct(
 _FONT_CONTENTS = be.Struct(
     fc_FileName=be.char * _MAXFONTPATH,
     fc_YSize='uword',
-    fc_Style='ubyte',
-    fc_Flags='ubyte',
+    fc_Style=_TF_STYLE,
+    fc_Flags=_TF_FLAGS,
 )
 
 # struct TFontContents
@@ -165,8 +165,8 @@ _T_FONT_CONTENTS = be.Struct(
     tfc_FileName=be.uint8 * (_MAXFONTPATH-2),
     tfc_TagCount='uword',
     tfc_YSize='uword',
-    tfc_Style='ubyte',
-    tfc_Flags='ubyte',
+    tfc_Style=_TF_STYLE,
+    tfc_Flags=_TF_FLAGS,
 )
 
 # https://wiki.amigaos.net/wiki/Tags
@@ -417,6 +417,39 @@ def _convert_amiga_props(amiga_props):
 ###############################################################################
 # Amiga writer
 
+@savers.register(linked=load_amiga_fc)
+def save_amiga_fc(fonts, outstream):
+    """Save fonts to Amiga disk font contents (.FONT) file."""
+    props = tuple(_convert_to_amiga_props(_f) for _f in fonts)
+    # the size is the filename, so it muct be unique.
+    # there is an assumption that all fonts in the pack are part of a family
+    # but we leave it to the user to enforce this.
+    dirname = Path(outstream.name).stem
+    filenames = tuple(f'{dirname}/{_prop.tf_YSize}' for _prop in props)
+    if len(set(filenames)) != len(fonts):
+        raise UnsupportedError(
+            'Each font in an Amiga font contents package must be different size.'
+        )
+    for font, filename in zip(fonts, filenames):
+        with outstream.where.open(filename, mode='w') as f:
+            save_amiga((font,), f)
+    fch = _FONT_CONTENTS_HEADER(
+        fch_FileID=_FCH_ID,
+        fch_NumEntries=len(fonts),
+    )
+    contentsarray = (_FONT_CONTENTS * len(fonts))(*(
+        _FONT_CONTENTS(
+            fc_FileName=_filename.encode(_ENCODING),
+            fc_YSize=_props.tf_YSize,
+            fc_Style=_props.tf_Style,
+            fc_Flags=_props.tf_Flags,
+        )
+        for _f, _props, _filename in zip(fonts, props, filenames)
+    ))
+    outstream.write(bytes(fch))
+    outstream.write(bytes(contentsarray))
+
+
 @savers.register(linked=load_amiga)
 def save_amiga(fonts, outstream):
     """Write Amiga font file."""
@@ -486,23 +519,17 @@ def save_amiga(fonts, outstream):
         + bytes(_HUNK_FILE_HEADER_1(table_size=1, first_hunk=0, last_hunk=0))
         + bytes(be.uint32(hunk_size))
     )
+    props = _convert_to_amiga_props(font)
     font_header = _AMIGA_HEADER(
-        # struct DiskFontHeader
         dfh_NextSegment=hunk_size,
-        # \* MOVEQ #0,D0 : RTS	*/
         dfh_ReturnCode=0x70ff4e75,
-        # struct Node
         dfh_ln_Succ=0,
         dfh_ln_Pred=0,
         dfh_ln_Type=12,
         dfh_ln_Pri=0,
-        # name length?
         dfh_ln_Name=26,
         dfh_FileID=3968,
-        dfh_Revision=int(font.revision),
         dfh_Segment=0,
-        dfh_Name=font.name[:_MAXFONTNAME].encode(_ENCODING, 'replace'),
-        # struct Message at start of struct TextFont
         tf_ln_Succ=0,
         tfs_ln_Pred=0,
         tf_ln_Type=12,
@@ -510,26 +537,7 @@ def save_amiga(fonts, outstream):
         tf_ln_Name=26,
         tf_mn_ReplyPort=0,
         tf_mn_Length=0,
-        # struct TextFont
-        tf_YSize=font.glyphs[0].height,
-        tf_Style=_TF_STYLE(
-            FSF_BOLD=font.weight == 'bold',
-            FSF_ITALIC=font.slant == 'italic',
-            FSF_EXTENDED=font.setwidth == 'expanded',
-            FSF_UNDERLINED='underline' in font.decoration,
-        ),
-        tf_Flags=_TF_FLAGS(
-            FPF_DESIGNED=1,
-            FPF_DISKFONT=1,
-            FPF_PROPORTIONAL=font.spacing not in ('character-cell', 'monospace'),
-            FPF_REVPATH=font.direction == 'right_to_left',
-            FPF_TALLDOT=font.pixel_aspect.y > font.pixel_aspect.x,
-            FPF_WIDEDOT=font.pixel_aspect.x > font.pixel_aspect.y,
-        ),
-        tf_XSize=int(font.average_width),
-        # shift_up=1-(amiga_props.tf_YSize - amiga_props.tf_Baseline)
-        tf_Baseline=font.glyphs[0].shift_up + font.glyphs[0].height - 1,
-        tf_BoldSmear=font.bold_smear,
+        **vars(props),
         tf_Accessors=0,
         tf_LoChar=int(min(font.get_codepoints())),
         tf_HiChar=int(max(font.get_codepoints())),
@@ -549,3 +557,30 @@ def save_amiga(fonts, outstream):
     outstream.write(fontKern)
     outstream.write(bytes(padding))
     outstream.write(bytes(be.uint32(_HUNK_END)))
+
+
+def _convert_to_amiga_props(font):
+    """Convert font properties to amiga header fields."""
+    return Props(
+        dfh_Revision=int(font.revision),
+        dfh_Name=font.name[:_MAXFONTNAME].encode(_ENCODING, 'replace'),
+        tf_YSize=font.glyphs[0].height,
+        tf_Style=_TF_STYLE(
+            FSF_BOLD=font.weight == 'bold',
+            FSF_ITALIC=font.slant == 'italic',
+            FSF_EXTENDED=font.setwidth == 'expanded',
+            FSF_UNDERLINED='underline' in font.decoration,
+        ),
+        tf_Flags=_TF_FLAGS(
+            FPF_DESIGNED=1,
+            FPF_DISKFONT=1,
+            FPF_PROPORTIONAL=font.spacing not in ('character-cell', 'monospace'),
+            FPF_REVPATH=font.direction == 'right_to_left',
+            FPF_TALLDOT=font.pixel_aspect.y > font.pixel_aspect.x,
+            FPF_WIDEDOT=font.pixel_aspect.x > font.pixel_aspect.y,
+        ),
+        tf_XSize=int(font.average_width),
+        # shift_up=1-(amiga_props.tf_YSize - amiga_props.tf_Baseline)
+        tf_Baseline=font.glyphs[0].shift_up + font.glyphs[0].height - 1,
+        tf_BoldSmear=font.bold_smear,
+    )
