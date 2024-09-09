@@ -48,6 +48,7 @@ _NONBITMAP_ID = 0x0f03
 # http://amiga-dev.wikidot.com/file-format:hunk
 _HUNK_HEADER = 0x3f3
 _HUNK_CODE = 0x3e9
+_HUNK_DATA = 0x3ea
 _HUNK_RELOC32 = 0x3ec
 _HUNK_END = 0x3f2
 
@@ -282,25 +283,22 @@ def _read_header(f):
 def _read_font_hunk(f):
     """Parse the font data blob."""
     hunk_id = int(be.uint32.read_from(f))
-    if hunk_id != _HUNK_CODE:
+    # *should* be a code hunk, but data hunk fonts have ben seen in the wild
+    if hunk_id not in (_HUNK_CODE, _HUNK_DATA):
         raise FileFormatError(
-            'Not an Amiga font data file: '
-            f'no code hunk found - id 0x{hunk_id:03X} != 0x{_HUNK_CODE:03X}'
+            f'Not an Amiga font data file: hunk id 0x{hunk_id:03X}.'
         )
     # location reference point loc = f.tell() + 4
     amiga_props = _AMIGA_HEADER.read_from(f)
+    # these seem to be consistently set
     if (
-            amiga_props.dfh_ln_Type != 0xc
-            or amiga_props.dfh_ln_Pri != 0
-            or amiga_props.dfh_ln_Name != 0x1a
-            or amiga_props.dfh_FileID != 0x0f80
-            or amiga_props.dfh_Segment != 0
+            amiga_props.dfh_FileID != 0x0f80
             or amiga_props.tf_ln_Type != 0xc
-            or amiga_props.tf_ln_Pri != 0
             or amiga_props.tf_ln_Name != 0x1a
-            or amiga_props.tf_mn_ReplyPort != 0
         ):
-        raise FileFormatError('Not an Amiga font data file')
+        raise FileFormatError(
+            'Not an Amiga font data file: incorrect type fields.'
+        )
     # remainder is the font strike
     glyphs = _read_strike(f, amiga_props)
     return amiga_props, glyphs
