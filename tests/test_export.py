@@ -50,9 +50,14 @@ class TestExport(BaseTester):
 
     # Amiga
 
-    def test_export_beos(self):
-        """Test exporting BeOS files."""
-        self._export_4x6(format='amiga')
+    def test_export_amiga(self):
+        """Test exporting Amiga files."""
+        # 256 latin-1 codepoints, plus a default glyph
+        self._export_4x6(format='amiga', count=257)
+
+    def test_export_amiga_fc(self):
+        """Test exporting Amiga font contents files."""
+        self._export_4x6(format='amiga-fc', count=257)
 
     # BDF
 
