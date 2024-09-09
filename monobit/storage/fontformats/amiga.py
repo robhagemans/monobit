@@ -204,15 +204,15 @@ def load_amiga_fc(instream):
             f'incorrect magic bytes 0x{fch.fch_FileID:04X} '
             f'not in (0x{_FCH_ID:04X}, 0x{_TFCH_ID:04X}).'
         )
-    # treat all files as FontConntents, not TFontContents
+    # treat all files as FontContents, not TFontContents
     # - the types are backwards compatible assuming name is null-terminated
     # - TFontContents only add aspect ratio information encoding in tags
-    # - They don't seem to occur in the wild (e.g. aminet has no TFCG fonts)
+    # - They don't seem to occur in the wild (e.g. aminet has no TFCH fonts)
+    #
     # from http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DB.html#line65
-    # > Currently, out of all
-    # > the system standard bitmap fonts (those loaded from bitmaps on disk or
-    # > ROM, not scaled from a bitmap or outline), only one has a built in
-    # > aspect ratio: Topaz-9.
+    # > Currently, out of all the system standard bitmap fonts (those loaded
+    # > from bitmaps on disk or ROM, not scaled from a bitmap or outline),
+    # > only one has a built in aspect ratio: Topaz-9.
     contentsarray = (_FONT_CONTENTS*fch.fch_NumEntries).read_from(instream)
     pack = []
     for fc in contentsarray:
@@ -236,10 +236,9 @@ def load_amiga_fc(instream):
 def load_amiga(instream):
     """Load font from Amiga disk font file."""
     # read & ignore header
-    library_names, hfh1, hunk_sizes = _read_header(instream)
-    logging.debug('library names: %s', library_names)
+    hfh1, hunk_size = _read_header(instream)
     logging.debug('header: %s', hfh1)
-    logging.debug('sizes: %s', hunk_sizes)
+    logging.debug('size: %s', hunk_size)
     amiga_props, glyphs = _read_font_hunk(instream)
     logging.info('Amiga properties:')
     for name, value in vars(amiga_props).items():
@@ -254,21 +253,6 @@ def load_amiga(instream):
     return font
 
 
-def _read_library_names(f):
-    """Read resident libraries section of header hunk."""
-    library_names = []
-    while True:
-        num_longs = int(be.uint32.read_from(f))
-        if not num_longs:
-            return library_names
-        string = f.read(num_longs * 4)
-        # http://amiga-dev.wikidot.com/file-format:hunk#toc6
-        # - partitions the read string at null terminator and breaks on empty
-        # https://archive.org/details/AmigaDOS_Technical_Reference_Manual_1985_Commodore/page/n27/mode/2up
-        # - suggests this can't happen, length uint32 must be zero
-        # - also parse_header() at https://github.com/cnvogelg/amitools/blob/master/amitools/binfmt/hunk/HunkReader.py
-        library_names.append(string)
-
 def _read_header(f):
     """Read file header."""
     # read header id
@@ -278,13 +262,22 @@ def _read_header(f):
             'Not an Amiga font data file: '
             f'magic constant 0x{hunk_id:03X} != 0x{_HUNK_HEADER:03X}'
         )
-    library_names = _read_library_names(f)
-    hfh1 = _HUNK_FILE_HEADER_1.read_from(f)
+    # a unk file can have a list of n null-erminated library names here
+    # but this is not legal for font files
+    num_library_names = int(be.uint32.read_from(f))
+    if num_library_names:
+        raise FileFormatError(
+            'Not an Amiga font data file: non-empty library names section.'
+        )
+    header = _HUNK_FILE_HEADER_1.read_from(f)
+    if header.last_hunk or header.first_hunk:
+        raise FileFormatError(
+            'Not an Amiga font data file: more than one hunk.'
+        )
     # list of memory sizes of hunks in this file (in number of ULONGs)
     # this seems to exclude overhead, so not useful to determine disk sizes
-    num_sizes = hfh1.last_hunk - hfh1.first_hunk + 1
-    hunk_sizes = be.uint32.array(num_sizes).read_from(f)
-    return library_names, hfh1, hunk_sizes
+    hunk_size = int(be.uint32.read_from(f))
+    return header, hunk_size
 
 def _read_font_hunk(f):
     """Parse the font data blob."""
@@ -296,6 +289,18 @@ def _read_font_hunk(f):
         )
     # location reference point loc = f.tell() + 4
     amiga_props = _AMIGA_HEADER.read_from(f)
+    if (
+            amiga_props.dfh_ln_Type != 0xc
+            or amiga_props.dfh_ln_Pri != 0
+            or amiga_props.dfh_ln_Name != 0x1a
+            or amiga_props.dfh_FileID != 0x0f80
+            or amiga_props.dfh_Segment != 0
+            or amiga_props.tf_ln_Type != 0xc
+            or amiga_props.tf_ln_Pri != 0
+            or amiga_props.tf_ln_Name != 0x1a
+            or amiga_props.tf_mn_ReplyPort != 0
+        ):
+        raise FileFormatError('Not an Amiga font data file')
     # remainder is the font strike
     glyphs = _read_strike(f, amiga_props)
     return amiga_props, glyphs
@@ -528,7 +533,7 @@ def save_amiga(fonts, outstream):
         dfh_ln_Type=12,
         dfh_ln_Pri=0,
         dfh_ln_Name=26,
-        dfh_FileID=3968,
+        dfh_FileID=0x0f80,
         dfh_Segment=0,
         tf_ln_Succ=0,
         tfs_ln_Pred=0,
