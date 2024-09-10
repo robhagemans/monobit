@@ -146,6 +146,14 @@ _AMIGA_HEADER = be.Struct(
     tf_CharKern='I',
 )
 
+
+# location table entry
+_LOC_ENTRY = be.Struct(
+    offset='uint16',
+    width='uint16',
+)
+
+
 # struct FontContentsHeader
 # .font directory file
 # https://wiki.amigaos.net/wiki/Graphics_Library_and_Text#Composition_of_a_Bitmap_Font_on_Disk
@@ -178,11 +186,18 @@ _TAG_ITEM = be.Struct(
     # identifies the type of this item
     ti_Tag='uint32',
     # type-specific data, can be a pointer
-    ti_Data='uint32',
+    # ti_Data='uint32',
+    ti_Data_hi = 'uint16',
+    ti_Data_lo = 'uint16',
 )
 
-# location table entry
-_LOC_ENTRY = be.Struct(offset='uint16', width='uint16')
+# http://amigadev.elowar.com/read/ADCD_2.1/Includes_and_Autodocs_2._guide/node00A8.html
+#   #define	TA_DeviceDPI	(1|TAG_USER)
+#   /* Tag value is Point union: */
+#   /* Hi word XDPI, Lo word YDPI */
+# http://amigadev.elowar.com/read/ADCD_2.1/Includes_and_Autodocs_2._guide/node012E.html#line18
+#   #define TAG_USER  (1L<<31)    /* differentiates user tags from system tags*/
+_TA_DEVICEDPI = (1 << 31) | 1
 
 # https://d0.se/include/exec/nodes.h
 # /*----- sNode Types for LN_TYPE -----*/
@@ -208,10 +223,8 @@ _RETURN_CODE = 0x70ff4e75
 def load_amiga_fc(instream):
     """Load fonts from Amiga disk font contents (.FONT) file."""
     fch = _FONT_CONTENTS_HEADER.read_from(instream)
-    if fch.fch_FileID == _FCH_ID:
+    if fch.fch_FileID in (_FCH_ID, _TFCH_ID):
         pass
-    elif fch.fch_FileID == _TFCH_ID:
-        logging.debug('Amiga font contents using TFontContents structure')
     elif fch.fch_FileID == _NONBITMAP_ID:
         raise UnsupportedError('IntelliFont Amiga outline fonts not supported.')
     else:
@@ -220,24 +233,38 @@ def load_amiga_fc(instream):
             f'incorrect magic bytes 0x{fch.fch_FileID:04X} '
             f'not in (0x{_FCH_ID:04X}, 0x{_TFCH_ID:04X}).'
         )
-    # treat all files as FontContents, not TFontContents
-    # - the types are backwards compatible assuming name is null-terminated
-    # - TFontContents only add aspect ratio information encoding in tags
-    # - They don't seem to occur in the wild (e.g. aminet has no TFCH fonts)
-    #
-    # from http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node03DB.html#line65
-    # > Currently, out of all the system standard bitmap fonts (those loaded
-    # > from bitmaps on disk or ROM, not scaled from a bitmap or outline),
-    # > only one has a built in aspect ratio: Topaz-9.
+    # TFontContents is a FontContents with re-interpreted fc_FileName field
     contentsarray = (_FONT_CONTENTS*fch.fch_NumEntries).read_from(instream)
     pack = []
     for fc in contentsarray:
+        dpi = None
+        if fch.fch_FileID == _TFCH_ID:
+            logging.debug('Amiga font contents using TFontContents structure')
+            tfc = _T_FONT_CONTENTS.from_bytes(bytes(fc))
+            # *  if tfc_TagCount is non-zero, tfc_FileName is overlaid with
+            # *  Text Tags starting at:  (struct TagItem *)
+            # *      &tfc_FileName[MAXFONTPATH-(tfc_TagCount*sizeof
+            # *                                 (struct TagItem))]
+            # Note that this means the last (TAG_DONE) tag is truncated
+            # by 2 bytes, because the fileName field is MAXFONTPATH-2 long
+            # omit this last tag:
+            tags = (_TAG_ITEM * (tfc.tfc_TagCount - 1)).from_bytes(bytes(
+                tfc.tfc_FileName[_MAXFONTPATH-tfc.tfc_TagCount*_TAG_ITEM.size:]
+            ))
+            # only known/documented use for tags is to store dpi values for aspect ratio
+            for tag in tags:
+                if tag.ti_Tag == _TA_DEVICEDPI:
+                    dpi = (tag.ti_Data_hi, tag.ti_Data_lo)
+                else:
+                    logging.debug('Ignoring unrecognised tag: %s', tag)
         # we'll get ysize, style and flags from the file itself, we just need a path.
         name = fc.fc_FileName.decode(_ENCODING)
         # note case insensitive match on open (amiga os is case-insensitive)
         try:
             with instream.where.open(name, 'r') as stream:
-                pack.append(load_amiga(stream))
+                font = load_amiga(stream)
+                font = font.modify(dpi=dpi)
+                pack.append(font)
         except EnvironmentError as exc:
             logging.error("Could not open Amiga font file '%s': %s", name, exc)
     return pack
