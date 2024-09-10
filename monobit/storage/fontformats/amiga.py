@@ -43,6 +43,8 @@ _MAXFONTNAME = 32
 _FCH_ID = 0x0f00
 _TFCH_ID = 0x0f02
 _NONBITMAP_ID = 0x0f03
+# disk font header
+_DFH_ID = 0x0f80
 
 # hunk ids
 # http://amiga-dev.wikidot.com/file-format:hunk
@@ -105,6 +107,7 @@ _AMIGA_HEADER = be.Struct(
     # struct DiskFontHeader
     # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05F9.html#line61
     dfh_NextSegment='I',
+    # *here* is the reference point for addresses/pointers in the file
     dfh_ReturnCode='I',
     # struct Node
     # http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node02EF.html
@@ -180,6 +183,18 @@ _TAG_ITEM = be.Struct(
 
 # location table entry
 _LOC_ENTRY = be.Struct(offset='uint16', width='uint16')
+
+# https://d0.se/include/exec/nodes.h
+# /*----- sNode Types for LN_TYPE -----*/
+_NT_FONT = 12
+
+# font name is 26 bytes from the start of the return code
+_NAME_POINTER = 26
+
+# http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05BA.html
+# MOVEQ     #-1,D0      ; Provide an easy exit in case this file is
+# RTS                   ; "Run" instead of merely loaded.
+_RETURN_CODE = 0x70ff4e75
 
 
 ###################################################################################################
@@ -280,6 +295,7 @@ def _read_header(f):
     hunk_size = int(be.uint32.read_from(f))
     return header, hunk_size
 
+
 def _read_font_hunk(f):
     """Parse the font data blob."""
     hunk_id = int(be.uint32.read_from(f))
@@ -292,8 +308,8 @@ def _read_font_hunk(f):
     amiga_props = _AMIGA_HEADER.read_from(f)
     # these seem to be consistently set
     if (
-            amiga_props.dfh_FileID != 0x0f80
-            or amiga_props.tf_ln_Type != 0xc
+            amiga_props.dfh_FileID != _DFH_ID
+            or amiga_props.tf_ln_Type != _NT_FONT
             or amiga_props.tf_ln_Name != 0x1a
         ):
         raise FileFormatError(
@@ -303,11 +319,12 @@ def _read_font_hunk(f):
     glyphs = _read_strike(f, amiga_props)
     return amiga_props, glyphs
 
+
 def _read_strike(f, props):
     """Read and interpret the font strike and related tables."""
     # remainder is the font strike
     data = f.read()
-    # the reference point for offsets in the hunk is just after the ReturnCode
+    # the reference point for offsets in the hunk is just before the ReturnCode
     loc = - _AMIGA_HEADER.size + 4
     # location data
     # one additional for default glyph
@@ -525,23 +542,13 @@ def save_amiga(fonts, outstream):
     props = _convert_to_amiga_props(font)
     font_header = _AMIGA_HEADER(
         dfh_NextSegment=hunk_size,
-        dfh_ReturnCode=0x70ff4e75,
-        dfh_ln_Succ=0,
-        dfh_ln_Pred=0,
-        dfh_ln_Type=12,
-        dfh_ln_Pri=0,
-        dfh_ln_Name=26,
-        dfh_FileID=0x0f80,
-        dfh_Segment=0,
-        tf_ln_Succ=0,
-        tfs_ln_Pred=0,
-        tf_ln_Type=12,
-        tf_ln_Pri=0,
-        tf_ln_Name=26,
-        tf_mn_ReplyPort=0,
-        tf_mn_Length=0,
+        dfh_ReturnCode=_RETURN_CODE,
+        dfh_ln_Type=_NT_FONT,
+        dfh_ln_Name=_NAME_POINTER,
+        dfh_FileID=_DFH_ID,
+        tf_ln_Type=_NT_FONT,
+        tf_ln_Name=_NAME_POINTER,
         **vars(props),
-        tf_Accessors=0,
         tf_LoChar=int(min(font.get_codepoints())),
         tf_HiChar=int(max(font.get_codepoints())),
         tf_CharData=anchor,
