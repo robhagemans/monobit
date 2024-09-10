@@ -197,6 +197,7 @@ _TAG_ITEM = be.Struct(
 #   /* Hi word XDPI, Lo word YDPI */
 # http://amigadev.elowar.com/read/ADCD_2.1/Includes_and_Autodocs_2._guide/node012E.html#line18
 #   #define TAG_USER  (1L<<31)    /* differentiates user tags from system tags*/
+_TAG_DONE = 0
 _TA_DEVICEDPI = (1 << 31) | 1
 
 # https://d0.se/include/exec/nodes.h
@@ -477,21 +478,41 @@ def save_amiga_fc(fonts, outstream):
         raise UnsupportedError(
             'Each font in an Amiga font contents package must be different size.'
         )
+    tagged_filenames = []
+    file_id = _FCH_ID
     for font, filename in zip(fonts, filenames):
         with outstream.where.open(filename, mode='w') as f:
             save_amiga((font,), f)
+        filename = filename.encode(_ENCODING).ljust(_MAXFONTPATH, b'\0')
+        # store dpi in TFontContents
+        if font.dpi is not None:
+            tagbytes = b''.join((
+                bytes(_TAG_ITEM(
+                    ti_Tag=_TA_DEVICEDPI,
+                    ti_Data_hi=font.dpi.x, ti_Data_lo=font.dpi.y,
+                )),
+                # TAG_DONE (truncated last 2 bytes)
+                bytes(6),
+                # tfc_TagCount = 2
+                bytes(be.uint16(2)),
+            ))
+            # esnure zero-terminator before first tag
+            filename = filename[:_MAXFONTPATH-len(tagbytes)-1] + b'\0' + tagbytes
+            file_id = _TFCH_ID
+        tagged_filenames.append(filename)
     fch = _FONT_CONTENTS_HEADER(
-        fch_FileID=_FCH_ID,
+        fch_FileID=file_id,
         fch_NumEntries=len(fonts),
     )
-    contentsarray = (_FONT_CONTENTS * len(fonts))(*(
-        _FONT_CONTENTS(
-            fc_FileName=_filename.encode(_ENCODING),
-            fc_YSize=_props.tf_YSize,
-            fc_Style=_props.tf_Style,
-            fc_Flags=_props.tf_Flags,
+    contentsarray = (_T_FONT_CONTENTS * len(fonts))(*(
+        _T_FONT_CONTENTS(
+            tfc_FileName=(be.uint8*(_MAXFONTPATH-2))(*_filename[:-2]),
+            tfc_TagCount=be.uint16.from_bytes(filename[-2:]),
+            tfc_YSize=_props.tf_YSize,
+            tfc_Style=_props.tf_Style,
+            tfc_Flags=_props.tf_Flags,
         )
-        for _f, _props, _filename in zip(fonts, props, filenames)
+        for _f, _props, _filename in zip(fonts, props, tagged_filenames)
     ))
     outstream.write(bytes(fch))
     outstream.write(bytes(contentsarray))
