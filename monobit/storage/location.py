@@ -409,6 +409,9 @@ def _match_path(container, path, match_case):
     matched_path = Path('.')
     while True:
         target = segments.popleft()
+        # drop empty elements (repeated/initial slashes)
+        if not target:
+            continue
         # try case-sensitive match first, then case-insensitive
         match = _step_match(container, matched_path, target, match_case=True)
         if not match and not match_case:
@@ -437,7 +440,7 @@ def _match(container, path, match_case):
         return head
     raise FileNotFoundError(
         f"'{path}' not found on {container} "
-        "with case-{'' if match_case else 'in'}sensitive match."
+        f"with case-{'' if match_case else 'in'}sensitive match."
     )
 
 
