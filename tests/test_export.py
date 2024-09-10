@@ -59,6 +59,18 @@ class TestExport(BaseTester):
         """Test exporting Amiga font contents files."""
         self._export_4x6(format='amiga-fc', count=257)
 
+    def test_export_amiga_fc_tags(self):
+        """Test exporting Amiga font contents files with tags."""
+        file = self.temp_path / f'4x6.{format}'
+        font = self.fixed4x6.modify(dpi='72x36')
+        monobit.save(font, file, format='amiga-fc')
+        font, *_ = monobit.load(file, format='amiga-fc')
+        self.assertEqual(font.dpi.x, 72)
+        self.assertEqual(font.dpi.y, 36)
+        self.assertEqual(len(font.glyphs), 257)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+
     # BDF
 
     def test_export_bdf(self):
