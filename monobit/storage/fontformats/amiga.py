@@ -628,6 +628,9 @@ def _convert_to_amiga_props(font):
             FSF_ITALIC=font.slant == 'italic',
             FSF_EXTENDED=font.setwidth == 'expanded',
             FSF_UNDERLINED='underline' in font.decoration,
+            # dpi tags are stored in the Font Contents file
+            # but we need to set this flag to signal they exist
+            FSF_TAGGED=font.dpi is not None,
         ),
         tf_Flags=_TF_FLAGS(
             FPF_DESIGNED=1,
