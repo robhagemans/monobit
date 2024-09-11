@@ -40,11 +40,17 @@ _MAXFONTNAME = 32
 
 # file ids
 # https://wiki.amigaos.net/wiki/Graphics_Library_and_Text#The_Composition_of_a_Bitmap_Font_on_Disk
+# file contents header
 _FCH_ID = 0x0f00
 _TFCH_ID = 0x0f02
+# intellifont file
 _NONBITMAP_ID = 0x0f03
-# disk font header
+# disk font header file id
 _DFH_ID = 0x0f80
+
+
+###############################################################################
+# hunk file structures
 
 # hunk ids
 # http://amiga-dev.wikidot.com/file-format:hunk
@@ -54,42 +60,6 @@ _HUNK_DATA = 0x3ea
 _HUNK_RELOC32 = 0x3ec
 _HUNK_END = 0x3f2
 
-# tf_Flags values
-_TF_FLAGS = be.Struct(
-    # 0x80 the font has been removed
-    FPF_REMOVED=flag,
-    # 0x40 size explicitly designed, not constructed
-    FPF_DESIGNED=flag,
-    # 0x20 character sizes can vary from nominal
-    FPF_PROPORTIONAL=flag,
-    # 0x10 This font was designed for a Lores Interlaced screen (320x400 NTSC)
-    FPF_WIDEDOT=flag,
-    # 0x08 This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
-    FPF_TALLDOT=flag,
-    # 0x04 This font is designed to be printed from from right to left
-    FPF_REVPATH=flag,
-    # 0x02 font is from diskfont.library
-    FPF_DISKFONT=flag,
-    # 0x01 font is in rom
-    FPF_ROMFONT=flag
-)
-
-# tf_Style values
-_TF_STYLE = be.Struct(
-    # 0x80 the TextAttr is really a TTextAttr
-    FSF_TAGGED=flag,
-    # 0x40 this uses ColorTextFont structure
-    FSF_COLORFONT=flag,
-    unused=bitfield('B', 2),
-    # 0x08 extended face (wider than normal)
-    FSF_EXTENDED=flag,
-    # 0x04 italic (slanted 1:2 right)
-    FSF_ITALIC=flag,
-    # 0x02 bold face text (OR-ed w/ shifted)
-    FSF_BOLD=flag,
-    # 0x01 underlined (under baseline)
-    FSF_UNDERLINED=flag,
-)
 
 # Amiga hunk file header
 # http://amiga-dev.wikidot.com/file-format:hunk#toc6
@@ -101,6 +71,10 @@ _HUNK_FILE_HEADER_1 = be.Struct(
     last_hunk='uint32',
 )
 #   hunk_sizes = uint32 * (last_hunk-first_hunk+1)
+
+
+###############################################################################
+# disk font structures
 
 # disk font header
 _AMIGA_HEADER = be.Struct(
@@ -147,12 +121,67 @@ _AMIGA_HEADER = be.Struct(
 )
 
 
+# tf_Flags values
+_TF_FLAGS = be.Struct(
+    # 0x80 the font has been removed
+    FPF_REMOVED=flag,
+    # 0x40 size explicitly designed, not constructed
+    FPF_DESIGNED=flag,
+    # 0x20 character sizes can vary from nominal
+    FPF_PROPORTIONAL=flag,
+    # 0x10 This font was designed for a Lores Interlaced screen (320x400 NTSC)
+    FPF_WIDEDOT=flag,
+    # 0x08 This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
+    FPF_TALLDOT=flag,
+    # 0x04 This font is designed to be printed from from right to left
+    FPF_REVPATH=flag,
+    # 0x02 font is from diskfont.library
+    FPF_DISKFONT=flag,
+    # 0x01 font is in rom
+    FPF_ROMFONT=flag
+)
+
+
+# tf_Style values
+_TF_STYLE = be.Struct(
+    # 0x80 the TextAttr is really a TTextAttr
+    FSF_TAGGED=flag,
+    # 0x40 this uses ColorTextFont structure
+    FSF_COLORFONT=flag,
+    unused=bitfield('B', 2),
+    # 0x08 extended face (wider than normal)
+    FSF_EXTENDED=flag,
+    # 0x04 italic (slanted 1:2 right)
+    FSF_ITALIC=flag,
+    # 0x02 bold face text (OR-ed w/ shifted)
+    FSF_BOLD=flag,
+    # 0x01 underlined (under baseline)
+    FSF_UNDERLINED=flag,
+)
+
+
 # location table entry
 _LOC_ENTRY = be.Struct(
     offset='uint16',
     width='uint16',
 )
 
+
+# https://d0.se/include/exec/nodes.h
+# /*----- sNode Types for LN_TYPE -----*/
+_NT_FONT = 12
+
+# font name is 26 bytes from the start of the return code
+_NAME_POINTER = 26
+
+# http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05BA.html
+# MOVEQ     #-1,D0      ; Provide an easy exit in case this file is
+# RTS                   ; "Run" instead of merely loaded.
+_RETURN_CODE = 0x70ff4e75
+
+
+###############################################################################
+# font contents structures
 
 # struct FontContentsHeader
 # .font directory file
@@ -170,6 +199,7 @@ _FONT_CONTENTS = be.Struct(
     fc_Style=_TF_STYLE,
     fc_Flags=_TF_FLAGS,
 )
+
 
 # struct TFontContents
 # extra tags stored at the back of the tfc_FileName field
@@ -200,17 +230,8 @@ _TAG_ITEM = be.Struct(
 _TAG_DONE = 0
 _TA_DEVICEDPI = (1 << 31) | 1
 
-# https://d0.se/include/exec/nodes.h
-# /*----- sNode Types for LN_TYPE -----*/
-_NT_FONT = 12
 
-# font name is 26 bytes from the start of the return code
-_NAME_POINTER = 26
 
-# http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05BA.html
-# MOVEQ     #-1,D0      ; Provide an easy exit in case this file is
-# RTS                   ; "Run" instead of merely loaded.
-_RETURN_CODE = 0x70ff4e75
 
 
 ###################################################################################################
