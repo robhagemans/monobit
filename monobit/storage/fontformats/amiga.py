@@ -76,6 +76,45 @@ _HUNK_FILE_HEADER_1 = be.Struct(
 ###############################################################################
 # disk font structures
 
+# tf_Flags values
+_TF_FLAGS = be.Struct(
+    # 0x80 the font has been removed
+    FPF_REMOVED=flag,
+    # 0x40 size explicitly designed, not constructed
+    FPF_DESIGNED=flag,
+    # 0x20 character sizes can vary from nominal
+    FPF_PROPORTIONAL=flag,
+    # 0x10 This font was designed for a Lores Interlaced screen (320x400 NTSC)
+    FPF_WIDEDOT=flag,
+    # 0x08 This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
+    FPF_TALLDOT=flag,
+    # 0x04 This font is designed to be printed from from right to left
+    FPF_REVPATH=flag,
+    # 0x02 font is from diskfont.library
+    FPF_DISKFONT=flag,
+    # 0x01 font is in rom
+    FPF_ROMFONT=flag
+)
+
+
+# tf_Style values
+_TF_STYLE = be.Struct(
+    # 0x80 the TextAttr is really a TTextAttr
+    FSF_TAGGED=flag,
+    # 0x40 this uses ColorTextFont structure
+    FSF_COLORFONT=flag,
+    unused=bitfield('B', 2),
+    # 0x08 extended face (wider than normal)
+    FSF_EXTENDED=flag,
+    # 0x04 italic (slanted 1:2 right)
+    FSF_ITALIC=flag,
+    # 0x02 bold face text (OR-ed w/ shifted)
+    FSF_BOLD=flag,
+    # 0x01 underlined (under baseline)
+    FSF_UNDERLINED=flag,
+)
+
+
 # disk font header
 _AMIGA_HEADER = be.Struct(
     # struct DiskFontHeader
@@ -118,45 +157,6 @@ _AMIGA_HEADER = be.Struct(
     tf_CharLoc='I',
     tf_CharSpace='I',
     tf_CharKern='I',
-)
-
-
-# tf_Flags values
-_TF_FLAGS = be.Struct(
-    # 0x80 the font has been removed
-    FPF_REMOVED=flag,
-    # 0x40 size explicitly designed, not constructed
-    FPF_DESIGNED=flag,
-    # 0x20 character sizes can vary from nominal
-    FPF_PROPORTIONAL=flag,
-    # 0x10 This font was designed for a Lores Interlaced screen (320x400 NTSC)
-    FPF_WIDEDOT=flag,
-    # 0x08 This font was designed for a Hires screen (640x200 NTSC, non-interlaced)
-    FPF_TALLDOT=flag,
-    # 0x04 This font is designed to be printed from from right to left
-    FPF_REVPATH=flag,
-    # 0x02 font is from diskfont.library
-    FPF_DISKFONT=flag,
-    # 0x01 font is in rom
-    FPF_ROMFONT=flag
-)
-
-
-# tf_Style values
-_TF_STYLE = be.Struct(
-    # 0x80 the TextAttr is really a TTextAttr
-    FSF_TAGGED=flag,
-    # 0x40 this uses ColorTextFont structure
-    FSF_COLORFONT=flag,
-    unused=bitfield('B', 2),
-    # 0x08 extended face (wider than normal)
-    FSF_EXTENDED=flag,
-    # 0x04 italic (slanted 1:2 right)
-    FSF_ITALIC=flag,
-    # 0x02 bold face text (OR-ed w/ shifted)
-    FSF_BOLD=flag,
-    # 0x01 underlined (under baseline)
-    FSF_UNDERLINED=flag,
 )
 
 
