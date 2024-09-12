@@ -231,8 +231,58 @@ _TAG_DONE = 0
 _TA_DEVICEDPI = (1 << 31) | 1
 
 
+###############################################################################
+# ColorFont structures
+# http://amigadev.elowar.com/read/ADCD_2.1/Includes_and_Autodocs_2._guide/node00A8.html
+#
+# thanks to https://github.com/smugpie/amiga-bitmap-font-tools/tree/main
+# for clarifying implementation of these structures in files
 
+# /*-----	ctf_Flags --------------------------------------------------*/
+# /* color map contains designer's colors */
+CT_COLORFONT = 0x0001
+# /* color map describes even-stepped */
+# /* brightnesses from low to high */
+CT_GREYFONT = 0x0002
+# /* zero background thru fully saturated char */
+CT_ANTIALIAS = 0x0004
 
+# /*-----	ColorTextFont ----------------------------------------------*/
+_COLOR_TEXT_FONT = be.Struct(
+    # struct TextFont ctf_TF;
+    # /* extended flags */
+    ctf_Flags='uint16',
+    # /* number of bit planes */
+    ctf_Depth='uint8',
+    # /* color that is remapped to FgPen */
+    ctf_FgColor='uint8',
+    # /* lowest color represented here */
+    ctf_Low='uint8',
+    # /* highest color represented here */
+    ctf_High='uint8',
+    # /* PlanePick ala Images */
+    ctf_PlanePick='uint8',
+    # /* PlaneOnOff ala Images */
+    ctf_PlaneOnOff='uint8',
+    # /* colors for font */
+    # struct ColorFontColors *ctf_ColorFontColors;
+    # this is stored in the disk file as an offset
+    ctf_ColorFontColors='uint32',
+    # /*pointers to bit planes ala tf_CharData */
+    # APTR    ctf_CharData[8];
+)
+
+# /*----- ColorFontColors --------------------------------------------*/
+_COLOR_FONT_COLORS = be.Struct(
+    # /* *must* be zero */
+    cfc_Reserved='uint16',
+    # /* number of entries in cfc_ColorTable */
+    cfc_Count='uint16',
+    # /* 4 bit per component color map packed xRGB */
+    # UWORD  *cfc_ColorTable;
+    # this is stored in the disk file as an offset
+    cfc_ColorTable='uint32',
+)
 
 ###################################################################################################
 # read Amiga font
@@ -359,17 +409,25 @@ def _read_font_hunk(f):
         raise FileFormatError(
             f'Not an Amiga font data file: file id 0x{amiga_props.dfh_FileID:X}.'
         )
+    # the reference point for offsets in the hunk is just before the ReturnCode
+    loc = - _AMIGA_HEADER.size + 4
+    if amiga_props.tf_Style.FSF_COLORFONT:
+        # raise UnsupportedError('Amiga ColorFont not supported')
+        ctf = _COLOR_TEXT_FONT.read_from(f)
+        logging.debug('ColorTextFont: %s', ctf)
+        amiga_props |= Props(**vars(ctf))
+        amiga_props.ctf_CharData = (be.uint32 * ctf.ctf_Depth).read_from(f)
+        logging.debug('CharData: %s', amiga_props.ctf_CharData)
+        loc -= _COLOR_TEXT_FONT.size + be.uint32.size * ctf.ctf_Depth
     # remainder is the font strike
-    glyphs = _read_strike(f, amiga_props)
+    glyphs = _read_strike(f, amiga_props, loc)
     return amiga_props, glyphs
 
 
-def _read_strike(f, props):
+def _read_strike(f, props, loc):
     """Read and interpret the font strike and related tables."""
     # remainder is the font strike
     data = f.read()
-    # the reference point for offsets in the hunk is just before the ReturnCode
-    loc = - _AMIGA_HEADER.size + 4
     # location data
     # one additional for default glyph
     nchars = (props.tf_HiChar - props.tf_LoChar + 1) + 1
@@ -386,14 +444,38 @@ def _read_strike(f, props):
         kerning = be.int16.array(nchars).from_bytes(data, loc + props.tf_CharKern)
     else:
         kerning = [0] * nchars
+    # colour table
+    if props.tf_Style.FSF_COLORFONT:
+        logging.debug(props)
+        cfc = _COLOR_FONT_COLORS.from_bytes(data, loc+props.ctf_ColorFontColors)
+        logging.debug('ColorFontColors: %s', cfc)
+        ct = (be.uint16 * cfc.cfc_Count).from_bytes(data, loc+cfc.cfc_ColorTable)
+        logging.debug('ColorTable: %s', ct)
+        char_data_ptrs = props.ctf_CharData
+    else:
+        char_data_ptrs = [props.tf_CharData]
     # bitmap strike
-    strike = Raster.from_bytes(
-        data[
-            loc + props.tf_CharData
-            : loc + props.tf_CharData + props.tf_Modulo*props.tf_YSize
-        ],
-        height=props.tf_YSize,
+    strikes = tuple(
+        Raster.from_bytes(
+            data[loc + _ptr : loc + _ptr + props.tf_Modulo*props.tf_YSize],
+            height=props.tf_YSize,
+        )
+        for _ptr in char_data_ptrs
     )
+    if props.ctf_Depth == 1:
+        strike, = strikes
+    else:
+        # combine the bit planes to one higher-depth raster
+        # LSB plane comes first? who knows
+        bit_vectors = (
+            _r.as_pixels(inklevels=bytes((0, 1<<_i)))
+            for _i, _r in enumerate(strikes)
+        )
+        combined = bytes(sum(_array) for _array in zip(*bit_vectors))
+        strike = Raster.from_vector(
+            combined, stride=props.tf_Modulo*8,
+            inklevels=bytes(range(2**props.ctf_Depth))
+        )
     # extract glyphs
     pixels = (
         strike.crop(left=_loc.offset, right=strike.width-_loc.offset-_loc.width)
@@ -444,8 +526,6 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
 
 def _convert_amiga_props(amiga_props):
     """Convert AmigaFont properties into yaff properties."""
-    if amiga_props.tf_Style.FSF_COLORFONT:
-        raise UnsupportedError('Amiga ColorFont not supported')
     props = Props()
     name = bytes(amiga_props.dfh_Name).decode(_ENCODING).strip()
     if name:
