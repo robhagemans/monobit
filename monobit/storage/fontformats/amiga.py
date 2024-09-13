@@ -14,7 +14,7 @@ from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import flag, bitfield, big_endian as be
 from monobit.base.binary import ceildiv
-from monobit.base import Props, Coord, FileFormatError, UnsupportedError
+from monobit.base import Props, Coord, FileFormatError, UnsupportedError, RGB
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
 
 
@@ -421,7 +421,7 @@ def _read_font_hunk(f):
         loc -= _COLOR_TEXT_FONT.size + be.uint32.size * ctf.ctf_Depth
     # remainder is the font strike
     glyphs, ct = _read_strike(f, amiga_props, loc)
-    amiga_props.ColorTable = ct
+    amiga_props.ctf_ColorTable = ct
     return amiga_props, glyphs
 
 
@@ -451,6 +451,10 @@ def _read_strike(f, props, loc):
         cfc = _COLOR_FONT_COLORS.from_bytes(data, loc+props.ctf_ColorFontColors)
         logging.debug('ColorFontColors: %s', cfc)
         ct = (be.uint16 * cfc.cfc_Count).from_bytes(data, loc+cfc.cfc_ColorTable)
+        ct = tuple(
+            RGB(((_c//256)%16)*0x11, ((_c%256)//16)*0x11, (_c%16)*0x11)
+            for _c in ct
+        )
         logging.debug('ColorTable: %s', ct)
         char_data_ptrs = props.ctf_CharData
     else:
@@ -561,8 +565,12 @@ def _convert_amiga_props(amiga_props):
     props.default_char = 'default'
     props.bold_smear = amiga_props.tf_BoldSmear
     if amiga_props.tf_Style.FSF_COLORFONT:
-        setattr(props, 'amiga.ctf_ColorTable', tuple(f'{_v:03X}' for _v in amiga_props.ColorTable))
-        for attr in ('ctf_Flags', 'ctf_FgColor', 'ctf_Low', 'ctf_High', 'ctf_PlanePick', 'ctf_PlaneOnOff'):
+        for attr in (
+                'ctf_Flags', 'ctf_FgColor',
+                'ctf_Low', 'ctf_High',
+                'ctf_PlanePick', 'ctf_PlaneOnOff',
+                'ctf_ColorTable',
+            ):
             setattr(props, f'amiga.{attr}', getattr(amiga_props, attr))
     return props
 
