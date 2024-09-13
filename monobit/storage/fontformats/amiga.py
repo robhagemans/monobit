@@ -462,7 +462,7 @@ def _read_strike(f, props, loc):
         )
         for _ptr in char_data_ptrs
     )
-    if props.ctf_Depth == 1:
+    if len(strikes) == 1:
         strike, = strikes
     else:
         # combine the bit planes to one higher-depth raster
