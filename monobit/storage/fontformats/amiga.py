@@ -478,7 +478,10 @@ def _read_strike(f, props, loc):
         )
     # extract glyphs
     pixels = (
-        strike.crop(left=_loc.offset, right=strike.width-_loc.offset-_loc.width)
+        strike.crop(
+            left=_loc.offset,
+            right=max(0, strike.width-_loc.offset-_loc.width)
+        )
         for _loc in locs
     )
     glyphs = tuple(
