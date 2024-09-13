@@ -295,6 +295,7 @@ _COLOR_FONT_COLORS = be.Struct(
 def load_amiga_fc(instream):
     """Load fonts from Amiga disk font contents (.FONT) file."""
     fch = _FONT_CONTENTS_HEADER.read_from(instream)
+    logging.debug('FontContentsHeader: %s', fch)
     if fch.fch_FileID in (_FCH_ID, _TFCH_ID):
         pass
     elif fch.fch_FileID == _NONBITMAP_ID:
@@ -307,6 +308,8 @@ def load_amiga_fc(instream):
         )
     # TFontContents is a FontContents with re-interpreted fc_FileName field
     contentsarray = (_FONT_CONTENTS*fch.fch_NumEntries).read_from(instream)
+    for i, record in enumerate(contentsarray):
+        logging.debug('FontContents #%d: %s', i, record)
     pack = []
     for fc in contentsarray:
         dpi = None
@@ -447,7 +450,6 @@ def _read_strike(f, props, loc):
         kerning = [0] * nchars
     # colour table
     if props.tf_Style.FSF_COLORFONT:
-        logging.debug(props)
         cfc = _COLOR_FONT_COLORS.from_bytes(data, loc+props.ctf_ColorFontColors)
         logging.debug('ColorFontColors: %s', cfc)
         ct = (be.uint16 * cfc.cfc_Count).from_bytes(data, loc+cfc.cfc_ColorTable)
