@@ -420,7 +420,8 @@ def _read_font_hunk(f):
         logging.debug('CharData: %s', amiga_props.ctf_CharData)
         loc -= _COLOR_TEXT_FONT.size + be.uint32.size * ctf.ctf_Depth
     # remainder is the font strike
-    glyphs = _read_strike(f, amiga_props, loc)
+    glyphs, ct = _read_strike(f, amiga_props, loc)
+    amiga_props.ColorTable = ct
     return amiga_props, glyphs
 
 
@@ -464,6 +465,7 @@ def _read_strike(f, props, loc):
     )
     if len(strikes) == 1:
         strike, = strikes
+        ct = None
     else:
         # combine the bit planes to one higher-depth raster
         # LSB plane comes first? who knows
@@ -491,7 +493,7 @@ def _read_strike(f, props, loc):
             start=props.tf_LoChar
         )
     )
-    return glyphs
+    return glyphs, ct
 
 
 ###################################################################################################
@@ -558,6 +560,10 @@ def _convert_amiga_props(amiga_props):
     props.encoding = _ENCODING
     props.default_char = 'default'
     props.bold_smear = amiga_props.tf_BoldSmear
+    if amiga_props.tf_Style.FSF_COLORFONT:
+        setattr(props, 'amiga.ctf_ColorTable', tuple(f'{_v:03X}' for _v in amiga_props.ColorTable))
+        for attr in ('ctf_Flags', 'ctf_FgColor', 'ctf_Low', 'ctf_High', 'ctf_PlanePick', 'ctf_PlaneOnOff'):
+            setattr(props, f'amiga.{attr}', getattr(amiga_props, attr))
     return props
 
 
