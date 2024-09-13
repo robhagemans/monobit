@@ -354,15 +354,10 @@ def _read_font_hunk(f):
             f'Not an Amiga font data file: hunk id 0x{hunk_id:03X}.'
         )
     # location reference point loc = f.tell() + 4
-    amiga_props = _AMIGA_HEADER.read_from(f)
-    # these seem to be consistently set
-    if (
-            amiga_props.dfh_FileID != _DFH_ID
-            or amiga_props.tf_ln_Type != _NT_FONT
-            or amiga_props.tf_ln_Name != 0x1a
-        ):
+    amiga_props = Props(**vars(_AMIGA_HEADER.read_from(f)))
+    if amiga_props.dfh_FileID != _DFH_ID:
         raise FileFormatError(
-            'Not an Amiga font data file: incorrect type fields.'
+            f'Not an Amiga font data file: file id 0x{amiga_props.dfh_FileID:X}.'
         )
     # remainder is the font strike
     glyphs = _read_strike(f, amiga_props)
