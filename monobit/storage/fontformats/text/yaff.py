@@ -17,7 +17,7 @@ from monobit.storage.magic import Sentinel
 from monobit.core import (
     Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
 )
-from monobit.base.binary import INKLEVELS
+from monobit.core.raster import INKLEVELS
 from monobit.base import Props, Coord, passthrough, FileFormatError
 
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks

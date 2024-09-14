@@ -11,11 +11,19 @@ from itertools import zip_longest
 from collections import deque
 
 from monobit.base.binary import (
-    ceildiv, reverse_by_group, INKLEVELS, bytes_to_pixels,
+    ceildiv, reverse_by_group, bytes_to_pixels,
 )
 from monobit.base import Bounds, Coord, NOT_SET
 from monobit.base.blocks import matrix_to_blocks, blockstr
 
+
+# default string inklevels
+INKLEVELS = {
+    256: ''.join(chr(_i) for _i in range(256)),
+    16: '0123456789abcdef',
+    4: '0123',
+    2: '01',
+}
 
 # turn function for Raster, Glyph and Font
 
