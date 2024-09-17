@@ -567,11 +567,18 @@ def _convert_amiga_props(amiga_props):
     props.default_char = 'default'
     props.bold_smear = amiga_props.tf_BoldSmear
     if amiga_props.tf_Style.FSF_COLORFONT:
-        for attr in (
-                'ctf_Flags', 'ctf_FgColor',
-                'ctf_PlanePick', 'ctf_PlaneOnOff',
-                'ctf_ColorTable',
-            ):
+
+        def _preserve_amiga_prop(name):
+            logging.warning('Ignoring Amiga property %s', name)
+            setattr(props, f'amiga.{name}', getattr(amiga_props, name))
+
+        if amiga_props.ctf_FgColor not in (0xff, amiga_props.ctf_High):
+            _preserve_amiga_prop('ctf_FgColor')
+        if amiga_props.ctf_PlanePick != 0xff:
+            _preserve_amiga_prop('ctf_PlanePick')
+        if amiga_props.ctf_PlaneOnOff != 0:
+            _preserve_amiga_prop('ctf_PlaneOnOff')
+        for attr in ('ctf_Flags', 'ctf_ColorTable'):
             setattr(props, f'amiga.{attr}', getattr(amiga_props, attr))
     return props
 
