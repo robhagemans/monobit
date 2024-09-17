@@ -239,19 +239,26 @@ _TA_DEVICEDPI = (1 << 31) | 1
 # for clarifying implementation of these structures in files
 
 # /*-----	ctf_Flags --------------------------------------------------*/
-# /* color map contains designer's colors */
-CT_COLORFONT = 0x0001
-# /* color map describes even-stepped */
-# /* brightnesses from low to high */
-CT_GREYFONT = 0x0002
-# /* zero background thru fully saturated char */
-CT_ANTIALIAS = 0x0004
+
+_CTF_FLAGS = be.Struct(
+    unused=bitfield('uint16', 13),
+    # /* zero background thru fully saturated char */
+    # CT_ANTIALIAS = 0x0004
+    CT_ANTIALIAS=bitfield('uint16', 1),
+    # /* color map describes even-stepped */
+    # /* brightnesses from low to high */
+    # CT_GREYFONT = 0x0002
+    CT_GREYFONT=bitfield('uint16', 1),
+    # /* color map contains designer's colors */
+    # CT_COLORFONT = 0x0001
+    CT_COLORFONT=bitfield('uint16', 1),
+)
 
 # /*-----	ColorTextFont ----------------------------------------------*/
 _COLOR_TEXT_FONT = be.Struct(
     # struct TextFont ctf_TF;
     # /* extended flags */
-    ctf_Flags='uint16',
+    ctf_Flags=_CTF_FLAGS,
     # /* number of bit planes */
     ctf_Depth='uint8',
     # /* color that is remapped to FgPen */
@@ -572,14 +579,21 @@ def _convert_amiga_props(amiga_props):
             logging.warning('Ignoring Amiga property %s', name)
             setattr(props, f'amiga.{name}', getattr(amiga_props, name))
 
+        # haven't implemented picking a ctf_FgColor
         if amiga_props.ctf_FgColor not in (0xff, amiga_props.ctf_High):
             _preserve_amiga_prop('ctf_FgColor')
+        # use/meaning of ctf_Plane* are unclear
         if amiga_props.ctf_PlanePick != 0xff:
             _preserve_amiga_prop('ctf_PlanePick')
         if amiga_props.ctf_PlaneOnOff != 0:
             _preserve_amiga_prop('ctf_PlaneOnOff')
-        for attr in ('ctf_Flags', 'ctf_ColorTable'):
-            setattr(props, f'amiga.{attr}', getattr(amiga_props, attr))
+        # colour table is expected to be meaningful if CT_COLORFONT is set
+        # I haven't seen CT_GREYFONT or CT_ANTIALIAS used
+        # they seem to mean the same thing - interpret ink index as greyscale
+        # which is what we do by default.
+        # should a colour table also be defined? should we use it? who knows.
+        if amiga_props.ctf_Flags.CT_COLORFONT:
+            _preserve_amiga_prop('ctf_ColorTable')
     return props
 
 
