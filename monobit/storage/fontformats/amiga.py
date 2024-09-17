@@ -482,7 +482,7 @@ def _read_strike(f, props, loc):
         combined = bytes(sum(_array) for _array in zip(*bit_vectors))
         strike = Raster.from_vector(
             combined, stride=props.tf_Modulo*8,
-            inklevels=bytes(range(2**props.ctf_Depth))
+            inklevels=bytes(range(props.ctf_Low, props.ctf_High+1)),
         )
     # extract glyphs
     pixels = (
@@ -569,7 +569,6 @@ def _convert_amiga_props(amiga_props):
     if amiga_props.tf_Style.FSF_COLORFONT:
         for attr in (
                 'ctf_Flags', 'ctf_FgColor',
-                'ctf_Low', 'ctf_High',
                 'ctf_PlanePick', 'ctf_PlaneOnOff',
                 'ctf_ColorTable',
             ):
