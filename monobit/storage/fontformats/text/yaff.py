@@ -10,14 +10,13 @@ import string
 from dataclasses import dataclass, field
 from itertools import count, zip_longest
 from collections import deque
-from functools import cached_property
+from functools import cached_property, cache
 
 from monobit.storage import loaders, savers
 from monobit.storage.magic import Sentinel
 from monobit.core import (
     Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
 )
-from monobit.core.raster import INKLEVELS
 from monobit.base import Props, Coord, passthrough, FileFormatError
 
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
@@ -81,12 +80,23 @@ class YaffParams:
     quotable = (':', ' ')
     glyphchars = (ink, paper, empty)
 
-    inklevels = {
-        256: ('..', *(f'{_c:02X}' for _c in range(1, 255)), '@@'),
-        16: paper + INKLEVELS[16][1:-1].upper() + ink,
-        4: paper + INKLEVELS[4][1:-1].upper() + ink,
-        2: paper + ink,
-    }
+    @classmethod
+    @cache
+    def inklevels(cls, n_levels):
+        # we only use hex digits. we *could* use more letters for 32 levels
+        if n_levels <= 16:
+            return (
+                cls.paper
+                + ''.join(f'{_c:01X}' for _c in range(1, n_levels-1))
+                + cls.ink
+            )
+        if n_levels <= 256:
+            return (
+                cls.paper*2,
+                *(f'{_c:02X}' for _c in range(1, n_levels-1)),
+                cls.ink*2
+            )
+        raise ValueError('More than 256 ink levels not supported.')
 
 
 # deprecated compatibility synonymms
@@ -161,7 +171,7 @@ def _read_yaff(text_stream):
     font_props = {}
     font_prop_comms = {}
     current_comment = []
-    inklevels = YaffParams.inklevels[2]
+    inklevels = YaffParams.inklevels(2)
     for block in iter_blocks(text_stream, blocktypes):
         if isinstance(block, (YaffGlyph, YaffPropertyOrGlyph)) and block.is_glyph():
             glyphs.append(block.get_glyph_value(inklevels) | Props(
@@ -176,7 +186,7 @@ def _read_yaff(text_stream):
             else:
                 _set_property(font_props, key, value)
                 if key == 'levels':
-                    inklevels = YaffParams.inklevels[int(value, 0)]
+                    inklevels = YaffParams.inklevels(int(value, 0))
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -366,7 +376,7 @@ class YaffPropertyOrGlyph(YaffMultiline):
         # multiline block with single key
         # may be property or (deprecated) glyph with plain label
         # we need to check the contents; allows 2-level glyphs only
-        return first[:1] in self.inklevels[2] or set(first) == set(self.empty)
+        return first[:1] in self.inklevels(2) or set(first) == set(self.empty)
 
 
 ##############################################################################
@@ -468,7 +478,7 @@ def _write_glyph(outstream, glyph, global_metrics):
     else:
         glyphtxt = glyph.pixels.as_text(
             start=YaffParams.tab,
-            inklevels=YaffParams.inklevels[glyph.levels],
+            inklevels=YaffParams.inklevels(glyph.levels),
             end='\n',
         )
     outstream.write(glyphtxt)

@@ -9,6 +9,7 @@ import logging
 import string
 from itertools import zip_longest
 from collections import deque
+from functools import cache
 
 from monobit.base.binary import (
     ceildiv, reverse_by_group, bytes_to_pixels,
@@ -17,13 +18,17 @@ from monobit.base import Bounds, Coord, NOT_SET
 from monobit.base.blocks import matrix_to_blocks, blockstr
 
 
-# default string inklevels
-INKLEVELS = {
-    256: ''.join(chr(_i) for _i in range(256)),
-    16: '0123456789abcdef',
-    4: '0123',
-    2: '01',
-}
+_INKLEVELS16 = '0123456789abcdef'
+_INKLEVELS256 = ''.join(chr(_i) for _i in range(256))
+
+@cache
+def get_inklevels(n_levels):
+    if n_levels <= 16:
+        return _INKLEVELS16[:n_levels]
+    if n_levels <= 256:
+        return _INKLEVELS256[:n_levels]
+    raise ValueError('More than 256 ink levels not supported.')
+
 
 # turn function for Raster, Glyph and Font
 
@@ -72,7 +77,7 @@ class Raster:
             elif width is NOT_SET:
                 width = 0
             if inklevels is NOT_SET:
-                inklevels = '01'
+                inklevels = get_inklevels(2)
         self._pixels = pixels
         self._width = width
         self._inklevels = inklevels
@@ -159,7 +164,7 @@ class Raster:
     @classmethod
     def blank(cls, width=0, height=0, levels=2):
         """Create uninked raster."""
-        inklevels = INKLEVELS[levels]
+        inklevels = get_inklevels(levels)
         if height == 0:
             return cls(width=width, inklevels=inklevels)
         return cls((inklevels[0] * width,) * height, inklevels=inklevels)
@@ -278,7 +283,7 @@ class Raster:
             )
         # convert bytes to pixels
         bitseq = bytes_to_pixels(byteseq, levels)
-        inklevels = INKLEVELS[levels]
+        inklevels = get_inklevels(levels)
         # per-byte bit swap.
         if bit_order == 'little':
             bitseq = reverse_by_group(bitseq, group_size=pixels_per_byte)
@@ -296,7 +301,7 @@ class Raster:
         """
         if not self.height or not self.width:
             return ()
-        inklevels = INKLEVELS[self._levels]
+        inklevels = get_inklevels(self._levels)
         rows = (
             ''.join(_row)
             for _row in self.as_matrix(inklevels=inklevels)
@@ -356,7 +361,7 @@ class Raster:
             #     4->8bpp 5 -> 55 A -> AA
             raster = raster.stretch(factor_x=factor)
         if align == 'bit':
-            inklevels = INKLEVELS[self._levels]
+            inklevels = get_inklevels(self._levels)
             bits = ''.join(
                 ''.join(_row)
                 for _row in raster.as_matrix(inklevels=inklevels)
@@ -414,7 +419,13 @@ class Raster:
             pixels = tuple(''.join(_row) for _row in matrix)
             return cls(pixels, inklevels=inklevels)
         else:
-            str_inklevels = INKLEVELS[len(inklevels)]
+            # for n_levels in (2, 4, 16, 256):
+            #     if len(inklevels) <= n_levels:
+            #         str_inklevels = INKLEVELS[n_levels]
+            #         break
+            # else:
+            #     raise ValueError('More than 256 ink levels not supported.')
+            str_inklevels = get_inklevels(len(inklevels))
             translator = {_k: _v for _k, _v in zip(inklevels, str_inklevels)}
             # glyph data
             pixels = tuple(
@@ -465,12 +476,12 @@ class Raster:
         if not self.height:
             return ''
         if inklevels is NOT_SET:
-            if self._levels == 256:
+            if self._levels > 16:
                 raise ValueError(
                     'No default text representation for 8-bit greyscale'
                 )
             # default text representation uses . for paper and @ for full ink
-            inklevels = '.' + INKLEVELS[self._levels][1:-1] + '@'
+            inklevels = '.' + get_inklevels(self._levels)[1:-1] + '@'
         rows = self._as_iter(inklevels=inklevels)
         return blockstr(
             start
@@ -502,7 +513,9 @@ class Raster:
         heights = set(_raster.height for _raster in row_of_rasters)
         if len(heights) > 1:
             raise ValueError('Rasters must be of same height.')
-        inklevels = INKLEVELS[max(_r.levels for _r in row_of_rasters)]
+        inklevels = get_inklevels(
+            max(_r.levels for _r in row_of_rasters)
+        )
         matrices = tuple(
             _raster.as_matrix(inklevels=inklevels)
             for _raster in row_of_rasters
@@ -525,7 +538,9 @@ class Raster:
         widths = set(_raster.width for _raster in column_of_rasters)
         if len(widths) > 1:
             raise ValueError('Rasters must be of same width.')
-        inklevels = INKLEVELS[max(_r.levels for _r in column_of_rasters)]
+        inklevels = get_inklevels(
+            max(_r.levels for _r in column_of_rasters)
+        )
         matrices = (
             _raster.as_matrix(inklevels=inklevels)
             for _raster in column_of_rasters
