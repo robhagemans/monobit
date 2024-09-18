@@ -31,11 +31,29 @@ class RGBTable(list):
 
 ###################################################################################################
 
-def get_greyscale_shade(value, levels, paper, ink):
-    """Get block at given grey level."""
-    maxlevel = levels - 1
-    shade = tuple(
-        (value * _ink + (maxlevel - value) * _paper) // maxlevel
-        for _ink, _paper in zip(ink, paper)
-    )
-    return shade
+
+class RGBShader:
+
+    def __init__(self, rgb_table:RGBTable):
+        self.rgb_table = rgb_table
+
+    def get_shade(self, value:int):
+        """Get RGB for given index level."""
+        return self.rgb_table[value]
+
+
+class GreyscaleShader:
+
+    def __init__(self, levels:int, paper:RGB, ink:RGB):
+        self.levels = levels
+        self.paper = paper
+        self.ink = ink
+
+    def get_shade(self, value:int):
+        """Get RGB for given grey level."""
+        maxlevel = self.levels - 1
+        shade = tuple(
+            (value * _ink + (maxlevel - value) * _paper) // maxlevel
+            for _ink, _paper in zip(self.ink, self.paper)
+        )
+        return shade

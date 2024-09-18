@@ -10,7 +10,6 @@ from itertools import zip_longest
 
 from monobit.base.binary import bytes_to_bits
 from monobit.base import blockstr
-from .shader import get_greyscale_shade
 
 
 # block elements
@@ -126,23 +125,23 @@ def matrix_to_blocks(matrix, ncols, nrows, levels):
     return block_matrix
 
 
-def matrix_to_shades(matrix, levels, *, paper, ink, border):
+def matrix_to_shades(matrix, *, shader, border):
     """Convert bit matrix to a mutable matrix of block characters."""
     return [
         [
-            _get_shaded_block(_bitblock, levels, paper, ink, border)
+            _get_shaded_block(_bitblock, shader, border)
             for _bitblock in _row
         ]
         for _row in matrix
     ]
 
 
-def _get_shaded_block(value, levels, paper, ink, border):
+def _get_shaded_block(value, shader, border):
     """Get block with given shade."""
     if value < 0:
         shade = border
     else:
-        shade = get_greyscale_shade(value, levels, paper, ink)
+        shade = shader.get_shade(value)
     if shade is None:
         return f'\x1b[0m '
     r, g, b = shade

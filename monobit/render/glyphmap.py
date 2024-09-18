@@ -12,6 +12,7 @@ from monobit.base import Props, Coord, RGB, blockstr
 from monobit.core.raster import turn_method
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
+from .shader import GreyscaleShader
 
 
 def glyph_to_image(glyph, paper, ink):
@@ -314,9 +315,9 @@ class _Canvas:
         """Convert glyph map to a string of block characters with ansi colours."""
         if not self.height:
             return ''
+        shader = GreyscaleShader(self.levels, paper, ink)
         block_matrix = matrix_to_shades(
-            self._pixels, levels=self.levels,
-            paper=paper, ink=ink, border=border,
+            self._pixels, shader=shader, border=border,
         )
         self._write_labels_to_matrix(block_matrix)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
