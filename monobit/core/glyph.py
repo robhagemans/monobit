@@ -540,10 +540,6 @@ class Glyph(HasProps):
         """Convert glyph to text."""
         return self._pixels.as_text(inklevels=inklevels, start=start, end=end)
 
-    def as_blocks(self, resolution=(2, 2)):
-        """Convert glyph to a string of quadrant block characters."""
-        return self._pixels.as_blocks(resolution)
-
     def as_vector(self, inklevels=NOT_SET):
         """Return flat tuple of user-specified pixel objects."""
         return self._pixels.as_vector(inklevels=inklevels)

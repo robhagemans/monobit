@@ -489,15 +489,6 @@ class Raster:
             + end
         )
 
-    def as_blocks(self, resolution=(2, 2)):
-        """Convert raster to a string of block characters."""
-        if not self.height:
-            return ''
-        matrix = self._as_iter(inklevels=tuple(range(self._levels)))
-        block_matrix = matrix_to_blocks(matrix, *resolution, levels=self._levels)
-        blocks = '\n'.join(''.join(_row) for _row in block_matrix)
-        return blockstr(blocks + '\n')
-
 
     ##########################################################################
 
