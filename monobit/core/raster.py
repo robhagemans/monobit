@@ -14,8 +14,7 @@ from functools import cache
 from monobit.base.binary import (
     ceildiv, reverse_by_group, bytes_to_pixels,
 )
-from monobit.base import Bounds, Coord, NOT_SET
-from monobit.base.blocks import matrix_to_blocks, blockstr
+from monobit.base import Bounds, Coord, NOT_SET, blockstr
 
 
 _INKLEVELS16 = '0123456789abcdef'

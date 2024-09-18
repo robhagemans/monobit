@@ -22,6 +22,13 @@ class UnsupportedError(Exception):
     """Unsupported file format variant."""
 
 
+
+class blockstr(str):
+    """str that is shown as block text in interactive session."""
+    def __repr__(self):
+        return f'"""\\\n{self}"""'
+
+
 def passthrough(var):
     """Passthrough type."""
     return var

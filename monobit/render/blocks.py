@@ -1,5 +1,5 @@
 """
-monobit.base.blocks - output pixels as text using block elements
+monobit.render.blocks - output pixels as text using block elements
 
 (c) 2023--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -8,17 +8,11 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import zip_longest
 
-from .binary import bytes_to_bits
-
-
-class blockstr(str):
-    """str that is shown as block text in interactive session."""
-    def __repr__(self):
-        return f'"""\\\n{self}"""'
+from monobit.base.binary import bytes_to_bits
+from monobit.base import blockstr
 
 
 # block elements
-# this has nothing to do with `blockstr` above
 
 BLOCKS = {
     (1, 1): {

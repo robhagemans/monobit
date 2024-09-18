@@ -8,10 +8,10 @@ licence: https://opensource.org/licenses/MIT
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base.blocks import matrix_to_blocks, matrix_to_shades, blockstr
-from ..base import Props, Coord, RGB
-from ..core.raster import turn_method
-from ..plumbing import convert_arguments
+from monobit.base import Props, Coord, RGB, blockstr
+from monobit.core.raster import turn_method
+from monobit.plumbing import convert_arguments
+from .blocks import matrix_to_blocks, matrix_to_shades
 
 
 def glyph_to_image(glyph, paper, ink):
