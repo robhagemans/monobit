@@ -14,8 +14,9 @@ from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import flag, bitfield, big_endian as be
 from monobit.base.binary import ceildiv
-from monobit.base import Props, Coord, FileFormatError, UnsupportedError, RGB
+from monobit.base import Props, Coord, FileFormatError, UnsupportedError
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
+from monobit.render import RGBTable
 
 
 ###################################################################################################
@@ -290,25 +291,6 @@ _COLOR_FONT_COLORS = be.Struct(
     # this is stored in the disk file as an offset
     cfc_ColorTable='uint32',
 )
-
-
-###################################################################################################
-
-class RGBTable(list):
-
-    def __init__(self, table=()):
-        """Set up RGB table."""
-        if isinstance(table, str):
-            table = (
-                _row
-                for _row in table.splitlines()
-            )
-        table = tuple(RGB.create(_v) for _v in table)
-        super().__init__(table)
-
-    def __str__(self):
-        """Convert RGB table to multiline string."""
-        return '\n'.join(str(_v) for _v in iter(self))
 
 
 ###################################################################################################

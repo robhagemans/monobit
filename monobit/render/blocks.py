@@ -10,6 +10,7 @@ from itertools import zip_longest
 
 from monobit.base.binary import bytes_to_bits
 from monobit.base import blockstr
+from .shader import get_greyscale_shade
 
 
 # block elements
@@ -126,29 +127,24 @@ def matrix_to_blocks(matrix, ncols, nrows, levels):
 
 
 def matrix_to_shades(matrix, levels, *, paper, ink, border):
-    """Convert bit matrix to a string of block characters."""
+    """Convert bit matrix to a mutable matrix of block characters."""
     return [
-        [_get_shade(_bitblock, levels, paper, ink, border) for _bitblock in _row]
+        [
+            _get_shaded_block(_bitblock, levels, paper, ink, border)
+            for _bitblock in _row
+        ]
         for _row in matrix
     ]
 
 
-def _get_shade(value, levels, paper, ink, border):
-    """Get block at given grey level."""
+def _get_shaded_block(value, levels, paper, ink, border):
+    """Get block with given shade."""
     if value < 0:
-        # border colour
-        if border is None:
-            return f'\x1b[0m '
-        else:
-            return _ansi_rgb(*border) + '\u2588\x1b[0m'
-    maxlevel = levels - 1
-    shade = tuple(
-        (value * _ink + (maxlevel - value) * _paper) // maxlevel
-        for _ink, _paper in zip(ink, paper)
-    )
-    return _ansi_rgb(*shade) + '\u2588\x1b[0m'
-
-
-def _ansi_rgb(r, g, b):
-    """Get ansi-escape code for RGB colour."""
-    return f'\x1b[38;2;{r};{g};{b}m'
+        shade = border
+    else:
+        shade = get_greyscale_shade(value, levels, paper, ink)
+    if shade is None:
+        return f'\x1b[0m '
+    r, g, b = shade
+    # Get ansi-escape code for RGB colour
+    return f'\x1b[38;2;{r};{g};{b}m\u2588\x1b[0m'
