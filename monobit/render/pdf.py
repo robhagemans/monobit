@@ -142,11 +142,15 @@ if reportlab:
                 pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
-                        fill = pixels[y][x] / (font.levels-1)
-                        fill_rgb = tuple(
-                            _i * fill/255 + _p * (1-fill)/255
-                            for _i, _p in zip(ink, paper)
-                        )
+                        try:
+                            ct = getattr(font, 'amiga.ctf_ColorTable')
+                            fill_rgb = tuple(_v/255 for _v in ct[pixels[y][x]])
+                        except AttributeError:
+                            fill = pixels[y][x] / (font.levels-1)
+                            fill_rgb = tuple(
+                                _i * fill/255 + _p * (1-fill)/255
+                                for _i, _p in zip(ink, paper)
+                            )
                         if all(_c > 0 for _c in pixel_border):
                             stroke_rgb = tuple(_c / 255 for _c in pixel_border)
                         else:

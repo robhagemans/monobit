@@ -291,6 +291,26 @@ _COLOR_FONT_COLORS = be.Struct(
     cfc_ColorTable='uint32',
 )
 
+
+###################################################################################################
+
+class RGBTable(list):
+
+    def __init__(self, table=()):
+        """Set up RGB table."""
+        if isinstance(table, str):
+            table = (
+                _row
+                for _row in table.splitlines()
+            )
+        table = tuple(RGB.create(_v) for _v in table)
+        super().__init__(table)
+
+    def __str__(self):
+        """Convert RGB table to multiline string."""
+        return '\n'.join(str(_v) for _v in iter(self))
+
+
 ###################################################################################################
 # read Amiga font
 
@@ -460,10 +480,10 @@ def _read_strike(f, props, loc):
         cfc = _COLOR_FONT_COLORS.from_bytes(data, loc+props.ctf_ColorFontColors)
         logging.debug('ColorFontColors: %s', cfc)
         ct = (be.uint16 * cfc.cfc_Count).from_bytes(data, loc+cfc.cfc_ColorTable)
-        ct = tuple(
-            RGB(((_c//256)%16)*0x11, ((_c%256)//16)*0x11, (_c%16)*0x11)
+        ct = RGBTable((
+            (((_c//256)%16)*0x11, ((_c%256)//16)*0x11, (_c%16)*0x11)
             for _c in ct
-        )
+        ))
         logging.debug('ColorTable: %s', ct)
         char_data_ptrs = props.ctf_CharData
     else:
