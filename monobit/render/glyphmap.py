@@ -16,6 +16,8 @@ from .blocks import matrix_to_blocks, matrix_to_shades
 
 def glyph_to_image(glyph, paper, ink):
     """Create image of single glyph."""
+    if not Image:
+        raise ImportError('Rendering to image requires PIL module.')
     image_mode = _get_image_mode(paper, ink, paper)
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
     # create ink gradient
@@ -41,8 +43,6 @@ def glyph_to_image(glyph, paper, ink):
 
 
 def _get_image_mode(*colourspec):
-    if not Image:
-        raise ImportError('Rendering to image requires PIL module.')
     if len(set(type(_c) for _c in colourspec)) > 1:
         raise TypeError(
             'paper, ink and border must be of the same type; '
@@ -132,6 +132,8 @@ class GlyphMap:
             transparent=True,
         ):
         """Draw images based on sheets in glyph map."""
+        if not Image:
+            raise ImportError('Rendering to image requires PIL module.')
         image_mode = _get_image_mode(paper, ink, border)
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
