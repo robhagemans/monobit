@@ -161,7 +161,7 @@ def load_all(root_location, *, format='', **kwargs):
                 pack = _load_stream(
                     location.get_stream(), format=format, **kwargs
                 )
-            except (FileFormatError, UnsupportedError) as exc:
+            except (ValueError, EnvironmentError, FileFormatError, UnsupportedError) as exc:
                 logging.debug('Could not load `%s`: %s', location, exc)
             else:
                 packs += Pack(pack)
