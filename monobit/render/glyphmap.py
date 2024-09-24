@@ -296,6 +296,10 @@ class _Canvas:
 
     def as_blocks(self, resolution=Coord(2, 2)):
         """Convert glyph map to a string of block characters."""
+        if self.levels > 2:
+            raise ValueError(
+                f"Greyscale levels not supported in 'blocks' output, use 'shades'."
+            )
         if not self.height:
             return ''
         # replace background with paper
@@ -306,7 +310,7 @@ class _Canvas:
             )
             for _row in self._pixels
         )
-        block_matrix = matrix_to_blocks(pixels, *resolution, levels=self.levels)
+        block_matrix = matrix_to_blocks(pixels, *resolution)
         self._write_labels_to_matrix(block_matrix, resolution=resolution)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')
