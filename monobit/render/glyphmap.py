@@ -119,7 +119,8 @@ class GlyphMap:
         # note that this gives the bounds across *all* sheets
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
-        canvas = _Canvas.blank(max_x - min_x, max_y - min_y)
+        levels = max((_entry.glyph.levels for _entry in self._map), default=2)
+        canvas = _Canvas.blank(max_x - min_x, max_y - min_y, levels=levels)
         for entry in self._map:
             if entry.sheet == sheet:
                 canvas.blit(entry.glyph, entry.x - min_x, entry.y - min_y)
@@ -222,17 +223,18 @@ class _Canvas:
         self.levels = levels
 
     @classmethod
-    def blank(cls, width, height, fill=-1):
+    def blank(cls, width, height, fill=-1, levels=2):
         """Create a canvas in background colour."""
         canvas = [[fill]*width for _ in range(height)]
-        return cls(canvas)
+        return cls(canvas, levels=levels)
 
     def blit(self, raster, grid_x, grid_y):
         """Draw a matrix onto a canvas, leaving existing ink in place."""
         if not raster.width or not self.width:
             return self
+        if raster.levels > self.levels:
+            raise ValueError('Too many inklevels in raster.')
         matrix = raster.as_matrix()
-        self.levels = max(self.levels, raster.levels)
         for work_y in reversed(range(raster.height)):
             if 0 <= grid_y + work_y < self.height:
                 row = self._pixels[self.height - (grid_y + work_y) - 1]
