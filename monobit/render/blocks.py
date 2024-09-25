@@ -134,10 +134,7 @@ def matrix_to_shades(matrix, *, shader, paper, ink, border):
 
 def _get_shaded_block(value, shader, paper, ink, border):
     """Get block with given shade."""
-    if value < 0:
-        shade = border
-    else:
-        shade = shader.get_shade(value, paper, ink)
+    shade = shader.get_shade(value, paper, ink, border)
     if shade is None:
         return f'\x1b[0m '
     r, g, b = shade
