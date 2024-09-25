@@ -12,7 +12,7 @@ from monobit.base import Props, Coord, RGB, blockstr
 from monobit.core.raster import turn_method
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
-from .shader import GreyscaleShader
+from .shader import GradientShader, TableShader
 
 
 def glyph_to_image(glyph, paper, ink):
@@ -214,13 +214,17 @@ class GlyphMap:
 class _Canvas:
     """Blittable raster for glyph maps."""
 
-    def __init__(self, pixels, levels=2, labels=()):
+    def __init__(self, pixels, levels=2, labels=(), rgb_table=None):
         """Create raster from tuple of tuples of string."""
         self._pixels = pixels
         self._labels = list(labels)
         self.height = len(pixels)
         self.width = 0 if not pixels else len(pixels[0])
         self.levels = levels
+        if rgb_table is not None:
+            self.shader = TableShader(rgb_table)
+        else:
+            self.shader = GradientShader(levels)
 
     @classmethod
     def blank(cls, width, height, fill=-1, levels=2):
@@ -321,9 +325,9 @@ class _Canvas:
         """Convert glyph map to a string of block characters with ansi colours."""
         if not self.height:
             return ''
-        shader = GreyscaleShader(self.levels, paper, ink)
         block_matrix = matrix_to_shades(
-            self._pixels, shader=shader, border=border,
+            self._pixels, shader=self.shader,
+            paper=paper, ink=ink, border=border,
         )
         self._write_labels_to_matrix(block_matrix)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
