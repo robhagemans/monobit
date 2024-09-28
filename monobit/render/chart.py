@@ -144,7 +144,11 @@ def save_shades(
         max_labels=max_labels,
         grid_positioning=grid_positioning,
     )
-    outstream.text.write(glyph_map.as_shades(paper=paper, border=border, ink=ink))
+    font = fonts[0]
+    rgb_table = getattr(font, 'amiga.ctf_ColorTable')
+    outstream.text.write(glyph_map.as_shades(
+        paper=paper, border=border, ink=ink, rgb_table=rgb_table,
+    ))
 
 
 
