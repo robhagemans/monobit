@@ -137,32 +137,32 @@ class GlyphMap:
         return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
     def to_images(
-            self, *, paper=0, ink=255, border=0, invert_y=False,
-            transparent=True, rgb_table=None,
+            self, *,
+            paper, ink, border,
+            invert_y=False, transparent=True, rgb_table=None, image_mode='RGB',
         ):
         """Draw images based on sheets in glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
         levels = max((_e.glyph.levels for _e in self._map), default=2)
-        if rgb_table is not None:
-            image_mode = 'RGB'
+        # TODO: merge with get_image_inklevels
+        if image_mode == '1':
+            inklevels = [0] * (levels//2) + [1] * (levels-levels//2)
+            border = 0
+        elif image_mode == 'L':
+            inklevels = tuple(
+                _v * 255 // (levels-1)
+                for _v in range(levels)
+            )
+            border = 0
+        elif rgb_table is not None:
             inklevels = rgb_table
         else:
-            image_mode = _get_image_mode(paper, ink, border)
-            # TODO: merge with get_image_inklevels
-            if image_mode == '1':
-                inklevels = [0]*(levels//2) + [1]*(levels-levels//2)
-            elif image_mode == 'L':
-                inklevels = tuple(
-                    _v * 255 // (levels-1)
-                    for _v in range(levels)
-                )
-            else:
-                shader = GradientShader(levels)
-                inklevels = tuple(
-                    shader.get_shade(_v, paper, ink, border=paper)
-                    for _v in range(levels)
-                )
+            shader = GradientShader(levels)
+            inklevels = tuple(
+                shader.get_shade(_v, paper, ink, border=paper)
+                for _v in range(levels)
+            )
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
@@ -195,12 +195,13 @@ class GlyphMap:
 
     def as_image(
             self, *,
-            ink=255, paper=0, border=0,
-            sheet=0, invert_y=False,
+            ink, paper, border,
+            sheet=0, invert_y=False, image_mode='RGB',
         ):
         """Convert glyph map to image."""
         images = self.to_images(
-            ink=ink, paper=paper, border=border, invert_y=invert_y,
+            ink=ink, paper=paper, border=border,
+            invert_y=invert_y, image_mode=image_mode
         )
         return images[sheet]
 

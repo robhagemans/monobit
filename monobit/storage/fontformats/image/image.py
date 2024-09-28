@@ -348,6 +348,7 @@ if Image:
     def save_image(
             fonts, outfile, *,
             image_format:str='png',
+            image_mode:str='RGB',
             glyphs_per_line:int=32,
             margin:Coord=Coord(0, 0),
             padding:Coord=Coord(1, 1),
@@ -363,6 +364,7 @@ if Image:
         Export font to grid-based image.
 
         image_format: image file format (default: 'png')
+        image_mode: image colour mode. '1', 'L' or 'RGB' (default)
         glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
         padding: number of pixels in X,Y direction between glyphs (default: 1x1)
@@ -390,6 +392,7 @@ if Image:
             border=border, paper=paper, ink=ink,
             transparent=False,
             rgb_table=rgb_table,
+            image_mode=image_mode,
         )
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
