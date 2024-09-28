@@ -58,6 +58,9 @@ class GradientShader:
         """Get RGB for given grey level."""
         if value < 0:
             return border
+        if isinstance(paper, int):
+            shade = self.get_shade(value, (paper,), (ink,), (border,))
+            return shade[0]
         maxlevel = self._levels - 1
         shade = tuple(
             (value * _ink + (maxlevel - value) * _paper) // maxlevel

@@ -21,6 +21,7 @@ from monobit.core import Font, Glyph, Codepoint
 from monobit.render import create_chart, glyph_to_image, grid_traverser
 from monobit.storage.utils.limitations import ensure_single
 from monobit.storage.utils.perglyph import loop_load, loop_save
+from monobit.render.shader import GradientShader, TableShader
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -384,8 +385,12 @@ if Image:
             codepoint_range=codepoint_range,
             grid_positioning=grid_positioning,
         )
+        font = fonts[0]
+        rgb_table = getattr(font, 'amiga.ctf_ColorTable', None)
         img, = glyph_map.to_images(
-            border=border, paper=paper, ink=ink, transparent=False
+            border=border, paper=paper, ink=ink,
+            transparent=False,
+            rgb_table=rgb_table,
         )
         try:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
@@ -437,8 +442,16 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
+        font = fonts[0]
+        try:
+            rgb_table = getattr(font, 'amiga.ctf_ColorTable')
+        except AttributeError:
+            shader = GradientShader(font.levels)
+        else:
+            shader = TableShader(rgb_table)
+
         def _save_image_glyph(glyph, imgfile):
-            img = glyph_to_image(glyph, paper, ink)
+            img = glyph_to_image(glyph, paper, ink, shader)
             try:
                 img.save(imgfile, format=image_format or Path(imgfile).suffix[1:])
             except (KeyError, ValueError, TypeError):
