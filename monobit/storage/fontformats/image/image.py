@@ -18,10 +18,9 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import create_chart, glyph_to_image, grid_traverser
+from monobit.render import create_chart, glyph_to_image, grid_traverser, get_image_inklevels
 from monobit.storage.utils.limitations import ensure_single
 from monobit.storage.utils.perglyph import loop_load, loop_save
-from monobit.render.shader import GradientShader
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -445,22 +444,7 @@ if Image:
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
         font = fonts[0]
-        if image_mode == '1':
-            inklevels = [0]*(font.levels//2) + [1]*(font.levels-font.levels//2)
-        elif image_mode == 'L':
-            inklevels = tuple(
-                _v * 255 // (font.levels-1)
-                for _v in range(font.levels)
-            )
-        else:
-            try:
-                inklevels = getattr(font, 'amiga.ctf_ColorTable')
-            except AttributeError:
-                shader = GradientShader(font.levels)
-                inklevels = tuple(
-                    shader.get_shade(_v, paper, ink, border=paper)
-                    for _v in range(font.levels)
-                )
+        inklevels = get_image_inklevels(font, image_mode, paper, ink)
 
         def _save_image_glyph(glyph, imgfile):
             img = glyph_to_image(glyph, image_mode=image_mode, inklevels=inklevels)

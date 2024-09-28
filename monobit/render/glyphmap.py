@@ -15,19 +15,6 @@ from .blocks import matrix_to_blocks, matrix_to_shades
 from .shader import GradientShader, TableShader
 
 
-def glyph_to_image_old(glyph, paper, ink, shader):
-    """Create image of single glyph."""
-    if not Image:
-        raise ImportError('Rendering to image requires PIL module.')
-    image_mode = _get_image_mode(paper, ink, paper)
-    # create ink gradient
-    inklevels = tuple(
-        shader.get_shade(_v, paper, ink, border=paper)
-        for _v in range(glyph.levels)
-    )
-    return glyph_to_image(glyph, image_mode, inklevels)
-
-
 def glyph_to_image(glyph, image_mode, inklevels):
     """Create image of single glyph."""
     if not Image:
@@ -41,6 +28,26 @@ def glyph_to_image(glyph, image_mode, inklevels):
         data = tuple(zip(*iterators)) #, strict=True))
     charimg.putdata(data)
     return charimg
+
+
+def get_image_inklevels(font, image_mode, paper, ink):
+    if image_mode == '1':
+        inklevels = [0]*(font.levels//2) + [1]*(font.levels-font.levels//2)
+    elif image_mode == 'L':
+        inklevels = tuple(
+            _v * 255 // (font.levels-1)
+            for _v in range(font.levels)
+        )
+    else:
+        try:
+            inklevels = getattr(font, 'amiga.ctf_ColorTable')
+        except AttributeError:
+            shader = GradientShader(font.levels)
+            inklevels = tuple(
+                shader.get_shade(_v, paper, ink, border=paper)
+                for _v in range(font.levels)
+            )
+    return inklevels
 
 
 def _get_image_mode(*colourspec):
@@ -138,11 +145,24 @@ class GlyphMap:
             raise ImportError('Rendering to image requires PIL module.')
         levels = max((_e.glyph.levels for _e in self._map), default=2)
         if rgb_table is not None:
-            shader = TableShader(rgb_table)
             image_mode = 'RGB'
+            inklevels = rgb_table
         else:
-            shader = GradientShader(levels)
             image_mode = _get_image_mode(paper, ink, border)
+            # TODO: merge with get_image_inklevels
+            if image_mode == '1':
+                inklevels = [0]*(levels//2) + [1]*(levels-levels//2)
+            elif image_mode == 'L':
+                inklevels = tuple(
+                    _v * 255 // (levels-1)
+                    for _v in range(levels)
+                )
+            else:
+                shader = GradientShader(levels)
+                inklevels = tuple(
+                    shader.get_shade(_v, paper, ink, border=paper)
+                    for _v in range(levels)
+                )
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
@@ -158,7 +178,7 @@ class GlyphMap:
                 )
             else:
                 mask = None
-            colour = glyph_to_image_old(entry.glyph, paper, ink, shader)
+            colour = glyph_to_image(entry.glyph, image_mode, inklevels)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
