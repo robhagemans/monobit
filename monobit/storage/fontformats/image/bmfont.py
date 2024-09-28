@@ -660,7 +660,6 @@ def _create_bmfont(
         outfile, font, *,
         size, packed, grid, spacing, padding,
         image_format, descriptor,
-        paper=0, ink=255, border=0,
     ):
     """Create a bmfont package."""
     # ensure codepoint/char values are set as appropriate
@@ -691,7 +690,7 @@ def _create_bmfont(
             glyphs, size=size, spacing=spacing, padding=padding,
         )
     # draw images
-    sheets = _draw_images(glyph_map, packed, paper, ink, border)
+    sheets = _draw_images(glyph_map, packed)
     # save images and record names
     pages = _save_pages(outfile, font, sheets, image_format)
     # create the descriptor data structure
@@ -994,17 +993,16 @@ def _save_pages(outfile, font, sheets, image_format):
 ###############################################################################
 # draw spritesheets
 
-def _draw_images(glyph_map, packed, paper, ink, border):
+def _draw_images(glyph_map, packed):
     """Draw images based on glyph map."""
     images = glyph_map.to_images(
-        paper=paper, ink=ink, border=border,
-        invert_y=True, transparent=False
+        invert_y=True, transparent=False, image_mode='L',
     )
     width, height = images[0].width, images[0].height
     # pack 4 sheets per image in RGBA layers
     if packed:
         # grouper: quartets, fill with empties
-        empty = Image.new('L', (width, height), border)
+        empty = Image.new('L', (width, height), 0)
         args = [iter(images)] * 4
         quartets = zip_longest(*args, fillvalue=empty)
         return tuple(

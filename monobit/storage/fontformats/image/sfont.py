@@ -124,7 +124,7 @@ if Image:
             indicator.append(_INDICATOR_RGB * right)
         glyphmap.append_glyph(Glyph(), x, 0)
         glyph_image = glyphmap.as_image(
-            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0)
+            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0),
         )
         image = Image.new(
             glyph_image.mode, (glyph_image.width, glyph_image.height+1)
