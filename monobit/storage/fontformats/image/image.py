@@ -18,7 +18,7 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import create_chart, glyph_to_image, grid_traverser
+from monobit.render import create_chart, glyph_to_image_old, grid_traverser
 from monobit.storage.utils.limitations import ensure_single
 from monobit.storage.utils.perglyph import loop_load, loop_save
 from monobit.render.shader import GradientShader, TableShader
@@ -451,7 +451,7 @@ if Image:
             shader = TableShader(rgb_table)
 
         def _save_image_glyph(glyph, imgfile):
-            img = glyph_to_image(glyph, paper, ink, shader)
+            img = glyph_to_image_old(glyph, paper, ink, shader)
             try:
                 img.save(imgfile, format=image_format or Path(imgfile).suffix[1:])
             except (KeyError, ValueError, TypeError):

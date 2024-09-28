@@ -15,17 +15,24 @@ from .blocks import matrix_to_blocks, matrix_to_shades
 from .shader import GradientShader, TableShader
 
 
-def glyph_to_image(glyph, paper, ink, shader):
+def glyph_to_image_old(glyph, paper, ink, shader):
     """Create image of single glyph."""
     if not Image:
         raise ImportError('Rendering to image requires PIL module.')
     image_mode = _get_image_mode(paper, ink, paper)
-    charimg = Image.new(image_mode, (glyph.width, glyph.height))
     # create ink gradient
     inklevels = tuple(
         shader.get_shade(_v, paper, ink, border=paper)
         for _v in range(glyph.levels)
     )
+    return glyph_to_image(glyph, image_mode, inklevels)
+
+
+def glyph_to_image(glyph, image_mode, inklevels):
+    """Create image of single glyph."""
+    if not Image:
+        raise ImportError('Rendering to image requires PIL module.')
+    charimg = Image.new(image_mode, (glyph.width, glyph.height))
     data = glyph.as_pixels(inklevels=inklevels)
     if image_mode in ('RGB', 'RGBA'):
         # itertools grouper idiom, split in groups of 3 or 4 bytes
@@ -129,11 +136,11 @@ class GlyphMap:
         """Draw images based on sheets in glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
+        levels = max((_e.glyph.levels for _e in self._map), default=2)
         if rgb_table is not None:
             shader = TableShader(rgb_table)
             image_mode = 'RGB'
         else:
-            levels = max((_e.glyph.levels for _e in self._map), default=2)
             shader = GradientShader(levels)
             image_mode = _get_image_mode(paper, ink, border)
         last, min_x, min_y, max_x, max_y = self.get_bounds()
@@ -141,15 +148,17 @@ class GlyphMap:
         width, height = max_x - min_x, max_y - min_y
         images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
         for entry in self._map:
-            # we need to treat the background colour as transparent
-            # we create the glyph as a mask and cut it from a solid ink-colour
-            if False: #transparent:
-                #FIXME this doesn't work for levels>2
-                mask = glyph_to_image(entry.glyph, 0, 255, shader)
-                colour = Image.new(image_mode, mask.size, ink)
+            if transparent:
+                # if glyphs overlap, we need to treat the background colour as transparent
+                # create a mask to paste only non-background pixels
+                # for greyscale and colour, alpha_composite would be better
+                mask = glyph_to_image(
+                    entry.glyph, image_mode='1',
+                    inklevels=[0] + [1] * (levels-1),
+                )
             else:
                 mask = None
-                colour = glyph_to_image(entry.glyph, paper, ink, shader)
+            colour = glyph_to_image_old(entry.glyph, paper, ink, shader)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
