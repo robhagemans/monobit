@@ -18,10 +18,10 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import create_chart, glyph_to_image_old, grid_traverser
+from monobit.render import create_chart, glyph_to_image, grid_traverser
 from monobit.storage.utils.limitations import ensure_single
 from monobit.storage.utils.perglyph import loop_load, loop_save
-from monobit.render.shader import GradientShader, TableShader
+from monobit.render.shader import GradientShader
 
 
 DEFAULT_IMAGE_FORMAT = 'png'
@@ -363,7 +363,7 @@ if Image:
         """
         Export font to grid-based image.
 
-        image_format: image file format (default: png)
+        image_format: image file format (default: 'png')
         glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
         padding: number of pixels in X,Y direction between glyphs (default: 1x1)
@@ -431,6 +431,7 @@ if Image:
             fonts, location,
             prefix:str='',
             image_format:str='png',
+            image_mode:str='RGB',
             paper:RGB=(0, 0, 0),
             ink:RGB=(255, 255, 255),
         ):
@@ -439,19 +440,30 @@ if Image:
 
         prefix: part of the image file name before the codepoint
         image_format: image file format (default: png)
+        image_mode: image colour mode. '1', 'L' or 'RGB' (default)
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
         font = fonts[0]
-        try:
-            rgb_table = getattr(font, 'amiga.ctf_ColorTable')
-        except AttributeError:
-            shader = GradientShader(font.levels)
+        if image_mode == '1':
+            inklevels = [0]*(font.levels//2) + [1]*(font.levels-font.levels//2)
+        elif image_mode == 'L':
+            inklevels = tuple(
+                _v * 255 // (font.levels-1)
+                for _v in range(font.levels)
+            )
         else:
-            shader = TableShader(rgb_table)
+            try:
+                inklevels = getattr(font, 'amiga.ctf_ColorTable')
+            except AttributeError:
+                shader = GradientShader(font.levels)
+                inklevels = tuple(
+                    shader.get_shade(_v, paper, ink, border=paper)
+                    for _v in range(font.levels)
+                )
 
         def _save_image_glyph(glyph, imgfile):
-            img = glyph_to_image_old(glyph, paper, ink, shader)
+            img = glyph_to_image(glyph, image_mode=image_mode, inklevels=inklevels)
             try:
                 img.save(imgfile, format=image_format or Path(imgfile).suffix[1:])
             except (KeyError, ValueError, TypeError):
