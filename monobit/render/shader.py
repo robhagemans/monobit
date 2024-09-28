@@ -38,7 +38,7 @@ class TableShader:
         self._rgb_table = rgb_table
         self._levels = len(rgb_table)
 
-    def get_shade(self, value:int, paper:RGB, ink:RGB, border: RGB):
+    def get_shade(self, value:int, paper:RGB, ink:RGB, border:RGB):
         """Get RGB for given index level."""
         if value < 0:
             return border
@@ -54,7 +54,7 @@ class GradientShader:
     def __init__(self, levels:int):
         self._levels = levels
 
-    def get_shade(self, value:int, paper:RGB, ink:RGB, border: RGB):
+    def get_shade(self, value:int, paper:RGB, ink:RGB, border:RGB):
         """Get RGB for given grey level."""
         if value < 0:
             return border

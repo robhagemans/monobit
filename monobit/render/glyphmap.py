@@ -196,11 +196,19 @@ class GlyphMap:
 
     def as_shades(
             self, *,
-            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None, sheet=0,
+            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None,
+            rgb_table=None,
+            sheet=0,
         ):
         """Convert glyph map to ansi coloured block characters."""
         canvas = self.to_canvas(sheet=sheet)
-        return canvas.as_shades(paper=paper, ink=ink, border=border)
+        if rgb_table is not None:
+            shader = TableShader(rgb_table)
+        else:
+            shader = GradientShader(canvas.levels)
+        return canvas.as_shades(
+            shader=shader, paper=paper, ink=ink, border=border
+        )
 
     def get_sheet(self, sheet=0):
         """Return glyph records for a given sheet."""
@@ -214,17 +222,13 @@ class GlyphMap:
 class _Canvas:
     """Blittable raster for glyph maps."""
 
-    def __init__(self, pixels, levels=2, labels=(), rgb_table=None):
+    def __init__(self, pixels, levels=2, labels=()):
         """Create raster from tuple of tuples of string."""
         self._pixels = pixels
         self._labels = list(labels)
         self.height = len(pixels)
         self.width = 0 if not pixels else len(pixels[0])
         self.levels = levels
-        if rgb_table is not None:
-            self.shader = TableShader(rgb_table)
-        else:
-            self.shader = GradientShader(levels)
 
     @classmethod
     def blank(cls, width, height, fill=-1, levels=2):
@@ -321,12 +325,12 @@ class _Canvas:
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')
 
-    def as_shades(self, *, paper, ink, border):
+    def as_shades(self, *, shader, paper, ink, border):
         """Convert glyph map to a string of block characters with ansi colours."""
         if not self.height:
             return ''
         block_matrix = matrix_to_shades(
-            self._pixels, shader=self.shader,
+            self._pixels, shader=shader,
             paper=paper, ink=ink, border=border,
         )
         self._write_labels_to_matrix(block_matrix)
