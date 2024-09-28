@@ -40,11 +40,17 @@ _MAXFONTNAME = 32
 
 # file ids
 # https://wiki.amigaos.net/wiki/Graphics_Library_and_Text#The_Composition_of_a_Bitmap_Font_on_Disk
+# file contents header
 _FCH_ID = 0x0f00
 _TFCH_ID = 0x0f02
+# intellifont file
 _NONBITMAP_ID = 0x0f03
-# disk font header
+# disk font header file id
 _DFH_ID = 0x0f80
+
+
+###############################################################################
+# hunk file structures
 
 # hunk ids
 # http://amiga-dev.wikidot.com/file-format:hunk
@@ -53,6 +59,22 @@ _HUNK_CODE = 0x3e9
 _HUNK_DATA = 0x3ea
 _HUNK_RELOC32 = 0x3ec
 _HUNK_END = 0x3f2
+
+
+# Amiga hunk file header
+# http://amiga-dev.wikidot.com/file-format:hunk#toc6
+#   hunk_id = uint32
+#   null-null-terminated string table
+_HUNK_FILE_HEADER_1 = be.Struct(
+    table_size='uint32',
+    first_hunk='uint32',
+    last_hunk='uint32',
+)
+#   hunk_sizes = uint32 * (last_hunk-first_hunk+1)
+
+
+###############################################################################
+# disk font structures
 
 # tf_Flags values
 _TF_FLAGS = be.Struct(
@@ -74,6 +96,7 @@ _TF_FLAGS = be.Struct(
     FPF_ROMFONT=flag
 )
 
+
 # tf_Style values
 _TF_STYLE = be.Struct(
     # 0x80 the TextAttr is really a TTextAttr
@@ -91,16 +114,6 @@ _TF_STYLE = be.Struct(
     FSF_UNDERLINED=flag,
 )
 
-# Amiga hunk file header
-# http://amiga-dev.wikidot.com/file-format:hunk#toc6
-#   hunk_id = uint32
-#   null-null-terminated string table
-_HUNK_FILE_HEADER_1 = be.Struct(
-    table_size='uint32',
-    first_hunk='uint32',
-    last_hunk='uint32',
-)
-#   hunk_sizes = uint32 * (last_hunk-first_hunk+1)
 
 # disk font header
 _AMIGA_HEADER = be.Struct(
@@ -154,6 +167,22 @@ _LOC_ENTRY = be.Struct(
 )
 
 
+# https://d0.se/include/exec/nodes.h
+# /*----- sNode Types for LN_TYPE -----*/
+_NT_FONT = 12
+
+# font name is 26 bytes from the start of the return code
+_NAME_POINTER = 26
+
+# http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05BA.html
+# MOVEQ     #-1,D0      ; Provide an easy exit in case this file is
+# RTS                   ; "Run" instead of merely loaded.
+_RETURN_CODE = 0x70ff4e75
+
+
+###############################################################################
+# font contents structures
+
 # struct FontContentsHeader
 # .font directory file
 # https://wiki.amigaos.net/wiki/Graphics_Library_and_Text#Composition_of_a_Bitmap_Font_on_Disk
@@ -170,6 +199,7 @@ _FONT_CONTENTS = be.Struct(
     fc_Style=_TF_STYLE,
     fc_Flags=_TF_FLAGS,
 )
+
 
 # struct TFontContents
 # extra tags stored at the back of the tfc_FileName field
@@ -200,17 +230,8 @@ _TAG_ITEM = be.Struct(
 _TAG_DONE = 0
 _TA_DEVICEDPI = (1 << 31) | 1
 
-# https://d0.se/include/exec/nodes.h
-# /*----- sNode Types for LN_TYPE -----*/
-_NT_FONT = 12
 
-# font name is 26 bytes from the start of the return code
-_NAME_POINTER = 26
 
-# http://amigadev.elowar.com/read/ADCD_2.1/Libraries_Manual_guide/node05BA.html
-# MOVEQ     #-1,D0      ; Provide an easy exit in case this file is
-# RTS                   ; "Run" instead of merely loaded.
-_RETURN_CODE = 0x70ff4e75
 
 
 ###################################################################################################
@@ -333,15 +354,10 @@ def _read_font_hunk(f):
             f'Not an Amiga font data file: hunk id 0x{hunk_id:03X}.'
         )
     # location reference point loc = f.tell() + 4
-    amiga_props = _AMIGA_HEADER.read_from(f)
-    # these seem to be consistently set
-    if (
-            amiga_props.dfh_FileID != _DFH_ID
-            or amiga_props.tf_ln_Type != _NT_FONT
-            or amiga_props.tf_ln_Name != 0x1a
-        ):
+    amiga_props = Props(**vars(_AMIGA_HEADER.read_from(f)))
+    if amiga_props.dfh_FileID != _DFH_ID:
         raise FileFormatError(
-            'Not an Amiga font data file: incorrect type fields.'
+            f'Not an Amiga font data file: file id 0x{amiga_props.dfh_FileID:X}.'
         )
     # remainder is the font strike
     glyphs = _read_strike(f, amiga_props)

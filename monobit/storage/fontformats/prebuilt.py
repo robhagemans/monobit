@@ -252,7 +252,7 @@ def _convert_from_pf(pf_props, pf_masks):
                 _m.maskData, width=_m.width, height=_m.height,
                 align='left' if pf_props.byteOrder else 'right',
                 # assume higher depth means grayscale
-                levels=2**_matrix.depth,
+                bits_per_pixel=_matrix.depth,
                 tag=_name.decode('latin-1'),
                 ## horizontal
                 left_bearing=-_m.maskOffset.hx,
