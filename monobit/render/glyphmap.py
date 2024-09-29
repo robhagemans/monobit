@@ -50,26 +50,6 @@ def get_image_inklevels(font, image_mode, paper, ink):
     return inklevels
 
 
-def _get_image_mode(*colourspec):
-    if len(set(type(_c) for _c in colourspec)) > 1:
-        raise TypeError(
-            'paper, ink and border must be of the same type; '
-            f'got {colourspec}'
-        )
-    paper, ink, border = colourspec
-    if paper == border == 0 and ink == 1:
-        image_mode = '1'
-    elif isinstance(paper, int):
-        image_mode = 'L'
-    elif isinstance(paper, tuple) and len(paper) == 3:
-        image_mode = 'RGB'
-    elif isinstance(paper, tuple) and len(paper) == 4:
-        image_mode = 'RGBA'
-    else:
-        raise TypeError('paper, ink and border must be either int or RGB(A) tuple')
-    return image_mode
-
-
 class GlyphMap:
 
     def __init__(self, map=()):
