@@ -1079,10 +1079,10 @@ def _estimate_size(glyphs, n_layers, padding, spacing):
         (_g.width+spacing.x) * (_g.height+spacing.y)
         for _g in glyphs
     )
-    edge = int(ceil(1.01 * sqrt(total_area / n_layers)))
+    edge = sqrt(total_area / n_layers)
     return Coord(
-        max_width * ceildiv(edge, max_width) + padding.left + padding.right,
-        max_height * ceildiv(edge, max_height) + padding.top + padding.bottom,
+        max_width * int(ceil(edge / max_width)) + padding.left + padding.right,
+        max_height * int(ceil(edge / max_height)) + padding.top + padding.bottom,
     )
 
 
