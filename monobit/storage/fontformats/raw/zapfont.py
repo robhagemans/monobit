@@ -62,6 +62,7 @@ def load_zapfont(instream):
         msb='right',
         align='right',
         byte_swap=ceildiv(header.width, 8),
+        first_codepoint=header.first,
     )
     font = font.modify(source_format='ZapFont', encoding='latin-1')
     return font.label()
