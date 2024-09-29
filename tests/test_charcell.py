@@ -122,6 +122,14 @@ class TestCharCell(BaseTester):
         """Test exporting bbc files."""
         self._test_export_charcell_reduced('bbc')
 
+    def test_export_zapfont_r(self):
+        """Test exporting zapfont files."""
+        self._test_export_charcell_reduced('zapfont', count=224)
+
+    def test_export_zapredraw_r(self):
+        """Test exporting zapredraw files."""
+        self._test_export_charcell_reduced('zapredraw', count=257)
+
     def test_export_xbin_r(self):
         """Test exporting XBIN files."""
         self._test_export_charcell_reduced('xbin', count=256)

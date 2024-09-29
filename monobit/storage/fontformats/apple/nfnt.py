@@ -639,7 +639,7 @@ def convert_to_nfnt(
     # build the font-strike data
     strike_raster = Raster.concatenate(*(_g.pixels for _g in glyph_table))
     # word-align strike
-    strike_raster = strike_raster.expand(right=16-(strike_raster.width%16))
+    strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
     font_strike = strike_raster.as_bytes(
         bits_per_pixel=(font.levels-1).bit_length()
     )

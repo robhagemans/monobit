@@ -236,11 +236,12 @@ class Location:
     def open(self, name, mode):
         """Open a binary stream in the container."""
         container, subpath = self._get_container_and_subpath()
-        self._check_overwrite(container, subpath / name, mode=mode)
         if mode == 'r':
+            path = _match(container, subpath / name, match_case=self.match_case)
             kwargs = take_arguments(container.decode, self.argdict)
-            stream = container.decode(subpath / name, **kwargs)
+            stream = container.decode(path, **kwargs)
         else:
+            self._check_overwrite(container, subpath / name, mode=mode)
             kwargs = take_arguments(container.encode, self.argdict)
             stream = container.encode(subpath / name, **kwargs)
         stream.where = self
@@ -408,6 +409,9 @@ def _match_path(container, path, match_case):
     matched_path = Path('.')
     while True:
         target = segments.popleft()
+        # drop empty elements (repeated/initial slashes)
+        if not target:
+            continue
         # try case-sensitive match first, then case-insensitive
         match = _step_match(container, matched_path, target, match_case=True)
         if not match and not match_case:
@@ -427,6 +431,17 @@ def _contains(container, path, match_case):
     """Container contains file (case insensitive)."""
     _, tail = _match_path(container, path, match_case)
     return tail == Path('.')
+
+
+def _match(container, path, match_case):
+    """Container contains file (case insensitive)."""
+    head, tail = _match_path(container, path, match_case)
+    if tail == Path('.'):
+        return head
+    raise FileNotFoundError(
+        f"'{path}' not found on {container} "
+        f"with case-{'' if match_case else 'in'}sensitive match."
+    )
 
 
 def _open_container(

@@ -30,6 +30,12 @@ def to_int(int_str):
     """Convert from int-like or string in any representation."""
     if isinstance(int_str, int):
         return int_str
+    if isinstance(int_str, str) and any(ord(_c)>127 for _c in int_str):
+        # avoid unintentiaonally decoding non-ascii numerals (Python does this)
+        raise ValueError(
+            f"Non-ASCII '{int_str}' "
+            "is not a valid string representation for a codepoint."
+        )
     try:
         # '0xFF' - hex
         # '0o77' - octal
@@ -38,6 +44,7 @@ def to_int(int_str):
     except (TypeError, ValueError):
         # '099' - ValueError above, OK as decimal
         # non-string inputs: TypeError, may be OK if int(x) works
+        # int() will raise TypeError or ValueError as needed
         return int(int_str)
 
 def to_number(value=0):
