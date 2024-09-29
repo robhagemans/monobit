@@ -14,7 +14,7 @@ from monobit.base import Props, Coord, RGB, blockstr
 from monobit.core.raster import turn_method
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
-from .shader import GradientShader
+from .shader import create_image_colours
 
 
 def glyph_to_image(glyph, image_mode, inklevels):
@@ -30,32 +30,6 @@ def glyph_to_image(glyph, image_mode, inklevels):
         data = tuple(zip(*iterators)) #, strict=True))
     charimg.putdata(data)
     return charimg
-
-
-def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
-    """Create colour table for given image format."""
-    if rgb_table is not None and image_mode in ('1', 'L'):
-        logging.warning('RGB colour table will be ignored.')
-    if image_mode == '1':
-        if levels > 2:
-            logging.warning('Ink levels will be downsampled from %d to 2', levels)
-        inklevels = [0] * (levels//2) + [1] * (levels-levels//2)
-        border = 0
-    elif image_mode == 'L':
-        inklevels = tuple(
-            _v * 255 // (levels-1)
-            for _v in range(levels)
-        )
-        border = 0
-    elif rgb_table is not None:
-        inklevels = rgb_table
-    else:
-        shader = GradientShader(levels)
-        inklevels = tuple(
-            shader.get_shade(_v, paper, ink, border=paper)
-            for _v in range(levels)
-        )
-    return inklevels
 
 
 class GlyphMap:

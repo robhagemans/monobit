@@ -19,7 +19,6 @@ from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
 from .chart import create_chart, aligns_right
-from .shader import GradientShader
 from .glyphmap import create_image_colours
 
 
