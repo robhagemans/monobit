@@ -30,6 +30,9 @@ class Container:
             f"{' [closed]' if self.closed else ''}>"
         )
 
+    def __str__(self):
+        return self.name
+
     def __enter__(self):
         # we don't support nesting the same archive
         assert self.refcount == 0
@@ -70,7 +73,7 @@ class Archive(Container):
 
     def __init__(self, file, mode='r'):
         """Create archive object."""
-        super().__init__(mode, file.name)
+        super().__init__(mode, str(file.name))
 
     @property
     def root(self):

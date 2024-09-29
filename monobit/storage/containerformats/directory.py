@@ -38,12 +38,6 @@ class Directory(Container):
             self._path.mkdir(parents=True, exist_ok=True)
         super().__init__(mode, str(self._path))
 
-    def __repr__(self):
-        return f"{type(self).__name__}('{self._path}')"
-
-    def __str__(self):
-        return str(self._path)
-
     def decode(self, name):
         return self.open(name, mode='r')
 
