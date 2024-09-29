@@ -1,5 +1,5 @@
 """
-monobit.render.shader - generate rgb shades
+monobit.render.rgb - generate rgb shades
 
 (c) 2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

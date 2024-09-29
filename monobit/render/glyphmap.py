@@ -14,7 +14,7 @@ from monobit.base import Props, Coord, RGB, blockstr
 from monobit.core.raster import turn_method
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
-from .shader import create_image_colours
+from .rgb import create_image_colours
 
 
 def glyph_to_image(glyph, image_mode, inklevels):
