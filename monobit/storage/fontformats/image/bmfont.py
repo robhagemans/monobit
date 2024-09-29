@@ -682,12 +682,12 @@ def _create_bmfont(
         )
     else:
         # crop glyphs
-        glyphs = tuple(_g.reduce() for _g in font.glyphs)
+        font = font.reduce()
         if size is None:
             n_layers = 4 if packed else 1
-            size = _estimate_size(glyphs, n_layers, padding, spacing)
+            size = _estimate_size(font.glyphs, n_layers, padding, spacing)
         glyph_map = spritesheet(
-            glyphs, size=size, spacing=spacing, padding=padding,
+            font, size=size, spacing=spacing, padding=padding,
         )
     # draw images
     sheets = _draw_images(glyph_map, packed)
@@ -995,12 +995,12 @@ def _save_pages(outfile, font, sheets, image_format):
 
 def _draw_images(glyph_map, packed):
     """Draw images based on glyph map."""
-    images = glyph_map.to_images(
-        invert_y=True, transparent=False, image_mode='L',
-    )
-    width, height = images[0].width, images[0].height
     # pack 4 sheets per image in RGBA layers
     if packed:
+        images = glyph_map.to_images(
+            invert_y=True, transparent=False, image_mode='L',
+        )
+        width, height = images[0].width, images[0].height
         # grouper: quartets, fill with empties
         empty = Image.new('L', (width, height), 0)
         args = [iter(images)] * 4
@@ -1010,17 +1010,21 @@ def _draw_images(glyph_map, packed):
             Image.merge('RGBA', (_q[2], _q[1], _q[0], _q[3]))
             for _q in quartets
         )
+    else:
+        images = glyph_map.to_images(
+            invert_y=True, transparent=False, image_mode='RGB',
+        )
     return images
 
 
 ###############################################################################
 # packed spritesheets
 
-def spritesheet(glyphs, *, size, spacing, padding):
+def spritesheet(font, *, size, spacing, padding):
     """Determine where to draw glyphs in sprite sheets."""
     # sort by area, large to small. keep mapping table
     sorted_glyphs = tuple(sorted(
-        enumerate(glyphs),
+        enumerate(font.glyphs),
         key=lambda _p: _p[1].width*_p[1].height,
         reverse=True,
     ))
@@ -1037,7 +1041,9 @@ def spritesheet(glyphs, *, size, spacing, padding):
             for _g in glyphs
         ):
         raise ValueError('Image size is too small for largest glyph.')
-    glyph_map = GlyphMap(levels=max((_g.levels for _g in glyphs), default=2))
+    glyph_map = GlyphMap(
+        levels=font.levels, rgb_table=font.get_property('amiga.ctf_ColorTable'),
+    )
     sheets = []
     while True:
         # output glyphs
