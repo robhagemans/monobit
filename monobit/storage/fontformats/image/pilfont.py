@@ -98,7 +98,7 @@ if Image:
         outstream.write(b';;;;;;%d;\n' % font.line_height)
         outstream.write(b'DATA\n')
         x, y = 0, 0
-        glyph_map = GlyphMap()
+        glyph_map = GlyphMap(levels=font.levels)
         for cp in range(256):
             try:
                 glyph = font.get_glyph(codepoint=cp, missing='raise')

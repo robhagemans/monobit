@@ -18,7 +18,7 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import create_chart, glyph_to_image, grid_traverser, get_image_inklevels
+from monobit.render import create_chart, glyph_to_image, grid_traverser, create_image_colours
 from monobit.storage.utils.limitations import ensure_single
 from monobit.storage.utils.perglyph import loop_load, loop_save
 
@@ -386,12 +386,9 @@ if Image:
             codepoint_range=codepoint_range,
             grid_positioning=grid_positioning,
         )
-        font = fonts[0]
-        rgb_table = getattr(font, 'amiga.ctf_ColorTable', None)
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink,
             transparent=False,
-            rgb_table=rgb_table,
             image_mode=image_mode,
         )
         try:
@@ -447,7 +444,11 @@ if Image:
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
         font = fonts[0]
-        inklevels = get_image_inklevels(font, image_mode, paper, ink)
+        rgb_table = getattr(font, 'amiga.ctf_ColorTable', None)
+        inklevels = create_image_colours(
+            image_mode=image_mode, rgb_table=rgb_table,
+            levels=font.levels, paper=paper, ink=ink,
+        )
 
         def _save_image_glyph(glyph, imgfile):
             img = glyph_to_image(glyph, image_mode=image_mode, inklevels=inklevels)

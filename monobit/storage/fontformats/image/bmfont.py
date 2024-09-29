@@ -1037,7 +1037,7 @@ def spritesheet(glyphs, *, size, spacing, padding):
             for _g in glyphs
         ):
         raise ValueError('Image size is too small for largest glyph.')
-    glyph_map = GlyphMap()
+    glyph_map = GlyphMap(levels=max((_g.levels for _g in glyphs), default=2))
     sheets = []
     while True:
         # output glyphs

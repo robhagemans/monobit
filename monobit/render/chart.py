@@ -144,10 +144,8 @@ def save_shades(
         max_labels=max_labels,
         grid_positioning=grid_positioning,
     )
-    font = fonts[0]
-    rgb_table = getattr(font, 'amiga.ctf_ColorTable', None)
     outstream.text.write(glyph_map.as_shades(
-        paper=paper, border=border, ink=ink, rgb_table=rgb_table,
+        paper=paper, border=border, ink=ink,
     ))
 
 
@@ -279,7 +277,7 @@ def grid_map(
     # so vertical alignment is not needed
     right_align = aligns_right(direction)
     # output glyph maps
-    glyph_map = GlyphMap(
+    glyph_map = (
         Props(
             glyph=_glyph, sheet=_sheet,
             x=(
@@ -293,6 +291,10 @@ def grid_map(
             _glyph_page,
             grid_traverser(columns, rows, direction, invert_y)
         )
+    )
+    glyph_map = GlyphMap(
+        glyph_map, levels=font.levels,
+        rgb_table=getattr(font, 'amiga.ctf_ColorTable', None),
     )
     # use blank glyphs for grid bounds
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)

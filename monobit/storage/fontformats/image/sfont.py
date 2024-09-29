@@ -100,7 +100,10 @@ if Image:
         font = ensure_single(fonts)
         font = font.equalise_horizontal()
         font = font.resample(codepoints=_SFONT_RANGE)
-        glyphmap = GlyphMap()
+        glyphmap = GlyphMap(
+            levels=font.levels,
+            rgb_table=getattr(font, 'amiga.ctf_ColorTable', None),
+        )
         glyphmap.append_glyph(Glyph(), 0, 0)
         indicator = []
         right = 0

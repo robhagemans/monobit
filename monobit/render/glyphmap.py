@@ -5,6 +5,8 @@ monobit.render.glyphmap - glyph maps
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
+
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
@@ -12,7 +14,7 @@ from monobit.base import Props, Coord, RGB, blockstr
 from monobit.core.raster import turn_method
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
-from .shader import GradientShader, TableShader
+from .shader import GradientShader
 
 
 def glyph_to_image(glyph, image_mode, inklevels):
@@ -30,34 +32,42 @@ def glyph_to_image(glyph, image_mode, inklevels):
     return charimg
 
 
-def get_image_inklevels(font, image_mode, paper, ink):
+def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
+    """Create colour table for given image format."""
+    if rgb_table is not None and image_mode in ('1', 'L'):
+        logging.warning('RGB colour table will be ignored.')
     if image_mode == '1':
-        inklevels = [0]*(font.levels//2) + [1]*(font.levels-font.levels//2)
+        if levels > 2:
+            logging.warning('Ink levels will be downsampled from %d to 2', levels)
+        inklevels = [0] * (levels//2) + [1] * (levels-levels//2)
+        border = 0
     elif image_mode == 'L':
         inklevels = tuple(
-            _v * 255 // (font.levels-1)
-            for _v in range(font.levels)
+            _v * 255 // (levels-1)
+            for _v in range(levels)
         )
+        border = 0
+    elif rgb_table is not None:
+        inklevels = rgb_table
     else:
-        try:
-            inklevels = getattr(font, 'amiga.ctf_ColorTable')
-        except AttributeError:
-            shader = GradientShader(font.levels)
-            inklevels = tuple(
-                shader.get_shade(_v, paper, ink, border=paper)
-                for _v in range(font.levels)
-            )
+        shader = GradientShader(levels)
+        inklevels = tuple(
+            shader.get_shade(_v, paper, ink, border=paper)
+            for _v in range(levels)
+        )
     return inklevels
 
 
 class GlyphMap:
 
-    def __init__(self, map=()):
+    def __init__(self, map=(), *, levels, rgb_table=None):
         self._map = list(map)
         self._labels = []
         self._turns = 0
         self._scale_x = 1
         self._scale_y = 1
+        self._levels = levels
+        self._rgb_table = rgb_table
 
     def __iter__(self):
         return iter(self._map)
@@ -119,42 +129,33 @@ class GlyphMap:
     def to_images(
             self, *,
             paper=(0, 0, 0), ink=(255, 255, 255), border=(32, 32, 32),
-            invert_y=False, transparent=True, rgb_table=None, image_mode='RGB',
+            invert_y=False, transparent=True, image_mode='RGB',
         ):
         """Draw images based on sheets in glyph map."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
-        levels = max((_e.glyph.levels for _e in self._map), default=2)
-        # TODO: merge with get_image_inklevels
-        if image_mode == '1':
-            inklevels = [0] * (levels//2) + [1] * (levels-levels//2)
+        inklevels = create_image_colours(
+            image_mode=image_mode, rgb_table=self._rgb_table,
+            levels=self._levels, ink=ink, paper=paper
+        )
+        masklevels = [0] + [1] * (self._levels-1)
+        # mono and greyscale images have fixed levels
+        if image_mode != 'RGB':
             border = 0
-        elif image_mode == 'L':
-            inklevels = tuple(
-                _v * 255 // (levels-1)
-                for _v in range(levels)
-            )
-            border = 0
-        elif rgb_table is not None:
-            inklevels = rgb_table
-        else:
-            shader = GradientShader(levels)
-            inklevels = tuple(
-                shader.get_shade(_v, paper, ink, border=paper)
-                for _v in range(levels)
-            )
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
-        images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
+        images = [
+            Image.new(image_mode, (width, height), border)
+            for _ in range(last+1)
+        ]
         for entry in self._map:
             if transparent:
                 # if glyphs overlap, we need to treat the background colour as transparent
                 # create a mask to paste only non-background pixels
                 # for greyscale and colour, alpha_composite would be better
                 mask = glyph_to_image(
-                    entry.glyph, image_mode='1',
-                    inklevels=[0] + [1] * (levels-1),
+                    entry.glyph, image_mode='1', inklevels=masklevels,
                 )
             else:
                 mask = None
@@ -207,17 +208,16 @@ class GlyphMap:
     def as_shades(
             self, *,
             paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None,
-            rgb_table=None,
             sheet=0,
         ):
         """Convert glyph map to ansi coloured block characters."""
         canvas = self.to_canvas(sheet=sheet)
-        if rgb_table is not None:
-            shader = TableShader(rgb_table)
-        else:
-            shader = GradientShader(canvas.levels)
+        inklevels = create_image_colours(
+            image_mode='RGB', rgb_table=self._rgb_table,
+            levels=self._levels, ink=ink, paper=paper
+        )
         return canvas.as_shades(
-            shader=shader, paper=paper, ink=ink, border=border
+            inklevels=inklevels, border=border
         )
 
     def get_sheet(self, sheet=0):
@@ -335,13 +335,12 @@ class _Canvas:
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')
 
-    def as_shades(self, *, shader, paper, ink, border):
-        """Convert glyph map to a string of block characters with ansi colours."""
+    def as_shades(self, *, inklevels, border):
+        """Convert canvas to a string of block characters with ansi colours."""
         if not self.height:
             return ''
         block_matrix = matrix_to_shades(
-            self._pixels, shader=shader,
-            paper=paper, ink=ink, border=border,
+            self._pixels, inklevels=inklevels, border=border,
         )
         self._write_labels_to_matrix(block_matrix)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)

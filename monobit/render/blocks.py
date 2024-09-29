@@ -121,20 +121,20 @@ def matrix_to_blocks(matrix, ncols, nrows):
     return block_matrix
 
 
-def matrix_to_shades(matrix, *, shader, paper, ink, border):
+def matrix_to_shades(matrix, *, inklevels, border):
     """Convert bit matrix to a mutable matrix of block characters."""
     return [
         [
-            _get_shaded_block(_bitblock, shader, paper, ink, border)
+            _get_shaded_block(_bitblock, inklevels, border)
             for _bitblock in _row
         ]
         for _row in matrix
     ]
 
 
-def _get_shaded_block(value, shader, paper, ink, border):
+def _get_shaded_block(value, inklevels, border):
     """Get block with given shade."""
-    shade = shader.get_shade(value, paper, ink, border)
+    shade = inklevels[value] if value >= 0 else border
     if shade is None:
         return f'\x1b[0m '
     r, g, b = shade

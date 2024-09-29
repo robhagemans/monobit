@@ -19,7 +19,8 @@ from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
 from .chart import create_chart, aligns_right
-from .shader import GradientShader, TableShader
+from .shader import GradientShader
+from .glyphmap import create_image_colours
 
 
 if reportlab:
@@ -129,12 +130,12 @@ if reportlab:
             )
         canvas.translate(-margin_x, -margin_y)
 
-        # get colour or gradient shader
-        try:
-            rgb_table = getattr(font, 'amiga.ctf_ColorTable')
-            shader = TableShader(rgb_table)
-        except AttributeError:
-            shader = GradientShader(font.levels)
+        # get colour table or gradient
+        rgb_table = getattr(font, 'amiga.ctf_ColorTable', None)
+        inklevels = create_image_colours(
+            image_mode='RGB', rgb_table=rgb_table,
+            levels=font.levels, paper=paper, ink=ink,
+        )
 
         # draw pages
         for sheet in range(max_sheet+1):
@@ -150,9 +151,7 @@ if reportlab:
                 pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
-                        fill_rgb = shader.get_shade(
-                            pixels[y][x], paper, ink, border=None
-                        )
+                        fill_rgb = inklevels[pixels[y][x]]
                         fill_rgb = tuple(_v/255 for _v in fill_rgb)
                         if all(_c > 0 for _c in pixel_border):
                             stroke_rgb = tuple(_c / 255 for _c in pixel_border)

@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from .renderer import render
 from .chart import create_chart, grid_map, grid_traverser
-from .glyphmap import GlyphMap, glyph_to_image, get_image_inklevels
+from .glyphmap import GlyphMap, glyph_to_image, create_image_colours
 from .shader import RGBTable
 
 from . import pdf
