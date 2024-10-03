@@ -538,15 +538,16 @@ def _convert_from_gdos(gdos_props):
         bold_smear=gdos_props.thicken,
         underline_thickness=gdos_props.ul_size,
     )
-    props.gdos = ' '.join((
-        f'font-id={gdos_props.font_id}',
-        f'left-offset={gdos_props.left_offset}',
-        f'right-offset={gdos_props.right_offset}',
-    ))
+    namespace_props = {
+        'gdos.font-id': gdos_props.font_id,
+        'gdos.left-offset': gdos_props.left_offset,
+        'gdos.right-offset': gdos_props.right_offset,
+    }
     if gdos_props.lighten != 0x5555:
-        props.gdos += f' lighten-mask=0x{gdos_props.lighten:x}'
+        namespace_props['gdos.lighten-mask'] = hex(gdos_props.lighten)
     if gdos_props.skew != 0x5555:
-        props.gdos += f' skew-mask=0x{gdos_props.skew:x}'
+        namespace_props['gdos.skew-mask'] = hex(gdos_props.skew)
+    props |= Props(**namespace_props)
     return props
 
 
@@ -570,11 +571,11 @@ def _convert_to_gdos(font, endianness):
             'GDOS format: negative bearings must not exceed 127.'
         )
     # keep namespace properties
-    if 'gdos' in font.get_properties():
-        propsplit = (item.partition('=') for item in font.gdos.split())
-        add_props = {_k: int(_v) for _k, _, _v in propsplit}
-    else:
-        add_props = {}
+    add_props = {
+        _k: _v
+        for _k, _v in font.get_properties().items()
+        if _k.startswith('gdos.')
+    }
     endian = endianness[0].lower()
     flags = _FH_FLAGS[endian](
         default=add_props.get('font-id', 255) == 1,
@@ -610,8 +611,8 @@ def _convert_to_gdos(font, endianness):
         right_offset=add_props.get('right-offset', 0),
         thicken=font.bold_smear,
         ul_size=font.underline_thickness,
-        lighten=add_props.get('lighten_mask', 0x5555),
-        skew=add_props.get('skew_mask', 0x5555),
+        lighten=add_props.get('lighten-mask', 0x5555),
+        skew=add_props.get('skew-mask', 0x5555),
         flags=flags,
         #hor_table, off_table, dat_table, form_width, form_height
     )

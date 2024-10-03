@@ -611,15 +611,10 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
         properties['weight'] = 'bold'
     if _to_int(bmfont_props.pop('italic')):
         properties['slant'] = 'italic'
-    # drop other props if they're default value
-    bmfont_props = {
-        _k: _v for _k, _v in bmfont_props.items()
-        if str(_v) != _UNPARSED_PROPS.get(_k, '')
-    }
-    properties['bmfont'] = ' '.join(
-        f'{_k}=' + ','.join(str(_v).split(','))
-        for _k, _v in bmfont_props.items()
-    )
+    # keep other props as custom if they're not default value
+    for key, value in bmfont_props.items():
+        if str(value) != _UNPARSED_PROPS.get(key, ''):
+            properties[f'bmfont.{key}'] = str(value)
     return properties
 
 
