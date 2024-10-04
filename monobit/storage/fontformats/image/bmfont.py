@@ -23,7 +23,7 @@ from monobit.base.struct import little_endian as le
 from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
-from monobit.render import GlyphMap, grid_map
+from monobit.render import GlyphMap, grid_map, RGBTable
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
@@ -509,10 +509,12 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
             if not char.chnl:
                 char.chnl = 15
             # keep only channels that hold this char
-            # drop any zeroed/oned channels and the outline channel
+            # exclude 3 (set to 0) and 4 (set to 1)
             if outline:
+                # select channels that hold outline or glyph+outline
                 channels = (1, 2)
             else:
+                # select channels that hold glyph or glyph+outline
                 channels = (0, 2)
             masks = (
                 bool(char.chnl & _CHNL_R) and common.redChnl in channels,
@@ -521,11 +523,19 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
                 bool(char.chnl & _CHNL_A) and common.alphaChnl in channels,
             )
             if char.width and char.height:
-                # require all glyph channels above threshold
                 imgdata = crop.getdata()
-                masked = tuple(
+                # get values from masked channels for each char
+                # this could be a mix of 1, 2, 3 and 4-element tuples
+                masked = (
                     tuple(_pix for _pix, _mask in zip(_rgba, masks) if _mask)
                     for _rgba in imgdata
+                )
+                # convert all to RGB values
+                # 1- and 2-component values are converted to greyscale
+                # alpha is dropped from RGBA
+                masked = tuple(
+                    _t[:3] if len(_t) >= 3 else (sum(_t)//len(_t),) * 3
+                    for _t in masked
                 )
             else:
                 masked = ()
@@ -533,7 +543,7 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
         # close resources
         for image in sheets.values():
             image.close()
-        # check if font is monochromatic
+        # get list of used colours
         colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
         inklevels = identify_inklevels(colours, background='darkest')
         pixels_per_byte = 8 // (len(inklevels)-1).bit_length()
@@ -583,6 +593,9 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
         for _glyph, _char in zip(glyphs, chars)
     ]
     font = Font(glyphs, **properties)
+    # if inklevels are evenly spaced greyscale we shouldn't store the colourtable
+    if not inklevels.is_greyscale():
+        font = font.set_property('amiga.ctf_ColorTable',inklevels)
     font = font.label()
     return font
 
@@ -600,7 +613,7 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
         'source_format':
-            'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
+            'BMFont ({} descriptor; {} texture)'.format(bmformat, ','.join(imgformats)),
         'source_name': Path(name).name,
         'family': bmfont_props.pop('face'),
         'line_height': common.lineHeight,

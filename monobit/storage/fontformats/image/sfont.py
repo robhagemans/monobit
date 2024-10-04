@@ -14,7 +14,7 @@ Image = safe_import('PIL.Image')
 from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
-from monobit.render import GlyphMap
+from monobit.render import GlyphMap, RGBTable
 
 from monobit.storage.utils.limitations import ensure_single
 from .image import identify_inklevels
@@ -87,7 +87,10 @@ if Image:
                     left = right
             else:
                 width = length
-        return Font(glyphs)
+        font = Font(glyphs)
+        if not inklevels.is_greyscale():
+            font = font.set_property('amiga.ctf_ColorTable', inklevels)
+        return font
 
 
     @savers.register(linked=load_sfont)

@@ -22,6 +22,11 @@ class RGBTable(list):
         """Convert RGB table to multiline string."""
         return '\n'.join(str(_v) for _v in iter(self))
 
+    def is_greyscale(self):
+        """RGB/RGBA colourset is a grey scale."""
+        # ignore transparency attribute if it exists
+        return all(_c.r == _c.g == _c.b for _c in iter(self))
+
 
 def create_gradient(paper:RGB, ink:RGB, levels:int):
     """Create equal-stepped RGB gradient from paper to ink."""

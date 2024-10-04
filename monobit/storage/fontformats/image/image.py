@@ -18,7 +18,10 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import create_chart, glyph_to_image, grid_traverser, create_image_colours
+from monobit.render import (
+    create_chart, glyph_to_image, grid_traverser,
+    create_image_colours, RGBTable, create_gradient
+)
 from monobit.storage.utils.limitations import ensure_single
 from monobit.storage.utils.perglyph import loop_load, loop_save
 
@@ -34,58 +37,69 @@ DEFAULT_IMAGE_FORMAT = 'png'
 # brightest         use brightest colour, by sum of RGB values
 # darkest           use darkest colour, by sum of RGB values
 # top-left          use colour of top-left pixel in first cell
+# RGB value         use this specific colour as background
 
 def identify_inklevels(colours, background):
     """Identify ink levels from colour set."""
     colourset = set(colours)
     if len(colourset) < 2:
         raise FileFormatError('No glyphs or only blank glyphs found.')
+    elif len(colourset) > 256:
+        raise UnsupportedError('More than 256 shades not supported.')
     elif len(colourset) > 2:
-        # 3 or more non-border colours, must be a greyscale image
-        if not all(
-                len(set(_c[:3])) == 1 and not _c[3:] or _c[3] == 255
-                for _c in colourset
-            ):
-            # only greyscale allowed, r==g==b, alpha==255
-            raise UnsupportedError('Colour fonts not supported.')
-        # get a random element to check colour mode (8/24/32 bit)
-        tuple_len = len(colourset.pop())
-        if tuple_len == 4:
-            # RGBA
-            inklevels = tuple((_c, _c, _c, 255) for _c in range(256))
-        else:
-            # RGB or 8-bit
-            inklevels = tuple((_c,) * tuple_len for _c in range(256))
-        return inklevels
+        # check for greyscales
+        # any grey-only set in 24-bit RGB is a subset of 256-colour greyscale
+        for levels, greyset in GREYSETS.items():
+            if colourset < set(greyset):
+                return RGBTable(greyset)
+        paper = _identify_background(colours, background)
+        # if paper is darker than average colour, sort dark to bright
+        # else sort bright to dark
+        reverse = sum(paper) > sum(sum(_c) for _c in colours) / len(colours)
+        rgbtable = sorted(colourset, key=lambda _t: sum(_t), reverse=reverse)
+        # ensure paper is first colour in table
+        rgbtable.remove(paper)
+        return RGBTable([paper] + rgbtable)
     else:
-        # 2-colour image
-        if not isinstance(background, str):
-            # background provided
-            paper = background
-        elif background in ('most-common', 'least-common'):
-            colourfreq = Counter(colours)
-            if background == 'most-common':
-                # most common colour in image assumed to be background colour
-                paper, _ = colourfreq.most_common(1)[0]
-            else:
-                # least common colour in image assumed to be background colour
-                paper, _ = colourfreq.most_common()[-1]
-        elif background in ('darkest', 'brightest'):
-            brightness = sorted((sum(_c), _c) for _c in colourset)
-            if background == 'darkest':
-                # darkest colour assumed to be background
-                _, paper = brightness[0]
-            else:
-                # brightest colour assumed to be background
-                _, paper = brightness[-1]
-        elif background == 'top-left':
-            # top-left pixel of first char assumed to be background colour
-            paper = colours[0]
-        else:
-            raise ValueError(f'Background mode `{background}` not supported.')
+        paper = _identify_background(colours, background)
         # 2 colour image - not-paper means ink
         ink = (colourset - {paper}).pop()
-        return paper, ink
+        return RGBTable((paper, ink))
+
+
+GREYSETS = {
+    _levels: create_gradient(RGB(0, 0, 0), RGB(255, 255, 255), _levels)
+    for _levels in (4, 16, 256)
+}
+
+
+def _identify_background(colours, background):
+    """Identify background colour based on policy."""
+    if not isinstance(background, str):
+        # background provided
+        paper = background
+    elif background in ('most-common', 'least-common'):
+        colourfreq = Counter(colours)
+        if background == 'most-common':
+            # most common colour in image assumed to be background colour
+            paper, _ = colourfreq.most_common(1)[0]
+        else:
+            # least common colour in image assumed to be background colour
+            paper, _ = colourfreq.most_common()[-1]
+    elif background in ('darkest', 'brightest'):
+        brightness = sorted((sum(_c), _c) for _c in colours)
+        if background == 'darkest':
+            # darkest colour assumed to be background
+            _, paper = brightness[0]
+        else:
+            # brightest colour assumed to be background
+            _, paper = brightness[-1]
+    elif background == 'top-left':
+        # top-left pixel of first char assumed to be background colour
+        paper = colours[0]
+    else:
+        raise ValueError(f'Background mode `{background}` not supported.')
+    return paper
 
 
 if Image:
