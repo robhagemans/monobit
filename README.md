@@ -91,17 +91,17 @@ Proportional-spacing formats
 |-----------------------|------------|-----------------------------|-------|-------|--------|----------|
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       | binary | -        |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|&check;| binary | M; see `amiga` |
-| Amiga font            | `amiga`    |                             |&check;|&check;| binary | O (C G)  |
+| Amiga font            | `amiga`    |                             |&check;|&check;| binary | O C G  |
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;| coded  | U SB MB V O G |
 | BeOS Bitmap Font      | `beos`     |                             |&check;|&check;| binary | U O G    |
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | O        |
-| AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | M U SB MB O K G (C) |
+| AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | M U SB MB O K G C |
 | FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.[specx]ft` |&check;| | binary | -   |
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;| visual | -        |
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       | binary | -        |
 | DosStart!             | `dosstart` | `.dsf`                      |&check;|&check;| coded  | -        |
 | EDWIN bitmap font     | `edwin`    | `.fnt`                      |&check;|&check;| coded  | -        |
-| Figlet font           | `figlet`   | `.flf`                      |&check;|&check;| visual | (C)      |
+| Figlet font           | `figlet`   | `.flf`                      |&check;|&check;| visual | (3)      |
 | FZX font              | `fzx`      | `.fzx`                      |&check;|&check;| binary | O        |
 | OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB O (MB K) |
 | Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | O        |
@@ -130,7 +130,7 @@ Proportional-spacing formats
 | RISCOS x90y45 format  | `riscos-xy`|                             |&check;|       | binary | O G      |
 | RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
-| SFont                 | `sfont`    |                             |&check;|&check;| image  | G (C)    |
+| SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G (C) |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G (C) |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
@@ -143,6 +143,7 @@ Proportional-spacing formats
 
 (1) 16-bit Windows NE container with FNT resource only  
 (2) Bitmap only (OTB)  
+(3) Limited read functionality: no support for ASCII-art, which is a core feature of Figlet
 
 M  multiple-font container  
 U  Unicode  
