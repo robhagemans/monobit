@@ -213,7 +213,7 @@ class Raster:
         """
         if inklevels is NOT_SET:
             inklevels = bytes(range(self._levels))
-        elif isinstance(inklevels, bytes):
+        if isinstance(inklevels, bytes):
             return b''.join(self._as_iter(inklevels=inklevels))
         else:
             # convert inklevels to tuple of bytes
@@ -418,12 +418,6 @@ class Raster:
             pixels = tuple(''.join(_row) for _row in matrix)
             return cls(pixels, inklevels=inklevels)
         else:
-            # for n_levels in (2, 4, 16, 256):
-            #     if len(inklevels) <= n_levels:
-            #         str_inklevels = INKLEVELS[n_levels]
-            #         break
-            # else:
-            #     raise ValueError('More than 256 ink levels not supported.')
             str_inklevels = get_inklevels(len(inklevels))
             translator = {_k: _v for _k, _v in zip(inklevels, str_inklevels)}
             # glyph data
