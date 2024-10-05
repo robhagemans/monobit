@@ -64,7 +64,7 @@ if Image:
                 if i == 0:
                     left = length
                 else:
-                    if i == len(groups):
+                    if i == len(groups) - 1:
                         right = length
                     else:
                         right = length // 2
@@ -76,7 +76,9 @@ if Image:
                             tuple(crop.getdata()),
                             stride=crop.width,
                             inklevels=inklevels,
-                            codepoint=min(_SFONT_RANGE) + i//2,
+                            # i is always even for indicators
+                            # first codepoint is writen at second indicator
+                            codepoint=min(_SFONT_RANGE) + i//2 - 1,
                             left_bearing=-left,
                             right_bearing=-right,
                         )
@@ -105,17 +107,19 @@ if Image:
         x = 0
         for cp in _SFONT_RANGE:
             glyph = font.get_glyph(codepoint=cp)
-            left = -glyph.left_bearing
-            indicator_length = left
-            if cp > min(_SFONT_RANGE):
-                indicator_length += right + (right+left)%2 + 1
+            left = max(0, -glyph.left_bearing)
+            if cp == min(_SFONT_RANGE):
+                indicator_length = left
+            else:
+                indicator_length = 2 * max(left, right)
+            indicator_length = max(1, indicator_length)
             x += indicator_length
             glyphmap.append_glyph(glyph, x, 0)
-            width = glyph.advance_width
+            width = max(1, glyph.advance_width)
             x += width
             indicator.extend((_INDICATOR_RGB,) * indicator_length)
             indicator.extend(((0, 0, 0),) * width)
-            right = -glyph.right_bearing
+            right = max(0, -glyph.right_bearing)
         if right:
             indicator.append(_INDICATOR_RGB * right)
         glyphmap.append_glyph(Glyph(), x, 0)
