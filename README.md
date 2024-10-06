@@ -207,25 +207,23 @@ These formats output a table of glyphs. PDF, text and block charts are write-onl
 image charts can be read through the `image` reader.
 
 
-| Format            | Short Name |
-|-------------------|------------|
-| Text              | `chart`    |
-| Block elements    | `blocks`   |
-| ANSI colours      | `shades`   |
-| Image [P]         | `image`    |
-| PDF [R]           | `pdf`      |
+| Format            | Short Name | Read  | Write |
+|-------------------|------------|-------|-------|
+| Text              | `chart`    |       |&check;|
+| Block elements    | `blocks`   |       |&check;|
+| ANSI colours      | `shades`   |       |&check;|
+| Image [P]         | `image`    |&check;|&check;|
+| PDF [R]           | `pdf`      |       |&check;|
 
 [P] requires **PIL**  
 [R] requires **reportlab**  
 
 
-Greyscale fonts
----------------
+Greyscale and colour fonts
+--------------------------
 
-Greyscale support is experimental. An extension of the YAFF format allows storing
-glyphs with 2 or 4 bits per pixel greyscale (4 or 16 levels). Monobit can
-furter handle 8 bits per pixel (256 levels) but these cannot be stored as a
-visual representation in a YAFF file.
+Greyscale and colour support is experimental. An extension of the YAFF format allows storing
+glyphs with up to 8 bits per pixel (256 colours or grey levels).
 
 
 Stroke (vector) formats
