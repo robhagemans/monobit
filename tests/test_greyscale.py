@@ -50,6 +50,9 @@ class TestGreyscale(BaseTester):
     def test_yaff_greyscale(self):
         self._render_greyscale('yaff')
 
+    def test_amiga_greyscale(self):
+        self._render_greyscale('amiga')
+
     def test_bdf_greyscale(self):
         self._render_greyscale('bdf')
 
