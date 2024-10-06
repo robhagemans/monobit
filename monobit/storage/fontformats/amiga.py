@@ -605,8 +605,17 @@ def _convert_amiga_props(amiga_props):
 @savers.register(linked=load_amiga_fc)
 def save_amiga_fc(fonts, outstream):
     """Save fonts to Amiga disk font contents (.FONT) file."""
-    props = tuple(_convert_to_amiga_props(_f) for _f in fonts)
-    # the size is the filename, so it muct be unique.
+    props = tuple(
+        _convert_to_amiga_props(
+            _f,
+            # this is wrong, but we don't need tf_Baseline in the fontcontents headers
+            # it would be better to convert the fonts first and get the structures form there
+            shift_up=0,
+            is_colorfont=_f.levels > 2 or _f.get_property('amiga.ctf_ColorTable')
+        )
+        for _f in fonts
+    )
+    # the size is the filename, so it must be unique.
     # there is an assumption that all fonts in the pack are part of a family
     # but we leave it to the user to enforce this.
     dirname = Path(outstream.name).stem
@@ -676,7 +685,7 @@ def save_amiga(fonts, outstream):
     add_shift_up = max(0, -min(_g.shift_up for _g in glyphs))
     glyphs = tuple(
         _g.expand(
-            # bring all glyphs to same height
+            # bring all glyphs to same height (font.line_height)
             top=max(0, font.line_height - _g.height - _g.shift_up - add_shift_up),
             # expand by positive shift to make all upshifts equal
             bottom=_g.shift_up + add_shift_up,
@@ -747,7 +756,7 @@ def save_amiga(fonts, outstream):
         + bytes(_HUNK_FILE_HEADER_1(table_size=1, first_hunk=0, last_hunk=0))
         + bytes(be.uint32(hunk_size))
     )
-    props = _convert_to_amiga_props(font, is_colorfont)
+    props = _convert_to_amiga_props(font, glyphs[0].shift_up, is_colorfont)
     font_header = _AMIGA_HEADER(
         dfh_NextSegment=hunk_size,
         dfh_ReturnCode=_RETURN_CODE,
@@ -765,6 +774,7 @@ def save_amiga(fonts, outstream):
         tf_CharSpace=anchor + len(fontData) + len(fontLoc),
         tf_CharKern=anchor + len(fontData) + len(fontLoc) + len(fontSpace),
     )
+    logging.debug('TextFont header: %s', font_header)
     if is_colorfont:
         ct = font.get_property('amiga.ctf_ColorTable')
         ctf_header = _COLOR_TEXT_FONT(
@@ -779,6 +789,7 @@ def save_amiga(fonts, outstream):
             ctf_PlanePick=0xff,
             ctf_ColorFontColors=anchor - _COLOR_FONT_COLORS.size,
         )
+        logging.debug('ColorTextFont header: %s', ctf_header)
         cfc = _COLOR_FONT_COLORS(
             cfc_Count=font.levels,
             # offset to colour table
@@ -786,6 +797,7 @@ def save_amiga(fonts, outstream):
                 anchor+len(fontData)+len(fontLoc)+len(fontSpace)+len(fontKern)
             ),
         )
+        logging.debug('ColorFontColors structure: %s', cfc)
         # create greyscale table if none defined
         if not ct:
             ct = create_gradient((0, 0, 0), (255, 255, 255), font.levels)
@@ -817,12 +829,12 @@ def save_amiga(fonts, outstream):
     outstream.write(bytes(be.uint32(_HUNK_END)))
 
 
-def _convert_to_amiga_props(font, is_colorfont):
+def _convert_to_amiga_props(font, shift_up, is_colorfont):
     """Convert font properties to amiga header fields."""
     return Props(
         dfh_Revision=int(font.revision),
         dfh_Name=font.name[:_MAXFONTNAME].encode(_ENCODING, 'replace'),
-        tf_YSize=font.glyphs[0].height,
+        tf_YSize=font.line_height,
         tf_Style=_TF_STYLE(
             FSF_BOLD=font.weight == 'bold',
             FSF_ITALIC=font.slant == 'italic',
@@ -843,6 +855,6 @@ def _convert_to_amiga_props(font, is_colorfont):
         ),
         tf_XSize=int(font.average_width),
         # shift_up=1-(amiga_props.tf_YSize - amiga_props.tf_Baseline)
-        tf_Baseline=font.glyphs[0].shift_up + font.glyphs[0].height - 1,
+        tf_Baseline=shift_up + font.line_height - 1,
         tf_BoldSmear=font.bold_smear,
     )
