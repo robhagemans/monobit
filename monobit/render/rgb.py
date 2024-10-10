@@ -56,7 +56,7 @@ def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
         )
         border = 0
     elif rgb_table is not None:
-        inklevels = rgb_table
+        inklevels = RGBTable(rgb_table)
     else:
         inklevels = create_gradient(paper=paper, ink=ink, levels=levels)
     return inklevels

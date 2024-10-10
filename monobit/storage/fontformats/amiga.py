@@ -776,7 +776,7 @@ def save_amiga(fonts, outstream):
     )
     logging.debug('TextFont header: %s', font_header)
     if is_colorfont:
-        ct = font.get_property('amiga.ctf_ColorTable')
+        ct = RGBTable(font.get_property('amiga.ctf_ColorTable'))
         ctf_header = _COLOR_TEXT_FONT(
             ctf_Flags=_CTF_FLAGS(
                 CT_COLORFONT=ct is not None,
