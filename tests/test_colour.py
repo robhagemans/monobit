@@ -67,7 +67,7 @@ class TestColour(BaseTester):
         self._render_colour('sfont')
 
     def test_image_colour(self):
-        self._render_colour('image')
+        self._render_colour('image', load_kwargs={'first_codepoint': ord('t')})
 
 
 if __name__ == '__main__':
