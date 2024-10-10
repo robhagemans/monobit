@@ -984,8 +984,8 @@ def _write_binary_descriptor(outfile, props):
 def _save_pages(outfile, font, sheets, image_format):
     """Save images and record names."""
     location = outfile.where
-    path = font.family
-    fontname = font.name.replace(' ', '_')
+    path = font.family or font.name or 'font'
+    fontname = font.name.replace(' ', '_') or 'font'
     pages = []
     for page_id, sheet in enumerate(sheets):
         name = location.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
