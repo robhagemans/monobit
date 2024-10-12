@@ -144,7 +144,9 @@ def save_shades(
         max_labels=max_labels,
         grid_positioning=grid_positioning,
     )
-    outstream.text.write(glyph_map.as_shades(paper=paper, border=border, ink=ink))
+    outstream.text.write(glyph_map.as_shades(
+        paper=paper, border=border, ink=ink,
+    ))
 
 
 
@@ -275,7 +277,7 @@ def grid_map(
     # so vertical alignment is not needed
     right_align = aligns_right(direction)
     # output glyph maps
-    glyph_map = GlyphMap(
+    glyph_map = (
         Props(
             glyph=_glyph, sheet=_sheet,
             x=(
@@ -289,6 +291,10 @@ def grid_map(
             _glyph_page,
             grid_traverser(columns, rows, direction, invert_y)
         )
+    )
+    glyph_map = GlyphMap(
+        glyph_map, levels=font.levels,
+        rgb_table=font.rgb_table,
     )
     # use blank glyphs for grid bounds
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)

@@ -14,7 +14,7 @@ Image = safe_import('PIL.Image')
 from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
-from monobit.render import GlyphMap
+from monobit.render import GlyphMap, RGBTable
 
 from monobit.storage.utils.limitations import ensure_single
 from .image import identify_inklevels
@@ -87,7 +87,11 @@ if Image:
                     left = right
             else:
                 width = length
-        return Font(glyphs)
+        font = Font(
+            glyphs,
+            rgb_table=inklevels if not inklevels.is_greyscale() else None,
+        )
+        return font
 
 
     @savers.register(linked=load_sfont)
@@ -100,7 +104,7 @@ if Image:
         font = ensure_single(fonts)
         font = font.equalise_horizontal()
         font = font.resample(codepoints=_SFONT_RANGE)
-        glyphmap = GlyphMap()
+        glyphmap = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
         glyphmap.append_glyph(Glyph(), 0, 0)
         indicator = []
         right = 0
@@ -124,7 +128,7 @@ if Image:
             indicator.append(_INDICATOR_RGB * right)
         glyphmap.append_glyph(Glyph(), x, 0)
         glyph_image = glyphmap.as_image(
-            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0)
+            ink=(255, 255, 255), paper=(0, 0, 0), border=(0, 0, 0),
         )
         image = Image.new(
             glyph_image.mode, (glyph_image.width, glyph_image.height+1)

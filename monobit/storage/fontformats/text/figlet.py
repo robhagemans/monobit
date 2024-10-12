@@ -196,13 +196,13 @@ def _convert_from_flf(glyphs, props):
     if any(_g.char == '\0' for _g in glyphs):
         properties.default_char = '\0'
     # keep uninterpreted parameters in namespace
-    properties.figlet = ' '.join(
-        f'{_k}={_v}' for _k, _v in vars(props).items() if _k not in (
+    properties |= Props(**{
+        f'figlet.{_k}': _v for _k, _v in vars(props).items() if _k not in (
             'baseline', 'print_direction',
             'hardblank', 'signature_hardblank', 'height', 'max_length',
             'comment_lines', 'codetag_count'
         )
-    )
+    })
     return glyphs, properties
 
 
@@ -238,11 +238,11 @@ def _convert_to_flf(font, hardblank='$'):
         codetag_count = len(coded_chars)
     )
     # keep namespace properties
-    if 'figlet' in font.get_properties():
-        propsplit = (item.partition('=') for item in font.figlet.split())
-        figprops = {_k: _v for _k, _, _v in propsplit}
-    else:
-        figprops = {}
+    figprops = {
+        _k: _v
+        for _k, _v in font.get_properties().items()
+        if _k.startswith('figlet.')
+    }
     props.old_layout = figprops.get('old_layout', 0)
     props.full_layout = figprops.get('full_layout', 0)
     # first get glyphs in default repertoire

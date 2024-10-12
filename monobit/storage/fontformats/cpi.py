@@ -425,9 +425,11 @@ def _convert_from_cp(cells, cpeh, fh, header_id):
         source_format=f'CPI ({format})',
     )
     # apparently never used
-    if fh.xaspect or fh.yaspect:
-        # not clear how this would be interpreted...
-        props['cpi'] = f'xaspect={fh.xaspect} yaspect={fh.yaspect}'
+    # not clear how this would be interpreted
+    if fh.xaspect:
+        props['cpi.xaspect'] = fh.xaspect
+    if fh.yaspect:
+        props['cpi.yaspect'] = fh.yaspect
     logging.debug(
         f'Reading {fh.width}x{fh.height} font '
         f'for codepage {cpeh.codepage} '
@@ -534,12 +536,12 @@ def _convert_to_cp(fonts):
         cp_output.fhs = []
         cp_output.bitmaps = []
         for font in cp_fonts:
-            # apparently never used
-            if 'cpi' in font.get_properties():
-                propsplit = (item.partition('=') for item in font.cpi.split())
-                cpiprops = {_k: _v for _k, _, _v in propsplit}
-            else:
-                cpiprops = {}
+            # namespace properties - apparently never used
+            cpiprops = {
+                _k: _v
+                for _k, _v in font.get_properties().items()
+                if _k.startswith('cpi.')
+            }
             cp_output.fhs.append(_SCREEN_FONT_HEADER(
                 height=font.cell_size.y,
                 width=font.cell_size.x,
