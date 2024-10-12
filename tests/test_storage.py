@@ -292,6 +292,15 @@ class TestForks(BaseTester):
 class TestWrappers(BaseTester):
     """Test wrappers."""
 
+    def test_import_offset(self):
+        """Test offset wrapper."""
+        font, *_ = monobit.load(
+            self.font_path / '4x6.yaff.offset',
+            container_format='offset', offset=100,
+        )
+        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
     # Source coded binary and textbin wrappers
 
     def test_import_c(self):
