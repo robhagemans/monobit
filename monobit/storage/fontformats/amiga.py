@@ -776,7 +776,7 @@ def save_amiga(fonts, outstream):
     )
     logging.debug('TextFont header: %s', font_header)
     if is_colorfont:
-        ct = RGBTable(font.get_property('amiga.ctf_ColorTable'))
+        ct = font.get_property('amiga.ctf_ColorTable')
         ctf_header = _COLOR_TEXT_FONT(
             ctf_Flags=_CTF_FLAGS(
                 CT_COLORFONT=ct is not None,
@@ -801,6 +801,8 @@ def save_amiga(fonts, outstream):
         # create greyscale table if none defined
         if not ct:
             ct = create_gradient((0, 0, 0), (255, 255, 255), font.levels)
+        else:
+            ct = RGBTable(ct)
         colortable = (be.uint16 * cfc.cfc_Count)(*(
             (_r>>4) * 256 + (_g & 0xf0) + (_b >> 4)
             for _r, _g, _b in ct

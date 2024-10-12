@@ -545,7 +545,7 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
             image.close()
         # get list of used colours
         colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
-        inklevels = identify_inklevels(colours, background='darkest')
+        inklevels = identify_inklevels(colours, background=(0, 0, 0))
         pixels_per_byte = 8 // (len(inklevels)-1).bit_length()
         # extract glyphs
         for char, sprite in zip(chars, sprites):

@@ -58,7 +58,10 @@ def identify_inklevels(colours, background):
         reverse = sum(paper) > sum(sum(_c) for _c in colours) / len(colours)
         rgbtable = sorted(colourset, key=lambda _t: sum(_t), reverse=reverse)
         # ensure paper is first colour in table
-        rgbtable.remove(paper)
+        try:
+            rgbtable.remove(paper)
+        except ValueError:
+            pass
         return RGBTable([paper] + rgbtable)
     else:
         paper = _identify_background(colours, background)
