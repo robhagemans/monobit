@@ -14,7 +14,7 @@ from .base import BaseTester, get_stringio, assert_text_eq
 colourfont = """
 name: ColourTest
 levels: 4
-amiga.ctf-ColorTable:
+rgb-table:
     0 0 0
     255 0 0
     0 255 0

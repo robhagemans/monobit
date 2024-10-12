@@ -294,7 +294,7 @@ def grid_map(
     )
     glyph_map = GlyphMap(
         glyph_map, levels=font.levels,
-        rgb_table=getattr(font, 'amiga.ctf_ColorTable', None),
+        rgb_table=font.rgb_table,
     )
     # use blank glyphs for grid bounds
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)

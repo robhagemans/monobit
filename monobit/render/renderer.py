@@ -136,10 +136,7 @@ def _render_horizontal(
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
     baseline = -margin_y - font.ascent
-    glyph_map = GlyphMap(
-        levels=font.levels,
-        rgb_table=getattr(font, 'amiga.ctf_ColorTable', None),
-    )
+    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
     # append empty glyph at start and end for margins
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     for glyph_row in glyphs:
@@ -180,10 +177,7 @@ def _render_vertical(
     # central axis (with leftward bias)
     baseline = font.line_width // 2
     # default is ttb right-to-left
-    glyph_map = GlyphMap(
-        levels=font.levels,
-        rgb_table=getattr(font, 'amiga.ctf_ColorTable', None),
-    )
+    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     for glyph_row in glyphs:
         y = 0

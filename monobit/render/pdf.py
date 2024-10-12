@@ -130,9 +130,8 @@ if reportlab:
         canvas.translate(-margin_x, -margin_y)
 
         # get colour table or gradient
-        rgb_table = getattr(font, 'amiga.ctf_ColorTable', None)
         inklevels = create_image_colours(
-            image_mode='RGB', rgb_table=rgb_table,
+            image_mode='RGB', rgb_table=font.rgb_table,
             levels=font.levels, paper=paper, ink=ink,
         )
 

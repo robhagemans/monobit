@@ -643,10 +643,12 @@ def _extract(
         )
         for _glyph, _char in zip(glyphs, chars)
     ]
-    font = Font(glyphs, **properties)
-    # if inklevels are evenly spaced greyscale we shouldn't store the colourtable
-    if not inklevels.is_greyscale():
-        font = font.set_property('amiga.ctf_ColorTable',inklevels)
+    font = Font(
+        glyphs,
+        # if inklevels are evenly spaced greyscale we shouldn't store the colourtable
+        rgb_table=inklevels if not inklevels.is_greyscale() else None,
+        **properties
+    )
     font = font.label()
     return font
 
@@ -1103,9 +1105,7 @@ def spritesheet(font, *, size, spacing, padding):
             for _g in glyphs
         ):
         raise ValueError('Image size is too small for largest glyph.')
-    glyph_map = GlyphMap(
-        levels=font.levels, rgb_table=font.get_property('amiga.ctf_ColorTable'),
-    )
+    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
     sheets = []
     while True:
         # output glyphs

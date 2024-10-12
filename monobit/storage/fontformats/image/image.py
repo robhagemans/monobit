@@ -275,9 +275,10 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
-        font = Font(glyphs)
-        if not inklevels.is_greyscale():
-            font = font.set_property('amiga.ctf_ColorTable', inklevels)
+        font = Font(
+            glyphs,
+            rgb_table=inklevels if not inklevels.is_greyscale() else None,
+        )
         return font
 
     def _get_border_colour(img, cell, margin, padding):
@@ -464,9 +465,8 @@ if Image:
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
         font = fonts[0]
-        rgb_table = getattr(font, 'amiga.ctf_ColorTable', None)
         inklevels = create_image_colours(
-            image_mode=image_mode, rgb_table=rgb_table,
+            image_mode=image_mode, rgb_table=font.rgb_table,
             levels=font.levels, paper=paper, ink=ink,
         )
 

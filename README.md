@@ -136,7 +136,7 @@ Proportional-spacing formats
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
 | Bare GEOS font record | `vlir`     |                             |&check;|&check;| binary | O        |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
-| monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | M US SB MB O K V G |
+| monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | M US SB MB O K V G C |
 
 [P] requires **PIL**  
 [F] requires **fontTools**  

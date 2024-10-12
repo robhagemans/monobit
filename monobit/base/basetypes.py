@@ -112,6 +112,26 @@ class RGB(_VectorMixin, namedtuple('RGB', 'r g b')):
         return cls(*coord)
 
 
+class RGBTable(list):
+
+    def __init__(self, table=()):
+        """Set up RGB table."""
+        if isinstance(table, str):
+            table = table.splitlines()
+        super().__init__(RGB.create(_v) for _v in table)
+
+    def __str__(self):
+        """Convert RGB table to multiline string."""
+        return '\n'.join(str(_v) for _v in iter(self))
+
+    def is_greyscale(self):
+        """RGB/RGBA colourset is a grey scale."""
+        # ignore transparency attribute if it exists
+        return all(_c.r == _c.g == _c.b for _c in iter(self))
+
+
+
+
 def _str_to_tuple(value):
     """Convert various string representations to tuple."""
     value = value.strip().replace(',', ' ').replace('x', ' ')

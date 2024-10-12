@@ -87,9 +87,10 @@ if Image:
                     left = right
             else:
                 width = length
-        font = Font(glyphs)
-        if not inklevels.is_greyscale():
-            font = font.set_property('amiga.ctf_ColorTable', inklevels)
+        font = Font(
+            glyphs,
+            rgb_table=inklevels if not inklevels.is_greyscale() else None,
+        )
         return font
 
 
@@ -103,10 +104,7 @@ if Image:
         font = ensure_single(fonts)
         font = font.equalise_horizontal()
         font = font.resample(codepoints=_SFONT_RANGE)
-        glyphmap = GlyphMap(
-            levels=font.levels,
-            rgb_table=getattr(font, 'amiga.ctf_ColorTable', None),
-        )
+        glyphmap = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
         glyphmap.append_glyph(Glyph(), 0, 0)
         indicator = []
         right = 0

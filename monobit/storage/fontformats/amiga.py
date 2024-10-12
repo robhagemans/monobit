@@ -595,7 +595,7 @@ def _convert_amiga_props(amiga_props):
         # which is what we do by default.
         # should a colour table also be defined? should we use it? who knows.
         if amiga_props.ctf_Flags.CT_COLORFONT:
-            _preserve_amiga_prop('ctf_ColorTable')
+            props.rgb_table = amiga_props.ctf_ColorTable
     return props
 
 
@@ -611,7 +611,7 @@ def save_amiga_fc(fonts, outstream):
             # this is wrong, but we don't need tf_Baseline in the fontcontents headers
             # it would be better to convert the fonts first and get the structures form there
             shift_up=0,
-            is_colorfont=_f.levels > 2 or _f.get_property('amiga.ctf_ColorTable')
+            is_colorfont=_f.levels > 2 or _f.rgb_table,
         )
         for _f in fonts
     )
@@ -697,7 +697,7 @@ def save_amiga(fonts, outstream):
     # word-align strike
     strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
     # split into planes if colorfont
-    is_colorfont = font.levels > 2 or font.get_property('amiga.ctf_ColorTable')
+    is_colorfont = font.levels > 2 or font.rgb_table
     depth = (font.levels-1).bit_length()
     if is_colorfont:
         pixels = strike_raster.as_pixels()
@@ -776,11 +776,10 @@ def save_amiga(fonts, outstream):
     )
     logging.debug('TextFont header: %s', font_header)
     if is_colorfont:
-        ct = font.get_property('amiga.ctf_ColorTable')
         ctf_header = _COLOR_TEXT_FONT(
             ctf_Flags=_CTF_FLAGS(
-                CT_COLORFONT=ct is not None,
-                CT_GREYFONT=ct is None,
+                CT_COLORFONT=font.rgb_table is not None,
+                CT_GREYFONT=font.rgb_table is None,
             ),
             ctf_Depth=depth,
             ctf_FgColor=0xff,
@@ -799,10 +798,10 @@ def save_amiga(fonts, outstream):
         )
         logging.debug('ColorFontColors structure: %s', cfc)
         # create greyscale table if none defined
-        if not ct:
+        if not font.rgb_table:
             ct = create_gradient((0, 0, 0), (255, 255, 255), font.levels)
         else:
-            ct = RGBTable(ct)
+            ct = RGBTable(font.rgb_table)
         colortable = (be.uint16 * cfc.cfc_Count)(*(
             (_r>>4) * 256 + (_g & 0xf0) + (_b >> 4)
             for _r, _g, _b in ct
