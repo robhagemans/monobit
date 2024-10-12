@@ -217,8 +217,13 @@ class Location:
         for path in container.iter_sub(self._leafpath):
             subpath = Path(path).relative_to(self._leafpath)
             location = self.join(subpath)
-            with location:
-                yield from location.walk()
+            try:
+                with location:
+                    yield from location.walk()
+            except EnvironmentError as e:
+                # e.g. broken links. log and skip
+                logging.warning(e)
+
 
     def iter_sub(self, prefix):
         """List contents of a subpath."""
