@@ -16,7 +16,7 @@ from itertools import zip_longest
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, Bounds
+from monobit.base import Coord, Bounds, RGB
 from monobit.encoding import encodings
 from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
@@ -52,13 +52,14 @@ if Image:
         ),
         patterns=('*.fnt',),
     )
-    def load_bmfont(infile, outline:bool=False):
+    def load_bmfont(infile, outline:bool=False, background:RGB=RGB(0, 0, 0)):
         """
         Load fonts from Angelcode BMFont format.
 
-        outline: extract outline layer instead of glyph layer
+        outline: extract outline layer instead of glyph layer (default: False)
+        background: colour to interpret as background (default: (0,0,0))
         """
-        return _read_bmfont(infile, outline)
+        return _read_bmfont(infile, outline, background)
 
     @savers.register(linked=load_bmfont)
     def save(
@@ -515,7 +516,11 @@ def _convert_to_rgba(img):
         return img.convert('RGBA')
 
 
-def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), outline=False):
+def _extract(
+        location, name, bmformat,
+        info, common, pages, chars,
+        kernings, outline, background
+    ):
     """Extract glyphs."""
     image_files = {
         int(_page['id']): location.open(_page['file'], 'r')
@@ -591,7 +596,7 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
             image.close()
         # get list of used colours
         colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
-        inklevels = identify_inklevels(colours, background=(0, 0, 0))
+        inklevels = identify_inklevels(colours, background=background)
         pixels_per_byte = 8 // (len(inklevels)-1).bit_length()
         # extract glyphs
         for char, sprite in zip(chars, sprites):
@@ -677,7 +682,7 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
     return properties
 
 
-def _read_bmfont(infile, outline):
+def _read_bmfont(infile, outline, background):
     """Read a bmfont from a container."""
     location = infile.where
     assert isinstance(location, Location)
@@ -702,7 +707,10 @@ def _read_bmfont(infile, outline):
         else:
             logging.debug('found text: %s', fnt.name)
             fontinfo = _parse_text(data)
-    return _extract(location, infile.name, outline=outline, **fontinfo)
+    return _extract(
+        location, infile.name,
+        outline=outline, background=background, **fontinfo
+    )
 
 
 
