@@ -244,6 +244,15 @@ class Glyph(HasProps):
 
     def __repr__(self):
         """Text representation."""
+        inklevels = (
+            '.'
+            + ''.join(f'{_c:01X}' for _c in range(1, self.levels-1))
+            + '@'
+        ) if self.levels <= 16 else (
+            '..'
+            + ''.join(f'{_c:02X}' for _c in range(1, self.levels-1))
+            + '@'
+        )
         elements = (
             f"labels={repr(self._labels)}" if self._labels else '',
             "comment=({})".format(
@@ -251,7 +260,7 @@ class Glyph(HasProps):
             ) if self._comment else '',
             ', '.join(f'{_k}={_v}' for _k, _v in self.get_properties().items()),
             "pixels=({})".format(
-                self.as_text(start="\n  '", end="',")
+                self.as_text(start="\n  '", end="',", inklevels=inklevels)
             ) if self._pixels else ''
         )
         return '{}({})'.format(
