@@ -223,6 +223,14 @@ _COMMON = le.Struct(
     blueChnl='uint8',
 )
 
+# channel categories
+_CHNL_GLYPH = 0
+_CHNL_OUTLINE = 1
+_CHNL_BOTH = 2
+_CHNL_ZERO = 3
+_CHNL_ONE = 4
+
+
 # page tag
 # part of common struct in binary file
 
@@ -512,16 +520,22 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
             # exclude 3 (set to 0) and 4 (set to 1)
             if outline:
                 # select channels that hold outline or glyph+outline
-                channels = (1, 2)
+                channels = (_CHNL_OUTLINE, _CHNL_BOTH)
             else:
                 # select channels that hold glyph or glyph+outline
-                channels = (0, 2)
+                channels = (_CHNL_GLYPH, _CHNL_BOTH)
             masks = (
                 bool(char.chnl & _CHNL_R) and common.redChnl in channels,
                 bool(char.chnl & _CHNL_G) and common.greenChnl in channels,
                 bool(char.chnl & _CHNL_B) and common.blueChnl in channels,
                 bool(char.chnl & _CHNL_A) and common.alphaChnl in channels,
             )
+            is_glyph_and_outline = any((
+                bool(char.chnl & _CHNL_R) and common.redChnl == _CHNL_BOTH,
+                bool(char.chnl & _CHNL_G) and common.greenChnl == _CHNL_BOTH,
+                bool(char.chnl & _CHNL_B) and common.blueChnl == _CHNL_BOTH,
+                bool(char.chnl & _CHNL_A) and common.alphaChnl == _CHNL_BOTH,
+            ))
             if char.width and char.height:
                 imgdata = crop.getdata()
                 # get values from masked channels for each char
@@ -533,12 +547,25 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
                 # convert all to RGB values
                 # 1- and 2-component values are converted to greyscale
                 # alpha is dropped from RGBA
-                masked = tuple(
-                    _t[:3] if len(_t) >= 3 else (sum(_t)//len(_t),) * 3
+                masked = (
+                    _t[:3] if len(_t) >= 3 else _t if not _t else (sum(_t)//len(_t),) * 3
                     for _t in masked
                 )
+                if is_glyph_and_outline:
+                    if outline:
+                        masked = (
+                            tuple(min(255, _v*2) for _v in _pix)
+                            for _pix in masked
+                        )
+                    else:
+                        masked = (
+                            tuple(max(0, _v*2-255) for _v in _pix)
+                            for _pix in masked
+                        )
+                else:
             else:
                 masked = ()
+            masked = tuple(masked)
             sprites.append(masked)
         # close resources
         for image in sheets.values():
