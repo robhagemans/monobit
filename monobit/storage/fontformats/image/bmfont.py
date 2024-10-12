@@ -223,11 +223,17 @@ _COMMON = le.Struct(
     blueChnl='uint8',
 )
 
-# channel categories
+# channel options
+# https://www.angelcode.com/products/bmfont/doc/export_options.html
+# > glyph : The channel will be set according to the glyph geometry. A value of 1 means the pixel is within the glyph.
 _CHNL_GLYPH = 0
+# > outline : The channel will be set according to the outline geometry. A value of 1 means the pixel is within the outline or glyph.
 _CHNL_OUTLINE = 1
+# > glyph + outline : The value is encoded to allow separation of glyph and outline. A value of 0.5 means the pixel is within the outline, but not within the glyph. A value of 1 means the pixel is within the glyph.
 _CHNL_BOTH = 2
+# > zero : All pixels in the channel will be set to 0.
 _CHNL_ZERO = 3
+# > one : All pixels in the channel will be set to 1.
 _CHNL_ONE = 4
 
 
