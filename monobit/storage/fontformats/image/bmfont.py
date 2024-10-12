@@ -66,7 +66,7 @@ if Image:
             image_size:Coord=None,
             image_format:str='png',
             grid:bool=False,
-            packed:bool=True,
+            packed:bool=False,
             spacing:Coord=Coord(0, 0),
             padding:Bounds=Bounds(0, 0, 0, 0),
             descriptor:str='text',
@@ -76,11 +76,11 @@ if Image:
 
         image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: estimate)
         image_format: image format of the spritesheets (default: 'png')
-        packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
+        packed: if true, use each of the RGB channels as a separate spritesheet (default: False)
         grid: if true, use grid image instead of spritesheet (default: False)
         spacing: x,y spacing between individual glyphs (default: 0x0)
         padding: left, top, right, bottom unused spacing around edges (default: 0,0,0,0)
-        descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
+        descriptor: font descriptor file format, one of 'text', 'xml', 'binary', 'json' (default: 'text')
         """
         font = ensure_single(fonts)
         _create_bmfont(
