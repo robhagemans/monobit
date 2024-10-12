@@ -582,7 +582,6 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
                             tuple(max(0, _v*2-255) for _v in _pix)
                             for _pix in masked
                         )
-                else:
             else:
                 masked = ()
             masked = tuple(masked)
