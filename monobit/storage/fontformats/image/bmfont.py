@@ -495,6 +495,20 @@ def _parse_binary(data):
         props['kernings'] = []
     return props
 
+
+def _convert_to_rgba(img):
+    """Convert image to RGBA format."""
+    # 8-bit images use 'alpha' in the indicator file
+    # so we need the shading value to go into alpha too
+    # while Image.convert takes it into RGB and sets A=255
+    #
+    if img.mode == 'L':
+        return Image.merge('RGBA', (img,)*4)
+    else:
+        # theoretically we should only see 8- or 32-bit textures, but who knows
+        return img.convert('RGBA')
+
+
 def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), outline=False):
     """Extract glyphs."""
     image_files = {
@@ -504,7 +518,7 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
     sheets = {_id: Image.open(_file) for _id, _file in image_files.items()}
     imgformats = set(str(_img.format) for _img in sheets.values())
     # ensure we have RGBA channels
-    sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
+    sheets = {_k: _convert_to_rgba(_v) for _k, _v in sheets.items()}
     glyphs = []
     if chars:
         # extract channel masked sprites
