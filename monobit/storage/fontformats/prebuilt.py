@@ -283,7 +283,7 @@ def _convert_from_pf(pf_props, pf_masks):
         )
     fonts = tuple(
         Font(
-            _glyphs, font_id=pf_props.identifier,
+            _glyphs,
             family=pf_props.fontName.decode('latin-1'),
             # from the source code, we deduce
             #  matrix.a / fixedScale == bdf SIZE.PointSize * (75 dpi) / SIZE.Xres
@@ -294,6 +294,9 @@ def _convert_from_pf(pf_props, pf_masks):
             dpi=(75 * _matrix.a / _matrix.d, 75),
             point_size=_matrix.d / _FIXEDSCALE,
             encoding='latin-1' if pf_props.characterSetName == b'ISOLatin1CharacterSet' else '',
+            **{
+                'prebuilt.font_id': pf_props.identifier,
+            }
         ).label(char_from=encodings['adobe'])
         for _matrix, _glyphs in zip(pf_props.matrices, strikes)
     )

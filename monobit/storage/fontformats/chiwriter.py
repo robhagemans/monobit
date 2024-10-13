@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from pathlib import Path
 
 from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Raster
@@ -181,7 +182,9 @@ def load_chiwriter(instream, filetype:int=None):
         glyphs,
         source_format=formatstr,
         name=header.filename.decode('latin-1').split('.')[0],
-        font_id=header.filename.decode('latin-1'),
         line_height=line_height,
     )
+    chiwriter_name = header.filename.decode('latin-1')
+    if chiwriter_name != Path(instream.name).name:
+        font = font.set_property('chiwriter.font_id', chiwriter_name)
     return font

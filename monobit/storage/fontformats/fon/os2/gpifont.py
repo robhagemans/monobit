@@ -616,7 +616,6 @@ def convert_os2_properties(font_data):
     properties = Props(
         family=metrics.szFamilyname.decode('latin-1'),
         name=metrics.szFacename.decode('latin-1'),
-        font_id=metrics.usRegistryId,
         encoding=encoding,
         ascent=metrics.yLowerCaseAscent,
         descent=metrics.yLowerCaseDescent,
@@ -644,5 +643,8 @@ def convert_os2_properties(font_data):
         strikethrough_thickness=metrics.yStrikeoutSize,
         # strikeout height above baseline
         strikethrough_ascent=metrics.yStrikeoutPosition,
+        **{
+            'os2.font_id': metrics.usRegistryId,
+        }
     )
     return properties
