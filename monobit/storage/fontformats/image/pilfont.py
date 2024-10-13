@@ -98,7 +98,7 @@ if Image:
         outstream.write(b';;;;;;%d;\n' % font.line_height)
         outstream.write(b'DATA\n')
         x, y = 0, 0
-        glyph_map = GlyphMap()
+        glyph_map = GlyphMap(levels=font.levels)
         for cp in range(256):
             try:
                 glyph = font.get_glyph(codepoint=cp, missing='raise')
@@ -129,5 +129,5 @@ if Image:
         # write image
         image_name = Path(outstream.name).stem + '.pbm'
         with outstream.where.open(image_name, 'w') as image_file:
-            image = glyph_map.as_image(ink=1, paper=0, border=0, invert_y=True)
+            image = glyph_map.as_image(image_mode='1', invert_y=True)
             image.save(image_file, format='png')

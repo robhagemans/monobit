@@ -12,7 +12,7 @@ from pathlib import PurePath
 from unicodedata import normalize
 
 from monobit.plumbing.scripting import scriptable
-from monobit.base import Coord, Bounds, NOT_SET
+from monobit.base import Coord, Bounds, NOT_SET, RGBTable
 from monobit.base import to_int, Any
 from monobit.encoding import encoder, EncodingName, Encoder, Indexer, Charmap
 from monobit.base.binary import ceildiv
@@ -92,8 +92,6 @@ class FontProperties:
     # maximum raster (not necessarily ink) width/height
     raster_size: Coord
     raster: Bounds
-    # greyscale levels
-    levels: int
     # width, height of the character cell
     cell_size: Coord
     # overall ink bounds - overlay all glyphs with fixed origin and determine maximum ink extent
@@ -107,6 +105,13 @@ class FontProperties:
     cap_width: int
     # advance width of digits, if fixed.
     digit_width: int
+
+    # colour and greyscale
+
+    # number of colours or greyscale levels
+    levels: int
+    # level to colour mapping table
+    rgb_table: RGBTable = None
 
     # descriptive typographic quantities
 
@@ -154,7 +159,7 @@ class FontProperties:
     # number of pixels to smear in advance direction to simulate bold weight
     bold_smear: int = 1
     # pitch when simulating italic by shearing glyphs
-    italic_pitch: Coord = (1, 1)
+    italic_pitch: Coord = Coord(1, 1)
     # thickness of outline effect, in pixels
     outline_thickness: int = 1
     # number of pixels in underline

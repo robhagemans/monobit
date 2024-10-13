@@ -16,14 +16,14 @@ from itertools import zip_longest
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, Bounds
+from monobit.base import Coord, Bounds, RGB
 from monobit.encoding import encodings
 from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
 from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
-from monobit.render import GlyphMap, grid_map
+from monobit.render import GlyphMap, grid_map, RGBTable
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
@@ -52,13 +52,14 @@ if Image:
         ),
         patterns=('*.fnt',),
     )
-    def load_bmfont(infile, outline:bool=False):
+    def load_bmfont(infile, outline:bool=False, background:RGB=RGB(0, 0, 0)):
         """
         Load fonts from Angelcode BMFont format.
 
-        outline: extract outline layer instead of glyph layer
+        outline: extract outline layer instead of glyph layer (default: False)
+        background: colour to interpret as background (default: (0,0,0))
         """
-        return _read_bmfont(infile, outline)
+        return _read_bmfont(infile, outline, background)
 
     @savers.register(linked=load_bmfont)
     def save(
@@ -66,7 +67,7 @@ if Image:
             image_size:Coord=None,
             image_format:str='png',
             grid:bool=False,
-            packed:bool=True,
+            packed:bool=False,
             spacing:Coord=Coord(0, 0),
             padding:Bounds=Bounds(0, 0, 0, 0),
             descriptor:str='text',
@@ -76,11 +77,11 @@ if Image:
 
         image_size: pixel width,height of the spritesheet(s) storing the glyphs (default: estimate)
         image_format: image format of the spritesheets (default: 'png')
-        packed: if true, use each of the RGB channels as a separate spritesheet (default: True)
+        packed: if true, use each of the RGB channels as a separate spritesheet (default: False)
         grid: if true, use grid image instead of spritesheet (default: False)
         spacing: x,y spacing between individual glyphs (default: 0x0)
         padding: left, top, right, bottom unused spacing around edges (default: 0,0,0,0)
-        descriptor: font descriptor file format, one of 'text', 'json' (default: 'text')
+        descriptor: font descriptor file format, one of 'text', 'xml', 'binary', 'json' (default: 'text')
         """
         font = ensure_single(fonts)
         _create_bmfont(
@@ -222,6 +223,20 @@ _COMMON = le.Struct(
     greenChnl='uint8',
     blueChnl='uint8',
 )
+
+# channel options
+# https://www.angelcode.com/products/bmfont/doc/export_options.html
+# > glyph : The channel will be set according to the glyph geometry. A value of 1 means the pixel is within the glyph.
+_CHNL_GLYPH = 0
+# > outline : The channel will be set according to the outline geometry. A value of 1 means the pixel is within the outline or glyph.
+_CHNL_OUTLINE = 1
+# > glyph + outline : The value is encoded to allow separation of glyph and outline. A value of 0.5 means the pixel is within the outline, but not within the glyph. A value of 1 means the pixel is within the glyph.
+_CHNL_BOTH = 2
+# > zero : All pixels in the channel will be set to 0.
+_CHNL_ZERO = 3
+# > one : All pixels in the channel will be set to 1.
+_CHNL_ONE = 4
+
 
 # page tag
 # part of common struct in binary file
@@ -487,7 +502,25 @@ def _parse_binary(data):
         props['kernings'] = []
     return props
 
-def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), outline=False):
+
+def _convert_to_rgba(img):
+    """Convert image to RGBA format."""
+    # 8-bit images use 'alpha' in the indicator file
+    # so we need the shading value to go into alpha too
+    # while Image.convert takes it into RGB and sets A=255
+    #
+    if img.mode == 'L':
+        return Image.merge('RGBA', (img,)*4)
+    else:
+        # theoretically we should only see 8- or 32-bit textures, but who knows
+        return img.convert('RGBA')
+
+
+def _extract(
+        location, name, bmformat,
+        info, common, pages, chars,
+        kernings, outline, background
+    ):
     """Extract glyphs."""
     image_files = {
         int(_page['id']): location.open(_page['file'], 'r')
@@ -496,7 +529,7 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
     sheets = {_id: Image.open(_file) for _id, _file in image_files.items()}
     imgformats = set(str(_img.format) for _img in sheets.values())
     # ensure we have RGBA channels
-    sheets = {_k: _v.convert('RGBA') for _k, _v in sheets.items()}
+    sheets = {_k: _convert_to_rgba(_v) for _k, _v in sheets.items()}
     glyphs = []
     if chars:
         # extract channel masked sprites
@@ -509,33 +542,61 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
             if not char.chnl:
                 char.chnl = 15
             # keep only channels that hold this char
-            # drop any zeroed/oned channels and the outline channel
+            # exclude 3 (set to 0) and 4 (set to 1)
             if outline:
-                channels = (1, 2)
+                # select channels that hold outline or glyph+outline
+                channels = (_CHNL_OUTLINE, _CHNL_BOTH)
             else:
-                channels = (0, 2)
+                # select channels that hold glyph or glyph+outline
+                channels = (_CHNL_GLYPH, _CHNL_BOTH)
             masks = (
                 bool(char.chnl & _CHNL_R) and common.redChnl in channels,
                 bool(char.chnl & _CHNL_G) and common.greenChnl in channels,
                 bool(char.chnl & _CHNL_B) and common.blueChnl in channels,
                 bool(char.chnl & _CHNL_A) and common.alphaChnl in channels,
             )
+            is_glyph_and_outline = any((
+                bool(char.chnl & _CHNL_R) and common.redChnl == _CHNL_BOTH,
+                bool(char.chnl & _CHNL_G) and common.greenChnl == _CHNL_BOTH,
+                bool(char.chnl & _CHNL_B) and common.blueChnl == _CHNL_BOTH,
+                bool(char.chnl & _CHNL_A) and common.alphaChnl == _CHNL_BOTH,
+            ))
             if char.width and char.height:
-                # require all glyph channels above threshold
                 imgdata = crop.getdata()
-                masked = tuple(
+                # get values from masked channels for each char
+                # this could be a mix of 1, 2, 3 and 4-element tuples
+                masked = (
                     tuple(_pix for _pix, _mask in zip(_rgba, masks) if _mask)
                     for _rgba in imgdata
                 )
+                # convert all to RGB values
+                # 1- and 2-component values are converted to greyscale
+                # alpha is dropped from RGBA
+                masked = (
+                    _t[:3] if len(_t) >= 3 else _t if not _t else (sum(_t)//len(_t),) * 3
+                    for _t in masked
+                )
+                if is_glyph_and_outline:
+                    if outline:
+                        masked = (
+                            tuple(min(255, _v*2) for _v in _pix)
+                            for _pix in masked
+                        )
+                    else:
+                        masked = (
+                            tuple(max(0, _v*2-255) for _v in _pix)
+                            for _pix in masked
+                        )
             else:
                 masked = ()
+            masked = tuple(masked)
             sprites.append(masked)
         # close resources
         for image in sheets.values():
             image.close()
-        # check if font is monochromatic
+        # get list of used colours
         colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
-        inklevels = identify_inklevels(colours, background='darkest')
+        inklevels = identify_inklevels(colours, background=background)
         pixels_per_byte = 8 // (len(inklevels)-1).bit_length()
         # extract glyphs
         for char, sprite in zip(chars, sprites):
@@ -582,7 +643,12 @@ def _extract(location, name, bmformat, info, common, pages, chars, kernings=(), 
         )
         for _glyph, _char in zip(glyphs, chars)
     ]
-    font = Font(glyphs, **properties)
+    font = Font(
+        glyphs,
+        # if inklevels are evenly spaced greyscale we shouldn't store the colourtable
+        rgb_table=inklevels if not inklevels.is_greyscale() else None,
+        **properties
+    )
     font = font.label()
     return font
 
@@ -600,7 +666,7 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
         encoding = _CHARSET_STR_MAP.get(charset.upper(), charset)
     properties = {
         'source_format':
-            'BMFont ({} descriptor; {} spritesheet)'.format(bmformat, ','.join(imgformats)),
+            'BMFont ({} descriptor; {} texture)'.format(bmformat, ','.join(imgformats)),
         'source_name': Path(name).name,
         'family': bmfont_props.pop('face'),
         'line_height': common.lineHeight,
@@ -611,19 +677,14 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
         properties['weight'] = 'bold'
     if _to_int(bmfont_props.pop('italic')):
         properties['slant'] = 'italic'
-    # drop other props if they're default value
-    bmfont_props = {
-        _k: _v for _k, _v in bmfont_props.items()
-        if str(_v) != _UNPARSED_PROPS.get(_k, '')
-    }
-    properties['bmfont'] = ' '.join(
-        f'{_k}=' + ','.join(str(_v).split(','))
-        for _k, _v in bmfont_props.items()
-    )
+    # keep other props as custom if they're not default value
+    for key, value in bmfont_props.items():
+        if str(value) != _UNPARSED_PROPS.get(key, ''):
+            properties[f'bmfont.{key}'] = str(value)
     return properties
 
 
-def _read_bmfont(infile, outline):
+def _read_bmfont(infile, outline, background):
     """Read a bmfont from a container."""
     location = infile.where
     assert isinstance(location, Location)
@@ -648,7 +709,10 @@ def _read_bmfont(infile, outline):
         else:
             logging.debug('found text: %s', fnt.name)
             fontinfo = _parse_text(data)
-    return _extract(location, infile.name, outline=outline, **fontinfo)
+    return _extract(
+        location, infile.name,
+        outline=outline, background=background, **fontinfo
+    )
 
 
 
@@ -660,7 +724,6 @@ def _create_bmfont(
         outfile, font, *,
         size, packed, grid, spacing, padding,
         image_format, descriptor,
-        paper=0, ink=255, border=0,
     ):
     """Create a bmfont package."""
     # ensure codepoint/char values are set as appropriate
@@ -683,15 +746,15 @@ def _create_bmfont(
         )
     else:
         # crop glyphs
-        glyphs = tuple(_g.reduce() for _g in font.glyphs)
+        font = font.reduce()
         if size is None:
             n_layers = 4 if packed else 1
-            size = _estimate_size(glyphs, n_layers, padding, spacing)
+            size = _estimate_size(font.glyphs, n_layers, padding, spacing)
         glyph_map = spritesheet(
-            glyphs, size=size, spacing=spacing, padding=padding,
+            font, size=size, spacing=spacing, padding=padding,
         )
     # draw images
-    sheets = _draw_images(glyph_map, packed, paper, ink, border)
+    sheets = _draw_images(glyph_map, packed)
     # save images and record names
     pages = _save_pages(outfile, font, sheets, image_format)
     # create the descriptor data structure
@@ -977,8 +1040,8 @@ def _write_binary_descriptor(outfile, props):
 def _save_pages(outfile, font, sheets, image_format):
     """Save images and record names."""
     location = outfile.where
-    path = font.family
-    fontname = font.name.replace(' ', '_')
+    path = font.family or font.name or 'font'
+    fontname = font.name.replace(' ', '_') or 'font'
     pages = []
     for page_id, sheet in enumerate(sheets):
         name = location.unused_name(f'{path}/{fontname}_{page_id}.{image_format}')
@@ -994,17 +1057,16 @@ def _save_pages(outfile, font, sheets, image_format):
 ###############################################################################
 # draw spritesheets
 
-def _draw_images(glyph_map, packed, paper, ink, border):
+def _draw_images(glyph_map, packed):
     """Draw images based on glyph map."""
-    images = glyph_map.to_images(
-        paper=paper, ink=ink, border=border,
-        invert_y=True, transparent=False
-    )
-    width, height = images[0].width, images[0].height
     # pack 4 sheets per image in RGBA layers
     if packed:
+        images = glyph_map.to_images(
+            invert_y=True, transparent=False, image_mode='L',
+        )
+        width, height = images[0].width, images[0].height
         # grouper: quartets, fill with empties
-        empty = Image.new('L', (width, height), border)
+        empty = Image.new('L', (width, height), 0)
         args = [iter(images)] * 4
         quartets = zip_longest(*args, fillvalue=empty)
         return tuple(
@@ -1012,17 +1074,21 @@ def _draw_images(glyph_map, packed, paper, ink, border):
             Image.merge('RGBA', (_q[2], _q[1], _q[0], _q[3]))
             for _q in quartets
         )
+    else:
+        images = glyph_map.to_images(
+            invert_y=True, transparent=False, image_mode='RGB',
+        )
     return images
 
 
 ###############################################################################
 # packed spritesheets
 
-def spritesheet(glyphs, *, size, spacing, padding):
+def spritesheet(font, *, size, spacing, padding):
     """Determine where to draw glyphs in sprite sheets."""
     # sort by area, large to small. keep mapping table
     sorted_glyphs = tuple(sorted(
-        enumerate(glyphs),
+        enumerate(font.glyphs),
         key=lambda _p: _p[1].width*_p[1].height,
         reverse=True,
     ))
@@ -1039,7 +1105,7 @@ def spritesheet(glyphs, *, size, spacing, padding):
             for _g in glyphs
         ):
         raise ValueError('Image size is too small for largest glyph.')
-    glyph_map = GlyphMap()
+    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
     sheets = []
     while True:
         # output glyphs
@@ -1075,10 +1141,10 @@ def _estimate_size(glyphs, n_layers, padding, spacing):
         (_g.width+spacing.x) * (_g.height+spacing.y)
         for _g in glyphs
     )
-    edge = int(ceil(1.01 * sqrt(total_area / n_layers)))
+    edge = sqrt(total_area / n_layers)
     return Coord(
-        max_width * ceildiv(edge, max_width) + padding.left + padding.right,
-        max_height * ceildiv(edge, max_height) + padding.top + padding.bottom,
+        max_width * int(ceil(edge / max_width)) + padding.left + padding.right,
+        max_height * int(ceil(edge / max_height)) + padding.top + padding.bottom,
     )
 
 

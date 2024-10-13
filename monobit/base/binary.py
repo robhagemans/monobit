@@ -53,15 +53,6 @@ def reverse_by_group(bitseq, fill='0', group_size=8):
 ###############################################################################
 # bytes to pixels
 
-# default string inklevels
-INKLEVELS = {
-    256: ''.join(chr(_i) for _i in range(256)),
-    16: '0123456789abcdef',
-    4: '0123',
-    2: '01',
-}
-
-
 def bytes_to_pixels(byteseq, levels):
     """Convert bytes to pixels in level-specific representation."""
     if levels not in (2, 4, 16, 256):

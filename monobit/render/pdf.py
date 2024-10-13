@@ -19,6 +19,7 @@ from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
 from .chart import create_chart, aligns_right
+from .glyphmap import create_image_colours
 
 
 if reportlab:
@@ -128,6 +129,12 @@ if reportlab:
             )
         canvas.translate(-margin_x, -margin_y)
 
+        # get colour table or gradient
+        inklevels = create_image_colours(
+            image_mode='RGB', rgb_table=font.rgb_table,
+            levels=font.levels, paper=paper, ink=ink,
+        )
+
         # draw pages
         for sheet in range(max_sheet+1):
             canvas.setPageSize((page_x, page_y))
@@ -142,11 +149,8 @@ if reportlab:
                 pixels = record.glyph.as_matrix()
                 for y in range(len(pixels)):
                     for x in range(len(pixels[y])):
-                        fill = pixels[y][x] / (font.levels-1)
-                        fill_rgb = tuple(
-                            _i * fill/255 + _p * (1-fill)/255
-                            for _i, _p in zip(ink, paper)
-                        )
+                        fill_rgb = inklevels[pixels[y][x]]
+                        fill_rgb = tuple(_v/255 for _v in fill_rgb)
                         if all(_c > 0 for _c in pixel_border):
                             stroke_rgb = tuple(_c / 255 for _c in pixel_border)
                         else:

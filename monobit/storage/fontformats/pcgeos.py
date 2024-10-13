@@ -416,7 +416,6 @@ def load_pcgeos(instream):
         font = Font(
             glyphs,
             family=font_info.FI_faceName.decode('ascii', 'replace'),
-            font_id=font_info.FI_fontID,
             point_size=(
                 point_size_entry.PSE_pointSize_int +
                 point_size_entry.PSE_pointSize_frac / 256
@@ -450,6 +449,9 @@ def load_pcgeos(instream):
             slant='italic' if point_size_entry.PSE_style.TS_ITALIC else None,
             weight='bold' if point_size_entry.PSE_style.TS_BOLD else None,
             style=_FAMILY_TO_STYLE.get(font_info.FI_family.FA_FAMILY, None),
+            **{
+                'pcgeos.font_id': font_info.FI_fontID,
+            }
         )
         font = font.label(char_from='pc-geos')
         fonts.append(font)
@@ -641,7 +643,7 @@ def _prepare_pcgeos(fonts):
 
 def _get_metadata(font):
     try:
-        font_id = int(font.font_id)
+        font_id = font.get_property('pcgeos.font_id') or int(font.font_id)
     except ValueError:
         font_id = 0
     return Props(

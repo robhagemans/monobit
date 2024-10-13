@@ -5,31 +5,23 @@ monobit.render.glyphmap - glyph maps
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
+
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base.blocks import matrix_to_blocks, matrix_to_shades, blockstr
-from ..base import Props, Coord, RGB
-from ..core.raster import turn_method
-from ..plumbing import convert_arguments
+from monobit.base import Props, Coord, RGB, blockstr
+from monobit.core.raster import turn_method
+from monobit.plumbing import convert_arguments
+from .blocks import matrix_to_blocks, matrix_to_shades
+from .rgb import create_image_colours
 
 
-def glyph_to_image(glyph, paper, ink):
+def glyph_to_image(glyph, image_mode, inklevels):
     """Create image of single glyph."""
-    image_mode = _get_image_mode(paper, ink, paper)
+    if not Image:
+        raise ImportError('Rendering to image requires PIL module.')
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
-    # create ink gradient
-    if isinstance(ink, int):
-        ink = (ink,)
-        paper = (paper,)
-    maxlevel = glyph.levels - 1
-    inklevels = tuple(
-        tuple(
-            (_i * _ink + (maxlevel - _i) * _paper) // maxlevel
-            for _ink, _paper in zip(ink, paper)
-        )
-        for _i in range(glyph.levels)
-    )
     data = glyph.as_pixels(inklevels=inklevels)
     if image_mode in ('RGB', 'RGBA'):
         # itertools grouper idiom, split in groups of 3 or 4 bytes
@@ -40,36 +32,16 @@ def glyph_to_image(glyph, paper, ink):
     return charimg
 
 
-def _get_image_mode(*colourspec):
-    if not Image:
-        raise ImportError('Rendering to image requires PIL module.')
-    if len(set(type(_c) for _c in colourspec)) > 1:
-        raise TypeError(
-            'paper, ink and border must be of the same type; '
-            f'got {colourspec}'
-        )
-    paper, ink, border = colourspec
-    if paper == border == 0 and ink == 1:
-        image_mode = '1'
-    elif isinstance(paper, int):
-        image_mode = 'L'
-    elif isinstance(paper, tuple) and len(paper) == 3:
-        image_mode = 'RGB'
-    elif isinstance(paper, tuple) and len(paper) == 4:
-        image_mode = 'RGBA'
-    else:
-        raise TypeError('paper, ink and border must be either int or RGB(A) tuple')
-    return image_mode
-
-
 class GlyphMap:
 
-    def __init__(self, map=()):
+    def __init__(self, map=(), *, levels, rgb_table=None):
         self._map = list(map)
         self._labels = []
         self._turns = 0
         self._scale_x = 1
         self._scale_y = 1
+        self._levels = levels
+        self._rgb_table = rgb_table
 
     def __iter__(self):
         return iter(self._map)
@@ -118,7 +90,8 @@ class GlyphMap:
         # note that this gives the bounds across *all* sheets
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
-        canvas = _Canvas.blank(max_x - min_x, max_y - min_y)
+        levels = max((_entry.glyph.levels for _entry in self._map), default=2)
+        canvas = _Canvas.blank(max_x - min_x, max_y - min_y, levels=levels)
         for entry in self._map:
             if entry.sheet == sheet:
                 canvas.blit(entry.glyph, entry.x - min_x, entry.y - min_y)
@@ -128,24 +101,39 @@ class GlyphMap:
         return canvas.stretch(self._scale_x, self._scale_y).turn(self._turns)
 
     def to_images(
-            self, *, paper=0, ink=255, border=0, invert_y=False,
-            transparent=True,
+            self, *,
+            paper=(0, 0, 0), ink=(255, 255, 255), border=(32, 32, 32),
+            invert_y=False, transparent=True, image_mode='RGB',
         ):
         """Draw images based on sheets in glyph map."""
-        image_mode = _get_image_mode(paper, ink, border)
+        if not Image:
+            raise ImportError('Rendering to image requires PIL module.')
+        inklevels = create_image_colours(
+            image_mode=image_mode, rgb_table=self._rgb_table,
+            levels=self._levels, ink=ink, paper=paper
+        )
+        masklevels = [0] + [1] * (self._levels-1)
+        # mono and greyscale images have fixed levels
+        if image_mode != 'RGB':
+            border = 0
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
-        images = [Image.new(image_mode, (width, height), border) for _ in range(last+1)]
+        images = [
+            Image.new(image_mode, (width, height), border)
+            for _ in range(last+1)
+        ]
         for entry in self._map:
-            # we need to treat the background colour as transparent
-            # we create the glyph as a mask and cut it from a solid ink-colour
             if transparent:
-                mask = glyph_to_image(entry.glyph, 0, 255)
-                colour = Image.new(image_mode, mask.size, ink)
+                # if glyphs overlap, we need to treat the background colour as transparent
+                # create a mask to paste only non-background pixels
+                # for greyscale and colour, alpha_composite would be better
+                mask = glyph_to_image(
+                    entry.glyph, image_mode='1', inklevels=masklevels,
+                )
             else:
                 mask = None
-                colour = glyph_to_image(entry.glyph, paper, ink)
+            colour = glyph_to_image(entry.glyph, image_mode, inklevels)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
@@ -162,12 +150,13 @@ class GlyphMap:
 
     def as_image(
             self, *,
-            ink=255, paper=0, border=0,
-            sheet=0, invert_y=False,
+            paper=(0, 0, 0), ink=(255, 255, 255), border=(32, 32, 32),
+            sheet=0, invert_y=False, image_mode='RGB',
         ):
         """Convert glyph map to image."""
         images = self.to_images(
-            ink=ink, paper=paper, border=border, invert_y=invert_y,
+            ink=ink, paper=paper, border=border,
+            invert_y=invert_y, image_mode=image_mode
         )
         return images[sheet]
 
@@ -192,11 +181,18 @@ class GlyphMap:
 
     def as_shades(
             self, *,
-            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None, sheet=0,
+            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None,
+            sheet=0,
         ):
         """Convert glyph map to ansi coloured block characters."""
         canvas = self.to_canvas(sheet=sheet)
-        return canvas.as_shades(paper=paper, ink=ink, border=border)
+        inklevels = create_image_colours(
+            image_mode='RGB', rgb_table=self._rgb_table,
+            levels=self._levels, ink=ink, paper=paper
+        )
+        return canvas.as_shades(
+            inklevels=inklevels, border=border
+        )
 
     def get_sheet(self, sheet=0):
         """Return glyph records for a given sheet."""
@@ -219,17 +215,18 @@ class _Canvas:
         self.levels = levels
 
     @classmethod
-    def blank(cls, width, height, fill=-1):
+    def blank(cls, width, height, fill=-1, levels=2):
         """Create a canvas in background colour."""
         canvas = [[fill]*width for _ in range(height)]
-        return cls(canvas)
+        return cls(canvas, levels=levels)
 
     def blit(self, raster, grid_x, grid_y):
         """Draw a matrix onto a canvas, leaving existing ink in place."""
         if not raster.width or not self.width:
             return self
+        if raster.levels > self.levels:
+            raise ValueError('Too many inklevels in raster.')
         matrix = raster.as_matrix()
-        self.levels = max(self.levels, raster.levels)
         for work_y in reversed(range(raster.height)):
             if 0 <= grid_y + work_y < self.height:
                 row = self._pixels[self.height - (grid_y + work_y) - 1]
@@ -293,6 +290,10 @@ class _Canvas:
 
     def as_blocks(self, resolution=Coord(2, 2)):
         """Convert glyph map to a string of block characters."""
+        if self.levels > 2:
+            raise ValueError(
+                f"Greyscale levels not supported in 'blocks' output, use 'shades'."
+            )
         if not self.height:
             return ''
         # replace background with paper
@@ -303,18 +304,17 @@ class _Canvas:
             )
             for _row in self._pixels
         )
-        block_matrix = matrix_to_blocks(pixels, *resolution, levels=self.levels)
+        block_matrix = matrix_to_blocks(pixels, *resolution)
         self._write_labels_to_matrix(block_matrix, resolution=resolution)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')
 
-    def as_shades(self, *, paper, ink, border):
-        """Convert glyph map to a string of block characters with ansi colours."""
+    def as_shades(self, *, inklevels, border):
+        """Convert canvas to a string of block characters with ansi colours."""
         if not self.height:
             return ''
         block_matrix = matrix_to_shades(
-            self._pixels, levels=self.levels,
-            paper=paper, ink=ink, border=border,
+            self._pixels, inklevels=inklevels, border=border,
         )
         self._write_labels_to_matrix(block_matrix)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)

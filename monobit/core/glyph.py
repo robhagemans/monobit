@@ -244,6 +244,15 @@ class Glyph(HasProps):
 
     def __repr__(self):
         """Text representation."""
+        inklevels = (
+            '.'
+            + ''.join(f'{_c:01X}' for _c in range(1, self.levels-1))
+            + '@'
+        ) if self.levels <= 16 else (
+            '..'
+            + ''.join(f'{_c:02X}' for _c in range(1, self.levels-1))
+            + '@'
+        )
         elements = (
             f"labels={repr(self._labels)}" if self._labels else '',
             "comment=({})".format(
@@ -251,7 +260,7 @@ class Glyph(HasProps):
             ) if self._comment else '',
             ', '.join(f'{_k}={_v}' for _k, _v in self.get_properties().items()),
             "pixels=({})".format(
-                self.as_text(start="\n  '", end="',")
+                self.as_text(start="\n  '", end="',", inklevels=inklevels)
             ) if self._pixels else ''
         )
         return '{}({})'.format(
@@ -539,10 +548,6 @@ class Glyph(HasProps):
     def as_text(self, *, inklevels=NOT_SET, start='', end='\n'):
         """Convert glyph to text."""
         return self._pixels.as_text(inklevels=inklevels, start=start, end=end)
-
-    def as_blocks(self, resolution=(2, 2)):
-        """Convert glyph to a string of quadrant block characters."""
-        return self._pixels.as_blocks(resolution)
 
     def as_vector(self, inklevels=NOT_SET):
         """Return flat tuple of user-specified pixel objects."""

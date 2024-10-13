@@ -765,7 +765,7 @@ def _convert_name_props(name):
         family=_decode_name(name.names, 1),
         # weight or slant or both
         subfamily=_decode_name(name.names, 2),
-        font_id=_decode_name(name.names, 3),
+        # font_id=_decode_name(name.names, 3),
         name=_decode_name(name.names, 4),
         #
         revision=_convert_version_string(_decode_name(name.names, 5)),
@@ -783,6 +783,14 @@ def _convert_name_props(name):
         #author_url=_decode_name(name.names, 12),
         notice=_decode_name(name.names, 13),
         #license_url=_decode_name(name.names, 14),
+        **{
+            'sfnt.font_id': _decode_name(name.names, 3),
+            'sfnt.trademark': _decode_name(name.names, 7),
+            'sfnt.description': _decode_name(name.names, 10),
+            'sfnt.vendor_url': _decode_name(name.names, 11),
+            'sfnt.author_url': _decode_name(name.names, 12),
+            'sfnt.license_url': _decode_name(name.names, 14),
+        }
     )
     return props
 

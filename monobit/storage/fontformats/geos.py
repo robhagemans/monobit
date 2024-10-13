@@ -405,8 +405,9 @@ def load_geos(instream, merge_mega:bool=True, extract_del:bool=False):
         # 254 bytes per sector - the cvt does not store the initial pointer
         nxt = ceildiv(true_data_size, 254) * 254
         instream.seek(anchor + nxt)
+        props['geos.font_id'] = font_id
         if font is not None:
-            font = font.modify(font_id=font_id, **props)
+            font = font.modify(**props)
             fonts[height] = font
     if merge_mega and _is_mega(fonts):
         return _merge_mega(fonts)
@@ -421,7 +422,7 @@ def _is_mega(fonts):
     # GHPTSIZE differs between strikes but actual pixel-size is the same
     # sometimes the last (empty) strike has a different height
     id_sizes = set(
-        (_f.font_id, _f.pixel_size)
+        (_f.get_property('geos.font_id'), _f.pixel_size)
         for _index, _f in fonts.items() if _index != 54
     )
     # if 7 strikes exist and 6 have the same id and pixel_size, assume mega font
@@ -629,7 +630,7 @@ def _get_metadata(font):
     family = font.family[:15]
     revision = font.revision
     try:
-        font_id = int(font.font_id)
+        font_id = font.get_property('geos.font_id') or int(font.font_id)
     except ValueError:
         font_id = 1023
     if 0 > font_id > 1023:

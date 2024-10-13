@@ -163,7 +163,10 @@ def _convert_to_name_props(font):
         # 2
         styleName=font.subfamily,
         # 3
-        uniqueFontIdentifier=font.font_id or to_postscript_name(font.name),
+        uniqueFontIdentifier=(
+            font.get_property('sfnt.font_id') or font.font_id
+            or to_postscript_name(font.name)
+        ),
         # 4
         fullName=font.name,
         # 5
@@ -171,19 +174,26 @@ def _convert_to_name_props(font):
         # but may contain additional info after `;`
         version=f'Version {version_number:1.1f}{extra}',
         # 6
-        psName=to_postscript_name(font.name),
-        # trademark (nameID 7)
+        psName=(
+            font.get_property('sfnt.postscript_name')
+            or to_postscript_name(font.name)
+        ),
+        # 7
+        trademark=font.get_property('sfnt.trademark'),
         # 8
         manufacturer=font.foundry,
         # 9
         designer=font.author,
         # 10
-        # description=font.description,
+        description=font.get_property('sfnt.description'),
         # vendorURL (nameID 11)
+        vendorURL=font.get_property('sfnt.vendor_url'),
         # designerURL (nameID 12)
+        designerURL=font.get_property('sfnt.author_url'),
         # 13
         licenseDescription=font.notice,
         # licenseInfoURL (nameID 14)
+        licenseInfoURL=font.get_property('sfnt.license_url'),
         # typographicFamily (nameID 16)
         # typographicSubfamily (nameID 17)
         # compatibleFullName (nameID 18)
@@ -195,6 +205,7 @@ def _convert_to_name_props(font):
         # darkBackgroundPalette (nameID 24)
         # variationsPostScriptNamePrefix (nameID 25)
     )
+    props = {_k: _v for _k, _v in props.items() if _v is not None}
     return props
 
 def _convert_to_hhea_props(font, _to_funits):

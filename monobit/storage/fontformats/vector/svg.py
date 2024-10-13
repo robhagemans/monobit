@@ -46,9 +46,9 @@ def load_svg(instream):
     font = root.find('.//{*}font')
     if not font:
         raise FileFormatError('Not an SVG font file')
-    props = Props(
-        font_id=font.attrib.get('id'),
-    )
+    props = Props(**{
+        'svg.font_id': font.attrib.get('id'),
+    })
     font_face = font.find('{*}font-face')
     if font_face is not None:
         weight = max(100, min(900, int(font_face.attrib.get('font-weight', 400))))
@@ -176,7 +176,10 @@ def save_svg(fonts, outfile):
     outfile = outfile.text
     outfile.write('<svg>\n')
     font_attr = {
-        'id': font.font_id or font.family or '0',
+        'id': (
+            font.get_property('svg.font_id') or font.font_id
+            or font.family or '0'
+        ),
         # default advance
         'horiz-adv-x': ceil(font.average_width),
     }
