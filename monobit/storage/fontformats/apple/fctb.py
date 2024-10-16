@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from monobit.base.struct import big_endian as be
 from monobit.base import RGBTable
+from monobit.render import create_gradient
 
 
 # https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_V_1986.pdf
@@ -40,23 +41,27 @@ def extract_fctb(data, offset):
     return dict(color_table=ct_header, color_specs=cspecs)
 
 
-def convert_fctb(color_table, color_specs):
+def convert_fctb(color_table, color_specs, levels):
     """Convert fctb color spec to RGBTable."""
     if not color_specs:
         return None
     # use leftmost 8 bits of the 16-bit components
     color_dict = {
-        _c.value: (_c.r >> 8, _c.g >> 8, _c.b >> 8)
+        _c.value: (_c.red >> 8, _c.green >> 8, _c.blue >> 8)
         for _c in color_specs
     }
     # fill out colour table with greyscale levels (as per V-183)
-    levels_needed = font.levels - len(color_specs)
+    levels_needed = levels - len(color_specs)
     # use a reverse gradient so we can pop from the tail
     greyscale = (
         create_gradient((255, 255, 255), (0, 0, 0), levels_needed)
     )
     # this should exactly exhaust greyscale
-    return RGBTable(
-        color_dict.get(_i, greyscale.pop())
-        for _i in range(font.levels)
-    )
+    rgb_table = []
+    for i in range(levels):
+        try:
+            rgb = color_dict[i]
+        except KeyError:
+            rgb = greyscale.pop()
+        rgb_table.append(rgb)
+    return RGBTable(rgb_table)
