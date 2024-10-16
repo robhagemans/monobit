@@ -449,7 +449,7 @@ def convert_nfnt(properties, glyphs, fontrec, fctb=None):
         )
     # create RGB table, if fctb present
     if fctb:
-        rgb_table = convert_fctb(**fctb)
+        rgb_table = convert_fctb(**fctb, levels=max((_g.levels for _g in glyphs), default=2))
     else:
         rgb_table = None
     # store properties
