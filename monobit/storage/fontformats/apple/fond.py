@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.apple.fond - Mac FOND font directory
+monobit.storage.fontformats.apple.fond - Mac `FOND` font directory
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
