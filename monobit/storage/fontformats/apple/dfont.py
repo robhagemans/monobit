@@ -22,7 +22,8 @@ from ..common import MAC_ENCODING, STYLE_MAP
 from ..sfnt import load_sfnt, save_sfnt
 from .nfnt import (
     extract_nfnt, convert_nfnt,
-    subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header
+    subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header,
+    extract_fctb,
 )
 from .fond import extract_fond, convert_fond, create_fond
 
@@ -169,6 +170,7 @@ def parse_resource_fork(data, formatstr=''):
     rsrc = _extract_resources(data, resource_table)
     logging.debug(rsrc)
     directory = _construct_directory(rsrc)
+    rsrc = _pair_fctb_nfnt(rsrc)
     fonts = _convert_mac_font(rsrc, directory, formatstr)
     return fonts
 
@@ -212,7 +214,7 @@ def _extract_resources(data, resources):
     for rsrc_type, rsrc_id, offset, name in resources:
         if rsrc_type == b'FOND':
             logging.debug(
-                'Font family resource #%d: type FOND name `%s`', rsrc_id, name
+                "Font family resource #%d: type `FOND` name `%s`", rsrc_id, name
             )
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, dict(
@@ -222,7 +224,7 @@ def _extract_resources(data, resources):
         elif rsrc_type == b'FONT' and name and not (rsrc_id % 128):
             # rsrc_id % 128 is the point size
             logging.debug(
-                'Name entry #%d: type FONT name `%s`',
+                "Name entry #%d: type `FONT` name '%s'",
                 rsrc_id, name
             )
             # inside macintosh:
@@ -239,7 +241,7 @@ def _extract_resources(data, resources):
             ))
         elif rsrc_type in (b'NFNT', b'FONT'):
             logging.debug(
-                'Bitmapped font resource #%d: type %s name `%s`',
+                "Bitmapped font resource #%d: type `%s` name '%s'",
                 rsrc_id, rsrc_type.decode('mac-roman'), name
             )
             parsed_rsrc.append((
@@ -247,7 +249,7 @@ def _extract_resources(data, resources):
             ))
         elif rsrc_type == b'sfnt':
             logging.debug(
-                'TrueType font resource #%d: type %s name `%s`',
+                "TrueType font resource #%d: type `%s` name '%s'",
                 rsrc_id, rsrc_type.decode('mac-roman'), name
             )
             bytesio = Stream.from_data(data[offset:], mode='r')
@@ -255,9 +257,17 @@ def _extract_resources(data, resources):
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, dict(fonts=fonts)
             ))
+        elif rsrc_type == b'fctb':
+            logging.debug(
+                "Colour table resource #%d: type `%s` name '%s'",
+                rsrc_id, rsrc_type.decode('mac-roman'), name
+            )
+            parsed_rsrc.append((
+                rsrc_type, rsrc_id, extract_fctb(data, offset)
+            ))
         else:
             logging.debug(
-                'Skipped resource #%d: type %s name `%s`',
+                "Skipped resource #%d: type `%s` name '%s'",
                 rsrc_id, rsrc_type.decode('mac-roman'), name
             )
     return parsed_rsrc
@@ -276,6 +286,28 @@ def _construct_directory(parsed_rsrc):
             font_number = rsrc_id // 128
             info[font_number] = {'family': kwargs['name']}
     return info
+
+
+def _pair_fctb_nfnt(parsed_rsrc):
+    """Attach fctb to corresponding NFNT resources and drop from list."""
+    fctbs_by_id = {
+        _id: _kwargs
+        for _type, _id, _kwargs in parsed_rsrc
+        if _type == b'fctb'
+    }
+    updated_rsrc = []
+    for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
+        if rsrc_type == b'fctb':
+            continue
+        if rsrc_type == b'NFNT':
+            try:
+                fctb_kwargs = fctbs_by_id.pop(rsrc_id)
+            except KeyError:
+                pass
+            else:
+                kwargs.update(fctb_kwargs)
+        updated_rsrc.append((rsrc_type, rsrc_id, kwargs))
+    return updated_rsrc
 
 
 def _convert_mac_font(parsed_rsrc, info, formatstr):

@@ -254,8 +254,6 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         logging.debug('Empty FONT/NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)
-    if fontrec.fontType.has_fctb:
-        raise UnsupportedError('Colour fonts not supported.')
     # read char tables & bitmaps
     # table offsets
     strike_offset = offset + NFNTHeader.size
@@ -368,7 +366,7 @@ def _uncompress_nfnt(data, offset):
     return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
 
 
-def convert_nfnt(properties, glyphs, fontrec):
+def convert_nfnt(properties, glyphs, fontrec, color_table=None):
     """Convert mac glyph metrics to monobit glyph metrics."""
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
@@ -448,15 +446,18 @@ def convert_nfnt(properties, glyphs, fontrec):
             }))
             for _glyph in glyphs
         )
+    # create RGB table, if fctb present
+    rgb_table = convert_fctb(color_table)
     # store properties
     properties.update({
         # not overridable; also seems incorrect for system fonts
-        #'spacing': 'monospace' if fontrec.fontType.fixed_width else 'proportional',
+        #'spacing': 'monospace' if fontrsec.fontType.fixed_width else 'proportional',
         'default_char': MISSING_TAG,
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
         'line_height': fontrec.ascent + fontrec.descent + fontrec.leading,
         'shift_up': -fontrec.descent,
+        'rgb_table': rgb_table,
         # remove the kerning table and encoding table now stored in glyphs
         'kerning_table': None,
         'encoding_table': None,
@@ -464,6 +465,57 @@ def convert_nfnt(properties, glyphs, fontrec):
     })
     return Font(glyphs, **properties)
 
+
+# https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_V_1986.pdf
+# p V-135
+_COLOR_TABLE = be.Struct(
+    # > unique identifier from table
+    # > minimum seed value >= 1024
+    ctSeed='uint32',
+    # > high bit is set for gDevice, clear for a pixMap
+    # > significant for gDevices only; otherwise 0
+    ctFlags='uint16',
+    # > number of entries in table -1
+    ctSize='uint16',
+)
+
+_COLOR_SPEC = be.Struct(
+    # > color representation
+    value='uint16',
+    # > the components in an RGBTable are left-justified rather than right-justified in a word
+    # > [...] extract the appropriate number of bits from the high order side of the component
+    red='uint16',
+    green='uint16',
+    blue='uint16',
+)
+
+def extract_fctb(data, offset):
+    """Extract colour table from an fctb resource."""
+    ct_header = _COLOR_TABLE.from_bytes(data, offset)
+    cspecs = (_COLOR_SPEC * (ct_header.ctSize+1)).from_bytes(data, offset)
+    return dict(color_table=cspecs)
+
+
+def convert_fctb(color_table):
+    """Convert fctb color spec to RGBTable."""
+    if not color_table:
+        return None
+    # use leftmost 8 bits of the 16-bit components
+    color_dict = {
+        _c.value: (_c.r >> 8, _c.g >> 8, _c.b >> 8)
+        for _c in color_table
+    }
+    # fill out colour table with greyscale levels (as per V-183)
+    levels_needed = font.levels - len(color_table)
+    # use a reverse gradient so we can pop from the tail
+    greyscale = (
+        create_gradient((255, 255, 255), (0, 0, 0), levels_needed)
+    )
+    # this should exactly exhaust greyscale
+    return RGBTable(
+        color_dict.get(_i, greyscale.pop())
+        for _i in range(font.levels)
+    )
 
 
 ###############################################################################
