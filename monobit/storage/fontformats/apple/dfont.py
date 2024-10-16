@@ -305,7 +305,7 @@ def _pair_fctb_nfnt(parsed_rsrc):
             except KeyError:
                 pass
             else:
-                kwargs.update(fctb_kwargs)
+                kwargs['fctb'] = fctb_kwargs
         updated_rsrc.append((rsrc_type, rsrc_id, kwargs))
     return updated_rsrc
 
