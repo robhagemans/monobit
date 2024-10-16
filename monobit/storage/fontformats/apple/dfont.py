@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.apple.dfont - MacOS suitcases and resources
+monobit.storage.fontformats.apple.dfont - MacOS resource files
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -23,8 +23,8 @@ from ..sfnt import load_sfnt, save_sfnt
 from .nfnt import (
     extract_nfnt, convert_nfnt,
     subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header,
-    extract_fctb,
 )
+from .fctb import extract_fctb
 from .fond import extract_fond, convert_fond, create_fond
 
 
