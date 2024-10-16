@@ -54,9 +54,9 @@ class TestColour(BaseTester):
     def test_amiga_colour(self):
         self._render_colour('amiga')
 
-    # def test_nfnt_colour(self):
-    #     self._render_colour('nfnt')
-    #
+    def test_mac_colour(self):
+        self._render_colour('mac')
+
     # def test_sfnt_colour(self):
     #     self._render_colour('sfnt', char=True)
 
