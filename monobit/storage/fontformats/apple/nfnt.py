@@ -48,7 +48,7 @@ def save_nfnt(
         fonts, outstream,
         create_width_table:bool=True,
         create_height_table:bool=False,
-        resample_encoding:EncodingName=NOT_SET,
+        resample_encoding:EncodingName=None,
     ):
     """
     Write font to a bare FONT/NFNT resource.

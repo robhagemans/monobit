@@ -24,7 +24,7 @@ from .nfnt import (
     extract_nfnt, convert_nfnt,
     subset_for_nfnt, convert_to_nfnt, nfnt_data_to_bytes, generate_nfnt_header,
 )
-from .fctb import extract_fctb
+from .fctb import extract_fctb, convert_to_fctb, fctb_data_to_bytes
 from .fond import extract_fond, convert_fond, create_fond
 
 
@@ -43,7 +43,7 @@ def load_mac_dfont(instream):
 @savers.register(linked=load_mac_dfont)
 def save_mac_dfont(
         fonts, outstream, resource_type:str='NFNT', family_id:int=None,
-        resample_encoding:EncodingName=NOT_SET,
+        resample_encoding:EncodingName=None,
     ):
     """Save font to MacOS resource fork or data-fork resource.
 
@@ -426,6 +426,18 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
                         data=nfnt_data_to_bytes(nfnt_data),
                     ),
                 )
+                if resource_type == 'nfnt' and font.rgb_table:
+                    fctb_data = convert_to_fctb(font.rgb_table)
+                    resources.append(
+                        Props(
+                            type=b'fctb',
+                            # id must match the NFNT
+                            id=family_id + i,
+                            # do we need a name?
+                            name='',
+                            data=fctb_data_to_bytes(fctb_data),
+                        )
+                    )
                 i += 1
         fond_data = create_fond(style_group, family_id)
         resources.append(

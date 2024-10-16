@@ -65,3 +65,19 @@ def convert_fctb(color_table, color_specs, levels):
             rgb = greyscale.pop()
         rgb_table.append(rgb)
     return RGBTable(rgb_table)
+
+
+def convert_to_fctb(rgb_table):
+    """Convert RGBTable to fctb."""
+    color_specs = (_COLOR_SPEC * len(rgb_table))(*(
+        _COLOR_SPEC(value=_i, red=_c.r << 8, green=_c.g << 8, blue=_c.b << 8)
+        for _i, _c in enumerate(rgb_table)
+    ))
+    # unclear how seed should be chosen
+    color_table = _COLOR_TABLE(ctSeed=1024, ctSize=len(rgb_table))
+    return dict(color_table=color_table, color_specs=color_specs)
+
+
+def fctb_data_to_bytes(fctb_data):
+    """Convert fctb to bytes."""
+    return bytes(fctb_data['color_table']) + bytes(fctb_data['color_specs'])
