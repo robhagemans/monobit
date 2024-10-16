@@ -366,7 +366,7 @@ def _uncompress_nfnt(data, offset):
     return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
 
 
-def convert_nfnt(properties, glyphs, fontrec, color_table=None):
+def convert_nfnt(properties, glyphs, fontrec, fctb=None):
     """Convert mac glyph metrics to monobit glyph metrics."""
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
@@ -447,7 +447,10 @@ def convert_nfnt(properties, glyphs, fontrec, color_table=None):
             for _glyph in glyphs
         )
     # create RGB table, if fctb present
-    rgb_table = convert_fctb(color_table)
+    if fctb:
+        rgb_table = convert_fctb(**fctb)
+    else:
+        rgb_table = None
     # store properties
     properties.update({
         # not overridable; also seems incorrect for system fonts
@@ -493,20 +496,20 @@ def extract_fctb(data, offset):
     """Extract colour table from an fctb resource."""
     ct_header = _COLOR_TABLE.from_bytes(data, offset)
     cspecs = (_COLOR_SPEC * (ct_header.ctSize+1)).from_bytes(data, offset)
-    return dict(color_table=cspecs)
+    return dict(color_table=ct_header, color_specs=cspecs)
 
 
-def convert_fctb(color_table):
+def convert_fctb(color_table, color_specs):
     """Convert fctb color spec to RGBTable."""
-    if not color_table:
+    if not color_specs:
         return None
     # use leftmost 8 bits of the 16-bit components
     color_dict = {
         _c.value: (_c.r >> 8, _c.g >> 8, _c.b >> 8)
-        for _c in color_table
+        for _c in color_specs
     }
     # fill out colour table with greyscale levels (as per V-183)
-    levels_needed = font.levels - len(color_table)
+    levels_needed = font.levels - len(color_specs)
     # use a reverse gradient so we can pop from the tail
     greyscale = (
         create_gradient((255, 255, 255), (0, 0, 0), levels_needed)
