@@ -113,11 +113,11 @@ Proportional-spacing formats
 | Bitmap image [P]      | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | -        |
 | Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | -        |
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | M; see `nfnt` |
-| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K; see `nfnt` |
+| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K C; see `nfnt`, `sfnt` |
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
-| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi` |
-| Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB O G (C) |
+| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi`, `sfnt` |
+| Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB O G   |
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt` |
 | Palm OS PRC (v1/NFNT) | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt` |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
