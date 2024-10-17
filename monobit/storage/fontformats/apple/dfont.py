@@ -43,7 +43,7 @@ def load_mac_dfont(instream):
 @savers.register(linked=load_mac_dfont)
 def save_mac_dfont(
         fonts, outstream, resource_type:str='NFNT', family_id:int=None,
-        resample_encoding:EncodingName=None,
+        resample_encoding:EncodingName=NOT_SET,
     ):
     """Save font to MacOS resource fork or data-fork resource.
 

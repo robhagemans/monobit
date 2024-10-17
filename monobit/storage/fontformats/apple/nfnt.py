@@ -48,7 +48,7 @@ def save_nfnt(
         fonts, outstream,
         create_width_table:bool=True,
         create_height_table:bool=False,
-        resample_encoding:EncodingName=None,
+        resample_encoding:EncodingName=NOT_SET,
     ):
     """
     Write font to a bare FONT/NFNT resource.
@@ -491,12 +491,14 @@ def subset_for_nfnt(font, resample_encoding):
     """Subset to glyphs storable in NFNT and append default glyph."""
     default = font.get_default_glyph().modify(labels=(), tag=MISSING_TAG)
     is_mac_encoding = str(EncodingName(font.encoding)) in MAC_ENCODING_NAMES
-    if (
-            resample_encoding is NOT_SET
-            and font.encoding and not is_mac_encoding
+    if resample_encoding is NOT_SET:
+        if (
+            font.encoding and not is_mac_encoding
             and not font.encoding in ('raw', 'ascii')
         ):
-        resample_encoding = 'mac-roman'
+            resample_encoding = 'mac-roman'
+        else:
+            resample_encoding = None
     if resample_encoding:
         # NFNT can only store encodings from a pre-defined list of 'scripts'
         # for fonts with other encodings, get glyphs corresponding to mac-roman
