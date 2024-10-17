@@ -455,7 +455,7 @@ def convert_nfnt(properties, glyphs, fontrec, fctb=None):
     # store properties
     properties.update({
         # not overridable; also seems incorrect for system fonts
-        #'spacing': 'monospace' if fontrsec.fontType.fixed_width else 'proportional',
+        #'spacing': 'monospace' if fontrec.fontType.fixed_width else 'proportional',
         'default_char': MISSING_TAG,
         'ascent': fontrec.ascent,
         'descent': fontrec.descent,
