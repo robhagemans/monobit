@@ -108,7 +108,7 @@ class StrokePath:
     def draw(self):
         """Draw the path."""
         if not self._path:
-            return Canvas.blank(0, 0)
+            return Canvas.blank(0, 0).as_raster()
         canvas = Canvas.blank(
             self.bounds.right - self.bounds.left,
             self.bounds.top - self.bounds.bottom,
