@@ -249,6 +249,13 @@ def _convert_to_fzx(font):
     # we aim for left-bearing >= -3, fzx_shift >= 0
     # crop as far as we can without losing ink
     glyphs = tuple(_glyph.reduce() for _glyph in glyphs)
+    # bring above baseline
+    common_shift_up = min(_g.shift_up for _g in glyphs)
+    glyphs = tuple(
+        _g.modify(shift_up=_g.shift_up+max(0, -common_shift_up))
+        for _g in glyphs
+    )
+    print(glyphs)
     # expand to left-bearing <= 0
     # expand to fzx-shift <= 15
     glyphs = tuple(
@@ -259,8 +266,8 @@ def _convert_to_fzx(font):
         )
         for _glyph in glyphs
     )
-    common_right_bearing = min(_glyph.right_bearing for _glyph in glyphs)
     # absorb per-glyph right_bearing by extending width
+    common_right_bearing = min(_glyph.right_bearing for _glyph in glyphs)
     glyphs = (
         _g.expand(right=_g.right_bearing - common_right_bearing)
         for _g in glyphs
@@ -278,6 +285,9 @@ def _convert_to_fzx(font):
         ).drop('left-bearing', 'shift-up')
         for _glyph in glyphs
     )
+    print()
+    print()
+    print(fzx_glyphs)
     # check glyph dimensions / bitfield ranges
     if any(_glyph.fzx_width < 0 or _glyph.fzx_width > 15 for _glyph in fzx_glyphs):
         raise UnsupportedError('FZX format: glyphs must be from 1 to 16 pixels wide.')
