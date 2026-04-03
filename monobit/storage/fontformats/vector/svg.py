@@ -1,7 +1,7 @@
 """
 monobit.storage.fontformats.vector.svg - svg writer for vector fonts
 
-(c) 2023--2024 Rob Hagemans
+(c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

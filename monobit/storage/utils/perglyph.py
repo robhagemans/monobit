@@ -1,7 +1,7 @@
 """
 monobit.storage.utils.perglyph - utilities for one-glyph-per-file formats
 
-(c) 2024 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

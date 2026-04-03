@@ -1,7 +1,7 @@
 """
 monobit.render.renderer - render text to bitmaps using font
 
-(c) 2019--2024 Rob Hagemans
+(c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

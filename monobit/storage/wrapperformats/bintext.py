@@ -1,7 +1,7 @@
 """
 monobit.storage.wrapperformats.bintext - text-encoded binary formats
 
-(c) 2024 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

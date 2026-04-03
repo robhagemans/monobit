@@ -1,7 +1,7 @@
 """
 monobit.storage.wrapperformats.intelhex - binary files embedded in Intel Hex files
 
-(c) 2024 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

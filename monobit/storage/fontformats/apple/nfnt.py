@@ -1,7 +1,7 @@
 """
 monobit.storage.fontformats.apple.nfnt - Mac `FONT`/`NFNT` font resources
 
-(c) 2019--2024 Rob Hagemans
+(c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 
 NFNT writer based on the Apple IIgs writer

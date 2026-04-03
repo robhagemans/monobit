@@ -1,7 +1,7 @@
 """
 monobit.storage.containerformats.uselibarchive - archive formats supported by libarchive
 
-(c) 2024 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

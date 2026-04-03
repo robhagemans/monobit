@@ -1,7 +1,7 @@
 """
 monobit.storage.containerformats.uuencode - UUEncode format
 
-(c) 2024 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 
 modified from the (deprecated) Python standard library uu module source code,

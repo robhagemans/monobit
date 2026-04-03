@@ -1,7 +1,7 @@
 """
 monobit.storage.fontformats.fon.windows.mz - DOS MZ executable header
 
-(c) 2019--2024 Rob Hagemans
+(c) 2019--2026 Rob Hagemans
 with code from `mkwinfont`, copyright 2001 Simon Tatham. All rights reserved.
 licence: https://opensource.org/licenses/MIT
 """

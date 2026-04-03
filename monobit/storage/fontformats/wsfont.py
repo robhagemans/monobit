@@ -1,7 +1,7 @@
 """
 monobit.storage.fontformats.wsfont - NetBSD wsfont binaries and C headers
 
-(c) 2024 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

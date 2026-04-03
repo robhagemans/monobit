@@ -1,7 +1,7 @@
 """
 monobit.storage.fontformats.fon.os2 - read OS/2 GPI bitmap fonts and LX containers
 
-(c) 2023--2024 Rob Hagemans
+(c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 
 this implementation leans heavily on Alexander Taylor's os2font

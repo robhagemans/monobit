@@ -1,7 +1,7 @@
 """
 monobit.storage.containerformats.yencode - yEncode format
 
-(c) 2024 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 
 with code from python3-yenc examples
 https://github.com/oe-mirrors/python3-yenc/

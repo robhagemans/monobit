@@ -1,7 +1,7 @@
 """
 monobit.storage.containerformats.apple - AppleSingle and AppleDouble containers
 
-(c) 2021--2024 Rob Hagemans
+(c) 2021--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

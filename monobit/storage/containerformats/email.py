@@ -1,7 +1,7 @@
 """
 monobit.storage.containerformats.email - files embedded in email messages
 
-(c) 2024 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 
 Based on Python documentation examples at

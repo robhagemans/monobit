@@ -366,7 +366,7 @@ Without these packages, some functionality may not be available.
 Copyright and licences
 ----------------------
 
-`monobit` and the `yaff` specification are copyright 2019--2024 Rob Hagemans and
+`monobit` and the `yaff` specification are copyright 2019--2026 Rob Hagemans and
 released under the [MIT licence](https://opensource.org/licenses/MIT).
 
 `monobit` contains code from:  

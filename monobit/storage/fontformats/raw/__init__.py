@@ -1,7 +1,7 @@
 """
 monobit.storage.fontformats.raw - raw and nearly raw binary formats
 
-(c) 2019--2024 Rob Hagemans
+(c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

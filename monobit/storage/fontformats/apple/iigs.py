@@ -4,7 +4,7 @@ monobit.storage.fontformats.apple.iigs - Apple IIgs font file
 (c) 2023 Kelvin Sherlock
 licence: https://opensource.org/licenses/MIT
 
-modifications (c) 2023--2024 Rob Hagemans
+modifications (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
