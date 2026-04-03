@@ -21,7 +21,7 @@ except Exception as e:
 
 try:
     from arabic_reshaper import reshape
-except Exception:
+except Exception as e:
     logging.debug('Could not import module `arabic_reshaper`: %s', e)
     def reshape(text):
         raise ImportError(
@@ -30,7 +30,7 @@ except Exception:
 
 try:
     from uniseg.graphemecluster import grapheme_clusters
-except Exception:
+except Exception as e:
     logging.debug('Could not import module `uniseg`: %s', e)
     logging.warning(
         'Module `uniseg` not available. Grapheme clusters may not render correctly.'
