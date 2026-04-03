@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.apple.nfnt - Mac FONT/NFNT fonts
+monobit.storage.fontformats.apple.nfnt - Mac `FONT`/`NFNT` font resources
 
 (c) 2019--2024 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -20,6 +20,7 @@ from monobit.encoding import EncodingName
 from monobit.base import Props, NOT_SET, UnsupportedError
 
 from .fond import fixed_to_float
+from .fctb import convert_fctb
 from ..common import MAC_ENCODING
 
 
@@ -254,8 +255,6 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         logging.debug('Empty FONT/NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)
-    if fontrec.fontType.has_fctb:
-        raise UnsupportedError('Colour fonts not supported.')
     # read char tables & bitmaps
     # table offsets
     strike_offset = offset + NFNTHeader.size
@@ -368,7 +367,7 @@ def _uncompress_nfnt(data, offset):
     return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
 
 
-def convert_nfnt(properties, glyphs, fontrec):
+def convert_nfnt(properties, glyphs, fontrec, fctb=None):
     """Convert mac glyph metrics to monobit glyph metrics."""
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
@@ -448,6 +447,11 @@ def convert_nfnt(properties, glyphs, fontrec):
             }))
             for _glyph in glyphs
         )
+    # create RGB table, if fctb present
+    if fctb:
+        rgb_table = convert_fctb(**fctb, levels=max((_g.levels for _g in glyphs), default=2))
+    else:
+        rgb_table = None
     # store properties
     properties.update({
         # not overridable; also seems incorrect for system fonts
@@ -457,13 +461,13 @@ def convert_nfnt(properties, glyphs, fontrec):
         'descent': fontrec.descent,
         'line_height': fontrec.ascent + fontrec.descent + fontrec.leading,
         'shift_up': -fontrec.descent,
+        'rgb_table': rgb_table,
         # remove the kerning table and encoding table now stored in glyphs
         'kerning_table': None,
         'encoding_table': None,
         'source_format': properties.get('source_format', None) or 'NFNT',
     })
     return Font(glyphs, **properties)
-
 
 
 ###############################################################################
@@ -487,12 +491,14 @@ def subset_for_nfnt(font, resample_encoding):
     """Subset to glyphs storable in NFNT and append default glyph."""
     default = font.get_default_glyph().modify(labels=(), tag=MISSING_TAG)
     is_mac_encoding = str(EncodingName(font.encoding)) in MAC_ENCODING_NAMES
-    if (
-            resample_encoding is NOT_SET
-            and font.encoding and not is_mac_encoding
+    if resample_encoding is NOT_SET:
+        if (
+            font.encoding and not is_mac_encoding
             and not font.encoding in ('raw', 'ascii')
         ):
-        resample_encoding = 'mac-roman'
+            resample_encoding = 'mac-roman'
+        else:
+            resample_encoding = None
     if resample_encoding:
         # NFNT can only store encodings from a pre-defined list of 'scripts'
         # for fonts with other encodings, get glyphs corresponding to mac-roman
