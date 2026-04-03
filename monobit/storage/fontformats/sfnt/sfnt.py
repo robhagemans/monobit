@@ -163,8 +163,8 @@ _TAGS = (
     'EBLC', 'bloc',
     'EBDT', 'bdat',
     'EBSC',
-    # sbix: currently just warn we don't parse it
-    'sbix',
+    # colour bitmap tables
+    'sbix', 'CBLC', 'CBDT',
     # metrics
     'hmtx', 'hhea',
     'vmtx', 'vhea',
@@ -289,9 +289,10 @@ def _convert_sfnt(sfnt):
     sfnt.bloc = sfnt.bloc or sfnt.EBLC
     sfnt.head = sfnt.bhed or sfnt.head
     if sfnt.sbix:
-        logging.warning(
-            'Bitmap strikes in `sbix` format not supported.'
-        )
+        _convert_sbix_glyphs(sfnt)
+        logging.warning('Bitmap strikes in `sbix` format not supported.')
+    if sfnt.CBDT:
+        logging.warning('Bitmap strikes in `CBDT` format not supported.')
     if not sfnt.bdat or not sfnt.bloc:
         raise ResourceFormatError(
             'No `EBDT` or `bdat` bitmap strikes found in sfnt resource.'
@@ -339,6 +340,9 @@ def _convert_props(sfnt, i_strike):
     props._vfupp = vert_fu_p_pix
     return props
 
+
+###############################################################################
+# 'bdat'/'EBDT' and 'bloc'/'EBLC'
 
 def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enctable):
     """Build glyphs and glyph properties from sfnt data."""
@@ -430,6 +434,34 @@ def _convert_glyph_metrics(metrics, small_is_vert):
                 metrics.Advance - metrics.height - metrics.BearingY
             ),
         )
+
+
+###############################################################################
+# 'sbix' table
+
+def _convert_sbix_glyphs(sfnt):
+    """Build glyphs and glyph properties from sfnt data."""
+    from PIL import Image
+    from io import BytesIO
+    from ..image.image import convert_crops_to_font
+    glyphs = []
+    for strike in sfnt.sbix.strikes.values():
+        print(strike.ppem)
+        print(strike.resolution)
+        crops = []
+        for glyph in strike.glyphs.values():
+            print(glyph.glyphName, glyph.originOffsetX, glyph.originOffsetY)
+            data = glyph.imageData
+            if data:
+                img = Image.open(BytesIO(data))
+                crops.append(img.convert('RGB'))
+            # else:
+            #     img = Image.new(mode='RGB', size=(0, 0))
+        # does sbix have a concept of background?
+        # presumably it's just using alpha transparency
+        background = 'darkest'
+        font = convert_crops_to_font(enumerate(crops), background, keep_empty=True)
+        print(font.glyphs)
 
 
 ###############################################################################
