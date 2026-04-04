@@ -78,11 +78,11 @@ class Encoder:
 
     def char(self, *labels):
         """Convert labels to character, return empty string if missing."""
-        raise NotImplementedError
+        return ''
 
     def codepoint(self, *labels):
         """Convert labels to codepoint, return None if missing."""
-        raise NotImplementedError
+        return b''
 
     def tag(self, *labels):
         """Convert labels to tag, return None if missing."""

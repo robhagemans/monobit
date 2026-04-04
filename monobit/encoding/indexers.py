@@ -18,11 +18,6 @@ class Indexer(Encoder):
         # generator
         self._code_range = to_labels(code_range)
 
-    @staticmethod
-    def char(*labels):
-        """Convert codepoint to character, return empty string if missing."""
-        raise TypeError('Can only use Indexer to set codepoints, not character labels.')
-
     def codepoint(self, *labels):
         """Convert character to codepoint."""
         try:
