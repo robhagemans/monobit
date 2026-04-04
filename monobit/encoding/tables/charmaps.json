@@ -1661,7 +1661,7 @@
             "csic"
         ],
         "filename": "icu/cns-11643-1992.ucm",
-        "Notes": "CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included."
+        "notes": "CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included."
     },
     "cp891": {
         "aliases": [
