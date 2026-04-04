@@ -1099,13 +1099,21 @@
     "amstrad-cpc": {
         "filename": "kreativekorp/AMSCPC.TXT"
     },
+    "overlay-amstrad-cpm-plus": {
+        "filename": "manual/cpm-plus-overlay.txt",
+        "range": "0x15-0x1f"
+    },
+
     "amstrad-cpm-plus": {
         "aliases": [
             "amstrad-pcw",
             "zx-spectrum-plus3",
             "zx-spectrum-3plus"
         ],
-        "filename": "kreativekorp/AMSCPM.TXT"
+        "filename": "kreativekorp/AMSCPM.TXT",
+        "overlays": [
+            "overlay-amstrad-cpm-plus"
+        ]
     },
     "apple-ii": {
         "aliases": [
