@@ -118,6 +118,7 @@ Proportional-spacing formats
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi`, `sfnt` |
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB O G   |
+| Project Oberon        | `oberon`   | `.Scn.Fnt` `.Pr?.Fnt`       |&check;|&check;| binary | O        |
 | Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt` |
 | Palm OS PRC (v1/NFNT) | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt` |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
@@ -132,6 +133,7 @@ Proportional-spacing formats
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G (C) |
+| SymbOS font           | `symbos`   | `.fnt`                      |&check;|&check;| binary | -        |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G (C) |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
 | Bare GEOS font record | `vlir`     |                             |&check;|&check;| binary | O        |

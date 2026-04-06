@@ -44,6 +44,10 @@ Original sources:
     these fonts to shareware or commercial software, please contact me. For freeware
     it's free, of course. If you want to publish it - do it! But have a look at
     PalmGear for the latest version.
+* `alpha.fnt`
+  - https://www.symbos.org/download/media/Miscellaneous/Alpha.zip
+  - converted from Rainer Zenz's Alpha Font Collection by Prevtenet
+  - see `Alpha-2B.pdb`
 * `WARPSANS.FON`
   - http://www.altsan.org
   - The WarpSans Extended Sizes may be freely used, redistributed, and/or
@@ -99,6 +103,11 @@ Original sources:
   using bdf2zap, and the Acorn extensions to Latin1 added using Zed.
   <http://www.cl.cam.ac.uk/~mgk25/>	christian@zap.tartarus.org
   - Markus Kuhn's fonts are in the public domain https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html
+* Oberon font `Oberon10.Scn.Fnt`
+  - http://www.projectoberon.net/zip/systools.zip
+  - Niklaus Wirth and Jürg Gutknecht
+  - released under MIT licence, https://www.projectoberon.net/wirth/ProjectOberon/license.txt
+  - https://www.projectoberon.net/txt/FAQ.txt
 
 
 ### Derivatives of `4x6`

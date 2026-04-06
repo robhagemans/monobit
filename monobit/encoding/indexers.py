@@ -18,11 +18,6 @@ class Indexer(Encoder):
         # generator
         self._code_range = to_labels(code_range)
 
-    @staticmethod
-    def char(*labels):
-        """Convert codepoint to character, return empty string if missing."""
-        raise TypeError('Can only use Indexer to set codepoints, not character labels.')
-
     def codepoint(self, *labels):
         """Convert character to codepoint."""
         try:
@@ -41,3 +36,32 @@ class Indexer(Encoder):
             tbl = f.read()
         rangestr = '0x' + ',0x'.join(('-0x'.join(tbl.split('-'))).split())
         return cls(code_range=rangestr)
+
+
+def find_ranges(cps, indexgen=None):
+    """Find code range subject to indexer."""
+    cur_start = int(cps[0])
+    cur_end = cur_start
+    if not indexgen:
+        indexgen = iter(range(cur_start, int(cps[-1])+1))
+    index = next(indexgen)
+    ranges = []
+    try:
+        for cp in cps[1:]:
+            cp = int(cp)
+            if cp <= index:
+                continue
+            # cp > index, get next index which is higher than previous.
+            # so now cp can be less, equal or higher
+            index = next(indexgen)
+            if cp == index:
+                cur_end = cp
+            else:
+                ranges.append(range(cur_start, cur_end + 1))
+                cur_start, cur_end = cp, cp
+                while cp > index:
+                    index = next(indexgen)
+    except StopIteration:
+        logging.debug('Indexer was exhausted')
+    ranges.append(range(cur_start, cur_end + 1))
+    return ranges

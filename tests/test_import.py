@@ -1358,6 +1358,8 @@ class TestImport(BaseTester):
 @@..@@
 """)
 
+    # BeOS
+
     def test_import_beos(self):
         """Test importing BeOS files."""
         file = self.font_path / 'Konatu' / 'Konatu_10'
@@ -1374,6 +1376,7 @@ class TestImport(BaseTester):
 7...7
 """)
 
+    # Zap
 
     def test_import_zapredraw(self):
         """Test importing ZapRedraw UCS files."""
@@ -1413,6 +1416,41 @@ class TestImport(BaseTester):
 @@....@@
 @@....@@
 """)
+
+    # Project Oberon
+
+    def test_import_oberon(self):
+        """Test importing Project Oberon files."""
+        file = self.font_path / 'Oberon10.Scn.Fnt'
+        font, *_ = monobit.load(file, format='oberon')
+        self.assertEqual(len(font.glyphs), 127)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
+...@...
+...@...
+..@.@..
+..@.@..
+.@@@@@.
+.@...@.
+@.....@
+@.....@
+""")
+
+    # SymbOS
+
+    def test_import_symbos(self):
+        """Test importing Palm OS fonts."""
+        font, *_ = monobit.load(self.font_path / 'alpha.fnt', format='symbos')
+        self.assertEqual(len(font.glyphs), 96)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(),  """\
+.@@.
+@..@
+@..@
+@@@@
+@..@
+@..@
+@..@
+""")
+
 
 if __name__ == '__main__':
     unittest.main()

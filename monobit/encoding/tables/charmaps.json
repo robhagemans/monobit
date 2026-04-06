@@ -1099,13 +1099,21 @@
     "amstrad-cpc": {
         "filename": "kreativekorp/AMSCPC.TXT"
     },
+    "overlay-amstrad-cpm-plus": {
+        "filename": "manual/cpm-plus-overlay.txt",
+        "range": "0x15-0x1f"
+    },
+
     "amstrad-cpm-plus": {
         "aliases": [
             "amstrad-pcw",
             "zx-spectrum-plus3",
             "zx-spectrum-3plus"
         ],
-        "filename": "kreativekorp/AMSCPM.TXT"
+        "filename": "kreativekorp/AMSCPM.TXT",
+        "overlays": [
+            "overlay-amstrad-cpm-plus"
+        ]
     },
     "apple-ii": {
         "aliases": [
@@ -1653,7 +1661,7 @@
             "csic"
         ],
         "filename": "icu/cns-11643-1992.ucm",
-        "Notes": "CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included."
+        "notes": "CNS11643 - note that this has plane 15 (2007 standard) encoded as plane 9. Planes 10-14 (2007) are not included."
     },
     "cp891": {
         "aliases": [

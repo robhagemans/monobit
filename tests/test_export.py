@@ -499,6 +499,18 @@ class TestExport(BaseTester):
         # ZRUF file repeats some glyphs in C0/C1 control char positions
         self._export_4x6(format='zapredraw', count=984)
 
+    # Project Oberon
+
+    def test_export_oberon(self):
+        """Test exporting Project Oberon files."""
+        self._export_4x6(format='oberon', count=192)
+
+    # SymbOS
+
+    def test_export_symbos(self):
+        """Test exporting SymbOS files."""
+        self._export_4x6(format='symbos', count=96)
+
 
 if __name__ == '__main__':
     unittest.main()
