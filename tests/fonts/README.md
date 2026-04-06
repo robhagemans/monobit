@@ -99,6 +99,11 @@ Original sources:
   using bdf2zap, and the Acorn extensions to Latin1 added using Zed.
   <http://www.cl.cam.ac.uk/~mgk25/>	christian@zap.tartarus.org
   - Markus Kuhn's fonts are in the public domain https://www.cl.cam.ac.uk/~mgk25/ucs-fonts.html
+* Oberon font `Oberon10.Scn.Fnt`
+  - http://www.projectoberon.net/zip/systools.zip
+  - Niklaus Wirth and Jürg Gutknecht
+  - released under MIT licence, https://www.projectoberon.net/wirth/ProjectOberon/license.txt
+  - https://www.projectoberon.net/txt/FAQ.txt
 
 
 ### Derivatives of `4x6`
