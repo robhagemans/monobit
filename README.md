@@ -133,6 +133,7 @@ Proportional-spacing formats
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
 | SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G (C) |
+| SymbOS font           | `symbos`   | `.fnt`                      |&check;|&check;| binary | -        |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G (C) |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
 | Bare GEOS font record | `vlir`     |                             |&check;|&check;| binary | O        |
