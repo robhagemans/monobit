@@ -44,6 +44,10 @@ Original sources:
     these fonts to shareware or commercial software, please contact me. For freeware
     it's free, of course. If you want to publish it - do it! But have a look at
     PalmGear for the latest version.
+* `alpha.fnt`
+  - https://www.symbos.org/download/media/Miscellaneous/Alpha.zip
+  - converted from Rainer Zenz's Alpha Font Collection by Prevtenet
+  - see `Alpha-2B.pdb`
 * `WARPSANS.FON`
   - http://www.altsan.org
   - The WarpSans Extended Sizes may be freely used, redistributed, and/or
