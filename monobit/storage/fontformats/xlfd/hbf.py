@@ -11,6 +11,7 @@ from pathlib import Path
 from monobit.storage import loaders, savers
 from monobit.base import Coord, UnsupportedError
 from monobit.core import Font, Glyph
+from monobit.encoding.indexers import find_ranges
 from monobit.base.binary import ceildiv
 from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 
@@ -434,47 +435,18 @@ def _get_code_ranges(font):
     cps = sorted(_cp for _cp in cps if len(_cp) == n_bytes)
     # determine byte-2 ranges
     b2 = sorted(set(_cp[1] for _cp in cps))
-    b2ranges = _find_ranges(b2)
+    b2ranges = find_ranges(b2)
     logging.debug('BYTE_2_RANGES %s', b2ranges)
     # determine byte-3 ranges
     if n_bytes == 3:
         b3 = sorted(set(_cp[2] for _cp in cps))
-        b3ranges = _find_ranges(b3)
+        b3ranges = find_ranges(b3)
         logging.debug('BYTE_3_RANGES %s', b3ranges)
     else:
         b3ranges = ()
     # determine code ranges subject to byte-2, byte-3 ranges already found
     start_crange = range(int(cps[0]), int(cps[-1])+1)
     gen = indexer(None, start_crange, b2ranges, b3ranges)
-    cranges = _find_ranges(cps, gen)
+    cranges = find_ranges(cps, gen)
     logging.debug('CODE_RANGES %s', cranges)
     return cps, cranges, b2ranges, b3ranges
-
-
-def _find_ranges(cps, indexgen=None):
-    """Find code range subject to indexer."""
-    cur_start = int(cps[0])
-    cur_end = cur_start
-    if not indexgen:
-        indexgen = iter(range(cur_start, int(cps[-1])+1))
-    index = next(indexgen)
-    ranges = []
-    try:
-        for cp in cps[1:]:
-            cp = int(cp)
-            if cp <= index:
-                continue
-            # cp > index, get next index which is higher than previous.
-            # so now cp can be less, equal or higher
-            index = next(indexgen)
-            if cp == index:
-                cur_end = cp
-            else:
-                ranges.append(range(cur_start, cur_end + 1))
-                cur_start, cur_end = cp, cp
-                while cp > index:
-                    index = next(indexgen)
-    except StopIteration:
-        logging.debug('Indexer was exhausted')
-    ranges.append(range(cur_start, cur_end + 1))
-    return ranges
