@@ -1,20 +1,23 @@
 """
-SymbOS FNT font format
+monobit.storage.fontformats.symbos - SymbOS FNT font format
 
-Format specification:
-- 2-byte header
-  - Byte 0: Font height in pixels (typically 6-13)
-  - Byte 1: Starting character code (0x20 = ASCII space as per specification)
-- 96 glyphs × 16 bytes each
-  - Byte 0: Glyph width in pixels (1-8)
-  - Bytes 1-15: Pixel data for 15 rows (one byte per row, 8 bits per row)
-
-Implementation notes:
-- We allow any start code and any number of glyphs when reading (permissive)
-- We always write 0x20 and exactly 96 glyphs when saving (strict, as per specification)
-
-Used by SymbOS operating system for Amstrad CPC and other Z80 machines.
+(c) 2025 Michael Steil
+licence: https://opensource.org/licenses/MIT
 """
+
+# Format specification:
+# - 2-byte header
+#   - Byte 0: Font height in pixels (typically 6-13)
+#   - Byte 1: Starting character code (0x20 = ASCII space as per specification)
+# - 96 glyphs × 16 bytes each
+#   - Byte 0: Glyph width in pixels (1-8)
+#   - Bytes 1-15: Pixel data for 15 rows (one byte per row, 8 bits per row)
+#
+# Implementation notes:
+# - We allow any start code and any number of glyphs when reading (permissive)
+# - We always write 0x20 and exactly 96 glyphs when saving (strict, as per specification)
+#
+# Used by SymbOS operating system for Amstrad CPC and other Z80 machines.
 
 import logging
 
