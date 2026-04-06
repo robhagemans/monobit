@@ -277,7 +277,9 @@ class YaffGlyph(YaffMultiline):
                 value = value.strip()
                 _set_property(properties, key, value)
         # deal with sized empties (why?)
-        if all(set(_line) == set([self.empty]) for _line in raster):
+        if not raster:
+            raster = Raster()
+        elif all(set(_line) == set([self.empty]) for _line in raster):
             raster = Raster.blank(
                 width=len(raster[0])-1, height=len(raster)-1,
                 levels=len(inklevels),

@@ -70,9 +70,9 @@ class TestContainers(BaseTester):
     def _test_container(self, format):
         """Test importing/exporting container files."""
         container_file = self.temp_path / f'4x6.yaff.{format}'
-        monobit.save(self.fixed4x6, container_file)
+        monobit.save(self.fixed4x6, container_file, container_format=format, format='yaff')
         self.assertTrue(os.path.getsize(container_file) > 0)
-        font, *_ = monobit.load(container_file)
+        font, *_ = monobit.load(container_file, container_format=format, format='yaff')
         self.assertEqual(len(font.glyphs), 919)
 
     def test_zip(self):
@@ -89,11 +89,11 @@ class TestContainers(BaseTester):
 
     def test_email(self):
         """Test importing/exporting MIME messages."""
-        self._test_container('eml')
+        self._test_container('email')
 
     def test_7zip(self):
         """Test importing/exporting 7-zip files."""
-        self._test_container('7z')
+        self._test_container('7zip')
 
     def test_cpio(self):
         """Test importing/exporting CPIO files."""
@@ -117,7 +117,7 @@ class TestContainers(BaseTester):
 
     def test_iso9660(self):
         """Test importing/exporting ISO9660 files."""
-        self._test_container('iso')
+        self._test_container('iso9660')
 
     def test_dir(self):
         """Test exporting to directory."""
@@ -295,7 +295,7 @@ class TestWrappers(BaseTester):
     def test_import_offset(self):
         """Test offset wrapper."""
         font, *_ = monobit.load(
-            self.font_path / '4x6.yaff.offset',
+            self.font_path / '4x6.yaff.offset', format='yaff',
             container_format='offset', offset=100,
         )
         self.assertEqual(len(font.glyphs), 919)

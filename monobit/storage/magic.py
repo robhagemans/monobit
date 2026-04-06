@@ -42,6 +42,9 @@ def looks_like_text(instream):
         sample = instream.peek(_TEXT_SAMPLE_SIZE)
     except EnvironmentError:
         return None
+    if not sample:
+        logging.debug(f"input stream '{instream.name}' is empty.")
+        return True
     if set(sample) & set(_NON_TEXT_BYTES):
         logging.debug(
             'Found non-text-like bytes: '
@@ -102,11 +105,13 @@ class MagicRegistry:
                         level = logging.WARNING
                     else:
                         level = logging.DEBUG
-                    logging.log(
-                        level,
-                        f"Could not infer format from file '{file.name}'. "
-                        f'Falling back to default `{format}` format'
-                    )
+                    # don't complain about empty files
+                    if file.mode == 'w' or file.peek(1):
+                        logging.log(
+                            level,
+                            f"Could not infer format from file '{file.name}'. "
+                            f'Falling back to default `{format}` format'
+                        )
                 try:
                     converter = (self._names[format],)
                 except KeyError:
