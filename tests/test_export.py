@@ -505,6 +505,12 @@ class TestExport(BaseTester):
         """Test exporting Project Oberon files."""
         self._export_4x6(format='oberon', count=192)
 
+    # SymbOS
+
+    def test_export_symbos(self):
+        """Test exporting SymbOS files."""
+        self._export_4x6(format='symbos', count=96)
+
 
 if __name__ == '__main__':
     unittest.main()
