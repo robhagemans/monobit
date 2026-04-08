@@ -114,6 +114,16 @@ class EncoderBuilder:
                 return self() | other()
         return EncoderBuilder(delayed_or)
 
+    def __ror__(self, other):
+        """Return left-hand side overlaid with all characters defined in this encoding."""
+        if isinstance(other, Encoder):
+            def delayed_ror():
+                return other | self()
+        else:
+            def delayed_ror():
+                return other() | self()
+        return EncoderBuilder(delayed_ror)
+
     def subset(self, codepoint_range):
         """Return encoding only for given range of codepoints."""
         def delayed_subset():
