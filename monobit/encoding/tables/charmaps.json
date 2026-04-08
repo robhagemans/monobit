@@ -2239,5 +2239,23 @@
         "overlays": [
             "ascii"
         ]
+    },
+    "oberon-latin": {
+        "aliases": [
+            "oberon"
+        ],
+        "filename": "manual/oberon-latin.ucp",
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "oberon-greek-overlay": {
+        "filename": "manual/oberon-greek.ucp"
+    },
+    "oberon-greek": {
+        "overlays": [
+            "ascii",
+            "oberon-greek-overlay"
+        ]
     }
 }
