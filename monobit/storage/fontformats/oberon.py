@@ -62,7 +62,7 @@ def load_oberon(instream):
     runs = (_RUN * header.NofRuns).read_from(instream)
     logging.debug(runs)
     n_boxes = sum(_run.end - _run.beg for _run in runs)
-    chars = chain.from_iterable(range(_run.beg, _run.end) for _run in runs)
+    cps = chain.from_iterable(range(_run.beg, _run.end) for _run in runs)
     boxes = (_BOX * n_boxes).read_from(instream)
     logging.debug(boxes)
     glyphs = tuple(
@@ -75,14 +75,12 @@ def load_oberon(instream):
             left_bearing=_box.x,
             right_bearing=_box.dx-_box.w-_box.x,
             shift_up=_box.y,
-            codepoint=_chr,
-            char=chr(_chr),
+            codepoint=_cp,
         )
-        for _box, _chr in zip(boxes, chars)
+        for _box, _cp in zip(boxes, cps)
     )
     return Font(
         glyphs,
-        encoding='ascii',
         line_height=header.height,
         **{
             'oberon.family': header.family,
@@ -99,9 +97,9 @@ def save_oberon(fonts, outstream):
     font = ensure_single(fonts)
     # restrict to ascii
     font = font.label()
-    font = font.subset(chars=(chr(_c) for _c in range(256)))
+    font = font.subset(codepoints=range(256))
     # get ascii runs
-    codepoints = sorted(ord(_c) for _c in font.get_chars())
+    codepoints = sorted(font.get_codepoints())
     ranges = find_ranges(codepoints)
     runs = _RUN.array(len(ranges))(
         *(_RUN(beg=_r.start, end=_r.stop) for _r in ranges)
