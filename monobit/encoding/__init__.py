@@ -26,7 +26,6 @@ def encoder(initialiser):
     initialiser = str(initialiser)
     # numeric ranges - interpreted as indexer
     if initialiser[:1].isdigit():
-        initialiser = to_labels(initialiser)
         return Indexer(code_range=initialiser)
     try:
         return encodings[initialiser]
