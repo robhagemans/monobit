@@ -350,9 +350,11 @@ class Location:
                     return
                 # head (innermost existing) is a subdirectory
                 # i.e. tail subpath does not exist
-                raise FileNotFoundError(
-                    f"Subpath '{tail}' of path '{head}' not found on container {container}."
-                )
+                if str(container):
+                    message = f"Path {container} / {head} / {tail} not found."
+                else:
+                    message = f"Path {head} / {tail} not found."
+                raise FileNotFoundError(message)
             else:
                 # remove used arguments
                 for kwarg in kwargs:
