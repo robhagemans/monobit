@@ -11,7 +11,7 @@ from pathlib import Path
 from importlib.resources import files
 
 from .registry import EncodingRegistry
-from .charmaps import Unicode, EncoderLoader
+from .charmaps import Unicode, EncoderLoader, Charmap
 from .taggers import (
     Tagmap, CharTagger, CodepointTagger,
     UnicodeNameTagger, DescriptionTagger,
@@ -23,11 +23,14 @@ from . import tables
 def register_charmaps(charmaps):
     """Register charmap files"""
     for _name, _dict in json.loads((files(tables) / 'charmaps.json').read_text()).items():
-        charmap = EncoderLoader(
-            name=_name, filename=_dict['filename'],
-            format=_dict.get('format', None),
-            **_dict.get('kwargs', {}),
-        )
+        if 'filename' in _dict:
+            charmap = EncoderLoader(
+                name=_name, filename=_dict['filename'],
+                format=_dict.get('format', None),
+                **_dict.get('kwargs', {}),
+            )
+        else:
+            charmap = Charmap()
         if 'range' in _dict:
             charmap = charmap.subset(_dict['range'])
         # overlays must be defined first

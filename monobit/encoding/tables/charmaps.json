@@ -787,6 +787,11 @@
         "notes": "Arabic - Urdu"
     },
     "iso-ir-68": {
+        "filename": "misc/APL-ISO-IR-68.TXT",
+        "range": "0x00-0xff",
+        "notes": "excluding 3-byte codepoints representing composite glyphs"
+    },
+    "iso-ir-68-composite": {
         "filename": "misc/APL-ISO-IR-68.TXT"
     },
     "kps-9566": {
@@ -2238,6 +2243,24 @@
         "filename": "manual/pc-geos.ucp",
         "overlays": [
             "ascii"
+        ]
+    },
+    "oberon-latin": {
+        "aliases": [
+            "oberon"
+        ],
+        "filename": "manual/oberon-latin.ucp",
+        "overlays": [
+            "ascii"
+        ]
+    },
+    "oberon-greek-overlay": {
+        "filename": "manual/oberon-greek.ucp"
+    },
+    "oberon-greek": {
+        "overlays": [
+            "ascii",
+            "oberon-greek-overlay"
         ]
     }
 }

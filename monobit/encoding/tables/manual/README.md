@@ -17,6 +17,8 @@ Manually constructed encoding tables
 - based on the ZX Spectrum +3 CP/M Manual, Appendix II
 - https://k1.spdns.de/Vintage/Sinclair/86/ZX%20Spectrum%2B3/ZX%20Spectrum%2B3%20CP%3AM%20Manual/appendix2.html
 
+`oberon-latin.ucp`, `oberon-greek.ucp`: constructed based on glyphs in Oberon fonts
+
 
 > Insofar as these mappings are considered a copyrightable work, to the extent possible under law,
 > I waive all copyright and related or neighbouring rights to that work under the

@@ -122,3 +122,4 @@ def wrap_main(debug=False):
         logging.error(exc)
         if debug:
             raise
+        sys.exit(1)

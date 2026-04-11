@@ -123,6 +123,8 @@ class Charmap(Encoder):
 
     def __or__(self, other):
         """Return encoding overlaid with all characters defined in right-hand side."""
+        if not isinstance(other, Charmap):
+            return NotImplemented
         return Charmap(mapping=self._ord2chr | other._ord2chr, name=f'{self.name}')
 
     def distance(self, other):
