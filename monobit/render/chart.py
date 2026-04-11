@@ -227,10 +227,12 @@ def format_label(label):
 
 def grid_resample(font, glyphs_per_line, codepoint_range):
     """Resample font for grid representation."""
+    codepoint_range = tuple(codepoint_range)
     if codepoint_range:
         # limit to only the glyphs in range
         font = font.resample(codepoint_range, missing='empty', relabel=False)
         # don't bring in more codepoints through charmap
+        font = font.label(codepoint_from=font.encoding)
         font = font.modify(encoding=None)
     # fill up all contiguous grid positions
     try:
@@ -240,8 +242,8 @@ def grid_resample(font, glyphs_per_line, codepoint_range):
         raise ValueError('No codepoint labels found.')
     # start at a codepoint that is a multiple of the number of columns
     grid_range = range(
-        glyphs_per_line * (int(min(codepoints)) // glyphs_per_line),
-        int(max(codepoints)) + 1,
+        glyphs_per_line * (int(min(codepoints, default=0)) // glyphs_per_line),
+        int(max(codepoints, default=0)) + 1,
     )
     font = font.resample(grid_range, missing='empty', relabel=False)
     return font
