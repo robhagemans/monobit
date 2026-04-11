@@ -1424,7 +1424,7 @@ class TestImport(BaseTester):
         file = self.font_path / 'Oberon10.Scn.Fnt'
         font, *_ = monobit.load(file, format='oberon')
         self.assertEqual(len(font.glyphs), 127)
-        assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(),  """\
 ...@...
 ...@...
 ..@.@..
