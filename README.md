@@ -110,8 +110,8 @@ Proportional-spacing formats
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
 | HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB O  |
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;| binary | see `nfnt` |
-| Bitmap image [P]      | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | -        |
-| Set of Bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | -        |
+| Grid bitmap image [P] | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | G C      |
+| Set of bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | G C      |
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | M; see `nfnt` |
 | MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K C; see `nfnt`, `sfnt` |
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
@@ -152,11 +152,11 @@ U  Unicode
 US Unicode, multi-codepoint sequences  
 SB Single-byte character sets  
 MB Multi-byte character sets  
-O  Overlapping glyphs
+O  Overlapping glyphs  
 K  Kerning  
 V  Vertical metrics  
 G  Greyscale fonts  
-C  Colour fonts (not supported by `monobit`)  
+C  Colour fonts  
 
 If the abbreviation is bracketed, the format supports this but it is not implemented.
 
