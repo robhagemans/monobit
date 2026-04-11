@@ -162,7 +162,7 @@ _PointSizeEntry = le.Struct(
 
 _WBFixed = le.Struct(
     frac='byte',
-    int='word',
+    int='int16',
 )
 
 def _wbfixed_to_float(wbfixed_value):
