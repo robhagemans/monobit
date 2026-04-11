@@ -395,7 +395,7 @@ if Image:
         ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
-        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         """
         glyph_map = create_chart(
             fonts,
