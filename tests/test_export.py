@@ -503,7 +503,7 @@ class TestExport(BaseTester):
 
     def test_export_oberon(self):
         """Test exporting Project Oberon files."""
-        self._export_4x6(format='oberon', count=192)
+        self._export_4x6(format='oberon', label=b'A', count=192)
 
     # SymbOS
 
