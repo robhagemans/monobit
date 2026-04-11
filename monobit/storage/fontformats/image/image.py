@@ -378,7 +378,7 @@ if Image:
             border:RGB=RGB(32, 32, 32),
             paper:RGB=RGB(0, 0, 0),
             ink:RGB=RGB(255, 255, 255),
-            codepoint_range:tuple[Codepoint]=None,
+            codepoint_range:tuple[Codepoint]=range(512),
             grid_positioning:bool=True,
         ):
         """
@@ -394,7 +394,7 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
-        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: 0-511)
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         """
         glyph_map = create_chart(
@@ -416,6 +416,48 @@ if Image:
             img.save(outfile, format=image_format or Path(outfile).suffix[1:])
         except (KeyError, ValueError, TypeError):
             img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
+
+
+    @savers.register(name='imagechart')
+    def save_imagechart(
+            fonts, outfile, *,
+            image_format:str='png',
+            image_mode:str='RGB',
+            glyphs_per_line:int=32,
+            margin:Coord=Coord(0, 0),
+            padding:Coord=Coord(1, 1),
+            scale:Coord=Coord(1, 1),
+            direction:str='left-to-right top-to-bottom',
+            border:RGB=RGB(32, 32, 32),
+            paper:RGB=RGB(0, 0, 0),
+            ink:RGB=RGB(255, 255, 255),
+            codepoint_range:tuple[Codepoint]=None,
+            grid_positioning:bool=True,
+        ):
+        """
+        Export font to chart image.
+
+        image_format: image file format (default: 'png')
+        image_mode: image colour mode. '1', 'L' or 'RGB' (default)
+        glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
+        margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
+        padding: number of pixels in X,Y direction between glyphs (default: 1x1)
+        scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+        direction: two-part string, default 'left-to-right top-to-bottom'
+        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
+        border: border colour R,G,B 0--255 (default 32,32,32)
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
+        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
+        """
+        # 'imagechart' is the same as 'image' but with different defaults
+        return save_image(
+            fonts, outfile,
+            image_format, image_mode,
+            glyphs_per_line, margin, padding, scale, direction,
+            border, paper, ink,
+            codepoint_range, grid_positioning,
+        )
 
 
     ###########################################################################

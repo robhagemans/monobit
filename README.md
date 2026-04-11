@@ -205,17 +205,15 @@ MC multi-cell glyphs
 Charts
 ------
 
-These formats output a table of glyphs. PDF, text and block charts are write-only,
-image charts can be read through the `image` reader.
+These write-only formats output a table of glyphs.  
 
-
-| Format            | Short Name | Read  | Write |
-|-------------------|------------|-------|-------|
-| Text              | `chart`    |       |&check;|
-| Block elements    | `blocks`   |       |&check;|
-| ANSI colours      | `shades`   |       |&check;|
-| Image [P]         | `image`    |&check;|&check;|
-| PDF [R]           | `pdf`      |       |&check;|
+| Format            | Short Name   |
+|-------------------|--------------|
+| Text              | `chart`      |
+| Block elements    | `blocks`     |
+| ANSI colours      | `shades`     |
+| Image [P]         | `imagechart` |
+| PDF [R]           | `pdf`        |
 
 [P] requires **PIL**  
 [R] requires **reportlab**  
