@@ -189,6 +189,9 @@ Character-cell formats
 | psf2ams PSFCOM        | `psfcom`   | `.com`                      |&check;|       | binary | 8x8, 8x16 | -   |
 | psf2txt               | `psf2txt`  | `.txt`                      |&check;|&check;| visual | any  | US       |
 | Raw binary            | `raw`      | `.fnt` `.rom` [*]           |&check;|&check;| binary | -    | -        |
+| TasPrint (no header)  | `tasprint` |                             |&check;|&check;| binary | Nx16 N<=16 | M  |
+| TasPrint (+3DOS)      | `tas3dos`  |                             |&check;|       | binary | Nx16 N<=16 | -  |
+| TasPrint (CPC)        | `tascpc`   |                             |&check;|       | binary | 10x16 | -       |
 | UDG loader            | `udg`      | `.com`                      |&check;|       | binary | 8x8  | -        |
 | FreeBSD console font  | `vtfont`   | `.fnt`                      |&check;|&check;| binary | any  | MC U     |
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;| binary | 8x14 multiples | - |

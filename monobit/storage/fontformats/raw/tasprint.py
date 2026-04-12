@@ -52,7 +52,7 @@ def load_tasprint(
 
 
 @loaders.register(
-    name='tas_3dos',
+    name='tas3dos',
     # signature, issue==1, version==0, file_size=0xc82, file_type==3, data_length==3074, load_addr=30000
     magic=(_PLUS3DOS_MAGIC + b'\1\0\x82\x0c\0\0\3\2\x0c\x30\x75',),
 )
@@ -73,7 +73,7 @@ def load_tasprint_3dos(instream):
 
 
 @loaders.register(
-    name='tas_cpc',
+    name='tascpc',
     # filetype==2, logical_length==5120, data_location==22240
     magic=(
         Magic.offset(18) + b'\2' + Magic.offset(2) + b'\xe0\x56' + Magic.offset(1) + b'\0\x14',
