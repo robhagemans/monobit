@@ -16,6 +16,7 @@ from monobit.base.struct import little_endian as le
 
 from .raw import load_bitmap, save_bitmap
 from .plus3dos import _PLUS3DOS_HEADER, _PLUS3DOS_MAGIC
+from monobit.storage.utils.limitations import ensure_charcell
 
 
 @loaders.register(
@@ -88,6 +89,33 @@ def load_tasprint_cpc(instream):
     # check tasprint encoding
     font = font.label(char_from='ascii')
     return font
+
+
+@savers.register(linked=load_tasprint)
+def save_tasprint(fonts, outstream):
+    """Save a TasPrint font."""
+    for font in fonts:
+        font = ensure_charcell(font)
+        if font.cell_size.x > 16:
+            raise FileFormatError(
+                'TasPrint format can only store fonts with cell-size.x <= 16;'
+                f' this font has cell-size={font.cell_size}.'
+            )
+        if font.cell_size.y != 16:
+            raise FileFormatError(
+                'TasPrint format can only store fonts with cell-size.y == 16;'
+                f' this font has cell-size={font.cell_size}.'
+            )
+        font = font.resample(
+            chars=(Char(chr(_c)) for _c in range(32, 128)),
+            missing=font.get_glyph(' '),
+        )
+        rasters = tuple(_g.pixels for _g in font.glyphs)
+        tops = (_r.crop(bottom=8).transpose() for _r in rasters)
+        bottoms = (_r.crop(top=8).transpose() for _r in rasters)
+        for top, bot in zip(tops, bottoms):
+            outstream.write(top.as_bytes())
+            outstream.write(bot.as_bytes())
 
 
 
