@@ -83,7 +83,7 @@ def load_tasprint_cpc(instream):
     """Load TasPrint 16x16 fonts with AMSDOS header."""
     header = _AMSDOS_HEADER.read_from(instream)
     logging.debug(header)
-    if header.file_type != 2 or header.logical_length != 5120 or header.data_location != 22240:
+    if header.file_type != 2 or header.logical_length != 5120:
         logging.warning('AMSDOS header values are not consistent with TasPrint file.')
     font = _read_tasprint_strike(instream, 256, 10, first_codepoint=0)
     # check tasprint encoding
