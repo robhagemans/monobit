@@ -11,6 +11,13 @@
         "filename": "iso-8859/8859-1.TXT",
         "range": "0-0x7f"
     },
+    "ascii-printable": {
+        "aliases": [
+            "printable-ascii"
+        ],
+        "filename": "iso-8859/8859-1.TXT",
+        "range": "0x20-0x7e"
+    },
     "c0-controls": {
         "filename": "iso-8859/8859-1.TXT",
         "range": "0-0x1f",
@@ -2261,6 +2268,12 @@
         "overlays": [
             "ascii",
             "oberon-greek-overlay"
+        ]
+    },
+    "tasprint": {
+        "filename": "manual/tasprint.ucp",
+        "overlays": [
+            "ascii-printable"
         ]
     }
 }
