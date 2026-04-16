@@ -19,17 +19,76 @@ from .plus3dos import _PLUS3DOS_HEADER, _PLUS3DOS_MAGIC
 from monobit.storage.utils.limitations import ensure_charcell
 
 
+# +3DOS: signature, issue==1, version==0, file_size=0xc82, file_type==3, data_length==3074, load_addr=30000
+_TASPRINT_P3DOS = Magic(_PLUS3DOS_MAGIC + b'\1\0\x82\x0c\0\0\3\2\x0c\x30\x75')
+# AMSDOS: filetype==2, logical_length==5120
+_TASPRINT_AMSDOS = (
+    b'\0' + Magic.offset(11) + b'\0\0\0\0\0\0\2\0\0'
+    + Magic.offset(2) + b'\0\0\x14\0\0'
+    + Magic.offset(36) + b'\0\x14\0'
+)
+
+# https://www.cpcwiki.eu/index.php/AMSDOS_Header
+_AMSDOS_HEADER = le.Struct(
+    user_number='uint8',
+    filename='8s',
+    extension='3s',
+    zero='uint32',
+    block_number='uint8',
+    last_block='uint8',
+    file_type='uint8',
+    data_length='uint16',
+    data_location='uint16',
+    first_block='uint8',
+    logical_length='uint16',
+    entry_address='uint16',
+    unused0='36s',
+    # uint24le real_length
+    real_length_lo='uint16',
+    real_length_hi='uint8',
+    checksum='uint16',
+    unused1='59s',
+)
+
+
 @loaders.register(
     name='tasprint',
     patterns=('tasfont0', 'font.obj'),
+    magic=(_TASPRINT_P3DOS, _TASPRINT_AMSDOS),
 )
-def load_tasprint(
-        instream,
+def load_tasprint(instream, version:str=None):
+    """
+    Load TasPrint fonts.
+
+    version: tasprint format version, one of '48k', '+3', 'cpc', 'pcw'
+
+    # count: number of glyphs per font (default: 96)
+    # n_cols: number of columns per glyph definition (default: 10)
+    # width: actual glyph width <= n_cols (default: same as n_cols)
+    # first-codepoint: first codepoint in each font (default: 32)
+    """
+    if version == '+3' or not version and _TASPRINT_P3DOS.fits(instream):
+        logging.debug('Loading TasPrint +3 file.')
+        return load_tasprint_3dos(instream)
+    elif version == 'cpc' or not version and _TASPRINT_AMSDOS.fits(instream):
+        logging.debug('Loading TasPrint CPC file.')
+        return load_tasprint_cpc(instream)
+    data = instream.read()
+    if version == '48k' or len(data) % (2 * 96 * 10) == 0:
+        logging.debug('Loading TasPrint 48k/QL file.')
+        return parse_tasprint_48k(data)
+    elif version == 'pcw' or len(data) == 2 * 128 * 16:
+        logging.debug('Loading TasPrint PCW file.')
+        return parse_tasprint_pcw(data)
+
+
+def parse_tasprint_48k(
+        data,
         count:int=96, n_cols:int=10, width:int=None,
         first_codepoint:int=32
     ):
     """
-    Load TasPrint fonts.
+    Load fonts in TasPrint format for Spectrum 48k / QL.
 
     count: number of glyphs per font (default: 96)
     n_cols: number of columns per glyph definition (default: 10)
@@ -37,11 +96,12 @@ def load_tasprint(
     first-codepoint: first codepoint in each font (default: 32)
     """
     fonts = []
-    while len(instream.peek(1)) > 0:
-        logging.debug('reading strike')
+    bytesize = 2 * count * n_cols
+    while data:
+        strike, data = data[:bytesize], data[bytesize:]
         try:
             font = _read_tasprint_strike(
-                instream, count, n_cols, width=width,
+                strike, count, n_cols, width=width,
                 first_codepoint=first_codepoint,
             )
         except ValueError:
@@ -51,11 +111,20 @@ def load_tasprint(
     return fonts
 
 
-@loaders.register(
-    name='tas3dos',
-    # signature, issue==1, version==0, file_size=0xc82, file_type==3, data_length==3074, load_addr=30000
-    magic=(_PLUS3DOS_MAGIC + b'\1\0\x82\x0c\0\0\3\2\x0c\x30\x75',),
-)
+def parse_tasprint_pcw(data, width:int=None):
+    """
+    Load fonts in TasPrint format for Amstrad PCW.
+
+    width: actual glyph width <= n_cols (default: 16)
+    """
+    font = _read_tasprint_strike(
+        data, count=128, n_cols=16, width=width,
+        first_codepoint=1,
+    )
+    font = font.label(char_from='ascii-printable')
+    return font
+
+
 def load_tasprint_3dos(instream):
     """Load TasPrint 16x16 fonts with 3dos header."""
     header = _PLUS3DOS_HEADER.read_from(instream)
@@ -67,25 +136,20 @@ def load_tasprint_3dos(instream):
         )
     if header.file_type != 3 or header.data_length != 3047 or header.param1 != 30000:
         logging.warning('+3DOS header values are not consistent with TasPrint file.')
-    font = _read_tasprint_strike(instream, 96, 16, width)
+    data = instream.read()
+    font = _read_tasprint_strike(data, 96, 16, width)
     font = font.label(char_from='ascii')
     return font
 
 
-@loaders.register(
-    name='tascpc',
-    # filetype==2, logical_length==5120, data_location==22240
-    magic=(
-        Magic.offset(18) + b'\2' + Magic.offset(2) + b'\xe0\x56' + Magic.offset(1) + b'\0\x14',
-    ),
-)
 def load_tasprint_cpc(instream):
-    """Load TasPrint 16x16 fonts with AMSDOS header."""
+    """Load TasPrint 10x16 fonts with AMSDOS header."""
     header = _AMSDOS_HEADER.read_from(instream)
     logging.debug(header)
     if header.file_type != 2 or header.logical_length != 5120:
         logging.warning('AMSDOS header values are not consistent with TasPrint file.')
-    font = _read_tasprint_strike(instream, 256, 10, first_codepoint=0)
+    data = instream.read()
+    font = _read_tasprint_strike(data, 256, 10, first_codepoint=0)
     font = font.label(char_from='tasprint')
     return font
 
@@ -117,42 +181,18 @@ def save_tasprint(fonts, outstream):
             outstream.write(bot.as_bytes())
 
 
-
-
 ###############################################################################
 
-# https://www.cpcwiki.eu/index.php/AMSDOS_Header
-_AMSDOS_HEADER = le.Struct(
-    user_number='uint8',
-    filename='8s',
-    extension='3s',
-    zero='uint32',
-    block_number='uint8',
-    last_block='uint8',
-    file_type='uint8',
-    data_length='uint16',
-    data_location='uint16',
-    first_block='uint8',
-    logical_length='uint16',
-    entry_address='uint16',
-    unused0='36s',
-    # uint24le real_length
-    real_length_lo='uint16',
-    real_length_hi='uint8',
-    checksum='uint16',
-    unused1='59s',
-)
-
-
-def _read_tasprint_strike(instream, n_glyphs, n_cols, width=None, first_codepoint=32):
-    size = n_glyphs * n_cols * 2
-    data = instream.read(size)
+def _read_tasprint_strike(data, count, n_cols, width=None, first_codepoint=32):
+    logging.debug(
+        'Reading TasPrint strike with %i glyphs, %i columns', count, n_cols
+    )
     rasters = tuple(
         Raster.from_bytes(
             data[_i*n_cols : (_i+1)*n_cols],
             8, n_cols,
         ).transpose()
-        for _i in range(n_glyphs*2)
+        for _i in range(count*2)
     )
     if width:
         rasters = tuple(_r.crop(right=n_cols-width) for _r in rasters)
