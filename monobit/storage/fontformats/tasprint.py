@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.raw.tasprint - TasPrint fonts
+monobit.storage.fontformats.tasprint - TasPrint fonts
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
