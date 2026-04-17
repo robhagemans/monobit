@@ -10,13 +10,13 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.storage import loaders, savers, Magic
-from monobit.base import FileFormatError
+from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Raster, Glyph, Font, Char
 from monobit.base.struct import little_endian as le
 
 from .raw import load_bitmap, save_bitmap
-from .plus3dos import _PLUS3DOS_HEADER, _PLUS3DOS_MAGIC
-from monobit.storage.utils.limitations import ensure_charcell
+from .raw.plus3dos import _PLUS3DOS_HEADER, _PLUS3DOS_MAGIC
+from monobit.storage.utils.limitations import ensure_charcell, ensure_single
 
 
 # +3DOS: signature, issue==1, version==0, file_size=0xc82, file_type==3, data_length==3074, load_addr=30000
@@ -61,11 +61,6 @@ def load_tasprint(instream, version:str=None):
     Load TasPrint fonts.
 
     version: tasprint format version, one of '48k', '+3', 'cpc', 'pcw'
-
-    # count: number of glyphs per font (default: 96)
-    # n_cols: number of columns per glyph definition (default: 10)
-    # width: actual glyph width <= n_cols (default: same as n_cols)
-    # first-codepoint: first codepoint in each font (default: 32)
     """
     if version == '+3' or not version and _TASPRINT_P3DOS.fits(instream):
         logging.debug('Loading TasPrint +3 file.')
@@ -155,33 +150,56 @@ def load_tasprint_cpc(instream):
 
 
 @savers.register(linked=load_tasprint)
-def save_tasprint(fonts, outstream):
-    """Save a TasPrint font."""
-    for font in fonts:
-        font = ensure_charcell(font)
-        if font.cell_size.x > 16:
-            raise FileFormatError(
-                'TasPrint format can only store fonts with cell-size.x <= 16;'
-                f' this font has cell-size={font.cell_size}.'
-            )
-        if font.cell_size.y != 16:
-            raise FileFormatError(
-                'TasPrint format can only store fonts with cell-size.y == 16;'
-                f' this font has cell-size={font.cell_size}.'
-            )
-        font = font.resample(
-            chars=(Char(chr(_c)) for _c in range(32, 128)),
-            missing=font.get_glyph(' '),
+def save_tasprint(fonts, outstream, version:str='48k'):
+    """
+    Save a TasPrint font.
+
+    version: tasprint format version, one of '48k', '+3', 'cpc', 'pcw'
+    """
+    if version == '48k':
+        # ensure 10x16
+        for font in fonts:
+            font = ensure_charcell(font, cell_size=(10, 16))
+            return _write_tasprint_strike(outstream, font)
+    font = ensure_single(fonts)
+    font = ensure_charcell(font)
+    if version == '+3':
+        header = _PLUS3DOS_HEADER(
+            signature=_PLUS3DOS_MAGIC,
+            issue=1,
+            version=0,
+            file_size=3202,
+            file_type=3,
+            data_length=3074,
+            param_1=30000,
+            param_2=21506,
+            checksum=18,
         )
-        rasters = tuple(_g.pixels for _g in font.glyphs)
-        tops = (_r.crop(bottom=8).transpose() for _r in rasters)
-        bottoms = (_r.crop(top=8).transpose() for _r in rasters)
-        for top, bot in zip(tops, bottoms):
-            outstream.write(top.as_bytes())
-            outstream.write(bot.as_bytes())
+        outstream.write(bytes(header))
+    elif version == 'cpc':
+        font = ensure_charcell(font, cell_size=(10, 16))
+        name = font.name[:8].split(' ')[0].upper().ljust(8, ' ')
+        header = _AMSDOS_HEADER(
+            filename=name.encode('ascii', 'ignore'),
+            extension=b'DAT',
+            file_type=2,
+            data_length=0,
+            # this number varies in every file
+            data_location=22240,
+            logical_length=5120,
+            real_length_lo=5120,
+            real_length_hi=0,
+        )
+        header.checksum = sum(bytes(header))
+        outstream.write(bytes(header))
+    elif version != 'pcw':
+        raise UnsupportedError(f'Unsupported TasPrint version `{version}`; must be one of `48k`, `+3`, `cpc`, `pcw`.')
+    return _write_tasprint_strike(outstream, font)
+
 
 
 ###############################################################################
+
 
 def _read_tasprint_strike(data, count, n_cols, width=None, first_codepoint=32):
     logging.debug(
@@ -204,3 +222,26 @@ def _read_tasprint_strike(data, count, n_cols, width=None, first_codepoint=32):
     )
     font = Font(glyphs)
     return font
+
+
+def _write_tasprint_strike(outstream, font):
+    if font.cell_size.x > 16:
+        raise FileFormatError(
+            'TasPrint format can only store fonts with cell-size.x <= 16;'
+            f' this font has cell-size={font.cell_size}.'
+        )
+    if font.cell_size.y != 16:
+        raise FileFormatError(
+            'TasPrint format can only store fonts with cell-size.y == 16;'
+            f' this font has cell-size={font.cell_size}.'
+        )
+    font = font.resample(
+        chars=(Char(chr(_c)) for _c in range(32, 128)),
+        missing=font.get_glyph(' '),
+    )
+    rasters = tuple(_g.pixels for _g in font.glyphs)
+    tops = (_r.crop(bottom=8).transpose() for _r in rasters)
+    bottoms = (_r.crop(top=8).transpose() for _r in rasters)
+    for top, bot in zip(tops, bottoms):
+        outstream.write(top.as_bytes())
+        outstream.write(bot.as_bytes())
