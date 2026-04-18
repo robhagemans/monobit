@@ -131,7 +131,7 @@ def load_tasprint_3dos(instream):
         raise FileFormatError(
             f'Not a +3DOS file: incorrect signature {header.signature}.'
         )
-    if header.file_type != 3 or header.data_length != 3047 or header.param1 != 30000:
+    if header.file_type != 3 or header.data_length != 3074 or header.param_1 != 30000:
         logging.warning('+3DOS header values are not consistent with TasPrint file.')
     data = instream.read()
     font = _read_tasprint_strike(data, 96, 16, width)
