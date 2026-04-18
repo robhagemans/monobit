@@ -6,5 +6,5 @@ licence: https://opensource.org/licenses/MIT
 """
 
 
-VERSION = '0.50'
+VERSION = '0.51'
 MONOBIT = f'monobit v{VERSION}'
