@@ -56,11 +56,12 @@ _AMSDOS_HEADER = le.Struct(
     patterns=('tasfont0', 'font.obj'),
     magic=(_TASPRINT_P3DOS, _TASPRINT_AMSDOS),
 )
-def load_tasprint(instream, version:str=None):
+def load_tasprint(instream, version:str=None, width:int=16):
     """
     Load TasPrint fonts.
 
     version: tasprint format version, one of '48k', '+3', 'cpc', 'pcw'
+    width: character width (for version=`pcw`; default:16)
     """
     if version == '+3' or not version and _TASPRINT_P3DOS.fits(instream):
         logging.debug('Loading TasPrint +3 file.')
@@ -74,7 +75,8 @@ def load_tasprint(instream, version:str=None):
         return parse_tasprint_48k(data)
     elif version == 'pcw' or len(data) == 2 * 128 * 16:
         logging.debug('Loading TasPrint PCW file.')
-        return parse_tasprint_pcw(data)
+        return parse_tasprint_pcw(data, width)
+    logging.debug('Could not determine tasprint version for file with length %d', len(data))
 
 
 def parse_tasprint_48k(
@@ -106,7 +108,7 @@ def parse_tasprint_48k(
     return fonts
 
 
-def parse_tasprint_pcw(data, width:int=None):
+def parse_tasprint_pcw(data, width):
     """
     Load fonts in TasPrint format for Amstrad PCW.
 
@@ -159,8 +161,11 @@ def save_tasprint(fonts, outstream, version:str='48k'):
     if version == '48k':
         # ensure 10x16
         for font in fonts:
+            # FIXME: glyph count must be 96
             font = ensure_charcell(font, cell_size=(10, 16))
-            return _write_tasprint_strike(outstream, font)
+            return _write_tasprint_strike(
+                outstream, font, codepoint_range=range(32, 128)
+            )
     font = ensure_single(fonts)
     font = ensure_charcell(font)
     if version == '+3':
@@ -176,6 +181,8 @@ def save_tasprint(fonts, outstream, version:str='48k'):
             checksum=18,
         )
         outstream.write(bytes(header))
+        outstream.write(bytes(le.int16(font.cell_size.x)))
+        codepoint_range = range(32, 128)
     elif version == 'cpc':
         font = ensure_charcell(font, cell_size=(10, 16))
         name = font.name[:8].split(' ')[0].upper().ljust(8, ' ')
@@ -192,9 +199,12 @@ def save_tasprint(fonts, outstream, version:str='48k'):
         )
         header.checksum = sum(bytes(header))
         outstream.write(bytes(header))
-    elif version != 'pcw':
+        codepoint_range = range(256)
+    elif version == 'pcw':
+        codepoint_range = range(1, 129)
+    else:
         raise UnsupportedError(f'Unsupported TasPrint version `{version}`; must be one of `48k`, `+3`, `cpc`, `pcw`.')
-    return _write_tasprint_strike(outstream, font)
+    return _write_tasprint_strike(outstream, font, codepoint_range)
 
 
 
@@ -224,7 +234,7 @@ def _read_tasprint_strike(data, count, n_cols, width=None, first_codepoint=32):
     return font
 
 
-def _write_tasprint_strike(outstream, font):
+def _write_tasprint_strike(outstream, font, codepoint_range):
     if font.cell_size.x > 16:
         raise FileFormatError(
             'TasPrint format can only store fonts with cell-size.x <= 16;'
@@ -236,7 +246,7 @@ def _write_tasprint_strike(outstream, font):
             f' this font has cell-size={font.cell_size}.'
         )
     font = font.resample(
-        chars=(Char(chr(_c)) for _c in range(32, 128)),
+        chars=(Char(chr(_c)) for _c in codepoint_range),
         missing=font.get_glyph(' '),
     )
     rasters = tuple(_g.pixels for _g in font.glyphs)
