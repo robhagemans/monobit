@@ -511,6 +511,36 @@ class TestExport(BaseTester):
         """Test exporting SymbOS files."""
         self._export_4x6(format='symbos', count=96)
 
+    # TasPrint
+
+    def _export_8x16_expand(self, *, format, width=8, label='A', count=919, save_kwargs=(), load_kwargs=()):
+        """Test exporting 8x16 files."""
+        file = self.temp_path / f'8x16.{format}'
+        font = self.fixed8x16
+        font = font.subset(codepoints=range(32, 32+count))
+        font = font.expand(right=width-8, adjust_metrics=False)
+        bench = font.get_glyph(label).as_text()
+        monobit.save(font, file, format=format, **(save_kwargs or {}))
+        font, *_ = monobit.load(file, format=format, **(load_kwargs or {}))
+        self.assertEqual(len(font.glyphs), count)
+        assert_text_eq(font.get_glyph(label).as_text(), bench)
+
+    def test_export_tasprint_48k(self):
+        """Test exporting TasPrint 48k files."""
+        self._export_8x16_expand(format='tasprint', save_kwargs=dict(version='48k'), count=96, width=10)
+
+    def test_export_tasprint_plus3(self):
+        """Test exporting TasPrint +3 files."""
+        self._export_8x16_expand(format='tasprint', save_kwargs=dict(version='+3'), count=96, width=16)
+
+    def test_export_tasprint_cpc(self):
+        """Test exporting TasPrint CPC files."""
+        self._export_8x16_expand(format='tasprint', save_kwargs=dict(version='cpc'), count=256, width=10)
+
+    def test_export_tasprint_pcw(self):
+        """Test exporting TasPrint PCW files."""
+        self._export_8x16_expand(format='tasprint', save_kwargs=dict(version='pcw'), count=128, width=16)
+
 
 if __name__ == '__main__':
     unittest.main()

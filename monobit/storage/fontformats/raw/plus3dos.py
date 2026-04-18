@@ -18,7 +18,7 @@ from monobit.storage.utils.limitations import ensure_single, ensure_charcell
 
 ###############################################################################
 # raw file with +3DOS header
-# https://area51.dev/sinclair/spectrum/3dos/fileheader/
+# https://web.archive.org/web/20220815134416/https://area51.dev/sinclair/spectrum/3dos/fileheader/
 # see also https://github.com/oldherl/psftools/blob/master/tools/zxflib.c
 
 
@@ -45,7 +45,8 @@ _PLUS3DOS_HEADER = le.Struct(
 
 @loaders.register(
     name='plus3dos',
-    magic=(_PLUS3DOS_MAGIC,),
+    # signature, issue==1, version==0, file_size==0x380, file_type==3, data_length==768
+    magic=(_PLUS3DOS_MAGIC + b'\1\0\x80\3\0\0\3\0\3',),
 )
 def load_plus3dos(instream):
     """Load a 768-byte raw font with +3DOS header."""
