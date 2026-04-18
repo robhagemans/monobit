@@ -17,6 +17,9 @@ class Indexer(Encoder):
         super().__init__('index')
         # generator
         self._code_range = to_labels(code_range)
+        self._name = ''
+        if isinstance(code_range, str):
+            self._name = code_range
 
     def codepoint(self, *labels):
         """Convert character to codepoint."""
@@ -27,7 +30,7 @@ class Indexer(Encoder):
 
     def __repr__(self):
         """Representation."""
-        return type(self).__name__ + '()'
+        return f'{type(self).__name__}("{self._name}")'
 
     @classmethod
     def load(cls, tbl_file):

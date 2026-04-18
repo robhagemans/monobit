@@ -1424,7 +1424,7 @@ class TestImport(BaseTester):
         file = self.font_path / 'Oberon10.Scn.Fnt'
         font, *_ = monobit.load(file, format='oberon')
         self.assertEqual(len(font.glyphs), 127)
-        assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(),  """\
 ...@...
 ...@...
 ..@.@..
@@ -1438,7 +1438,7 @@ class TestImport(BaseTester):
     # SymbOS
 
     def test_import_symbos(self):
-        """Test importing Palm OS fonts."""
+        """Test importing SymbOS fonts."""
         font, *_ = monobit.load(self.font_path / 'alpha.fnt', format='symbos')
         self.assertEqual(len(font.glyphs), 96)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(),  """\
@@ -1450,6 +1450,53 @@ class TestImport(BaseTester):
 @..@
 @..@
 """)
+
+    # TasPrint
+
+    tasprint = 'https://www.seasip.info/ZX/TasPrint/'
+
+    lectura_A = """\
+...@@...
+..@..@..
+.@....@.
+@......@
+@......@
+@@@@@@@@
+@......@
+@......@
+@......@
+@......@
+@......@
+@......@
+"""
+
+    def test_import_tasprint_48k(self):
+        """Test importing TasPrint fonts."""
+        file = ensure_asset(self.tasprint, 'allfiles.zip')
+        font, *_ = monobit.load(file / 'tasfont0')
+        self.assertEqual(len(font.glyphs), 96)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.lectura_A)
+
+    def test_import_tasprint_plus3(self):
+        """Test importing TasPrint fonts."""
+        file = ensure_asset(self.tasprint, 'allfiles.zip')
+        font, *_ = monobit.load(file / 'lectura.fnt')
+        self.assertEqual(len(font.glyphs), 96)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.lectura_A)
+
+    def test_import_tasprint_cpc(self):
+        """Test importing TasPrint fonts."""
+        file = ensure_asset(self.tasprint, 'allfiles.zip')
+        font, *_ = monobit.load(file / 'lectura.dat')
+        self.assertEqual(len(font.glyphs), 256)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.lectura_A)
+
+    def test_import_tasprint_pcw(self):
+        """Test importing TasPrint fonts."""
+        file = ensure_asset(self.tasprint, 'allfiles.zip')
+        font, *_ = monobit.load(file / 'lectura.bin', format='tasprint')
+        self.assertEqual(len(font.glyphs), 128)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.lectura_A)
 
 
 if __name__ == '__main__':

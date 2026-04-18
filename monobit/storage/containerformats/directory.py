@@ -16,6 +16,10 @@ from ..base import containers
 from ..containers import Container
 
 
+# show paths as relative in source-path
+SHOW_RELATIVE_PATHS = True
+
+
 @containers.register(name='dir')
 class Directory(Container):
     """Treat directory tree as a container."""
@@ -37,6 +41,13 @@ class Directory(Container):
             # exists, not the parents
             self._path.mkdir(parents=True, exist_ok=True)
         super().__init__(mode, str(self._path))
+
+    def __str__(self):
+        """Base directory representation in files."""
+        if SHOW_RELATIVE_PATHS:
+            return ''
+        else:
+            return self.name
 
     def decode(self, name):
         return self.open(name, mode='r')

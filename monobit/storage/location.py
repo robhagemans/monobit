@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 import itertools
 from pathlib import Path
+from os.path import commonprefix
 from collections import deque
 
 from ..plumbing import take_arguments, manage_arguments
@@ -85,7 +86,8 @@ class Location:
     def from_path(cls, path, **kwargs):
         """Create from path-like or string."""
         path = Path(path).resolve()
-        root = path.anchor
+        here = Path('.').resolve()
+        root = Path(commonprefix((path, here)))
         subpath = path.relative_to(root)
         return cls(
             # Directory objects doesn't really need to be closed
@@ -348,9 +350,11 @@ class Location:
                     return
                 # head (innermost existing) is a subdirectory
                 # i.e. tail subpath does not exist
-                raise FileNotFoundError(
-                    f"Subpath '{tail}' of path '{head}' not found on container {container}."
-                )
+                if str(container):
+                    message = f"Path {container} / {head} / {tail} not found."
+                else:
+                    message = f"Path {head} / {tail} not found."
+                raise FileNotFoundError(message)
             else:
                 # remove used arguments
                 for kwarg in kwargs:

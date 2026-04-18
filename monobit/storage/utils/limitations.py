@@ -21,12 +21,16 @@ def ensure_charcell(font, cell_size=None):
     # check if font is fixed-width and fixed-height
     if font.spacing != 'character-cell':
         raise UnsupportedError(
-            'This format only supports character-cell fonts.'
+            'This format only supports character-cell fonts. '
+            f'It cannot store this font with spacing={font.spacing}.'
         )
-    if cell_size and font.cell_size != cell_size:
-        raise UnsupportedError(
-            f'This format only supports {Coord(cell_size)} character-cell fonts.'
-        )
+    if cell_size:
+        cell_size = Coord.create(cell_size)
+        if font.cell_size != cell_size:
+            raise UnsupportedError(
+                f'This format only supports {cell_size} character-cell fonts. '
+                f'It cannot store this Font with cell-size={font.cell_size}.'
+            )
     # fill out character cell including shifts, bearings and line height
     font = font.equalise_horizontal()
     return font
