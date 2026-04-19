@@ -274,7 +274,7 @@ class Location:
                 mode == 'w' and not self.overwrite
                 and _contains(container, path, self.match_case)
             ):
-            raise ValueError(
+            raise FileExistsError(
                 f"Overwriting existing file '{path}'"
                 " requires -overwrite to be set"
             )
@@ -351,19 +351,24 @@ class Location:
                 # head (innermost existing) is a subdirectory
                 # i.e. tail subpath does not exist
                 if str(container):
-                    message = f"Path {container} / {head} / {tail} not found."
+                    message = f"Path {container}//{head}//{tail} not found."
                 else:
-                    message = f"Path {head} / {tail} not found."
+                    message = f"Path {head}//{tail} not found."
                 raise FileNotFoundError(message)
             else:
                 # remove used arguments
                 for kwarg in kwargs:
                     del self.argdict[kwarg]
         else:
-            # step forward until a suffix is found, or we run out of path
-            if not head.suffixes:
-                head2, tail = _split_path_suffix(tail)
-                head /= head2
+            if tail != Path() and not container.is_dir(head):
+                if str(container):
+                    message = f"Cannot append {tail} to {container}//{head}."
+                else:
+                    message = f"Cannot append {tail} to {head}."
+                raise FileExistsError(message)
+            # step forward until a container pattern is encountered, or we run out of path
+            head2, tail = _split_path_containername(tail)
+            head /= head2
             # head is now the innermost path element *to be created*
             # check if we're asked to create an file or a subdirectory
             # it's a subdirectory if (1) explicitly asked or (2) no suffix
@@ -388,13 +393,13 @@ class Location:
         self._resolve()
 
 
-def _split_path_suffix(path):
-    """Pare forward path until a suffix is found."""
+def _split_path_containername(path):
+    """Pare forward path until a recognised container name pattern is encountered."""
     for head in reversed((path, *path.parents)):
-        if head.suffixes:
+        if containers.identify_filename(head.name):
             tail = path.relative_to(head)
             return head, tail
-    # no suffix
+    # no match
     return path, Path('.')
 
 

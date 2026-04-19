@@ -136,7 +136,6 @@ class MagicRegistry:
         """
 
         def _decorator(converter):
-
             converter.format = name
             converter.magic = magic
             converter.patterns = patterns
@@ -187,6 +186,14 @@ class MagicRegistry:
             return converter
 
         return _decorator
+
+    def identify_filename(self, name):
+        """Identify a type from a file name."""
+        matches = []
+        for pattern, converter in self._patterns:
+            if pattern.matches(name):
+                matches.append(converter)
+        return tuple(matches)
 
     def identify(self, file):
         """Identify a type from magic sequence on input file."""
