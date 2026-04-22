@@ -265,6 +265,21 @@ class TestContainers(BaseTester):
         fonts = monobit.load(file)
         self.assertEqual(len(fonts), 1)
 
+    def test_existing_dir_with_suffix(self):
+        """Test writing into existing directory with dot. Issue #40"""
+        os.makedirs(self.temp_path / 'a.b' / 'c')
+        file = self.temp_path / 'a.b' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_nonexisting_dir_with_suffix(self):
+        """Test writing into new directory with dot. Issue #40"""
+        file = self.temp_path / 'no.such.dir' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file)
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 919)
+
 
 class TestForks(BaseTester):
 
