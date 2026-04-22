@@ -58,7 +58,7 @@ if libarchive:
                             continue
                         if entry.isdir:
                             data[name + '/'] = b''
-                        elif entry.isreg:
+                        elif entry.isreg or not entry.filetype:
                             data[name] = b''.join(list(entry.get_blocks()))
                             for path in Path(name).parents:
                                 if path != Path('.'):
