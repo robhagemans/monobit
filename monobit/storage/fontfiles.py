@@ -107,7 +107,7 @@ def _annotate_fonts_with_source(
     pack = Pack(fonts)
     filename = _sanitise_filesystem_name(Path(filename).name)
     filepath = _sanitise_filesystem_name(str(Path(str(location.root)) / location.path))
-    # source format argumets
+    # source format arguments
     loader_args = ' '.join(
         f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'
         for _k, _v in loader_kwargs.items()

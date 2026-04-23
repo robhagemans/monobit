@@ -570,7 +570,7 @@ class TestGlyphTrafo(BaseTester):
         assert m.comment == one.comment
 
 
-class TestFontTrafo:
+class TestFontTrafo(BaseTester):
     """Test applying the transformation to the whole font."""
 
     def test_font_smear(self):
@@ -623,8 +623,10 @@ class TestFontTrafo:
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
         f = f.underline(descent=2)
-        m = f.glyphs[0].reduce()
+        m = f.glyphs[0]
         assert m.as_text() == '\n'.join((
+            '........',
+            '........',
             '...@@...',
             '..@@@...',
             '.@@@@...',
@@ -637,7 +639,8 @@ class TestFontTrafo:
             '...@@...',
             '.@@@@@@.',
             '........',
-            '@@@@@@@@\n',
+            '@@@@@@@@',
+            '........\n',
         )), m
         assert m.advance_width == one.advance_width
         assert m.advance_height == one.advance_height
