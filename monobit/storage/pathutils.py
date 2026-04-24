@@ -1,5 +1,5 @@
 """
-monobit.storage.pathutils - container and path helpers
+monobit.storage.pathutils - container subpath helpers
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -11,14 +11,14 @@ from collections import deque
 from .magic import iter_funcs_from_registry
 
 
-def _contains(container, path, match_case):
-    """Container contains file (case insensitive)."""
-    _, tail = _match_path(container, path, match_case)
-    return tail == Path('.')
+def path_exists(container, path, match_case):
+    """Container contains file (case insensitive), returns boolean."""
+    _, unmatched = match_path(container, path, match_case)
+    return unmatched == Path()
 
 
-def _match_path(container, path, match_case):
-    """Stepwise match per path element."""
+def match_path(container, path, match_case):
+    """Stepwise match per path element. Returns pair (existing, unmatched)"""
     segments = Path(path).as_posix().split('/')
     segments = deque(segments)
     matched_path = Path('.')

@@ -12,7 +12,7 @@ from pathlib import Path
 from ..plumbing import take_arguments
 from .containers import Container
 from .containerformats.directory import Directory
-from .pathutils import _contains
+from .pathutils import path_exists
 from .resolvepath import PathResolver
 
 
@@ -183,13 +183,13 @@ class Location:
     def contains(self, item):
         """Check if file is in container. Case sensitive if container/fs is."""
         container, subpath = self._get_container_and_subpath()
-        return _contains(container, subpath / item, self.match_case)
+        return path_exists(container, subpath / item, self.match_case)
 
     def open(self, name, mode):
         """Open a binary stream in the container."""
         container, subpath = self._get_container_and_subpath()
         if mode == 'r':
-            if not _contains(container, subpath / name, match_case=self.match_case)
+            if not path_exists(container, subpath / name, match_case=self.match_case):
                 raise FileNotFoundError(
                     f"{container}//{subpath}//{name} not found "
                     f"with case-{'' if self.match_case else 'in'}sensitive match."
@@ -221,7 +221,7 @@ class Location:
     def _check_overwrite(self, container, path, mode):
         if (
                 mode == 'w' and not self.overwrite
-                and _contains(container, path, self.match_case)
+                and path_exists(container, path, self.match_case)
             ):
             raise FileExistsError(
                 f"Overwriting existing file '{path}'"

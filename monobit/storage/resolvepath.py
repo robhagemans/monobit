@@ -15,7 +15,7 @@ from .streams import StreamBase, Stream, KeepOpen
 from .base import encoders, decoders, containers
 from .containers import Container
 from .containerformats.directory import Directory
-from .pathutils import _contains, _match_path
+from .pathutils import path_exists, match_path
 
 
 class PathResolver:
@@ -103,7 +103,7 @@ class PathResolver:
     def _check_overwrite(self, container, path, mode):
         if (
                 mode == 'w' and not self.overwrite
-                and _contains(container, path, self.match_case)
+                and path_exists(container, path, self.match_case)
             ):
             raise FileExistsError(
                 f"Overwriting existing file '{path}'"
@@ -167,7 +167,7 @@ class PathResolver:
         container = self._leaf
         # stepwise match path elements with existing ones in container
         # head is the innermost existing path element
-        head, tail = _match_path(self._leaf, self._leafpath, self.match_case)
+        head, tail = match_path(self._leaf, self._leafpath, self.match_case)
         if Path(head) == Path('.') and Path(tail) == Path('.'):
             # path has resolved
             return
