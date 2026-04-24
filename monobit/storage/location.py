@@ -57,8 +57,11 @@ class Location:
         self._path_objects = resolver._path_objects
         self._stream_objects = resolver._stream_objects
 
+        # path from last container onward, or empty if stream
         self._leafpath = resolver._leafpath
+        # path from last container onward
         self._container_subpath = resolver._container_subpath
+        # subdirectory that has been created and should be removed on failure
         self._outermost_path = resolver._outermost_path
 
     def __repr__(self):
@@ -86,23 +89,17 @@ class Location:
         """Close objects we opened on path."""
         # leave out the root object as we don't own it
         while self._stream_objects:
-            self._outer_stream_object = self._stream_objects.pop()
+            outer = self._stream_objects.pop()
             try:
-                self._outer_stream_object.close()
+                outer.close()
             except Exception as exc:
-                logging.warning(
-                    'Exception while closing %s: %s',
-                    self._outer_stream_object, exc
-                )
+                logging.warning('Exception while closing %s: %s', outer, exc)
         while len(self._path_objects) > 1:
             outer = self._path_objects.pop()
             try:
                 outer.close()
             except Exception as exc:
-                logging.warning(
-                    'Exception while closing %s: %s',
-                    self._outer_stream_object, exc
-                )
+                logging.warning('Exception while closing %s: %s', outer, exc)
 
     @property
     def root(self):
