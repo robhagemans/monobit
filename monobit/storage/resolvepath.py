@@ -83,13 +83,6 @@ class PathResolver:
         )
 
     @property
-    def root(self):
-        if self._path_objects:
-            return self._path_objects[0]
-        else:
-            return ''
-
-    @property
     def _leaf(self):
         """Object (stream or container) at the end of path."""
         try:
