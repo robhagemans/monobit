@@ -17,17 +17,6 @@ def _contains(container, path, match_case):
     return tail == Path('.')
 
 
-def _match(container, path, match_case):
-    """Container contains file (case insensitive)."""
-    head, tail = _match_path(container, path, match_case)
-    if tail == Path('.'):
-        return head
-    raise FileNotFoundError(
-        f"'{path}' not found on {container} "
-        f"with case-{'' if match_case else 'in'}sensitive match."
-    )
-
-
 def _match_path(container, path, match_case):
     """Stepwise match per path element."""
     segments = Path(path).as_posix().split('/')
