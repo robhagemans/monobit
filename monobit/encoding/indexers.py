@@ -4,6 +4,7 @@ monobit.encoding.indexers - codepoint indexers
 (c) 2022--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
+import logging
 
 from .base import Encoder
 from ..core.labels import to_labels
