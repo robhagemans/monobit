@@ -89,6 +89,7 @@ def _sanitise_filesystem_name(filename):
     If the source filename contains surrogate-escaped non-utf8 bytes
     preserve the byte values as backslash escapes
     """
+    filename = str(filename)
     try:
         filename.encode('utf-8')
     except UnicodeError:
@@ -106,7 +107,7 @@ def _annotate_fonts_with_source(
     # convert font or pack to pack
     pack = Pack(fonts)
     filename = _sanitise_filesystem_name(Path(filename).name)
-    filepath = _sanitise_filesystem_name(str(Path(str(location.root)) / location.path))
+    filepath = _sanitise_filesystem_name(location.path)
     # source format arguments
     loader_args = ' '.join(
         f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'

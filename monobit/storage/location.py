@@ -57,7 +57,7 @@ class Location:
         self._stream_objects = resolver._stream_objects
 
         # full path relative to root
-        self.path = resolver.path
+        self.path_from_root = resolver.path
         # path from last container onward
         self._container_subpath = resolver._container_subpath
         # subdirectory that has been created and should be removed on failure
@@ -67,7 +67,7 @@ class Location:
         """String representation."""
         return (
             f"<{type(self).__name__} "
-            f"root='{self._path_objects[0]}' path='{self.path}' mode='{self.mode}'"
+            f"path='{self.path}' mode='{self.mode}'"
             f">"
         )
 
@@ -101,11 +101,12 @@ class Location:
                 logging.warning('Exception while closing %s: %s', outer, exc)
 
     @property
-    def root(self):
+    def path(self):
         if self._path_objects:
-            return self._path_objects[0]
+            root = self._path_objects[0]
         else:
-            return ''
+            root = ''
+        return Path(str(root)) / self.path_from_root
 
     # stream functionality
 
