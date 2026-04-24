@@ -97,19 +97,6 @@ class PathResolver:
         except IndexError:
             return self._path_objects[-1]
 
-
-    ###########################################################################
-
-    def _check_overwrite(self, container, path, mode):
-        if (
-                mode == 'w' and not self.overwrite
-                and path_exists(container, path, self.match_case)
-            ):
-            raise FileExistsError(
-                f"Overwriting existing file '{path}'"
-                " requires -overwrite to be set"
-            )
-
     def _resolve(self):
         """
         Convert location to subpath on innermost container and open stream.
@@ -212,7 +199,14 @@ class PathResolver:
                 return
             else:
                 # head should be a file -> create it
-                self._check_overwrite(container, head, mode=self.mode)
+                if (
+                        path_exists(container, head, self.match_case)
+                        and not self.overwrite
+                    ):
+                    raise FileExistsError(
+                        f"{container}//{head} exists. "
+                        "Use option -overwrite if you wish to overwrite it."
+                    )
                 if not self._outermost_path:
                     self._outermost_path = head
                 kwargs = take_arguments(container.encode, self.argdict)
