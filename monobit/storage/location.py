@@ -47,18 +47,17 @@ def open_location(
 class Location:
 
     def __init__(self, resolver):
-        self.path = resolver.path
-
         self.mode = resolver.mode
         self.overwrite = resolver.overwrite
         self.match_case = resolver.match_case
         self.argdict = resolver.argdict
 
+        # resources to manage
         self._path_objects = resolver._path_objects
         self._stream_objects = resolver._stream_objects
 
-        # path from last container onward, or empty if stream
-        self._leafpath = resolver._leafpath
+        # full path relative to root
+        self.path = resolver.path
         # path from last container onward
         self._container_subpath = resolver._container_subpath
         # subdirectory that has been created and should be removed on failure
@@ -108,14 +107,6 @@ class Location:
         else:
             return ''
 
-    @property
-    def _leaf(self):
-        """Object (stream or container) at the end of path."""
-        try:
-            return self._stream_objects[-1]
-        except IndexError:
-            return self._path_objects[-1]
-
     # stream functionality
 
     def get_stream(self):
@@ -144,8 +135,8 @@ class Location:
         # PathResolver
         return Location(
             PathResolver(
-                root=self._leaf,
-                path=self._leafpath / subpath,
+                root=self._path_objects[-1],
+                path=self._container_subpath / subpath,
                 mode=self.mode,
                 overwrite=self.overwrite,
                 match_case=self.match_case,
@@ -157,9 +148,9 @@ class Location:
         if not self.is_dir():
             yield self
             return
-        container = self._leaf
-        for path in container.iter_sub(self._leafpath):
-            subpath = Path(path).relative_to(self._leafpath)
+        container = self._path_objects[-1]
+        for path in container.iter_sub(self._container_subpath):
+            subpath = Path(path).relative_to(self._container_subpath)
             location = self.join(subpath)
             try:
                 with location:
