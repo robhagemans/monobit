@@ -38,8 +38,9 @@ class PathResolver:
         else:
             self._path_objects = []
             self._stream_objects = [KeepOpen(root)]
-        # subpath from last object in path_objects or stream_objects
+        # subpath from last object in path_objects (empty if a stream)
         self._leafpath = self.path
+        # subpath from last container
         self._container_subpath = self.path
         # format parameters
         self._container_format = container_format.split('.')
@@ -146,78 +147,75 @@ class PathResolver:
         """Resolve subpath on a container object."""
         container = self._leaf
         # stepwise match path elements with existing ones in container
-        # head is the innermost existing path element
-        head, tail = match_path(self._leaf, self._leafpath, self.match_case)
-        if Path(head) == Path('.') and Path(tail) == Path('.'):
+        # innermost existing path element
+        existing, unmatched = match_path(self._leaf, self._leafpath, self.match_case)
+        if Path(existing) == Path() and Path(unmatched) == Path():
             # path has resolved
             return
         if self.mode == 'r':
             try:
-                # see if head points to a file -> open it
+                # see if existing points to a file -> open it
                 kwargs = take_arguments(container.decode, self.argdict)
-                stream = container.decode(head, **kwargs)
+                stream = container.decode(existing, **kwargs)
             except IsADirectoryError:
-                if Path(tail) == Path('.'):
+                if Path(unmatched) == Path():
                     # path has resolved; nothing further to open
                     return
-                # head (innermost existing) is a subdirectory
-                # i.e. tail subpath does not exist
+                # innermost existing is a subdirectory
+                # i.e. unmatched subpath does not exist
                 if str(container):
-                    message = f"Path {container}//{head}//{tail} not found."
+                    message = f"{container}//{existing}//{unmatched} not found."
                 else:
-                    message = f"Path {head}//{tail} not found."
+                    message = f"{existing}//{unmatched} not found."
                 raise FileNotFoundError(message)
             else:
                 # remove used arguments
                 for kwarg in kwargs:
                     del self.argdict[kwarg]
         else:
-            if tail != Path() and not container.is_dir(head):
+            if unmatched != Path() and not container.is_dir(existing):
                 if str(container):
-                    message = f"Cannot append {tail} to {container}//{head}."
+                    message = f"Cannot append {unmatched} to {container}//{existing}."
                 else:
-                    message = f"Cannot append {tail} to {head}."
+                    message = f"Cannot append {unmatched} to {existing}."
                 raise FileExistsError(message)
             # step forward until a container pattern is encountered, or we run out of path
-            head2, tail = _split_path_containername(tail)
-            head /= head2
-            # head is now the innermost path element *to be created*
+            path_to_container, unmatched = _split_path_containername(unmatched)
+            to_be_created = existing / path_to_container
+            # innermost path element *to be created*
             # check if we're asked to create an file or a subdirectory
             # it's a subdirectory if (1) explicitly asked or (2) no suffix
-            if (
-                    self._make_dir
-                    or not head.suffixes
-                ):
-                # head (innermost creatable) should be a subdirectory
+            if self._make_dir or not to_be_created.suffixes:
+                # innermost creatable should be a subdirectory
                 return
             else:
-                # head should be a file -> create it
+                # innermost creatable should be a file -> create it
                 if (
-                        path_exists(container, head, self.match_case)
+                        path_exists(container, to_be_created, self.match_case)
                         and not self.overwrite
                     ):
                     raise FileExistsError(
-                        f"{container}//{head} exists. "
+                        f"{container}//{to_be_created} already exists. "
                         "Use option -overwrite if you wish to overwrite it."
                     )
                 if not self._outermost_path:
-                    self._outermost_path = head
+                    self._outermost_path = to_be_created
                 kwargs = take_arguments(container.encode, self.argdict)
-                stream = container.encode(head, **kwargs)
+                stream = container.encode(to_be_created, **kwargs)
                 for kwarg in kwargs:
                     del self.argdict[kwarg]
         # recurse on successfully opened file
         self._stream_objects.append(stream)
-        self._leafpath = tail
+        self._leafpath = unmatched
         self._resolve()
 
 
 def _split_path_containername(path):
     """Pare forward path until a recognised container name pattern is encountered."""
-    for head in reversed((path, *path.parents)):
-        if containers.identify_filename(head.name):
-            tail = path.relative_to(head)
-            return head, tail
+    for headpath in reversed((path, *path.parents)):
+        if containers.identify_filename(headpath.name):
+            subpath = path.relative_to(headpath)
+            return headpath, subpath
     # no match
     return path, Path('.')
 

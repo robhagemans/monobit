@@ -188,7 +188,7 @@ class Location:
         else:
             if exists and not self.overwrite:
                 raise FileExistsError(
-                    f"{container}//{subpath}/{name} exists. "
+                    f"{container}//{subpath}/{name} already exists. "
                     "Use option -overwrite if you wish to overwrite it."
                 )
             kwargs = take_arguments(container.encode, self.argdict)
