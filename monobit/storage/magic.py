@@ -12,6 +12,7 @@ import re
 
 from .streams import get_name
 from ..base import FileFormatError
+from ..plumbing import manage_arguments
 
 
 # number of bytes to read to check if something looks like text
@@ -65,6 +66,18 @@ def looks_like_text(instream):
         f"input stream '{instream.name}' is likely text."
     )
     return True
+
+
+def iter_funcs_from_registry(registry, instream, format):
+    """
+    Iterate over and wrap functions stored in a MagicRegistry
+    that fit a given stream and format.
+    """
+    # identify file type
+    fitting_loaders = registry.get_for(instream, format=format)
+    for loader in fitting_loaders:
+        yield manage_arguments(loader)
+    return
 
 
 class MagicRegistry:

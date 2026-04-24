@@ -16,9 +16,8 @@ from ..constants import MONOBIT
 from ..core import Font, Pack
 from ..plumbing import scriptable, manage_arguments
 from ..base import Any, FileFormatError, UnsupportedError
-from .magic import MagicRegistry
+from .magic import MagicRegistry, iter_funcs_from_registry
 from .location import open_location
-from .pathutils import iter_funcs_from_registry
 from .base import (
     DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,
     loaders, savers, container_loaders, container_savers

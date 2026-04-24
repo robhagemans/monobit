@@ -8,19 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from pathlib import Path
 from collections import deque
 
-from ..plumbing import manage_arguments
-
-
-def iter_funcs_from_registry(registry, instream, format):
-    """
-    Iterate over and wrap functions stored in a MagicRegistry
-    that fit a given stream and format.
-    """
-    # identify file type
-    fitting_loaders = registry.get_for(instream, format=format)
-    for loader in fitting_loaders:
-        yield manage_arguments(loader)
-    return
+from .magic import iter_funcs_from_registry
 
 
 def _contains(container, path, match_case):

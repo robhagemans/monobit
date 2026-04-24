@@ -101,8 +101,8 @@ def convert_arguments(func):
     return _converted_func
 
 
-
 def manage_arguments(loader):
+    """Check if arguments are registered and convert to declared type."""
     loader = convert_arguments(loader)
     loader = check_arguments(loader)
     return loader

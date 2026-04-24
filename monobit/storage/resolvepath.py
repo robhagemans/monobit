@@ -10,12 +10,12 @@ from pathlib import Path
 from os.path import commonprefix
 
 from ..plumbing import take_arguments
-from .magic import FileFormatError
+from .magic import FileFormatError, iter_funcs_from_registry
 from .streams import StreamBase, Stream, KeepOpen
 from .base import encoders, decoders, containers
 from .containers import Container
 from .containerformats.directory import Directory
-from .pathutils import _contains, _match_path, iter_funcs_from_registry
+from .pathutils import _contains, _match_path
 
 
 class PathResolver:
