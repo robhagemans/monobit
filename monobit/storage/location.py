@@ -40,15 +40,15 @@ class Location:
         self.argdict = resolver.argdict
 
         # resources to manage
-        self._path_objects = resolver._path_objects
-        self._stream_objects = resolver._stream_objects
+        self._path_objects = resolver.path_objects
+        self._stream_objects = resolver.stream_objects
 
         # full path relative to root
         self.relative_path = resolver.path
         # path from last container onward
-        self._container_subpath = resolver._container_subpath
+        self._container_subpath = resolver.container_subpath
         # subdirectory that has been created and should be removed on failure
-        self._outermost_path = resolver._outermost_path
+        self._outermost_path = resolver.outermost_path
 
     def __repr__(self):
         """String representation."""

@@ -75,22 +75,22 @@ class _PathResolver:
         # this object is NOT owned by us but externaly provided
         # an further objects in the path will be ours to close
         if isinstance(root, Container):
-            self._path_objects = [root]
-            self._stream_objects = []
+            self.path_objects = [root]
+            self.stream_objects = []
         else:
-            self._path_objects = []
-            self._stream_objects = [KeepOpen(root)]
+            self.path_objects = []
+            self.stream_objects = [KeepOpen(root)]
         # subpath from last object in path_objects (empty if a stream)
         self._unresolved_path = Path(path)
         # subpath from last container
-        self._container_subpath = Path(path)
+        self.container_subpath = Path(path)
         # format parameters
-        self._container_format = container_format.split('.')
-        self._make_dir = make_dir
+        self.container_format = container_format.split('.')
+        self.make_dir = make_dir
         self.argdict = argdict
         # directory that has been created and may need to be removed on failure
         # used in write mode only
-        self._outermost_path = None
+        self.outermost_path = None
 
     def resolve(self):
         """Recursively open containers and wrappers in path."""
@@ -112,16 +112,16 @@ class _PathResolver:
     def _get_innermost(self):
         """Object (stream or container) at the end of path."""
         try:
-            return self._stream_objects[-1]
+            return self.stream_objects[-1]
         except IndexError:
-            return self._path_objects[-1]
+            return self.path_objects[-1]
 
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
         while True:
             stream = self._get_innermost()
-            if self._container_format:
-                format = self._container_format[-1]
+            if self.container_format:
+                format = self.container_format[-1]
             else:
                 format = ''
             try:
@@ -133,9 +133,9 @@ class _PathResolver:
                 logging.debug(e)
                 break
             else:
-                if self._container_format:
-                    self._container_format.pop()
-                self._stream_objects.append(unwrapped_stream)
+                if self.container_format:
+                    self.container_format.pop()
+                self.stream_objects.append(unwrapped_stream)
                 stream = unwrapped_stream
         # check if innermost stream is a container
         try:
@@ -151,12 +151,12 @@ class _PathResolver:
                 f"stream {stream} is not a container."
             )
         else:
-            if self._container_format:
-                self._container_format.pop()
-            self._path_objects.extend(self._stream_objects)
-            self._path_objects.append(container_object)
-            self._stream_objects = []
-            self._container_subpath = self._unresolved_path
+            if self.container_format:
+                self.container_format.pop()
+            self.path_objects.extend(self.stream_objects)
+            self.path_objects.append(container_object)
+            self.stream_objects = []
+            self.container_subpath = self._unresolved_path
 
 
     def _resolve_subpath(self):
@@ -201,7 +201,7 @@ class _PathResolver:
             # innermost path element *to be created*
             # check if we're asked to create an file or a subdirectory
             # it's a subdirectory if (1) explicitly asked or (2) no suffix
-            if self._make_dir or not to_be_created.suffixes:
+            if self.make_dir or not to_be_created.suffixes:
                 # innermost creatable should be a subdirectory
                 self._unresolved_path = unmatched
                 return True
@@ -215,14 +215,14 @@ class _PathResolver:
                         f"{join_path(container, to_be_created)} already exists. "
                         "Use option -overwrite if you wish to overwrite it."
                     )
-                if not self._outermost_path:
-                    self._outermost_path = to_be_created
+                if not self.outermost_path:
+                    self.outermost_path = to_be_created
                 kwargs = take_arguments(container.encode, self.argdict)
                 stream = container.encode(to_be_created, **kwargs)
                 for kwarg in kwargs:
                     del self.argdict[kwarg]
         # recurse on successfully opened file
-        self._stream_objects.append(stream)
+        self.stream_objects.append(stream)
         self._unresolved_path = unmatched
 
 
