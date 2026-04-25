@@ -18,40 +18,41 @@ from .containerformats.directory import Directory
 from .pathutils import path_exists, match_path, join_path
 
 
-def resolve_path(stream_or_location='', *, subpath='', mode='r', **kwargs):
+def resolve_path(location='', *, subpath='', mode='r', **kwargs):
     if mode not in ('r', 'w'):
         raise ValueError(f"Mode must be 'r' or 'w'; not '{mode}'.")
-    if not stream_or_location and not subpath:
+    if not location and not subpath:
         raise ValueError(f'No path provided.')
-    if isinstance(stream_or_location, (str, Path)):
-        path = Path(stream_or_location) / subpath
+    if isinstance(location, (str, Path)):
+        path = Path(location) / subpath
         path = path.resolve()
         here = Path().resolve()
         root = Path(commonprefix((path, here)))
         subpath = path.relative_to(root)
         # Directory objects doesn't really need to be closed
         # so it's OK that we won't close this one
-        root = Directory(root)
+        root = Directory(root, mode=mode)
     else:
-        stream = stream_or_location
-        if not isinstance(stream, StreamBase):
+        # stream or container object
+        if not isinstance(location, (StreamBase, Container)):
+            # assume it's a python stream object
             # not clear why we need KeepOpen
             # streams mysteriously get closed without it
             # but KeepOpen.close() does not actually get called... :/
-            stream = Stream(KeepOpen(stream), mode=mode)
-        if stream.mode != mode:
+            location = Stream(KeepOpen(location), mode=mode)
+        if location.mode != mode:
             if mode == 'r':
                 raise ValueError(
-                    f"Could not read {join_path(stream, subpath)}: "
-                    f"stream {stream} is write-only."
+                    f"Could not read {join_path(location, subpath)}: "
+                    f"{location} is write-only."
                 )
             else:
                 raise ValueError(
-                    f"Could not write to {join_path(stream, subpath)}: "
-                    f"stream {stream} is read-only."
+                    f"Could not write to {join_path(location, subpath)}: "
+                    f"{location} is read-only."
                 )
-        root = stream
-    return PathResolver(
+        root = location
+    return _PathResolver(
         root=root,
         path=subpath,
         mode=mode,
@@ -59,7 +60,7 @@ def resolve_path(stream_or_location='', *, subpath='', mode='r', **kwargs):
     ).resolve()
 
 
-class PathResolver:
+class _PathResolver:
 
     def __init__(
             self, *,

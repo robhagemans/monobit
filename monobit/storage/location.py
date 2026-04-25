@@ -13,7 +13,7 @@ from ..plumbing import take_arguments
 from .containers import Container
 from .containerformats.directory import Directory
 from .pathutils import path_exists, join_path
-from .resolvepath import PathResolver, resolve_path
+from .resolvepath import resolve_path
 
 
 def open_location(
@@ -120,15 +120,14 @@ class Location:
     def join(self, subpath):
         """Get a location at the subpath."""
         assert(self.is_dir())
-        # PathResolver
         return Location(
-            PathResolver(
-                root=self._path_objects[-1],
-                path=self._container_subpath / subpath,
+            resolve_path(
+                self._path_objects[-1],
+                subpath=self._container_subpath / subpath,
                 mode=self.mode,
                 overwrite=self.overwrite,
                 match_case=self.match_case,
-            ).resolve()
+            )
         )
 
     def walk(self):
