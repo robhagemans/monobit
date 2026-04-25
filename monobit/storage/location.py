@@ -12,7 +12,7 @@ from pathlib import Path
 from ..plumbing import take_arguments
 from .containers import Container
 from .containerformats.directory import Directory
-from .pathutils import path_exists
+from .pathutils import path_exists, join_path
 from .resolvepath import PathResolver
 
 
@@ -113,7 +113,7 @@ class Location:
     def get_stream(self):
         """Get open stream at location."""
         if self.is_dir():
-            raise IsADirectoryError(f'Location {self} is a directory.')
+            raise IsADirectoryError(f'{self.path} is a directory.')
         stream = self._stream_objects[-1]
         stream.where = self
         return stream
@@ -181,7 +181,7 @@ class Location:
         if mode == 'r':
             if not exists:
                 raise FileNotFoundError(
-                    f"{container}//{subpath}/{name} not found "
+                    f"{join_path(container, subpath, name)} not found "
                     f"with case-{'' if self.match_case else 'in'}sensitive match."
                 )
             kwargs = take_arguments(container.decode, self.argdict)
@@ -189,7 +189,7 @@ class Location:
         else:
             if exists and not self.overwrite:
                 raise FileExistsError(
-                    f"{container}//{subpath}/{name} already exists. "
+                    f"{join_path(container, subpath, name)} already exists. "
                     "Use option -overwrite if you wish to overwrite it."
                 )
             kwargs = take_arguments(container.encode, self.argdict)

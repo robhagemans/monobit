@@ -11,6 +11,12 @@ from collections import deque
 from .magic import iter_funcs_from_registry
 
 
+def join_path(*elements):
+    """Join elements of a container path with double slashes."""
+    elements = (str(_elem) for _elem in elements)
+    return '//'.join(_elem for _elem in elements if _elem)
+
+
 def path_exists(container, path, match_case):
     """Container contains file (case insensitive), returns boolean."""
     _, unmatched = match_path(container, path, match_case)
@@ -21,7 +27,7 @@ def match_path(container, path, match_case):
     """Stepwise match per path element. Returns pair (existing, unmatched)"""
     segments = Path(path).as_posix().split('/')
     segments = deque(segments)
-    matched_path = Path('.')
+    matched_path = Path()
     while True:
         target = segments.popleft()
         # drop empty elements (repeated/initial slashes)

@@ -15,7 +15,7 @@ from .streams import StreamBase, Stream, KeepOpen
 from .base import encoders, decoders, containers
 from .containers import Container
 from .containerformats.directory import Directory
-from .pathutils import path_exists, match_path
+from .pathutils import path_exists, match_path, join_path
 
 
 class PathResolver:
@@ -53,7 +53,7 @@ class PathResolver:
     def from_path(cls, path, **kwargs):
         """Create from path-like or string."""
         path = Path(path).resolve()
-        here = Path('.').resolve()
+        here = Path().resolve()
         root = Path(commonprefix((path, here)))
         subpath = path.relative_to(root)
         return cls(
@@ -73,9 +73,16 @@ class PathResolver:
             # but KeepOpen.close() does not actually get called... :/
             stream = Stream(KeepOpen(stream), mode=mode)
         if stream.mode != mode:
-            raise ValueError(
-                f"Stream mode '{stream.mode}' not equal to location mode '{mode}'"
-            )
+            if mode == 'r':
+                raise ValueError(
+                    f"Could not open {join_path(stream, subpath)} for reading: "
+                    f"stream {stream} is write-only."
+                )
+            else:
+                raise ValueError(
+                    f"Could not open {join_path(stream, subpath)} for writing: "
+                    f"stream {stream} is read-only."
+                )
         return cls(
             root=stream,
             path=subpath,
@@ -134,8 +141,8 @@ class PathResolver:
             if self._leafpath == Path():
                 return
             raise ValueError(
-                f"Cannot open subpath '{self._leafpath}' "
-                f"on non-container stream {stream}'"
+                f"Could not open {join_path(stream, self._leafpath)}: "
+                f"stream {stream} is not a container."
             )
         else:
             if self._container_format:
@@ -166,22 +173,20 @@ class PathResolver:
                     return True
                 # innermost existing is a subdirectory
                 # i.e. unmatched subpath does not exist
-                if str(container):
-                    message = f"{container}//{existing}//{unmatched} not found."
-                else:
-                    message = f"{existing}//{unmatched} not found."
-                raise FileNotFoundError(message)
+                raise FileNotFoundError(
+                    f"{join_path(container, existing, unmatched)} not found."
+                )
             else:
                 # remove used arguments
                 for kwarg in kwargs:
                     del self.argdict[kwarg]
         else:
             if unmatched != Path() and not container.is_dir(existing):
-                if str(container):
-                    message = f"Cannot append {unmatched} to {container}//{existing}."
-                else:
-                    message = f"Cannot append {unmatched} to {existing}."
-                raise FileExistsError(message)
+                raise FileExistsError(
+                    f"Could not create {join_path(container, existing, unmatched)}: "
+                    f"{join_path(container, existing)} already exists "
+                    "and we cannot append to it."
+                )
             # step forward until a container pattern is encountered, or we run out of path
             path_to_container, unmatched = _split_path_containername(unmatched)
             to_be_created = existing / path_to_container
@@ -198,7 +203,7 @@ class PathResolver:
                         and not self.overwrite
                     ):
                     raise FileExistsError(
-                        f"{container}//{to_be_created} already exists. "
+                        f"{join_path(container, to_be_created)} already exists. "
                         "Use option -overwrite if you wish to overwrite it."
                     )
                 if not self._outermost_path:
@@ -253,7 +258,7 @@ def _open_container(
             return container
     if last_error:
         raise last_error
-    message = f"Cannot open container on stream '{instream.name}'"
+    message = f"Could not open container {instream.name}"
     if format:
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)
@@ -277,8 +282,8 @@ def _get_transcoded_stream(
         if mode == 'r':
             instream.seek(0)
         logging.info(
-            "Transcoding stream '%s' with wrapper format `%s`",
-            instream.name, transcoder.format
+            "Transcoding stream '%s' with wrapper format `%s` in mode '%s'",
+            instream.name, transcoder.format, mode
         )
         try:
             # pick arguments we can use
@@ -295,7 +300,10 @@ def _get_transcoded_stream(
             return transcoded_stream
     if last_error:
         raise last_error
-    message = f"Cannot transcode stream '{instream.name}'"
+    if mode == 'r':
+        message = f"Could not decode {instream.name}"
+    else:
+        message = f"Could not encode {instream.name}"
     if format:
         message += f': format specifier `{format}` not recognised'
     raise FileFormatError(message)
