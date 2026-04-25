@@ -81,9 +81,9 @@ class _PathResolver:
             self._path_objects = []
             self._stream_objects = [KeepOpen(root)]
         # subpath from last object in path_objects (empty if a stream)
-        self._unresolved_path = path
+        self._unresolved_path = Path(path)
         # subpath from last container
-        self._container_subpath = path
+        self._container_subpath = Path(path)
         # format parameters
         self._container_format = container_format.split('.')
         self._make_dir = make_dir
