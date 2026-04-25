@@ -16,19 +16,7 @@ from .pathutils import path_exists, join_path
 from .resolvepath import resolve_path
 
 
-def open_location(
-        stream_or_location, mode='r', overwrite=False, match_case=False,
-        container_format='', argdict=None, make_dir=False,
-    ):
-    """Point to given location; may include nested containers and wrappers."""
-    return Location(
-        resolve_path(
-            stream_or_location, mode=mode,
-            overwrite=overwrite, match_case=match_case,
-            container_format=container_format, argdict=argdict,
-            make_dir=make_dir,
-        )
-    )
+open_location = resolve_path
 
 
 class Location:
@@ -120,14 +108,12 @@ class Location:
     def join(self, subpath):
         """Get a location at the subpath."""
         assert(self.is_dir())
-        return Location(
-            resolve_path(
-                self._path_objects[-1],
-                subpath=self._container_subpath / subpath,
-                mode=self.mode,
-                overwrite=self.overwrite,
-                match_case=self.match_case,
-            )
+        return resolve_path(
+            self._path_objects[-1],
+            subpath=self._container_subpath / subpath,
+            mode=self.mode,
+            overwrite=self.overwrite,
+            match_case=self.match_case,
         )
 
     def walk(self):

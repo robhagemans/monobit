@@ -107,7 +107,9 @@ class _PathResolver:
                 f'{self.path} not resolved, '
                 f'unresolved part {self._unresolved_path}'
             )
-        return self
+        # late import due to cyclic dependency
+        from .location import Location
+        return Location(self)
 
     def _get_innermost(self):
         """Object (stream or container) at the end of path."""
