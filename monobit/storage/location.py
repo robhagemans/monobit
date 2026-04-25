@@ -21,22 +21,28 @@ open_location = resolve_path
 
 class Location:
 
-    def __init__(self, resolver):
-        self.mode = resolver.mode
-        self.overwrite = resolver.overwrite
-        self.match_case = resolver.match_case
-        self.argdict = resolver.argdict
+    def __init__(
+            self, *,
+            path, mode, overwrite, match_case,
+            argdict,
+            path_objects, stream_objects,
+            container_subpath, outermost_path,
+        ):
+        self.mode = mode
+        self.overwrite = overwrite
+        self.match_case = match_case
+        self.argdict = argdict
 
         # resources to manage
-        self._path_objects = resolver.path_objects
-        self._stream_objects = resolver.stream_objects
+        self._path_objects = path_objects
+        self._stream_objects = stream_objects
 
         # full path relative to root
-        self.relative_path = resolver.path
+        self.relative_path = path
         # path from last container onward
-        self._container_subpath = resolver.container_subpath
+        self._container_subpath = container_subpath
         # subdirectory that has been created and should be removed on failure
-        self._outermost_path = resolver.outermost_path
+        self._outermost_path = outermost_path
 
     def __repr__(self):
         """String representation."""

@@ -109,7 +109,17 @@ class _PathResolver:
             )
         # late import due to cyclic dependency
         from .location import Location
-        return Location(self)
+        return Location(
+            path=self.path,
+            mode=self.mode,
+            overwrite=self.overwrite,
+            match_case=self.match_case,
+            argdict=self.argdict,
+            path_objects=self.path_objects,
+            stream_objects=self.stream_objects,
+            container_subpath=self.container_subpath,
+            outermost_path=self.outermost_path,
+        )
 
     def _get_innermost(self):
         """Object (stream or container) at the end of path."""
