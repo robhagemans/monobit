@@ -44,7 +44,7 @@ class Location:
         self._stream_objects = resolver._stream_objects
 
         # full path relative to root
-        self.path_from_root = resolver.path
+        self.relative_path = resolver.path
         # path from last container onward
         self._container_subpath = resolver._container_subpath
         # subdirectory that has been created and should be removed on failure
@@ -93,7 +93,7 @@ class Location:
             root = self._path_objects[0]
         else:
             root = ''
-        return Path(str(root)) / self.path_from_root
+        return Path(str(root)) / self.relative_path
 
     # stream functionality
 
