@@ -67,7 +67,7 @@ class _PathResolver:
             root=None, path='', mode='r', overwrite=False, match_case=False,
             container_format='', argdict=None, make_dir=False,
         ):
-        self.path = Path(path)
+        self.path = Path(root.name) / path
         self.mode = mode
         self.overwrite = overwrite
         self.match_case = match_case
@@ -81,13 +81,15 @@ class _PathResolver:
             self._path_objects = []
             self._stream_objects = [KeepOpen(root)]
         # subpath from last object in path_objects (empty if a stream)
-        self._leafpath = self.path
+        self._unresolved_path = path
         # subpath from last container
-        self._container_subpath = self.path
+        self._container_subpath = path
         # format parameters
         self._container_format = container_format.split('.')
         self._make_dir = make_dir
         self.argdict = argdict
+        # directory that has been created and may need to be removed on failure
+        # used in write mode only
         self._outermost_path = None
 
     def resolve(self):
@@ -99,6 +101,12 @@ class _PathResolver:
                 break
             if self._resolve_subpath():
                 break
+        if self._unresolved_path != Path():
+            # catchall - this should not be reached
+            raise FileNotFoundError(
+                f'{self.path} not resolved, '
+                f'unresolved part {self._unresolved_path}'
+            )
         return self
 
     def _get_innermost(self):
@@ -136,10 +144,10 @@ class _PathResolver:
             )
         except FileFormatError:
             # innermost stream is a non-container stream.
-            if self._leafpath == Path():
+            if self._unresolved_path == Path():
                 return
             raise ValueError(
-                f"Could not open {join_path(stream, self._leafpath)}: "
+                f"Could not open {join_path(stream, self._unresolved_path)}: "
                 f"stream {stream} is not a container."
             )
         else:
@@ -148,7 +156,7 @@ class _PathResolver:
             self._path_objects.extend(self._stream_objects)
             self._path_objects.append(container_object)
             self._stream_objects = []
-            self._container_subpath = self._leafpath
+            self._container_subpath = self._unresolved_path
 
 
     def _resolve_subpath(self):
@@ -156,9 +164,10 @@ class _PathResolver:
         container = self._get_innermost()
         # stepwise match path elements with existing ones in container
         # innermost existing path element
-        existing, unmatched = match_path(container, self._leafpath, self.match_case)
+        existing, unmatched = match_path(container, self._unresolved_path, self.match_case)
         if Path(existing) == Path() and Path(unmatched) == Path():
             # path has resolved
+            self._unresolved_path = unmatched
             return True
         if self.mode == 'r':
             try:
@@ -168,6 +177,7 @@ class _PathResolver:
             except IsADirectoryError:
                 if Path(unmatched) == Path():
                     # path has resolved; nothing further to open
+                    self._unresolved_path = unmatched
                     return True
                 # innermost existing is a subdirectory
                 # i.e. unmatched subpath does not exist
@@ -193,6 +203,7 @@ class _PathResolver:
             # it's a subdirectory if (1) explicitly asked or (2) no suffix
             if self._make_dir or not to_be_created.suffixes:
                 # innermost creatable should be a subdirectory
+                self._unresolved_path = unmatched
                 return True
             else:
                 # innermost creatable should be a file -> create it
@@ -212,7 +223,7 @@ class _PathResolver:
                     del self.argdict[kwarg]
         # recurse on successfully opened file
         self._stream_objects.append(stream)
-        self._leafpath = unmatched
+        self._unresolved_path = unmatched
 
 
 def _split_path_containername(path):
