@@ -45,12 +45,14 @@ class Location:
         self._outermost_path = outermost_path
 
     def __repr__(self):
-        """String representation."""
         return (
             f"<{type(self).__name__} "
             f"path='{self.path}' mode='{self.mode}'"
             f">"
         )
+
+    def __str__(self):
+        return str(self.path)
 
     def __enter__(self):
         return self
