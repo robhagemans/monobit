@@ -93,16 +93,15 @@ class _PathResolver:
     def resolve(self):
         """Recursively open containers and wrappers in path."""
         while True:
-            if isinstance(self._leaf, StreamBase):
+            if isinstance(self._get_innermost(), StreamBase):
                 self._resolve_wrappers()
-            if not isinstance(self._leaf, Container):
+            if not isinstance(self._get_innermost(), Container):
                 break
             if self._resolve_subpath():
                 break
         return self
 
-    @property
-    def _leaf(self):
+    def _get_innermost(self):
         """Object (stream or container) at the end of path."""
         try:
             return self._stream_objects[-1]
@@ -112,7 +111,7 @@ class _PathResolver:
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
         while True:
-            stream = self._leaf
+            stream = self._get_innermost()
             if self._container_format:
                 format = self._container_format[-1]
             else:
@@ -154,10 +153,10 @@ class _PathResolver:
 
     def _resolve_subpath(self):
         """Resolve subpath on a container object."""
-        container = self._leaf
+        container = self._get_innermost()
         # stepwise match path elements with existing ones in container
         # innermost existing path element
-        existing, unmatched = match_path(self._leaf, self._leafpath, self.match_case)
+        existing, unmatched = match_path(container, self._leafpath, self.match_case)
         if Path(existing) == Path() and Path(unmatched) == Path():
             # path has resolved
             return True
