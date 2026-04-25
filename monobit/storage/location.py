@@ -41,7 +41,7 @@ class Location:
         self.relative_path = path
         # path from last container onward
         self._container_subpath = container_subpath
-        # subdirectory that has been created and should be removed on failure
+        # outermost file that has been created, which should be removed on failure
         self._outermost_path = outermost_path
 
     def __repr__(self):
