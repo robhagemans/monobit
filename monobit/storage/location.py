@@ -13,7 +13,7 @@ from ..plumbing import take_arguments
 from .containers import Container
 from .containerformats.directory import Directory
 from .pathutils import path_exists, join_path
-from .resolvepath import PathResolver
+from .resolvepath import PathResolver, resolve_path
 
 
 def open_location(
@@ -21,25 +21,12 @@ def open_location(
         container_format='', argdict=None, make_dir=False,
     ):
     """Point to given location; may include nested containers and wrappers."""
-    if mode not in ('r', 'w'):
-        raise ValueError(f"Mode must be 'r' or 'w'; not '{mode}'.")
-    if not stream_or_location:
-        raise ValueError(f'No location provided.')
-    if isinstance(stream_or_location, (str, Path)):
-        return Location(
-            PathResolver.from_path(
-                stream_or_location, mode=mode,
-                overwrite=overwrite, match_case=match_case,
-                container_format=container_format, argdict=argdict,
-                make_dir=make_dir,
-            )
-        )
-    # assume stream_or_location is a file-like object
     return Location(
-        PathResolver.from_stream(
+        resolve_path(
             stream_or_location, mode=mode,
             overwrite=overwrite, match_case=match_case,
             container_format=container_format, argdict=argdict,
+            make_dir=make_dir,
         )
     )
 
@@ -141,7 +128,7 @@ class Location:
                 mode=self.mode,
                 overwrite=self.overwrite,
                 match_case=self.match_case,
-            )
+            ).resolve()
         )
 
     def walk(self):
