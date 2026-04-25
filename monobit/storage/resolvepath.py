@@ -95,10 +95,13 @@ class PathResolver:
         """
         Convert location to subpath on innermost container and open stream.
         """
-        if isinstance(self._leaf, StreamBase):
-            self._resolve_wrappers()
-        if isinstance(self._leaf, Container):
-            self._resolve_subpath()
+        while True:
+            if isinstance(self._leaf, StreamBase):
+                self._resolve_wrappers()
+            if not isinstance(self._leaf, Container):
+                break
+            if self._resolve_subpath():
+                break
 
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
@@ -128,7 +131,7 @@ class PathResolver:
             )
         except FileFormatError:
             # innermost stream is a non-container stream.
-            if self._leafpath == Path('.'):
+            if self._leafpath == Path():
                 return
             raise ValueError(
                 f"Cannot open subpath '{self._leafpath}' "
@@ -151,7 +154,7 @@ class PathResolver:
         existing, unmatched = match_path(self._leaf, self._leafpath, self.match_case)
         if Path(existing) == Path() and Path(unmatched) == Path():
             # path has resolved
-            return
+            return True
         if self.mode == 'r':
             try:
                 # see if existing points to a file -> open it
@@ -160,7 +163,7 @@ class PathResolver:
             except IsADirectoryError:
                 if Path(unmatched) == Path():
                     # path has resolved; nothing further to open
-                    return
+                    return True
                 # innermost existing is a subdirectory
                 # i.e. unmatched subpath does not exist
                 if str(container):
@@ -187,7 +190,7 @@ class PathResolver:
             # it's a subdirectory if (1) explicitly asked or (2) no suffix
             if self._make_dir or not to_be_created.suffixes:
                 # innermost creatable should be a subdirectory
-                return
+                return True
             else:
                 # innermost creatable should be a file -> create it
                 if (
@@ -207,7 +210,6 @@ class PathResolver:
         # recurse on successfully opened file
         self._stream_objects.append(stream)
         self._leafpath = unmatched
-        self._resolve()
 
 
 def _split_path_containername(path):
