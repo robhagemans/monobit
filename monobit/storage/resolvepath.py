@@ -75,7 +75,6 @@ class _PathResolver:
             root=None, path='', mode='r', overwrite=False, match_case=False,
             container_format='', argdict=None, make_dir=False,
         ):
-        self.path = Path(root.name) / path
         self.mode = mode
         self.overwrite = overwrite
         self.match_case = match_case
@@ -130,8 +129,7 @@ class _PathResolver:
         if self._unresolved_path != Path():
             # catchall - this should not be reached
             raise FileNotFoundError(
-                f'{self.path} not resolved, '
-                f'unresolved part {self._unresolved_path}'
+                f'Unresolved path {self._unresolved_path}.'
             )
 
     def _resolve_wrappers(self):
