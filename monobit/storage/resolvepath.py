@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 from os.path import commonprefix
+from dataclasses import dataclass, field
 
 from ..plumbing import take_arguments
 from .magic import FileFormatError, iter_funcs_from_registry
@@ -60,6 +61,13 @@ def resolve_path(location='', *, subpath='', mode='r', **kwargs):
     ).resolve()
 
 
+@dataclass
+class _PathElement:
+    streams: list = field(default_factory=list)
+    container: Container = None
+    subpath: Path = Path()
+
+
 class _PathResolver:
 
     def __init__(
@@ -77,9 +85,15 @@ class _PathResolver:
         if isinstance(root, Container):
             self.path_objects = [root]
             self.stream_objects = []
+            self.elements = [
+                _PathElement(streams=[], container=root, subpath=Path())
+            ]
         else:
             self.path_objects = []
             self.stream_objects = [KeepOpen(root)]
+            self.elements = [
+                _PathElement(streams=[KeepOpen(root)], container=None, subpath=Path())
+            ]
         # subpath from last object in path_objects (empty if a stream)
         self._unresolved_path = Path(path)
         # subpath from last container
@@ -132,6 +146,7 @@ class _PathResolver:
         """Open one or more wrappers until an unwrapped stream is found."""
         while True:
             stream = self._get_innermost()
+            assert(stream.name == self.elements[-1].streams[-1].name)
             if self.container_format:
                 format = self.container_format[-1]
             else:
@@ -148,6 +163,7 @@ class _PathResolver:
                 if self.container_format:
                     self.container_format.pop()
                 self.stream_objects.append(unwrapped_stream)
+                self.elements[-1].streams.append(unwrapped_stream)
                 stream = unwrapped_stream
         # check if innermost stream is a container
         try:
@@ -167,6 +183,7 @@ class _PathResolver:
                 self.container_format.pop()
             self.path_objects.extend(self.stream_objects)
             self.path_objects.append(container_object)
+            self.elements[-1].container = container_object
             self.stream_objects = []
             self.container_subpath = self._unresolved_path
 
@@ -174,9 +191,11 @@ class _PathResolver:
     def _resolve_subpath(self):
         """Resolve subpath on a container object."""
         container = self._get_innermost()
+        assert(container == self.elements[-1].container)
         # stepwise match path elements with existing ones in container
         # innermost existing path element
         existing, unmatched = match_path(container, self._unresolved_path, self.match_case)
+        self.elements[-1].subpath = existing
         if Path(existing) == Path() and Path(unmatched) == Path():
             # path has resolved
             self._unresolved_path = unmatched
@@ -210,6 +229,7 @@ class _PathResolver:
             # step forward until a container pattern is encountered, or we run out of path
             path_to_container, unmatched = _split_path_containername(unmatched)
             to_be_created = existing / path_to_container
+            self.elements[-1].subpath = to_be_created
             # innermost path element *to be created*
             # check if we're asked to create an file or a subdirectory
             # it's a subdirectory if (1) explicitly asked or (2) no suffix
@@ -235,6 +255,8 @@ class _PathResolver:
                     del self.argdict[kwarg]
         # recurse on successfully opened file
         self.stream_objects.append(stream)
+        self.elements.append(_PathElement())
+        self.elements[-1].streams.append(stream)
         self._unresolved_path = unmatched
 
 
