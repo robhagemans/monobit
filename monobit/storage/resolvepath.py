@@ -124,7 +124,6 @@ class _PathResolver:
         # late import due to cyclic dependency
         from .location import Location
         return Location(
-            path=self.path,
             mode=self.mode,
             overwrite=self.overwrite,
             match_case=self.match_case,

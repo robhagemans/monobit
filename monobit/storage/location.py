@@ -23,9 +23,9 @@ class Location:
 
     def __init__(
             self, *,
-            path, mode, overwrite, match_case,
-            argdict,
             elements,
+            mode, overwrite, match_case,
+            argdict,
             outermost_path,
         ):
         self.mode = mode
@@ -36,8 +36,6 @@ class Location:
         # resources to manage
         self._elements = elements
 
-        # full path relative to root
-        self.relative_path = path
         # outermost file that has been created, which should be removed on failure
         self._outermost_path = outermost_path
 
@@ -96,6 +94,11 @@ class Location:
             root = self._elements[0].container
         return Path(str(root)) / self.relative_path
 
+    @property
+    def relative_path(self):
+        return Path(*(_elem.subpath for _elem in self._elements))
+
+
     # stream functionality
 
     def get_parent(self):
@@ -108,7 +111,6 @@ class Location:
         else:
             parent_elements = []
         return Location(
-            path=self.path.parent,
             mode=self.mode,
             overwrite=self.overwrite,
             match_case=self.match_case,
