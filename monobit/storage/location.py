@@ -26,18 +26,12 @@ class Location:
             elements,
             mode, overwrite, match_case,
             argdict,
-            outermost_path,
         ):
         self.mode = mode
         self.overwrite = overwrite
         self.match_case = match_case
         self.argdict = argdict
-
-        # resources to manage
         self._elements = elements
-
-        # outermost file that has been created, which should be removed on failure
-        self._outermost_path = outermost_path
 
     def __repr__(self):
         return (
@@ -118,7 +112,6 @@ class Location:
             match_case=self.match_case,
             argdict=self.argdict,
             elements=parent_elements,
-            outermost_path=None,
         )
 
     def get_stream(self):

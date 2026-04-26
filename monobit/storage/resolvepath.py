@@ -102,9 +102,6 @@ class _PathResolver:
         self.container_format = container_format.split('.')
         self.make_dir = make_dir
         self.argdict = argdict
-        # directory that has been created and may need to be removed on failure
-        # used in write mode only
-        self.outermost_path = None
 
     def resolve(self):
         """Recursively open containers and wrappers in path."""
@@ -129,7 +126,6 @@ class _PathResolver:
             match_case=self.match_case,
             argdict=self.argdict,
             elements=self.elements,
-            outermost_path=self.outermost_path,
         )
 
     def _get_innermost(self):
@@ -244,8 +240,6 @@ class _PathResolver:
                         f"{join_path(container, to_be_created)} already exists. "
                         "Use option -overwrite if you wish to overwrite it."
                     )
-                if not self.outermost_path:
-                    self.outermost_path = to_be_created
                 kwargs = take_arguments(container.encode, self.argdict)
                 stream = container.encode(to_be_created, **kwargs)
                 for kwarg in kwargs:
