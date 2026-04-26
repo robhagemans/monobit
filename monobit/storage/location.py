@@ -101,7 +101,7 @@ class Location:
     def get_parent(self):
         """Parent location of stream."""
         if self.is_dir():
-            raise NotImplementedError('get_parent only applies to file locations.')
+            raise NotImplementedError('get_parent only implemented for file locations.')
         if len(self._elements) > 1:
             parent_elements = [*self._elements[:-1]]
             parent_elements[-1].subpath = parent_elements[-1].subpath.parent
@@ -134,18 +134,11 @@ class Location:
     def _get_container_and_subpath(self):
         """Get open container and subpath to location."""
         if not self.is_dir():
-            try:
-                parent = self._elements[-2]
-            except IndexError:
-                # root stream
-                return None, Path()
-            return parent.container, parent.subpath
+            raise NotADirectoryError(f'{self.path} is not a directory.')
         return self._elements[-1].container, self._elements[-1].subpath
 
     def join(self, subpath):
         """Get a location at the subpath."""
-        if not self.is_dir():
-            raise NotADirectoryError()
         container, path = self._get_container_and_subpath()
         return resolve_path(
             container,
@@ -158,6 +151,7 @@ class Location:
     def walk(self):
         """Recursively open locations."""
         if not self.is_dir():
+            # recursion ends on a file path
             yield self
             return
         container, containerpath = self._get_container_and_subpath()
