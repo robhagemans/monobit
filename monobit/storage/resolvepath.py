@@ -105,6 +105,27 @@ class _PathResolver:
 
     def resolve(self):
         """Recursively open containers and wrappers in path."""
+        # late import due to cyclic dependency
+        from .location import Location
+        error = None
+        try:
+            self._resolve()
+        except Exception as exc:
+            error = exc
+        location = Location(
+            mode=self.mode,
+            overwrite=self.overwrite,
+            match_case=self.match_case,
+            argdict=self.argdict,
+            elements=self.elements,
+        )
+        if error:
+            # close all resources created by _resolve()
+            location.close()
+            raise error
+        return location
+
+    def _resolve(self):
         while True:
             if isinstance(self._get_innermost(), StreamBase):
                 self._resolve_wrappers()
@@ -118,15 +139,6 @@ class _PathResolver:
                 f'{self.path} not resolved, '
                 f'unresolved part {self._unresolved_path}'
             )
-        # late import due to cyclic dependency
-        from .location import Location
-        return Location(
-            mode=self.mode,
-            overwrite=self.overwrite,
-            match_case=self.match_case,
-            argdict=self.argdict,
-            elements=self.elements,
-        )
 
     def _get_innermost(self):
         """Object (stream or container) at the end of path."""

@@ -44,7 +44,7 @@ class ZipTarBase(Archive):
         except EnvironmentError as e:
             # e.g. BrokenPipeError
             logging.debug(e)
-        self._stream.close()
+        # self._stream.close()
         super().close()
 
     def decode(self, name, **kwargs):

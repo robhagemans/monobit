@@ -137,7 +137,6 @@ class FlatFilterContainer(Archive):
         """Close the archive, ignoring errors."""
         if self.mode == 'w' and not self.closed:
             self.encode_all(self._files, self._wrapped_stream)
-        self._wrapped_stream.close()
         super().close()
 
     def list(self):
