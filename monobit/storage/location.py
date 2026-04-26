@@ -25,8 +25,8 @@ class Location:
             self, *,
             path, mode, overwrite, match_case,
             argdict,
-            path_objects, stream_objects,
-            container_subpath, outermost_path,
+            elements,
+            outermost_path,
         ):
         self.mode = mode
         self.overwrite = overwrite
@@ -34,13 +34,10 @@ class Location:
         self.argdict = argdict
 
         # resources to manage
-        self._path_objects = path_objects
-        self._stream_objects = stream_objects
+        self._elements = elements
 
         # full path relative to root
         self.relative_path = path
-        # path from last container onward
-        self._container_subpath = container_subpath
         # outermost file that has been created, which should be removed on failure
         self._outermost_path = outermost_path
 
@@ -62,63 +59,97 @@ class Location:
         if exc_type == BrokenPipeError:
             return True
         elif exc_type is not None:
-            if self._path_objects and self.mode == 'w':
-                root = self._path_objects[0]
+            if self._elements and self.mode == 'w':
+                root = self._elements[0].container
                 if isinstance(root, Directory):
                     root.remove(self._outermost_path)
 
     def close(self):
         """Close objects we opened on path."""
         # leave out the root object as we don't own it
-        while self._stream_objects:
-            outer = self._stream_objects.pop()
-            try:
-                outer.close()
-            except Exception as exc:
-                logging.warning('Exception while closing %s: %s', outer, exc)
-        while len(self._path_objects) > 1:
-            outer = self._path_objects.pop()
-            try:
-                outer.close()
-            except Exception as exc:
-                logging.warning('Exception while closing %s: %s', outer, exc)
+        while self._elements:
+            outer = self._elements.pop()
+            lastelement = not self._elements
+            container = outer.container
+            if container and not lastelement:
+                try:
+                    container.close()
+                except Exception as exc:
+                    logging.warning('Exception while closing %s: %s', container, exc)
+            while outer.streams:
+                stream = outer.streams.pop()
+                if lastelement and not outer.streams:
+                    # root stream
+                    break
+                try:
+                    stream.close()
+                except Exception as exc:
+                    logging.warning('Exception while closing %s: %s', stream, exc)
 
     @property
     def path(self):
-        if self._path_objects:
-            root = self._path_objects[0]
+        if not self._elements:
+            return Path()
+        if self._elements[0].streams:
+            root = self._elements[0].streams[0]
         else:
-            root = ''
+            root = self._elements[0].container
         return Path(str(root)) / self.relative_path
 
     # stream functionality
+
+    def get_parent(self):
+        """Parent location of stream."""
+        if self.is_dir():
+            raise NotImplementedError('get_parent only applies to file locations.')
+        if len(self._elements) > 1:
+            parent_elements = [*self._elements[:-1]]
+            parent_elements[-1].subpath = parent_elements[-1].subpath.parent
+        else:
+            parent_elements = []
+        return Location(
+            path=self.path.parent,
+            mode=self.mode,
+            overwrite=self.overwrite,
+            match_case=self.match_case,
+            argdict=self.argdict,
+            elements=parent_elements,
+            outermost_path=None,
+        )
 
     def get_stream(self):
         """Get open stream at location."""
         if self.is_dir():
             raise IsADirectoryError(f'{self.path} is a directory.')
-        stream = self._stream_objects[-1]
-        stream.where = self
+        stream = self._elements[-1].streams[-1]
+        stream.where = self.get_parent()
         return stream
 
     def is_dir(self):
         """Location points to a directory/container."""
-        return not self._stream_objects
+        return self._elements[-1].container
 
     # directory (container) functionality
 
     def _get_container_and_subpath(self):
         """Get open container and subpath to location."""
         if not self.is_dir():
-            return self._path_objects[-1], self._container_subpath.parent
-        return self._path_objects[-1], self._container_subpath
+            try:
+                parent = self._elements[-2]
+            except IndexError:
+                # root stream
+                return None, Path()
+            return parent.container, parent.subpath
+        return self._elements[-1].container, self._elements[-1].subpath
 
     def join(self, subpath):
         """Get a location at the subpath."""
-        assert(self.is_dir())
+        if not self.is_dir():
+            raise NotADirectoryError()
+        container, path = self._get_container_and_subpath()
         return resolve_path(
-            self._path_objects[-1],
-            subpath=self._container_subpath / subpath,
+            container,
+            subpath=path / subpath,
             mode=self.mode,
             overwrite=self.overwrite,
             match_case=self.match_case,
@@ -129,9 +160,9 @@ class Location:
         if not self.is_dir():
             yield self
             return
-        container = self._path_objects[-1]
-        for path in container.iter_sub(self._container_subpath):
-            subpath = Path(path).relative_to(self._container_subpath)
+        container, containerpath = self._get_container_and_subpath()
+        for path in container.iter_sub(containerpath):
+            subpath = Path(path).relative_to(containerpath)
             location = self.join(subpath)
             try:
                 with location:

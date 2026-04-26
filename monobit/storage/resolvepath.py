@@ -129,9 +129,7 @@ class _PathResolver:
             overwrite=self.overwrite,
             match_case=self.match_case,
             argdict=self.argdict,
-            path_objects=self.path_objects,
-            stream_objects=self.stream_objects,
-            container_subpath=self.container_subpath,
+            elements=self.elements,
             outermost_path=self.outermost_path,
         )
 
