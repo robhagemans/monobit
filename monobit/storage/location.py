@@ -34,9 +34,15 @@ class Location:
         self._elements = elements
 
     def __repr__(self):
+        if self._elements:
+            elementlist = '\n    ' + ',\n    '.join(str(_e) for _e in self._elements) + '\n'
+        else:
+            elementlist = ''
         return (
             f"<{type(self).__name__} "
-            f"path='{self.path}' mode='{self.mode}'"
+            f"path='{self.path}' mode='{self.mode}' "
+            f"overwrite={self.overwrite} match_case={self.match_case} "
+            f"elements=[{elementlist}]"
             f">"
         )
 
