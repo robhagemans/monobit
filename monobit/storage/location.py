@@ -53,16 +53,11 @@ class Location:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-        if exc_type == BrokenPipeError:
-            return True
-        elif exc_type is not None:
-            if self._elements and self.mode == 'w':
-                root = self._elements[0].container
-                if isinstance(root, Directory):
-                    root.remove(self._outermost_path)
+        ok = exc_type in (None, BrokenPipeError)
+        self.close(ok)
+        return ok
 
-    def close(self):
+    def close(self, ok=True):
         """Close objects we opened on path."""
         # leave out the root object as we don't own it
         while self._elements:
@@ -83,6 +78,13 @@ class Location:
                     stream.close()
                 except Exception as exc:
                     logging.warning('Exception while closing %s: %s', stream, exc)
+                if not outer.streams and stream.mode == 'w' and not ok:
+                    container = self._elements[-1].container
+                    logging.info(
+                        'Removing previously created file %s',
+                        join_path(container.name, stream.name)
+                    )
+                    container.remove(stream.name)
 
     @property
     def path(self):
@@ -203,6 +205,11 @@ class Location:
             stream = container.encode(subpath / name, **kwargs)
         stream.where = self
         return stream
+
+    def remove(self, name):
+        """Remove a file from the location."""
+        container, subpath = self._get_container_and_subpath()
+        container.remove(subpath / name)
 
     def unused_name(self, name):
         """Generate unique name for container file."""

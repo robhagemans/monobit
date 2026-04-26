@@ -79,6 +79,10 @@ class ZipTarBase(Archive):
         self._files.append(newfile)
         return newfile
 
+    def remove(self, name):
+        """Remove a file just created. This does not work on existing files."""
+        self._files = [_file for _file in self._files if not _file.name == name]
+
 
 ###############################################################################
 
