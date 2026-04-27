@@ -36,6 +36,7 @@ class Directory(Container):
             # exist_ok raises FileExistsError only if the *target* already
             # exists, not the parents
             self._path.mkdir(parents=True, exist_ok=True)
+        self._created = set()
         super().__init__(mode, str(self._path))
 
     def __str__(self):
@@ -54,23 +55,38 @@ class Directory(Container):
         mode = mode[:1]
         pathname = Path(name)
         if mode == 'w':
-            path = pathname.parent
-            logging.debug("Creating directory '%s'", self._path / path)
-            (self._path / path).mkdir(parents=True, exist_ok=True)
+            # track which directories we created in case we need to remove them
+            paths_to_create = reversed(pathname.parents)
+            for path in paths_to_create:
+                if (self._path / path).is_dir():
+                    continue
+                logging.debug("Creating directory '%s'", self._path / path)
+                (self._path / path).mkdir()
+                self._created.add(path)
         logging.debug("Opening file '%s' for mode '%s'.", name, mode)
         filepath = self._path / pathname
         file = open(filepath, mode + 'b')
         # provide name relative to directory container
         stream = Stream(file, name=str(pathname), mode=mode)
+        self._created.add(pathname)
         return stream
 
     def remove(self, name):
-        """Remove a file from the directory."""
+        """Remove a previously created file from the directory."""
         if not name:
+            return
+        if Path(name) not in self._created:
             return
         filepath = self._path / name
         if not filepath.is_dir():
             filepath.unlink()
+        # remove empty dirs leading to removed file
+        for path in Path(name).parents:
+            if path in self._created:
+                try:
+                    (self._path / path).rmdir()
+                except EnvironmentError:
+                    pass
 
     def is_dir(self, name):
         """Item at `name` is a directory."""

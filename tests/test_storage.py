@@ -281,6 +281,34 @@ class TestContainers(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 919)
 
+    def test_failedcreate_zip(self):
+        """Test failed creating file in new zip container."""
+        # bbc can only store 8x8
+        file = self.temp_path / 'testfontdir.zip' / 'test.bbc'
+        try:
+            # expected to fail
+            fonts = self.fixed8x16(file)
+        except Exception:
+            pass
+        # no new zip file after failure
+        assert not (self.temp_path / 'testfontdir.zip').is_file()
+
+    def test_failedcreate_dir(self):
+        """Test failed creating file in new directory."""
+        # bbc can only store 8x8
+        file = self.temp_path / 'test0' / 'test1' / 'test.bbc'
+        (self.temp_path / 'test0').mkdir()
+        try:
+            # expected to fail
+            fonts = self.fixed8x16(file)
+        except Exception:
+            pass
+        # no new file or new directory after failure
+        assert not (self.temp_path / 'test0' / 'test1' / 'test.bbc').is_file()
+        assert not (self.temp_path / 'test0' / 'test1').is_dir()
+        # existing empty dir is retained
+        assert (self.temp_path / 'test0').is_dir()
+
 
 class TestForks(BaseTester):
 
