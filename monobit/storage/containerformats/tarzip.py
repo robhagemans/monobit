@@ -72,10 +72,13 @@ class ZipTarBase(Archive):
             "Opening writeable stream '%s' on container %s.",
             name, self
         )
+        if (
+                any(name == _file.name for _file in self._files)
+                or (self.mode == '+' and filename in self.list())
+            ):
+            raise FileExistsError(f"{name} already exists in this container and we can't overwrite.")
         # stop BytesIO from being closed until we want it to be
         newfile = Stream(KeepOpen(io.BytesIO()), mode='w', name=name)
-        if any(name == _file.name for _file in self._files):
-            logging.warning("Creating multiple files of the same name '%s'.", name)
         self._files.append(newfile)
         return newfile
 
