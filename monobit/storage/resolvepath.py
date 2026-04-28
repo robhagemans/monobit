@@ -158,7 +158,7 @@ class _PathResolver:
             container_object = _open_container(
                 containers, stream,
                 # '+' should fail if the container does not support updating
-                mode='+' if self.mode == 'w' else 'r',
+                mode=stream.mode,
                 format=format,
             )
         except FileFormatError:
