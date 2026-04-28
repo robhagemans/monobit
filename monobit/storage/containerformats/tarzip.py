@@ -34,7 +34,7 @@ class ZipTarBase(Archive):
 
     def close(self):
         """Close the archive, ignoring errors."""
-        if self.mode == 'w' and not self.closed:
+        if self.mode in ('w', '+') and not self.closed:
             for file in self._files:
                 logging.debug("Writing out '%s' to archive %s.", file.name, self)
                 self._write_out(file)
@@ -94,6 +94,12 @@ class ZipTarBase(Archive):
 class ZipContainer(ZipTarBase):
     """Zip-file wrapper."""
 
+    modemap = {
+        'r': 'r',
+        'w': 'w',
+        '+': 'a',
+    }
+
     def decode(self, name, *, password:bytes=None):
         """
         Extract file from zip archive.
@@ -117,11 +123,17 @@ class ZipContainer(ZipTarBase):
         ziplist += tuple(str(PurePosixPath(self.root) / _file.name) for _file in self._files)
         return ziplist
 
-    @staticmethod
-    def _create_archive(stream, mode):
+    @classmethod
+    def _create_archive(cls, stream, mode):
+        try:
+            archivemode = cls.modemap[mode]
+        except KeyError:
+            raise ValueError(
+                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+            )
         try:
             return zipfile.ZipFile(
-                stream, mode,
+                stream, archivemode,
                 compression=zipfile.ZIP_DEFLATED
             )
         except zipfile.BadZipFile as exc:

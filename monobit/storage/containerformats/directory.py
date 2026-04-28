@@ -19,8 +19,18 @@ from ..containers import Container
 class Directory(Container):
     """Treat directory tree as a container."""
 
+    modemap = {
+        'r': 'rb',
+        'w': 'wb',
+        '+': 'r+b',
+    }
+
     def __init__(self, path='', mode='r'):
         """Create directory wrapper."""
+        if mode not in self.modemap:
+            raise ValueError(
+                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+            )
         # if empty path, this refers to the whole filesystem
         if not path:
             self._path = Path('/')
@@ -28,8 +38,6 @@ class Directory(Container):
             self._path = Path(path._path)
         else:
             self._path = Path(path)
-        # mode really should just be 'r' or 'w'
-        mode = mode[:1]
         if mode == 'w':
             logging.debug('Creating directory `%s`', self._path)
             # exist_ok raises FileExistsError only if the *target* already
@@ -48,10 +56,17 @@ class Directory(Container):
     def encode(self, name):
         return self.open(name, mode='w')
 
+    def update(self, name):
+        return self.open(name, mode='+')
+
     def open(self, name, mode):
         """Open a stream in the directory."""
-        # mode in 'r', 'w'
-        mode = mode[:1]
+        try:
+            filemode = self.modemap[mode]
+        except KeyError:
+            raise ValueError(
+                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+            )
         pathname = Path(name)
         if mode == 'w':
             # track which directories we created in case we need to remove them
@@ -64,7 +79,7 @@ class Directory(Container):
                 self._created.add(path)
         logging.debug("Opening file '%s' for mode '%s'.", name, mode)
         filepath = self._path / pathname
-        file = open(filepath, mode + 'b')
+        file = open(filepath, filemode)
         # provide name relative to directory container
         stream = Stream(file, name=str(pathname), mode=mode)
         self._created.add(pathname)

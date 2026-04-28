@@ -52,11 +52,15 @@ class Container:
         self.closed = True
 
     def decode(self, name, **kwargs):
-        """Open a binary stream to read from the container."""
+        """Open a binary stream to read."""
         raise NotImplementedError
 
     def encode(self, name, **kwargs):
-        """Open a binary stream to write to the container."""
+        """Open a binary stream to write."""
+        raise NotImplementedError
+
+    def update(self, name, **kwargs):
+        """Open a binary stream to update."""
         raise NotImplementedError
 
     def remove(self, name):
