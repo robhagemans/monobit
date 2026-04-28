@@ -1,5 +1,5 @@
 """
-monobit.storage.containerformats.directory - directory traversal
+monobit.storage.containerformats.directory - filesystem operations
 
 (c) 2021--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -16,7 +16,6 @@ from ..base import containers
 from ..containers import Container
 
 
-@containers.register(name='dir')
 class Directory(Container):
     """Treat directory tree as a container."""
 
@@ -94,7 +93,7 @@ class Directory(Container):
         return filepath.is_dir()
 
     def iter_sub(self, prefix):
-        """List contents of a subpath."""
+        """Iterate over contents of a subpath."""
         return (
             _path.relative_to(self._path)
             for _path in (self._path / prefix).iterdir()
