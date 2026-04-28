@@ -165,10 +165,17 @@ class _PathResolver:
             # innermost stream is a non-container stream.
             if self._unresolved_path == Path():
                 return
-            raise ValueError(
-                f"Could not open {join_path(stream.name, self._unresolved_path)}: "
-                f"stream {stream} is not a container."
-            )
+            if stream.mode == 'r':
+                raise ValueError(
+                    f"Could not open {join_path(stream.name, self._unresolved_path)}: "
+                    f"stream {stream.name} is not a container."
+                )
+            elif stream.mode == '+':
+                raise FileExistsError(
+                     f"Could not create {join_path(stream.name, self._unresolved_path)}: "
+                     f"{stream.name} already exists "
+                     "and we cannot update it."
+                 )
         else:
             if self.container_format:
                 self.container_format.pop()
@@ -210,10 +217,11 @@ class _PathResolver:
             try:
                 stream = container.update(existing, **kwargs)
             except NotImplementedError:
+                # update function not available for parent container
                 raise FileExistsError(
                     f"Could not create {join_path(container, existing, unmatched)}: "
                     f"{join_path(container, existing)} already exists "
-                    "and we cannot append to it."
+                    "and we cannot update it."
                 )
         else:
             # step forward until a container pattern is encountered, or we run out of path
@@ -288,6 +296,9 @@ def _open_container(
             logging.debug(e)
             last_error = e
             continue
+        except ValueError as e:
+            # mode not supported
+            break
         else:
             return container
     if last_error:
