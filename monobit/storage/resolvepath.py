@@ -278,8 +278,8 @@ def _open_container(
         if mode in ('r', '+'):
             instream.seek(0)
         logging.info(
-            "Opening stream '%s' as container format `%s`",
-            instream.name, cls.format
+            "Opening stream '%s' as container format `%s` for mode '%s'",
+            instream.name, cls.format, mode
         )
         try:
             # returns container object
