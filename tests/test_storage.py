@@ -8,6 +8,7 @@ import io
 import unittest
 import logging
 import glob
+from pathlib import Path
 
 import monobit
 from .base import BaseTester, ensure_asset
@@ -20,6 +21,7 @@ class TestCompressed(BaseTester):
         """Test importing/exporting compressed files."""
         compressed_file = self.temp_path / f'4x6.yaff.{format}'
         monobit.save(self.fixed4x6, compressed_file, container_format=format)
+        self.assertTrue(Path(container_path.parent).is_file())
         self.assertTrue(os.path.getsize(compressed_file) > 0)
         font, *_ = monobit.load(compressed_file, container_format=format)
         self.assertEqual(len(font.glyphs), 919)
@@ -67,12 +69,15 @@ class TestCompressed(BaseTester):
 class TestContainers(BaseTester):
     """Test container formats."""
 
-    def _test_container(self, format):
+    def _test_container(self, format, suffix=None):
         """Test importing/exporting container files."""
-        container_file = self.temp_path / f'4x6.yaff.{format}'
-        monobit.save(self.fixed4x6, container_file, container_format=format, format='yaff')
-        self.assertTrue(os.path.getsize(container_file) > 0)
-        font, *_ = monobit.load(container_file, container_format=format, format='yaff')
+        if suffix is None:
+            suffix = format
+        container_path = self.temp_path / f'test.{suffix}' / '4x6.yaff'
+        monobit.save(self.fixed4x6, container_path, container_format=format, format='yaff')
+        self.assertTrue(Path(container_path.parent).is_file())
+        self.assertTrue(os.path.getsize(container_path.parent) > 0)
+        font, *_ = monobit.load(container_path, container_format=format, format='yaff')
         self.assertEqual(len(font.glyphs), 919)
 
     def test_zip(self):
@@ -85,7 +90,7 @@ class TestContainers(BaseTester):
 
     def test_tgz(self):
         """Test importing/exporting compressed tar files."""
-        self._test_container('tar.gz')
+        self._test_container('tar', suffix='tar.gz')
 
     def test_email(self):
         """Test importing/exporting MIME messages."""
