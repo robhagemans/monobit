@@ -209,7 +209,11 @@ class _PathResolver:
                     "and we cannot append to it."
                 )
             # step forward until a container pattern is encountered, or we run out of path
-            path_to_container, unmatched = _split_path_containername(unmatched)
+            if self.container_format:
+                format = self.container_format[-1]
+            else:
+                format = ''
+            path_to_container, unmatched = _split_path_containername(unmatched, format)
             to_be_created = existing / path_to_container
             self.elements[-1].subpath = to_be_created
             # innermost path element *to be created*
@@ -239,10 +243,10 @@ class _PathResolver:
         self._unresolved_path = unmatched
 
 
-def _split_path_containername(path):
+def _split_path_containername(path, format):
     """Pare forward path until a recognised container name pattern is encountered."""
     for headpath in reversed((path, *path.parents)):
-        if containers.identify_filename(headpath.name):
+        if containers.identify_filename(headpath.name, format):
             subpath = path.relative_to(headpath)
             return headpath, subpath
     # no match

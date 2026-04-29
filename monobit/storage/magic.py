@@ -200,12 +200,14 @@ class MagicRegistry:
 
         return _decorator
 
-    def identify_filename(self, name):
+    def identify_filename(self, name, format=''):
         """Identify a type from a file name."""
         matches = []
         # remove all but first suffix for pattern matching
         # removes e.g. .gz suffixes
         basename = '.'.join(name.split('.')[:2])
+        if '.' in basename and format:
+            return self.get_for(format=format)
         for pattern, converter in self._patterns:
             if pattern.matches(basename):
                 matches.append(converter)
