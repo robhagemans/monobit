@@ -173,6 +173,12 @@ class ZipContainer(ZipTarBase):
 class TarContainer(ZipTarBase):
     """Tar-file wrapper."""
 
+    modemap = {
+        'r': 'r',
+        'w': 'w',
+        '+': 'a',
+    }
+
     def decode(self, name):
         """
         Extract file from tar archive.
@@ -187,19 +193,37 @@ class TarContainer(ZipTarBase):
 
     def list(self):
         """List full contents of archive."""
-        tarlist = tuple(
+        tarlist = set(
             f'{_name}/'
             if self._archive.getmember(_name).isdir()
             else _name
             for _name in self._archive.getnames()
         )
-        tarlist += tuple(str(PurePosixPath(self.root) / _file.name) for _file in self._files)
+        directories = tuple(
+            set(
+                f'{_name}/'
+                for _name in PurePosixPath(_path).parents
+                if _name != Path()
+            )
+            for _path in tarlist
+        )
+        if directories:
+            tarlist |= set.union(*directories)
+        tarlist = tuple(tarlist) + tuple(
+            str(PurePosixPath(self.root) / _file.name) for _file in self._files
+        )
         return tarlist
 
-    @staticmethod
-    def _create_archive(stream, mode):
+    @classmethod
+    def _create_archive(cls, stream, mode):
         try:
-            return tarfile.open(fileobj=stream, mode=mode)
+            archivemode = cls.modemap[mode]
+        except KeyError:
+            raise ValueError(
+                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+            )
+        try:
+            return tarfile.open(fileobj=stream, mode=archivemode)
         except tarfile.ReadError as exc:
             raise FileFormatError(exc) from exc
 
@@ -208,8 +232,17 @@ class TarContainer(ZipTarBase):
 
     def _write_out(self, file):
         name = file.name
-        tinfo = tarfile.TarInfo(str(PurePosixPath(self.root) / name))
-        tinfo.mtime = time.time()
-        tinfo.size = len(file.getvalue())
+        path = PurePosixPath(self.root) / name
+        mtime = time.time()
         file.seek(0)
+        for parent in reversed(path.parents[:-1]):
+            tinfo = tarfile.TarInfo(f'{parent}/')
+            tinfo.type = tarfile.DIRTYPE
+            tinfo.mode = 0o777
+            tinfo.mtime = mtime
+            self._archive.addfile(tinfo)
+        tinfo = tarfile.TarInfo(str(path))
+        tinfo.mtime = mtime
+        tinfo.size = len(file.getvalue())
+        tinfo.mode = 0o666
         self._archive.addfile(tinfo, file)
