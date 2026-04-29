@@ -64,7 +64,9 @@ if libarchive:
                                 if path != Path('.'):
                                     data[f'{path}/'] = b''
             except libarchive.ArchiveError as e:
-                raise FileFormatError(e) from e
+                if not data:
+                    raise FileFormatError(e) from e
+                logging.warning(f'Error while reading {instream.name}: {e}')
             return data
 
 
