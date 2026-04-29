@@ -314,6 +314,28 @@ class TestContainers(BaseTester):
         # existing empty dir is retained
         assert (self.temp_path / 'test0').is_dir()
 
+    def test_update_zip(self):
+        """Test adding file to existing zip."""
+        file0 = self.temp_path / 'fontdir.zip' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file0)
+        file1 = self.temp_path / 'fontdir.zip' / 'subdir' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file1)
+        font, *_ = monobit.load(file0)
+        self.assertEqual(len(font.glyphs), 919)
+        font, *_ = monobit.load(file1)
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_update_tar(self):
+        """Test adding file to existing tar."""
+        file0 = self.temp_path / 'fontdir.tar' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file0)
+        file1 = self.temp_path / 'fontdir.tar' / 'subdir' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file1)
+        font, *_ = monobit.load(file0)
+        self.assertEqual(len(font.glyphs), 919)
+        font, *_ = monobit.load(file1)
+        self.assertEqual(len(font.glyphs), 919)
+
 
 class TestForks(BaseTester):
 
