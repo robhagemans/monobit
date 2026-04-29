@@ -163,7 +163,7 @@ class _PathResolver:
             if self._unresolved_path == Path():
                 return
             raise ValueError(
-                f"Could not open {join_path(stream, self._unresolved_path)}: "
+                f"Could not open {join_path(stream.name, self._unresolved_path)}: "
                 f"stream {stream} is not a container."
             )
         else:
