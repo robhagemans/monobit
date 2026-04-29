@@ -21,7 +21,7 @@ class TestCompressed(BaseTester):
         """Test importing/exporting compressed files."""
         compressed_file = self.temp_path / f'4x6.yaff.{format}'
         monobit.save(self.fixed4x6, compressed_file, container_format=format)
-        self.assertTrue(Path(container_path.parent).is_file())
+        self.assertTrue(Path(compressed_file).is_file())
         self.assertTrue(os.path.getsize(compressed_file) > 0)
         font, *_ = monobit.load(compressed_file, container_format=format)
         self.assertEqual(len(font.glyphs), 919)
