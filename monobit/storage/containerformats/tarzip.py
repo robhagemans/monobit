@@ -22,6 +22,13 @@ from ..magic import Magic
 
 class ZipTarBase(Archive):
 
+    modemap = {
+        'r': 'r',
+        'w': 'w',
+        '+': 'a',
+    }
+    supported_modes = set(modemap)
+
     def __init__(self, file, mode='r'):
         """Create wrapper."""
         # reading zipfile needs a seekable stream, drain to buffer if needed
@@ -97,12 +104,6 @@ class ZipTarBase(Archive):
 class ZipContainer(ZipTarBase):
     """Zip-file wrapper."""
 
-    modemap = {
-        'r': 'r',
-        'w': 'w',
-        '+': 'a',
-    }
-
     def decode(self, name, *, password:bytes=None):
         """
         Extract file from zip archive.
@@ -172,12 +173,6 @@ class ZipContainer(ZipTarBase):
 )
 class TarContainer(ZipTarBase):
     """Tar-file wrapper."""
-
-    modemap = {
-        'r': 'r',
-        'w': 'w',
-        '+': 'a',
-    }
 
     def decode(self, name):
         """

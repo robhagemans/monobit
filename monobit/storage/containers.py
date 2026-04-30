@@ -16,8 +16,14 @@ from .streams import Stream, KeepOpen
 class Container:
     """Base class for multi-stream containers."""
 
+    supported_modes = {'r', 'w'}
+
     def __init__(self, mode='r', name=''):
-        self.mode = mode[:1]
+        if mode not in self.supported_modes:
+            raise ValueError(
+                f"`mode` must be one of {self.supported_modes}; got '{mode}'."
+            )
+        self.mode = mode
         self.name = name
         self.refcount = 0
         self.closed = False

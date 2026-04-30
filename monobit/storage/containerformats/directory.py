@@ -24,12 +24,13 @@ class Directory(Container):
         'w': 'wb',
         '+': 'r+b',
     }
+    supported_modes = set(modemap)
 
     def __init__(self, path='', mode='r'):
         """Create directory wrapper."""
-        if mode not in self.modemap:
+        if mode not in self.supported_modes:
             raise ValueError(
-                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+                f"`mode` must be one of {self.supported_modes}; got '{mode}'."
             )
         # if empty path, this refers to the whole filesystem
         if not path:
