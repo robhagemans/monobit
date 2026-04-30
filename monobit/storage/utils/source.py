@@ -337,6 +337,11 @@ class PascalCodeReader(CodeReader, PascalCode):
         if cvalue.startswith('$'):
             return int(cvalue[1:], 16)
 
+    @classmethod
+    def clean_identifier(cls, identifier):
+        """Clean up identifier found in source code."""
+        return identifier.strip().split(':')[0]
+
 
 class PascalCodeWriter(CodeWriter, PascalCode):
 

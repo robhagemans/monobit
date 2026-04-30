@@ -314,18 +314,24 @@ class TestContainers(BaseTester):
         # existing empty dir is retained
         assert (self.temp_path / 'test0').is_dir()
 
-    def _test_update_container(self, suffix, format=''):
+    def _test_update_container(self, suffix, format='', preserve_names=True):
         """Test adding file to existing zip."""
-        path =  self.temp_path / f'fontdir.{suffix}'
+        path = self.temp_path / f'fontdir.{suffix}'
         file0 = path / '4x6.yaff'
         monobit.save(self.fixed4x6, file0, container_format=format)
         self.assertTrue(path.is_file())
         file1 = path / 'subdir' / '4x6.yaff'
         monobit.save(self.fixed4x6, file1, container_format=format)
-        font, *_ = monobit.load(file0)
-        self.assertEqual(len(font.glyphs), 919)
-        font, *_ = monobit.load(file1)
-        self.assertEqual(len(font.glyphs), 919)
+        if preserve_names:
+            font, *_ = monobit.load(file0, container_format=format)
+            self.assertEqual(len(font.glyphs), 919)
+            font, *_ = monobit.load(file1, container_format=format)
+            self.assertEqual(len(font.glyphs), 919)
+        else:
+            pack = monobit.load(path, container_format=format)
+            self.assertEqual(len(pack), 2)
+            self.assertEqual(len(pack[0].glyphs), 919)
+            self.assertEqual(len(pack[1].glyphs), 919)
 
     def test_update_zip(self):
         """Test adding file to existing zip."""
@@ -345,19 +351,19 @@ class TestContainers(BaseTester):
 
     def test_update_c(self):
         """Test adding file to existing C container."""
-        self._test_update_container('c', format='c')
+        self._test_update_container('c', format='c', preserve_names=False)
 
     def test_update_py(self):
         """Test adding file to existing Python list container."""
-        self._test_update_container('py')
+        self._test_update_container('py', preserve_names=False)
 
     def test_update_pytuple(self):
         """Test adding file to existing Python tuple container."""
-        self._test_update_container('py', format='python-tuple')
+        self._test_update_container('py', format='python-tuple', preserve_names=False)
 
     def test_update_pas(self):
         """Test adding file to existing Pascal container."""
-        self._test_update_container('pas', format='pascal')
+        self._test_update_container('pas', format='pascal', preserve_names=False)
 
 
 class TestForks(BaseTester):
