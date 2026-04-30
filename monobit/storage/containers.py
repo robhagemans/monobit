@@ -145,8 +145,8 @@ class FlatFilterContainer(Archive):
 
     def close(self):
         """Close the archive, ignoring errors."""
-        if self.mode == 'w' and not self.closed:
-            self.encode_all(self._files, self._wrapped_stream)
+        if self.mode in ('w', '+') and not self.closed:
+            self.encode_all(self._files, self._wrapped_stream, mode=self.mode)
         super().close()
 
     def list(self):
@@ -217,8 +217,25 @@ class FlatFilterContainer(Archive):
 class SerialContainer(FlatFilterContainer):
 
     @classmethod
-    def encode_all(cls, data, outstream, **kwargs):
-        outstream.write(cls._head())
+    @property
+    def supported_modes(cls):
+        modes = {'r', 'w'}
+        if cls._tail() == cls._separator():
+            modes.add('+')
+        return modes
+
+    @classmethod
+    def encode_all(cls, data, outstream, mode, **kwargs):
+        if mode == 'w':
+            outstream.write(cls._head())
+        elif mode == '+':
+            pass
+            # we need tail == separator on text files
+            # as negative seek can only be used on binary file
+            # outstream.seek(-len(cls._tail()), 2)
+            # outstream.write(cls._tail())
+        else:
+            raise ValueError(f"Writing in mode '{mode}' not supported")
         for count, (name, filedict) in enumerate(data.items()):
             filedata = filedict.pop('outstream').getvalue()
             cls._encode(
@@ -249,9 +266,9 @@ class SerialContainer(FlatFilterContainer):
 class SerialTextContainer(SerialContainer):
 
     @classmethod
-    def encode_all(cls, data, outstream, **kwargs):
+    def encode_all(cls, data, outstream, mode, **kwargs):
         outstream = outstream.text
-        return super().encode_all(data, outstream, **kwargs)
+        return super().encode_all(data, outstream, mode, **kwargs)
 
     @classmethod
     def _head(cls):
