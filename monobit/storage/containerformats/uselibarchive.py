@@ -36,7 +36,7 @@ if libarchive:
             return super().encode(name)
 
         @classmethod
-        def encode_all(cls, data, outstream):
+        def encode_all(cls, data, outstream, mode):
             """Write all items to archive."""
             format = cls.libarchive_format
             if not format:

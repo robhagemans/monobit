@@ -39,7 +39,7 @@ _CRC = be.Struct(
 )
 
 def sixbitdecode(encoded, codedict, byteswap=False):
-    """Deocde six-bit ascii representation into bytes."""
+    """Decode six-bit ascii representation into bytes."""
     # decode into 6-bit ints
     try:
         data = (codedict[_c] for _c in encoded)
@@ -195,7 +195,7 @@ class BinSCII(FlatFilterContainer):
         Writing to BinSCII is not supported.
         """
         raise ValueError(
-            'Writing to MacBinary is not supported.'
+            'Writing to BinSCII is not supported.'
         )
 
     def decode_all(self, instream):

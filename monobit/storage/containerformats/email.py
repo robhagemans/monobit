@@ -60,7 +60,7 @@ class EmailContainer(FlatFilterContainer):
         )
 
     @classmethod
-    def encode_all(cls, data, outstream):
+    def encode_all(cls, data, outstream, mode):
         if not data:
             return
         # Create the message

@@ -156,16 +156,26 @@ class _PathResolver:
         # check if innermost stream is a container
         try:
             container_object = _open_container(
-                containers, stream, mode=self.mode, format=format,
+                containers, stream,
+                # '+' should fail if the container does not support updating
+                mode=stream.mode,
+                format=format,
             )
         except FileFormatError:
             # innermost stream is a non-container stream.
             if self._unresolved_path == Path():
                 return
-            raise ValueError(
-                f"Could not open {join_path(stream.name, self._unresolved_path)}: "
-                f"stream {stream} is not a container."
-            )
+            if stream.mode == 'r':
+                raise ValueError(
+                    f"Could not open {join_path(stream.name, self._unresolved_path)}: "
+                    f"stream {stream.name} is not a container."
+                )
+            elif stream.mode == '+':
+                raise FileExistsError(
+                     f"Could not create {join_path(stream.name, self._unresolved_path)}: "
+                     f"{stream.name} already exists "
+                     "and we cannot update it."
+                 )
         else:
             if self.container_format:
                 self.container_format.pop()
@@ -201,13 +211,19 @@ class _PathResolver:
                 # remove used arguments
                 for kwarg in kwargs:
                     del self.argdict[kwarg]
-        else:
-            if unmatched != Path() and not container.is_dir(existing):
+        elif unmatched != Path() and not container.is_dir(existing):
+            # write mode and a file exists -> open it for update (+)
+            kwargs = take_arguments(container.update, self.argdict)
+            try:
+                stream = container.update(existing, **kwargs)
+            except NotImplementedError:
+                # update function not available for parent container
                 raise FileExistsError(
                     f"Could not create {join_path(container, existing, unmatched)}: "
                     f"{join_path(container, existing)} already exists "
-                    "and we cannot append to it."
+                    "and we cannot update it."
                 )
+        else:
             # step forward until a container pattern is encountered, or we run out of path
             if self.container_format:
                 format = self.container_format[-1]
@@ -267,11 +283,11 @@ def _open_container(
         raise FileFormatError(msg)
     last_error = None
     for cls in fitting_classes:
-        if mode == 'r':
+        if mode in ('r', '+'):
             instream.seek(0)
         logging.info(
-            "Opening stream '%s' as container format `%s`",
-            instream.name, cls.format
+            "Opening stream '%s' as container format `%s` for mode '%s'",
+            instream.name, cls.format, mode
         )
         try:
             # returns container object
@@ -280,6 +296,9 @@ def _open_container(
             logging.debug(e)
             last_error = e
             continue
+        except ValueError as e:
+            # mode not supported
+            break
         else:
             return container
     if last_error:
