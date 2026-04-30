@@ -220,7 +220,7 @@ class SerialContainer(FlatFilterContainer):
     @property
     def supported_modes(cls):
         modes = {'r', 'w'}
-        if cls._tail() == cls._separator():
+        if not cls._tail() or cls._tail() == cls._separator():
             modes.add('+')
         return modes
 

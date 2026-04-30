@@ -85,7 +85,8 @@ if yenc:
                     except yenc.Error as e:
                         raise FileFormatError(e) from e
                     garbage	= False
-                    for line in file_in.read().splitlines():
+                    while True:
+                        line = file_in.readline()
                         if line.startswith(b'=yend '):
                             tailer = _parse_header(line, '=yend ')
                             break
