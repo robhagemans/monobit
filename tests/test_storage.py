@@ -314,27 +314,50 @@ class TestContainers(BaseTester):
         # existing empty dir is retained
         assert (self.temp_path / 'test0').is_dir()
 
-    def test_update_zip(self):
+    def _test_update_container(self, suffix, format=''):
         """Test adding file to existing zip."""
-        file0 = self.temp_path / 'fontdir.zip' / '4x6.yaff'
-        monobit.save(self.fixed4x6, file0)
-        file1 = self.temp_path / 'fontdir.zip' / 'subdir' / '4x6.yaff'
-        monobit.save(self.fixed4x6, file1)
+        path =  self.temp_path / f'fontdir.{suffix}'
+        file0 = path / '4x6.yaff'
+        monobit.save(self.fixed4x6, file0, container_format=format)
+        self.assertTrue(path.is_file())
+        file1 = path / 'subdir' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file1, container_format=format)
         font, *_ = monobit.load(file0)
         self.assertEqual(len(font.glyphs), 919)
         font, *_ = monobit.load(file1)
         self.assertEqual(len(font.glyphs), 919)
 
+    def test_update_zip(self):
+        """Test adding file to existing zip."""
+        self._test_update_container('zip')
+
     def test_update_tar(self):
         """Test adding file to existing tar."""
-        file0 = self.temp_path / 'fontdir.tar' / '4x6.yaff'
-        monobit.save(self.fixed4x6, file0)
-        file1 = self.temp_path / 'fontdir.tar' / 'subdir' / '4x6.yaff'
-        monobit.save(self.fixed4x6, file1)
-        font, *_ = monobit.load(file0)
-        self.assertEqual(len(font.glyphs), 919)
-        font, *_ = monobit.load(file1)
-        self.assertEqual(len(font.glyphs), 919)
+        self._test_update_container('tar')
+
+    def test_update_yenc(self):
+        """Test adding file to existing yenc container."""
+        self._test_update_container('yenc', format='yenc')
+
+    def test_update_uu(self):
+        """Test adding file to existing uuencoded container."""
+        self._test_update_container('uu', format='uuencode')
+
+    def test_update_c(self):
+        """Test adding file to existing C container."""
+        self._test_update_container('c', format='c')
+
+    def test_update_py(self):
+        """Test adding file to existing Python list container."""
+        self._test_update_container('py')
+
+    def test_update_pytuple(self):
+        """Test adding file to existing Python tuple container."""
+        self._test_update_container('py', format='python-tuple')
+
+    def test_update_pas(self):
+        """Test adding file to existing Pascal container."""
+        self._test_update_container('pas', format='pascal')
 
 
 class TestForks(BaseTester):
