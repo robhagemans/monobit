@@ -44,7 +44,7 @@ class ZipTarBase(Archive):
         except EnvironmentError as e:
             # e.g. BrokenPipeError
             logging.debug(e)
-        self._stream.close()
+        # self._stream.close()
         super().close()
 
     def decode(self, name, **kwargs):
@@ -78,6 +78,10 @@ class ZipTarBase(Archive):
             logging.warning("Creating multiple files of the same name '%s'.", name)
         self._files.append(newfile)
         return newfile
+
+    def remove(self, name):
+        """Remove a file just created. This does not work on existing files."""
+        self._files = [_file for _file in self._files if not _file.name == name]
 
 
 ###############################################################################

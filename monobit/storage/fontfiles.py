@@ -16,8 +16,8 @@ from ..constants import MONOBIT
 from ..core import Font, Pack
 from ..plumbing import scriptable, manage_arguments
 from ..base import Any, FileFormatError, UnsupportedError
-from .magic import MagicRegistry
-from .location import open_location, iter_funcs_from_registry
+from .magic import MagicRegistry, iter_funcs_from_registry
+from .location import open_location
 from .base import (
     DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,
     loaders, savers, container_loaders, container_savers
@@ -89,6 +89,7 @@ def _sanitise_filesystem_name(filename):
     If the source filename contains surrogate-escaped non-utf8 bytes
     preserve the byte values as backslash escapes
     """
+    filename = str(filename)
     try:
         filename.encode('utf-8')
     except UnicodeError:
@@ -106,7 +107,7 @@ def _annotate_fonts_with_source(
     # convert font or pack to pack
     pack = Pack(fonts)
     filename = _sanitise_filesystem_name(Path(filename).name)
-    filepath = _sanitise_filesystem_name(str(Path(str(location.root)) / location.path))
+    filepath = _sanitise_filesystem_name(location.relative_path)
     # source format arguments
     loader_args = ' '.join(
         f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'

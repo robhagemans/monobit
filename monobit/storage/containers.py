@@ -59,6 +59,10 @@ class Container:
         """Open a binary stream to write to the container."""
         raise NotImplementedError
 
+    def remove(self, name):
+        """Remove a file just created. This does not work on existing files."""
+        pass
+
     def is_dir(self, name):
         """Item at `name` is a directory."""
         raise NotImplementedError
@@ -133,7 +137,6 @@ class FlatFilterContainer(Archive):
         """Close the archive, ignoring errors."""
         if self.mode == 'w' and not self.closed:
             self.encode_all(self._files, self._wrapped_stream)
-        self._wrapped_stream.close()
         super().close()
 
     def list(self):
@@ -185,6 +188,10 @@ class FlatFilterContainer(Archive):
                 for parent in Path(name).parents:
                     if parent != Path('.'):
                         self._data[f'{parent}/'] = b''
+
+    def remove(self, name):
+        """Remove a file just created. This does not work on existing files."""
+        self._files.pop(name, None)
 
     @classmethod
     def decode_all(cls, instream):

@@ -12,6 +12,7 @@ import re
 
 from .streams import get_name
 from ..base import FileFormatError
+from ..plumbing import manage_arguments
 
 
 # number of bytes to read to check if something looks like text
@@ -65,6 +66,18 @@ def looks_like_text(instream):
         f"input stream '{instream.name}' is likely text."
     )
     return True
+
+
+def iter_funcs_from_registry(registry, instream, format):
+    """
+    Iterate over and wrap functions stored in a MagicRegistry
+    that fit a given stream and format.
+    """
+    # identify file type
+    fitting_loaders = registry.get_for(instream, format=format)
+    for loader in fitting_loaders:
+        yield manage_arguments(loader)
+    return
 
 
 class MagicRegistry:
@@ -187,11 +200,16 @@ class MagicRegistry:
 
         return _decorator
 
-    def identify_filename(self, name):
+    def identify_filename(self, name, format=''):
         """Identify a type from a file name."""
         matches = []
+        # remove all but first suffix for pattern matching
+        # removes e.g. .gz suffixes
+        basename = '.'.join(name.split('.')[:2])
+        if '.' in basename and format:
+            return self.get_for(format=format)
         for pattern, converter in self._patterns:
-            if pattern.matches(name):
+            if pattern.matches(basename):
                 matches.append(converter)
         return tuple(matches)
 
