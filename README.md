@@ -125,6 +125,7 @@ Proportional-spacing formats
 | PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
 | TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       | binary | O        |
+| PolyPrint             | `polyprint`|                             |&check;|       | binary | -        |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | G (V)    |
 | Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       | binary | O        |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       | binary | -        |
