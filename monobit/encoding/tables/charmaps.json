@@ -2275,5 +2275,15 @@
         "overlays": [
             "ascii-printable"
         ]
+    },
+    "polyprint-overlay" : {
+        "filename": "manual/polyprint.ucp"
+    },
+    "polyprint": {
+        "filename": "microsoft/PC/CP437.TXT",
+        "range": "0x20-0xa7",
+        "overlays": [
+            "polyprint-overlay"
+        ]
     }
 }

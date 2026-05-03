@@ -65,11 +65,13 @@ def load_polyprint(instream):
         glyphs.append(glyph)
     # this is a guess, flags1==47 in all "large" sample fonts i've seen
     large = header.flags1 & 32
-    return Font(
+    font = Font(
         glyphs,
         name=header.name.strip().decode('ascii', 'replace'),
         # this is a guess; Epson LX-80s NLQ has 18 dots per line
         line_height=36 if large else 18,
         shift_up=0 if large else 18-32,
+        encoding="polyprint",
         **{"polyprint.font_id": header.font_id},
     )
+    return font.label()
