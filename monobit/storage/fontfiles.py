@@ -266,8 +266,11 @@ def save_all(
             template = savers.get_template(format)
         # fill out template
         name = font.format_properties(template)
+        # sanitise name
+        name = ''.join(c for c in name if 0x20 <= ord(c) < 0x7f or ord(c) > 0xa0)
+        name = name.replace(' ', '_')
         # generate unique filename
-        filename = location.unused_name(name.replace(' ', '_'))
+        filename = location.unused_name(name)
         try:
             with location.join(filename) as new_location:
                 _save_stream(
