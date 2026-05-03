@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.daisydot - Daisy Dot II/III NLQ format
+monobit.storage.fontformats.printer.daisydot - Daisy Dot II/III NLQ format
 
 (c) 2022--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
