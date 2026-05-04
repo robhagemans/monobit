@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from pathlib import Path
+from string import digits as ascii_digits
 
 from .base import NotFoundError, EncodingName
 from .registry import EncodingRegistry
@@ -24,8 +25,11 @@ def encoder(initialiser):
     if initialiser is None or not str(initialiser):
         return None
     initialiser = str(initialiser)
+    # single decimal number is interpreted as codepage
+    if set(initialiser) <= set(ascii_digits):
+        initialiser = 'cp' + initialiser
     # numeric ranges - interpreted as indexer
-    if initialiser[:1].isdigit():
+    elif initialiser[:1].isdigit():
         return Indexer(code_range=initialiser)
     try:
         return encodings[initialiser]
