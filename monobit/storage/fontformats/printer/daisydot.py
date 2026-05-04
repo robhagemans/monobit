@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.daisydot - Daisy Dot II/III NLQ format
+monobit.storage.fontformats.printer.daisydot - Daisy Dot II/III NLQ format
 
 (c) 2022--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -74,18 +74,32 @@ def _parse_daisy2(data):
         width = data[ofs]
         if width < 1 or width > 19:
             logging.warning('Glyph width outside of allowed values, continuing')
-        pass0 = bytes_to_bits(data[ofs+1:ofs+width+1])
-        pass1 = bytes_to_bits(data[ofs+width+1:ofs+2*width+1])
-        bits = tuple(_b for _pair in zip(pass0, pass1) for _b in _pair)
-        glyphs.append(
-            Glyph.from_vector(
-                bits, stride=16, codepoint=cp, inklevels=(False, True)
-            ).transpose(adjust_metrics=False)
+        raster = convert_multipass_glyph(
+            data[ofs+1:ofs+width+1], data[ofs+width+1:ofs+2*width+1]
         )
+        glyphs.append(Glyph(raster, codepoint=cp))
         # separated by a \x9b
         ofs += 2*width + 2
     props = None
     return 2, props, glyphs
+
+
+def convert_multipass_glyph(pass0, pass1):
+    """Convert interlaced passes, as for NLQ dot matrix printers."""
+    passes = [bytes_to_bits(_data) for _data in (pass0, pass1)]
+    bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
+    # we transpose, so stride is based on row height which is fixed
+    raster = Raster.from_vector(
+        bits, stride=16, inklevels=(False, True)
+    ).transpose()
+    return raster
+
+
+def convert_stacked_multipass_glyph(top0, top1, bot0, bot1):
+    """Convert stacked interlaced passes, as for NLQ dot matrix printers."""
+    top = convert_multipass_glyph(top0, top1)
+    bot = convert_multipass_glyph(bot0, bot1)
+    return Raster.stack(top, bot)
 
 
 def _parse_daisy3(data):
@@ -98,29 +112,17 @@ def _parse_daisy3(data):
         ofs += 1
         if width < 1 or width > 32:
             logging.warning('Glyph width outside of allowed values, continuing')
-        double = bool(double)
-        passes = [
-            bytes_to_bits(data[ofs:ofs+width]),
-            bytes_to_bits(data[ofs+width:ofs+2*width])
-        ]
-        bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
-        # we transpose, so stride is based on row height which is fixed
-        raster = Raster.from_vector(
-            bits, stride=16, inklevels=(False, True)
-        ).transpose()
+        top_pass_0 = data[ofs:ofs+width]
+        top_pass_1 = data[ofs+width:ofs+2*width]
         ofs += 2*width
-        if double:
-            passes = [
-                bytes_to_bits(data[ofs:ofs+width]),
-                bytes_to_bits(data[ofs+width:ofs+2*width])
-            ]
+        if not double:
+            raster = convert_multipass_glyph(top_pass_0, top_pass_1)
+        else:
+            bot_pass_0 = data[ofs:ofs+width]
+            bot_pass_1 = data[ofs+width:ofs+2*width]
             ofs += 2*width
-            bits = tuple(_b for _tup in zip(*passes) for _b in _tup)
-            raster = Raster.stack(
-                raster,
-                Raster.from_vector(
-                    bits, stride=16, inklevels=(False, True)
-                ).transpose(),
+            raster = convert_stacked_multipass_glyph(
+                top_pass_0, top_pass_1, bot_pass_0, bot_pass_1
             )
         glyphs.append(Glyph(raster, codepoint=cp))
         # in dd3, not separated by a \x9b

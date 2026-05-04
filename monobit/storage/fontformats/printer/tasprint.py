@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.tasprint - TasPrint fonts
+monobit.storage.fontformats.printer.tasprint - TasPrint fonts
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -14,8 +14,7 @@ from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Raster, Glyph, Font, Char
 from monobit.base.struct import little_endian as le
 
-from .raw import load_bitmap, save_bitmap
-from .raw.plus3dos import _PLUS3DOS_HEADER, _PLUS3DOS_MAGIC
+from ..raw.plus3dos import _PLUS3DOS_HEADER, _PLUS3DOS_MAGIC
 from monobit.storage.utils.limitations import ensure_charcell, ensure_single
 
 
@@ -161,7 +160,6 @@ def save_tasprint(fonts, outstream, version:str='48k'):
     if version == '48k':
         # ensure 10x16
         for font in fonts:
-            # FIXME: glyph count must be 96
             font = ensure_charcell(font, cell_size=(10, 16))
             return _write_tasprint_strike(
                 outstream, font, codepoint_range=range(32, 128)

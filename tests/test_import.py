@@ -1499,5 +1499,32 @@ class TestImport(BaseTester):
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.lectura_A)
 
 
+    # polyprint
+
+    polyprint = 'https://www.seasip.info/Unix/PSF/Amstrad/PolyPrint/'
+    # https://www.seasip.info/Unix/PSF/Amstrad/PolyPrint/015.fnt
+    tinyprint_A = """\
+.@@@@.
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+@@@@@@
+@@@@@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+@@..@@
+"""
+
+    def test_import_polyprint(self):
+        """Test importing PolyPrint fonts."""
+        file = ensure_asset(self.polyprint, '015.fnt')
+        font, *_ = monobit.load(file, format='polyprint')
+        self.assertEqual(len(font.glyphs), 144)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.tinyprint_A)
+
+
 if __name__ == '__main__':
     unittest.main()
