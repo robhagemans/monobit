@@ -195,6 +195,8 @@ class FontProperties:
     source_name: str = ''
     source_path: str = ''
     source_format: str = ''
+    source_url: str = ''
+    source_hash: str = ''
     history: str = ''
 
 
