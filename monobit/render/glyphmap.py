@@ -350,12 +350,12 @@ class _Canvas:
         ]
         for sixel_rows in zip(*sixel_matrices.values()):
             seq.append(
-                '$\n'.join(
+                '$'.join(
                     f'#{_level}' + ''.join(_row) for _level, _row in enumerate(sixel_rows)
                 )
-                + '-\n'
+                + '-'
             )
-        return blockstr('\x1bPq-\n' + ''.join(seq) + '\n\x1b\\')
+        return blockstr('\x1bPq' + ''.join(seq) + '\x1b\\')
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
