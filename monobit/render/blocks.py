@@ -98,7 +98,17 @@ def matrix_to_blocks(matrix, ncols, nrows):
         blockdict = BLOCKS[(ncols, nrows)]
     except KeyError:
         raise ValueError(f'Unsupported block resolution: {ncols}x{nrows}')
-    bitblockrows = tuple(
+    bitblockrows = bit_block_rows(matrix, nrows, ncols)
+    block_matrix = [
+        [blockdict[_bitblock] for _bitblock in _row]
+        for _row in bitblockrows
+    ]
+    return block_matrix
+
+
+def bit_block_rows(matrix, nrows, ncols):
+    """Convert matrix into rows of blocks of pixels of given size."""
+    return tuple(
         tuple(
             _bitblock
             for _bitblock in zip_longest(
@@ -114,11 +124,6 @@ def matrix_to_blocks(matrix, ncols, nrows):
             *(matrix[_ofs::nrows] for _ofs in range(nrows)), fillvalue=()
         )
     )
-    block_matrix = [
-        [blockdict[_bitblock] for _bitblock in _row]
-        for _row in bitblockrows
-    ]
-    return block_matrix
 
 
 def matrix_to_shades(matrix, *, inklevels, border):

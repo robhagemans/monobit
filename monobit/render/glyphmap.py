@@ -340,22 +340,11 @@ class _Canvas:
         """Convert canvas to a sixel sequence."""
         if not self.height:
             return ''
-        sixel_matrices = matrix_to_sixels(
+        sequence = matrix_to_sixels(
             self._pixels, inklevels=inklevels, border=border,
         )
         #self._write_labels_to_matrix(block_matrix)
-        seq = [
-            f'#{level};2;{(r*100)//255};{(g*100)//255};{(b*100)//255};'
-            for level, (r, g, b) in enumerate(sixel_matrices.keys())
-        ]
-        for sixel_rows in zip(*sixel_matrices.values()):
-            seq.append(
-                '$'.join(
-                    f'#{_level}' + ''.join(_row) for _level, _row in enumerate(sixel_rows)
-                )
-                + '-'
-            )
-        return blockstr('\x1bPq' + ''.join(seq) + '\x1b\\')
+        return blockstr(sequence)
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
