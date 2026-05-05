@@ -180,10 +180,20 @@ class GlyphMap:
         canvas = self.to_canvas(sheet=sheet)
         return canvas.as_blocks(resolution)
 
-    def as_sixels(self, *, sheet=0):
-        """Convert glyph map to a string of quadrant block characters."""
+    def as_sixels(
+            self, *,
+            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None,
+            sheet=0
+        ):
+        """Convert glyph map to a sixel sequence."""
         canvas = self.to_canvas(sheet=sheet)
-        return canvas.as_sixels()
+        inklevels = create_image_colours(
+            image_mode='RGB', rgb_table=self._rgb_table,
+            levels=self._levels, ink=ink, paper=paper
+        )
+        return canvas.as_sixels(
+            inklevels=inklevels, border=border
+        )
 
     def as_shades(
             self, *,
@@ -326,16 +336,26 @@ class _Canvas:
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')
 
-    def as_sixels(self): # *, inklevels, border):
+    def as_sixels(self, *, inklevels, border):
         """Convert canvas to a sixel sequence."""
         if not self.height:
             return ''
-        block_matrix = matrix_to_sixels(
-            self._pixels, #inklevels=inklevels, border=border,
+        sixel_matrices = matrix_to_sixels(
+            self._pixels, inklevels=inklevels, border=border,
         )
         #self._write_labels_to_matrix(block_matrix)
-        sixels = '-\n'.join(''.join(_row) for _row in block_matrix)
-        return blockstr('\x1bPq-\n' + sixels + '\n\x1b\\')
+        seq = [
+            f'#{level};2;{(r*100)//255};{(g*100)//255};{(b*100)//255};'
+            for level, (r, g, b) in enumerate(sixel_matrices.keys())
+        ]
+        for sixel_rows in zip(*sixel_matrices.values()):
+            seq.append(
+                '$\n'.join(
+                    f'#{_level}' + ''.join(_row) for _level, _row in enumerate(sixel_rows)
+                )
+                + '-\n'
+            )
+        return blockstr('\x1bPq-\n' + ''.join(seq) + '\n\x1b\\')
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """

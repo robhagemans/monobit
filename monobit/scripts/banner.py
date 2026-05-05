@@ -268,7 +268,10 @@ def main():
                 border = RGB.create(args.border) if args.border else paper
                 text = glyph_map.as_shades(paper=paper, ink=ink, border=border)
             elif args.sixels:
-                text = glyph_map.as_sixels()
+                ink = RGB.create(args.ink or (255, 255, 255))
+                paper = RGB.create(args.paper or (0, 0, 0))
+                border = RGB.create(args.border) if args.border else paper
+                text = glyph_map.as_sixels(paper=paper, ink=ink, border=border)
             else:
                 ink = args.ink or '@'
                 paper = args.paper or '.'
