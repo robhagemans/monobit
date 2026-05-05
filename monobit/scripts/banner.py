@@ -150,6 +150,10 @@ def main():
         '--shades', action='store_true',
         help=('output as ANSI-coloured 1x1 block element characters')
     )
+    parser.add_argument(
+        '--sixels', action='store_true',
+        help=('output as sixel sequence')
+    )
     # font / glyph effects
     parser.add_argument(
         '--bold', action='store_true',
@@ -263,6 +267,8 @@ def main():
                 paper = RGB.create(args.paper or (0, 0, 0))
                 border = RGB.create(args.border) if args.border else paper
                 text = glyph_map.as_shades(paper=paper, ink=ink, border=border)
+            elif args.sixels:
+                text = glyph_map.as_sixels()
             else:
                 ink = args.ink or '@'
                 paper = args.paper or '.'
