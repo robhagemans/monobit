@@ -262,9 +262,13 @@ class _PathResolver:
 def _split_path_containername(path, format):
     """Pare forward path until a recognised container name pattern is encountered."""
     for headpath in reversed((path, *path.parents)):
+        if headpath == Path():
+            continue
+        subpath = path.relative_to(headpath)
         if containers.identify_filename(headpath.name, format):
-            subpath = path.relative_to(headpath)
             return headpath, subpath
+        elif format and format.lower() != 'dir' and subpath != Path():
+            raise ValueError(f'Container format `{format}` not recognised.')
     # no match
     return path, Path('.')
 

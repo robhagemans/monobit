@@ -14,7 +14,7 @@
     .@@......@@..........................@@.
 
 
-The `yaff` font file format, version 1.0.3
+The `yaff` font file format, version 1.0.4
 ==========================================
 
 Design aims
@@ -397,8 +397,11 @@ They can be related to the target system:
 
 Or they can be related to processing:
 - `converter`: software used to produce the present file, e.g. `monobit`.
-- `source-name`: file name from which the font was originally extracted.
+- `source-name`: name of the file from which the font was originally extracted.
+- `source-path`: path of the file from which the font was originally extracted.
 - `source-format`: file format from which the font was originally extracted.
+- `source-url`: URL of the internet location where the original file was retrieved.
+- `source-hash`: hash(es) of the original file.
 - `history`: summary of processing steps applied since extraction.
 
 
