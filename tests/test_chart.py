@@ -46,6 +46,14 @@ class TestChart(BaseTester):
         with open(txt_file) as output, open(self.font_path / 'shades.txt') as model:
             self.assertListEqual(list(output), list(model))
 
+    def test_export_sixel(self):
+        """Test exporting shaded blocks chart."""
+        from pathlib import Path
+        txt_file = self.temp_path / 'sixels.txt'
+        monobit.save(self.prop, txt_file, format='sixels')
+        with open(txt_file) as output, open(self.font_path / 'sixels.txt') as model:
+            self.assertListEqual(list(output), list(model))
+
 
 if __name__ == '__main__':
     unittest.main()
