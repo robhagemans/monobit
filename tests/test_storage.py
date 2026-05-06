@@ -314,6 +314,12 @@ class TestContainers(BaseTester):
         # existing empty dir is retained
         assert (self.temp_path / 'test0').is_dir()
 
+    def test_format_dir(self):
+        """Test overriding with format='dir'."""
+        file = self.temp_path / 'testfontdir.zip' / 'test.yaff'
+        fonts = monobit.save(self.fixed8x16, file, container_format='dir')
+        assert (self.temp_path / 'testfontdir.zip').is_dir()
+
     def _test_update_container(self, suffix, format='', preserve_names=True):
         """Test adding file to existing zip."""
         path = self.temp_path / f'fontdir.{suffix}'
