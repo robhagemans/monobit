@@ -150,6 +150,52 @@ def save_shades(
 
 
 
+@savers.register(name='sixels')
+def save_sixels(
+        fonts, outstream, *,
+        glyphs_per_line:int=16,
+        margin:Coord=Coord(0, 0),
+        padding:Coord=Coord(1, 1),
+        scale:Coord=Coord(1, 1),
+        direction:str=None,
+        border:RGB=None,
+        paper:RGB=RGB(0, 0, 0),
+        ink:RGB=RGB(255, 255, 255),
+        codepoint_range:tuple[Codepoint]=None,
+        grid_positioning:bool=False,
+        # max_labels:int=1,
+    ):
+    """
+    Export font to ansi-coloured blocks chart.
+
+    glyphs_per_line: number of glyphs per line in glyph chart (default: 16)
+    margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
+    padding: number of pixels in X,Y direction between glyphs (default: 1x1)
+    scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+    direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
+    paper: background colour R,G,B 0--255 (default: 0,0,0)
+    ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
+    border: border colour R,G,B 0--255 (default: terminal background)
+    codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    """
+    # max_labels: maximum number of labels to show per glyph (default: 1)
+    glyph_map = create_chart(
+        fonts,
+        glyphs_per_line=glyphs_per_line,
+        margin=margin,
+        padding=padding,
+        scale=scale,
+        direction=direction,
+        codepoint_range=codepoint_range,
+        # max_labels=max_labels,
+        grid_positioning=grid_positioning,
+    )
+    outstream.text.write(glyph_map.as_sixels(
+        paper=paper, border=border, ink=ink,
+    ))
+
+
 def create_chart(
         fonts, *,
         glyphs_per_line,
