@@ -292,7 +292,7 @@ class TestContainers(BaseTester):
         file = self.temp_path / 'testfontdir.zip' / 'test.bbc'
         try:
             # expected to fail
-            fonts = self.fixed8x16(file)
+            fonts = monobit.save(self.fixed8x16, file, format='bbc')
         except Exception:
             pass
         # no new zip file after failure
@@ -305,7 +305,7 @@ class TestContainers(BaseTester):
         (self.temp_path / 'test0').mkdir()
         try:
             # expected to fail
-            fonts = self.fixed8x16(file)
+            fonts = monobit.save(self.fixed8x16, file, format='bbc')
         except Exception:
             pass
         # no new file or new directory after failure
