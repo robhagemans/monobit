@@ -18,9 +18,14 @@ def join_path(*elements):
 
 
 def path_exists(container, path, match_case):
-    """Container contains file (case insensitive), returns boolean."""
-    _, unmatched = match_path(container, path, match_case)
-    return unmatched == Path()
+    """
+    Container contains file (case insensitive).
+    Returns existing name (truey) if matched, empty string (falsy) otherwise.
+    """
+    matched, unmatched = match_path(container, path, match_case)
+    if unmatched == Path():
+        return matched
+    return ''
 
 
 def match_path(container, path, match_case):

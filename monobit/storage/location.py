@@ -12,7 +12,7 @@ from pathlib import Path
 from ..plumbing import take_arguments
 from .containers import Container
 from .containerformats.directory import Directory
-from .pathutils import path_exists, join_path
+from .pathutils import path_exists, join_path, match_path
 from .resolvepath import resolve_path
 
 
@@ -185,15 +185,15 @@ class Location:
     def open(self, name, mode):
         """Open a binary stream in the container."""
         container, subpath = self._get_container_and_subpath()
-        exists = path_exists(container, subpath / name, self.match_case)
+        existing = path_exists(container, subpath / name, self.match_case)
         if mode == 'r':
-            if not exists:
+            if not existing:
                 raise FileNotFoundError(
                     f"{join_path(container, subpath, name)} not found "
                     f"with case-{'' if self.match_case else 'in'}sensitive match."
                 )
             kwargs = take_arguments(container.decode, self.argdict)
-            stream = container.decode(subpath / name, **kwargs)
+            stream = container.decode(existing, **kwargs)
         else:
             if exists and not self.overwrite:
                 raise FileExistsError(
