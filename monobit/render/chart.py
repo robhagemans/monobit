@@ -276,7 +276,7 @@ def grid_resample(font, glyphs_per_line, codepoint_range):
     codepoint_range = tuple(codepoint_range)
     if codepoint_range:
         # limit to only the glyphs in range
-        font = font.resample(codepoint_range, missing='empty', relabel=False)
+        font = font.resample(codepoint_range, missing=None, relabel=False)
         # don't bring in more codepoints through charmap
         font = font.label(codepoint_from=font.encoding)
         font = font.modify(encoding=None)
