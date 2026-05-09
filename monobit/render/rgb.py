@@ -24,14 +24,15 @@ def create_gradient(paper:RGB, ink:RGB, levels:int):
 
 def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
     """Create colour table for given image format."""
-    if rgb_table is not None and image_mode in ('1', 'L'):
+    image_mode = image_mode[:4].lower()
+    if rgb_table is not None and image_mode in ('mono', 'grey', 'gray'):
         logging.warning('RGB colour table will be ignored.')
-    if image_mode == '1':
+    if image_mode == 'mono':
         if levels > 2:
             logging.warning('Ink levels will be downsampled from %d to 2', levels)
         inklevels = [0] * (levels//2) + [1] * (levels-levels//2)
         border = 0
-    elif image_mode == 'L':
+    elif image_mode in ('grey', 'gray'):
         inklevels = tuple(
             _v * 255 // (levels-1)
             for _v in range(levels)

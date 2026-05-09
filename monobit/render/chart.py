@@ -236,7 +236,7 @@ if Image:
         Export font to chart image.
 
         image_format: image file format (default: 'png')
-        image_mode: image colour mode. '1', 'L' or 'RGB' (default)
+        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
         glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
         padding: number of pixels in X,Y direction between glyphs (default: 1x1)

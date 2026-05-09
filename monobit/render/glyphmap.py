@@ -17,11 +17,26 @@ from .blocks import matrix_to_blocks, matrix_to_shades
 from .sixel import matrix_to_sixel
 from .rgb import create_image_colours
 
+_IMAGE_MODE_PIL_MAP = {
+    'mono': '1',
+    'grey': 'L',
+    'gray': 'L',
+    'rgb': 'RGB',
+    'rgba': 'RGBA',
+}
+
 
 def glyph_to_image(glyph, image_mode, inklevels):
     """Create image of single glyph."""
     if not Image:
         raise ImportError('Rendering to image requires PIL module.')
+    try:
+        image_mode = _IMAGE_MODE_PIL_MAP[image_mode[:4].lower()]
+    except KeyError:
+        raise ValueError(
+            f'`image-mode` must be one of {tuple(_IMAGE_MODE_PIL_MAP)}, '
+            f'got {image_mode} instead.'
+        )
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
     data = glyph.as_pixels(inklevels=inklevels)
     if image_mode in ('RGB', 'RGBA'):
@@ -115,13 +130,14 @@ class GlyphMap:
         )
         masklevels = [0] + [1] * (self._levels-1)
         # mono and greyscale images have fixed levels
-        if image_mode != 'RGB':
+        if not image_mode.lower().startswith('rgb'):
             border = 0
         last, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
+        pil_mode = _IMAGE_MODE_PIL_MAP[image_mode[:4].lower()]
         images = [
-            Image.new(image_mode, (width, height), border)
+            Image.new(pil_mode, (width, height), border)
             for _ in range(last+1)
         ]
         for entry in self._map:
@@ -130,7 +146,7 @@ class GlyphMap:
                 # create a mask to paste only non-background pixels
                 # for greyscale and colour, alpha_composite would be better
                 mask = glyph_to_image(
-                    entry.glyph, image_mode='1', inklevels=masklevels,
+                    entry.glyph, image_mode='mono', inklevels=masklevels,
                 )
             else:
                 mask = None

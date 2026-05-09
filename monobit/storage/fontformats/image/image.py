@@ -385,7 +385,7 @@ if Image:
         Export font to grid-based image.
 
         image_format: image file format (default: 'png')
-        image_mode: image colour mode. '1', 'L' or 'RGB' (default)
+        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
         glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
         padding: number of pixels in X,Y direction between glyphs (default: 1x1)
@@ -460,7 +460,7 @@ if Image:
 
         prefix: part of the image file name before the codepoint
         image_format: image file format (default: png)
-        image_mode: image colour mode. '1', 'L' or 'RGB' (default)
+        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
