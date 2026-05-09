@@ -5,7 +5,7 @@ monobit.render.chart - create font chart
 licence: https://opensource.org/licenses/MIT
 """
 
-from itertools import product
+from itertools import product, chain
 from pathlib import Path
 
 from monobit.base.binary import ceildiv
@@ -208,12 +208,13 @@ def create_chart(
         max_labels=0,
         label_height=1,
         grid_positioning=False,
+        skip_empty_lines=False,
     ):
     """Create chart glyph map of font."""
     font = ensure_single(fonts)
     font = font.equalise_horizontal()
     if grid_positioning:
-        font = grid_resample(font, glyphs_per_line, codepoint_range)
+        font = grid_resample(font, glyphs_per_line, codepoint_range, skip_empty_lines)
     elif codepoint_range:
         font = font.subset(codepoint_range)
     font = font.stretch(*scale)
@@ -271,7 +272,7 @@ def format_label(label):
 ###############################################################################
 # grid functions
 
-def grid_resample(font, glyphs_per_line, codepoint_range):
+def grid_resample(font, glyphs_per_line, codepoint_range, skip_empty_lines):
     """Resample font for grid representation."""
     codepoint_range = tuple(codepoint_range)
     if codepoint_range:
@@ -286,11 +287,18 @@ def grid_resample(font, glyphs_per_line, codepoint_range):
     except ValueError:
         # empty sequence
         raise ValueError('No codepoint labels found.')
-    # start at a codepoint that is a multiple of the number of columns
-    grid_range = range(
-        glyphs_per_line * (int(min(codepoints, default=0)) // glyphs_per_line),
-        int(max(codepoints, default=0)) + 1,
-    )
+    if skip_empty_lines:
+        lines = {int(_cp) // glyphs_per_line for _cp in codepoints}
+        grid_range = chain(*(
+            range(glyphs_per_line*_l, glyphs_per_line*(_l+1))
+            for _l in sorted(lines)
+        ))
+    else:
+        # start at a codepoint that is a multiple of the number of columns
+        grid_range = range(
+            glyphs_per_line * (int(min(codepoints, default=0)) // glyphs_per_line),
+            int(max(codepoints, default=0)) + 1,
+        )
     font = font.resample(grid_range, missing='empty', relabel=False)
     return font
 

@@ -380,6 +380,7 @@ if Image:
             ink:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=range(512),
             grid_positioning:bool=True,
+            skip_empty_lines:bool=False,
         ):
         """
         Export font to grid-based image.
@@ -396,6 +397,7 @@ if Image:
         border: border colour R,G,B 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: 0-511)
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
+        skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: false)
         """
         glyph_map = create_chart(
             fonts,
@@ -406,6 +408,7 @@ if Image:
             direction=direction,
             codepoint_range=codepoint_range,
             grid_positioning=grid_positioning,
+            skip_empty_lines=skip_empty_lines,
         )
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink,
@@ -433,6 +436,7 @@ if Image:
             ink:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
             grid_positioning:bool=False,
+            skip_empty_lines:bool=True,
         ):
         """
         Export font to chart image.
@@ -449,14 +453,15 @@ if Image:
         border: border colour R,G,B 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepsoints)
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+        skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
         """
         # 'imagechart' is the same as 'image' but with different defaults
         return save_image(
             fonts, outfile,
-            image_format, image_mode,
-            glyphs_per_line, margin, padding, scale, direction,
-            border, paper, ink,
-            codepoint_range, grid_positioning,
+            image_format=image_format, image_mode=image_mode,
+            glyphs_per_line=glyphs_per_line, margin=margin, padding=padding, scale=scale, direction=direction,
+            border=border, paper=paper, ink=ink,
+            codepoint_range=codepoint_range, grid_positioning=grid_positioning, skip_empty_lines=skip_empty_lines,
         )
 
 
