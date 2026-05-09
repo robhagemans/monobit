@@ -30,6 +30,7 @@ def save_chart(
         inklevels:tuple[str]=('\xa0', '@'),
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=False,
+        skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
     """
@@ -44,6 +45,7 @@ def save_chart(
     inklevels: characters to use for pixels (default: space, '2')
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
     grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
@@ -55,6 +57,7 @@ def save_chart(
         direction=direction,
         codepoint_range=codepoint_range,
         grid_positioning=grid_positioning,
+        skip_empty_lines=skip_empty_lines,
         max_labels=max_labels,
     )
     outstream.text.write(
@@ -73,6 +76,7 @@ def save_blocks(
         resolution:Coord=Coord(1, 1),
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=False,
+        skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
     """
@@ -86,6 +90,7 @@ def save_blocks(
     resolution: blocks per text character; 1x1 (default), 1x2, 1x3, 1x4, 2x1, 2x3, 2x4
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
     grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
@@ -98,6 +103,7 @@ def save_blocks(
         codepoint_range=codepoint_range,
         max_labels=max_labels,
         grid_positioning=grid_positioning,
+        skip_empty_lines=skip_empty_lines,
         label_height=resolution.y,
     )
     outstream.text.write(glyph_map.as_blocks(resolution=resolution))
@@ -116,6 +122,7 @@ def save_shades(
         ink:RGB=RGB(255, 255, 255),
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=False,
+        skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
     """
@@ -131,6 +138,7 @@ def save_shades(
     border: border colour R,G,B 0--255 (default: terminal background)
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
     grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
@@ -143,6 +151,7 @@ def save_shades(
         codepoint_range=codepoint_range,
         max_labels=max_labels,
         grid_positioning=grid_positioning,
+        skip_empty_lines=skip_empty_lines,
     )
     outstream.text.write(glyph_map.as_shades(
         paper=paper, border=border, ink=ink,
@@ -163,6 +172,7 @@ def save_sixel(
         ink:RGB=RGB(255, 255, 255),
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=False,
+        skip_empty_lines:bool=True,
         # max_labels:int=1,
     ):
     """
@@ -178,6 +188,7 @@ def save_sixel(
     border: border colour R,G,B 0--255 (default: terminal background)
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
     grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     """
     # max_labels: maximum number of labels to show per glyph (default: 1)
     glyph_map = create_chart(
@@ -190,6 +201,7 @@ def save_sixel(
         codepoint_range=codepoint_range,
         # max_labels=max_labels,
         grid_positioning=grid_positioning,
+        skip_empty_lines=skip_empty_lines,
     )
     outstream.text.write(glyph_map.as_sixel(
         paper=paper, border=border, ink=ink,
