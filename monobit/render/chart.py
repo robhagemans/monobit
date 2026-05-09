@@ -203,9 +203,9 @@ def save_sixel(
         grid_positioning=grid_positioning,
         skip_empty_lines=skip_empty_lines,
     )
-    outstream.text.write(glyph_map.as_sixel(
-        paper=paper, border=border, ink=ink,
-    ))
+    outstream.text.write(
+        glyph_map.as_sixel(paper=paper, border=border, ink=ink)
+    )
 
 
 def create_chart(
@@ -342,30 +342,33 @@ def grid_map(
     rows = rows or ceildiv(len(font.glyphs), columns)
     columns = columns or ceildiv(len(font.glyphs), rows)
     glyphs_per_page = rows * columns
-    glyph_pages = tuple(
-        font.glyphs[_s : _s + glyphs_per_page]
-        for _s in range(0, len(font.glyphs), glyphs_per_page)
-    )
-    # horizontal alignment (left or right)
-    # note that we have equalised glyphs to the same height
-    # so vertical alignment is not needed
-    right_align = aligns_right(direction)
-    # output glyph maps
-    glyph_map = (
-        Props(
-            glyph=_glyph, sheet=_sheet,
-            x=(
-                margin.x + col*step_x
-                + (font.raster_size.x - _glyph.width if right_align else 0)
-            ),
-            y=margin.y + row*step_y,
+    if not glyphs_per_page:
+        glyph_map = ()
+    else:
+        glyph_pages = tuple(
+            font.glyphs[_s : _s + glyphs_per_page]
+            for _s in range(0, len(font.glyphs), glyphs_per_page)
         )
-        for _sheet, _glyph_page in enumerate(glyph_pages)
-        for _glyph, (row, col) in zip(
-            _glyph_page,
-            grid_traverser(columns, rows, direction, invert_y)
+        # horizontal alignment (left or right)
+        # note that we have equalised glyphs to the same height
+        # so vertical alignment is not needed
+        right_align = aligns_right(direction)
+        # output glyph maps
+        glyph_map = (
+            Props(
+                glyph=_glyph, sheet=_sheet,
+                x=(
+                    margin.x + col*step_x
+                    + (font.raster_size.x - _glyph.width if right_align else 0)
+                ),
+                y=margin.y + row*step_y,
+            )
+            for _sheet, _glyph_page in enumerate(glyph_pages)
+            for _glyph, (row, col) in zip(
+                _glyph_page,
+                grid_traverser(columns, rows, direction, invert_y)
+            )
         )
-    )
     glyph_map = GlyphMap(
         glyph_map, levels=font.levels,
         rgb_table=font.rgb_table,

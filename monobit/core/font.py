@@ -1167,10 +1167,13 @@ class Font(HasProps):
             (_label, self.get_glyph(_label, missing=missing))
             for _label in labels
         )
-        # if missing=None, drop missing glyphs
-        labels, glyphs = zip(*(
+        labelsglyphs = tuple(
             (_l, _g) for _l, _g in labelsglyphs if _g is not None
-        ))
+        )
+        if not labelsglyphs:
+            return self.modify(())
+        # if missing=None, drop missing glyphs
+        labels, glyphs = zip(*labelsglyphs)
         font = self.modify(glyphs)
         if relabel:
             # relabel and relink glyphs
