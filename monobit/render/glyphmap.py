@@ -122,6 +122,22 @@ class GlyphMap:
             invert_y=False, transparent=True, image_mode='RGB',
         ):
         """Draw images based on sheets in glyph map."""
+        last_sheet, *_ = self.get_bounds()
+        images = [
+            self.as_image(
+                paper=paper, ink=ink, border=border,
+                invert_y=invert_y, transparent=transparent, image_mode=image_mode,
+            )
+            for sheet in range(last_sheet+1)
+        ]
+        return images
+
+    def as_image(
+            self, *,
+            paper=(0, 0, 0), ink=(255, 255, 255), border=(32, 32, 32),
+            sheet=0, invert_y=False, transparent=True, image_mode='RGB',
+        ):
+        """Convert glyph map to image."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
         inklevels = create_image_colours(
@@ -132,15 +148,14 @@ class GlyphMap:
         # mono and greyscale images have fixed levels
         if not image_mode.lower().startswith('rgb'):
             border = 0
-        last, min_x, min_y, max_x, max_y = self.get_bounds()
+        _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
         pil_mode = _IMAGE_MODE_PIL_MAP[image_mode[:4].lower()]
-        images = [
-            Image.new(pil_mode, (width, height), border)
-            for _ in range(last+1)
-        ]
+        image = Image.new(pil_mode, (width, height), border)
         for entry in self._map:
+            if entry.sheet != sheet:
+                continue
             if transparent:
                 # if glyphs overlap, we need to treat the background colour as transparent
                 # create a mask to paste only non-background pixels
@@ -157,25 +172,13 @@ class GlyphMap:
                 # Image has ttb y coords, we have btt
                 # our character origin is bottom left
                 target = (entry.x-min_x, height-entry.glyph.height+min_y-entry.y)
-            images[entry.sheet].paste(colour, target, mask)
-        images = tuple(
-            _im.resize((self._scale_x*_im.width, self._scale_y*_im.height))
-                .rotate(-90 * self._turns, expand=True)
-            for _im in images
+            image.paste(colour, target, mask)
+        image = (
+            image.resize(
+                (self._scale_x*image.width, self._scale_y*image.height)
+            ).rotate(-90 * self._turns, expand=True)
         )
-        return images
-
-    def as_image(
-            self, *,
-            paper=(0, 0, 0), ink=(255, 255, 255), border=(32, 32, 32),
-            sheet=0, invert_y=False, image_mode='RGB',
-        ):
-        """Convert glyph map to image."""
-        images = self.to_images(
-            ink=ink, paper=paper, border=border,
-            invert_y=invert_y, image_mode=image_mode
-        )
-        return images[sheet]
+        return image
 
     def as_text(
             self, *,
