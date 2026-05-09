@@ -195,9 +195,9 @@ class Location:
             kwargs = take_arguments(container.decode, self.argdict)
             stream = container.decode(existing, **kwargs)
         else:
-            if exists and not self.overwrite:
+            if existing and not self.overwrite:
                 raise FileExistsError(
-                    f"{join_path(container, subpath, name)} already exists. "
+                    f"{existing} already exists. "
                     "Use option -overwrite if you wish to overwrite it."
                 )
             kwargs = take_arguments(container.encode, self.argdict)
