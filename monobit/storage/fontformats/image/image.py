@@ -20,13 +20,12 @@ from monobit.storage.base import (
 from monobit.core import Font, Glyph, Codepoint
 from monobit.render import (
     create_chart, glyph_to_image, grid_traverser,
-    create_image_colours, RGBTable, create_gradient
+    create_image_colours, RGBTable, create_gradient,
+    write_imagefile,
 )
+
 from monobit.storage.utils.limitations import ensure_single
 from monobit.storage.utils.perglyph import loop_load, loop_save
-
-
-DEFAULT_IMAGE_FORMAT = 'png'
 
 
 # available background policies
@@ -399,6 +398,7 @@ if Image:
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: false)
         """
+        # NOTE 'imagechart' and 'image' are the same but with different defaults
         glyph_map = create_chart(
             fonts,
             glyphs_per_line=glyphs_per_line,
@@ -415,54 +415,7 @@ if Image:
             transparent=False,
             image_mode=image_mode,
         )
-        try:
-            img.save(outfile, format=image_format or Path(outfile).suffix[1:])
-        except (KeyError, ValueError, TypeError):
-            img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
-
-
-    @savers.register(name='imagechart')
-    def save_imagechart(
-            fonts, outfile, *,
-            image_format:str='png',
-            image_mode:str='RGB',
-            glyphs_per_line:int=16,
-            margin:Coord=Coord(0, 0),
-            padding:Coord=Coord(1, 1),
-            scale:Coord=Coord(1, 1),
-            direction:str='left-to-right top-to-bottom',
-            border:RGB=RGB(32, 32, 32),
-            paper:RGB=RGB(0, 0, 0),
-            ink:RGB=RGB(255, 255, 255),
-            codepoint_range:tuple[Codepoint]=None,
-            grid_positioning:bool=False,
-            skip_empty_lines:bool=True,
-        ):
-        """
-        Export font to chart image.
-
-        image_format: image file format (default: 'png')
-        image_mode: image colour mode. '1', 'L' or 'RGB' (default)
-        glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
-        margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
-        padding: number of pixels in X,Y direction between glyphs (default: 1x1)
-        scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
-        direction: two-part string, default 'left-to-right top-to-bottom'
-        paper: background colour R,G,B 0--255 (default: 0,0,0)
-        ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
-        border: border colour R,G,B 0--255 (default 32,32,32)
-        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepsoints)
-        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
-        skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
-        """
-        # 'imagechart' is the same as 'image' but with different defaults
-        return save_image(
-            fonts, outfile,
-            image_format=image_format, image_mode=image_mode,
-            glyphs_per_line=glyphs_per_line, margin=margin, padding=padding, scale=scale, direction=direction,
-            border=border, paper=paper, ink=ink,
-            codepoint_range=codepoint_range, grid_positioning=grid_positioning, skip_empty_lines=skip_empty_lines,
-        )
+        write_imagefile(outfile, img, image_format)
 
 
     ###########################################################################
@@ -519,10 +472,7 @@ if Image:
 
         def _save_image_glyph(glyph, imgfile):
             img = glyph_to_image(glyph, image_mode=image_mode, inklevels=inklevels)
-            try:
-                img.save(imgfile, format=image_format or Path(imgfile).suffix[1:])
-            except (KeyError, ValueError, TypeError):
-                img.save(imgfile, format=DEFAULT_IMAGE_FORMAT)
+            write_imagefile(imgfile, img, image_format)
 
         loop_save(
             fonts, location, prefix,

@@ -8,6 +8,9 @@ licence: https://opensource.org/licenses/MIT
 from itertools import product, chain
 from pathlib import Path
 
+from monobit.base import safe_import
+Image = safe_import('PIL.Image')
+
 from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, RGB
 from monobit.core import Codepoint, Glyph, Char
@@ -16,6 +19,9 @@ from monobit.plumbing import scriptable
 from monobit.encoding.unicode import is_showable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
+
+
+DEFAULT_IMAGE_FORMAT = 'png'
 
 
 @savers.register(name='chart')
@@ -207,6 +213,71 @@ def save_sixel(
         glyph_map.as_sixel(paper=paper, border=border, ink=ink)
     )
 
+if Image:
+
+    @savers.register(name='imagechart')
+    def save_imagechart(
+            fonts, outfile, *,
+            image_format:str='png',
+            image_mode:str='RGB',
+            glyphs_per_line:int=16,
+            margin:Coord=Coord(0, 0),
+            padding:Coord=Coord(1, 1),
+            scale:Coord=Coord(1, 1),
+            direction:str='left-to-right top-to-bottom',
+            border:RGB=RGB(32, 32, 32),
+            paper:RGB=RGB(0, 0, 0),
+            ink:RGB=RGB(255, 255, 255),
+            codepoint_range:tuple[Codepoint]=None,
+            grid_positioning:bool=False,
+            skip_empty_lines:bool=True,
+        ):
+        """
+        Export font to chart image.
+
+        image_format: image file format (default: 'png')
+        image_mode: image colour mode. '1', 'L' or 'RGB' (default)
+        glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
+        margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
+        padding: number of pixels in X,Y direction between glyphs (default: 1x1)
+        scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+        direction: two-part string, default 'left-to-right top-to-bottom'
+        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
+        border: border colour R,G,B 0--255 (default 32,32,32)
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepsoints)
+        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+        skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
+        """
+        # NOTE 'imagechart' and 'image' are the same but with different defaults
+        glyph_map = create_chart(
+            fonts,
+            glyphs_per_line=glyphs_per_line,
+            margin=margin,
+            padding=padding,
+            scale=scale,
+            direction=direction,
+            codepoint_range=codepoint_range,
+            grid_positioning=grid_positioning,
+            skip_empty_lines=skip_empty_lines,
+        )
+        img, = glyph_map.to_images(
+            border=border, paper=paper, ink=ink,
+            transparent=False,
+            image_mode=image_mode,
+        )
+        write_imagefile(outfile, img, image_format)
+
+
+def write_imagefile(outfile, img, image_format):
+    """Write a PIL image to file."""
+    try:
+        img.save(outfile, format=image_format or Path(outfile).suffix[1:])
+    except (KeyError, ValueError, TypeError):
+        img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
+
+
+###############################################################################
 
 def create_chart(
         fonts, *,
