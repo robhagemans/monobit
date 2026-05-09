@@ -286,8 +286,8 @@ def format_label(label):
 
 def grid_resample(font, glyphs_per_line, codepoint_range, skip_empty_lines):
     """Resample font for grid representation."""
-    codepoint_range = tuple(codepoint_range)
     if codepoint_range:
+        codepoint_range = tuple(codepoint_range)
         # limit to only the glyphs in range
         font = font.resample(codepoint_range, missing=None, relabel=False)
         # don't bring in more codepoints through charmap
