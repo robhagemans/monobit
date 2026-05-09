@@ -204,56 +204,56 @@ XXX.
     def test_render_blocks_1x1(self):
         """Render 1x1 blocks format, 2 ink levels"""
         text = monobit.render(self.fixed4x6, '1').as_blocks((1, 1))
-        assert_text_eq(text,
+        assert_text_eq(text, (
             ' █  \n'
             '██  \n'
             ' █  \n'
             ' █  \n'
             '███ \n'
             '    \n'
-        )
+        ).replace(' ', '\xa0'))
 
     def test_render_blocks_2x2(self):
         """Render 2x2 blocks format, 2 ink levels"""
         text = monobit.render(self.fixed4x6, '1').as_blocks((2, 2))
-        assert_text_eq(text,
+        assert_text_eq(text, (
             '▟ \n'
             '▐ \n'
             '▀▘\n'
-        )
+        ).replace(' ', '\xa0'))
 
     def test_render_blocks_2x3(self):
         """Render 2x3 blocks format, 2 ink levels"""
         text = monobit.render(self.fixed4x6, '1').as_blocks((2, 3))
-        assert_text_eq(text,
+        assert_text_eq(text, (
             '🬫 \n'
             '🬍🬃\n'
-        )
+        ).replace(' ', '\xa0'))
 
     def test_render_blocks_2x4(self):
         """Render 2x4 blocks format, 2 ink levels"""
         text = monobit.render(self.fixed4x6, '1').as_blocks((2, 4))
-        assert_text_eq(text,
+        assert_text_eq(text, (
             '⢺⠀\n'
             '⠉⠁\n'
-        )
+        ).replace(' ', '\xa0'))
 
     def test_render_blocks_1x2(self):
         """Render 1x2 blocks format, 2 ink levels"""
         text = monobit.render(self.fixed4x6, '1').as_blocks((1, 2))
-        assert_text_eq(text,
+        assert_text_eq(text, (
             '▄█  \n'
             ' █  \n'
             '▀▀▀ \n'
-        )
+        ).replace(' ', '\xa0'))
 
     def test_render_blocks_1x3(self):
         """Render 1x3 blocks format, 2 ink levels"""
         text = monobit.render(self.fixed4x6, '1').as_blocks((1, 3))
-        assert_text_eq(text,
+        assert_text_eq(text, (
             '🬋█  \n'
             '🬋🬎🬋 \n'
-        )
+        ).replace(' ', '\xa0'))
 
     shades_4 = """\n
 levels: 4
