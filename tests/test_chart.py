@@ -28,21 +28,21 @@ class TestChart(BaseTester):
     def test_export_chart(self):
         """Test exporting text chart."""
         txt_file = self.temp_path / 'chart.txt'
-        monobit.save(self.prop, txt_file, format='chart', inklevels='-@', border=' ')
+        monobit.save(self.prop, txt_file, format='chart', inklevels='-@', border=' ', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'chart.txt') as model:
             self.assertListEqual(list(output), list(model))
 
     def test_export_blocks(self):
         """Test exporting blocks chart."""
         txt_file = self.temp_path / 'blocks.txt'
-        monobit.save(self.prop, txt_file, format='blocks')
+        monobit.save(self.prop, txt_file, format='blocks', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'blocks.txt') as model:
             self.assertListEqual(list(output), list(model))
 
     def test_export_shades(self):
         """Test exporting shaded blocks chart."""
         txt_file = self.temp_path / 'shades.txt'
-        monobit.save(self.prop, txt_file, format='shades')
+        monobit.save(self.prop, txt_file, format='shades', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'shades.txt') as model:
             self.assertListEqual(list(output), list(model))
 
@@ -50,7 +50,7 @@ class TestChart(BaseTester):
         """Test exporting shaded blocks chart."""
         from pathlib import Path
         txt_file = self.temp_path / 'sixels.txt'
-        monobit.save(self.prop, txt_file, format='sixels')
+        monobit.save(self.prop, txt_file, format='sixels', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'sixels.txt') as model:
             self.assertListEqual(list(output), list(model))
 

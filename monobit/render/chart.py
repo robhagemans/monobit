@@ -35,7 +35,7 @@ def save_chart(
         border:str='\xa0',
         inklevels:tuple[str]=('\xa0', '@'),
         codepoint_range:tuple[Codepoint]=None,
-        grid_positioning:bool=False,
+        grid_positioning:bool=True,
         skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
@@ -50,7 +50,7 @@ def save_chart(
     border: character to use for border pixels (default: space)
     inklevels: characters to use for pixels (default: space, '2')
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
-    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
     skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
@@ -81,7 +81,7 @@ def save_blocks(
         direction:str=None,
         resolution:Coord=Coord(1, 1),
         codepoint_range:tuple[Codepoint]=None,
-        grid_positioning:bool=False,
+        grid_positioning:bool=True,
         skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
@@ -95,7 +95,7 @@ def save_blocks(
     direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
     resolution: blocks per text character; 1x1 (default), 1x2, 1x3, 1x4, 2x1, 2x3, 2x4
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
-    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
     skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
@@ -127,7 +127,7 @@ def save_shades(
         paper:RGB=RGB(0, 0, 0),
         ink:RGB=RGB(255, 255, 255),
         codepoint_range:tuple[Codepoint]=None,
-        grid_positioning:bool=False,
+        grid_positioning:bool=True,
         skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
@@ -143,7 +143,7 @@ def save_shades(
     ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
     border: border colour R,G,B 0--255 (default: terminal background)
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
-    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
     skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
@@ -177,7 +177,7 @@ def save_sixel(
         paper:RGB=RGB(0, 0, 0),
         ink:RGB=RGB(255, 255, 255),
         codepoint_range:tuple[Codepoint]=None,
-        grid_positioning:bool=False,
+        grid_positioning:bool=True,
         skip_empty_lines:bool=True,
         # max_labels:int=1,
     ):
@@ -193,7 +193,7 @@ def save_sixel(
     ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
     border: border colour R,G,B 0--255 (default: terminal background)
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
-    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
     skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     """
     # max_labels: maximum number of labels to show per glyph (default: 1)
@@ -229,7 +229,7 @@ if Image:
             paper:RGB=RGB(0, 0, 0),
             ink:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
-            grid_positioning:bool=False,
+            grid_positioning:bool=True,
             skip_empty_lines:bool=True,
         ):
         """
@@ -246,7 +246,7 @@ if Image:
         ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepsoints)
-        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
         """
         # NOTE 'imagechart' and 'image' are the same but with different defaults
