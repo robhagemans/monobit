@@ -41,10 +41,11 @@ except Exception as e:
             yield c
 
 from ..base.binary import ceildiv
-from ..base import Props
+from ..base import Props, Coord
 from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
+from ..plumbing import scriptable, manage_arguments
 from .glyphmap import GlyphMap
 
 
@@ -63,6 +64,34 @@ ALIGNMENTS = {
     'b': 'bottom'
 }
 
+
+###############################################################################
+# write command
+
+@scriptable(wrapper=True)
+def write(
+        font, text:str, *, margin:Coord=None, direction:str='', align:str='',
+        format:str='text', **kwargs
+    ):
+    """
+    Write text to standard output, using the current font.
+
+    text: the text to render
+    margin: HxV margin around the text, in pixels (default: minimum needed)
+    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
+    format: rendering style (text, blocks, shades, sixel; default: text)
+    """
+    glyph_map = render(font, text, margin=margin, direction=direction, align=align)
+    if format == 'text':
+        print(manage_arguments(glyph_map.as_text)(**kwargs))
+    elif format == 'blocks':
+        print(manage_arguments(glyph_map.as_blocks)(**kwargs))
+    elif format == 'sixel':
+        print(manage_arguments(glyph_map.as_sixel)(**kwargs))
+    elif format == 'shades':
+        print(manage_arguments(glyph_map.as_shades)(**kwargs))
+    return font
 
 
 ###############################################################################

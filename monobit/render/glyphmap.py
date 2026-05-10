@@ -182,8 +182,8 @@ class GlyphMap:
 
     def as_text(
             self, *,
-            inklevels=' @',
-            border=None,
+            inklevels:str=' @',
+            border:str=None,
             start='', end='\n',
             sheet=0,
         ):
@@ -201,7 +201,7 @@ class GlyphMap:
 
     def as_sixel(
             self, *,
-            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None,
+            paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
             sheet=0
         ):
         """Convert glyph map to a sixel sequence."""
@@ -216,7 +216,7 @@ class GlyphMap:
 
     def as_shades(
             self, *,
-            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None,
+            paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
             sheet=0,
         ):
         """Convert glyph map to ansi coloured block characters."""
