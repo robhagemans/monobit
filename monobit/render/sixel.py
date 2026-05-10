@@ -18,7 +18,7 @@ def bits_to_sixel(bits):
     return chr(ord('?') + byte)
 
 
-def matrix_to_sixels(matrix, *, inklevels, border):
+def matrix_to_sixel(matrix, *, inklevels, border):
     """Convert bit matrix to sixel/characters."""
     bitblockrows = bit_block_rows(matrix, nrows=6, ncols=1)
     sixel_matrices = {}

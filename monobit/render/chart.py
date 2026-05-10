@@ -150,8 +150,8 @@ def save_shades(
 
 
 
-@savers.register(name='sixels')
-def save_sixels(
+@savers.register(name='sixel')
+def save_sixel(
         fonts, outstream, *,
         glyphs_per_line:int=16,
         margin:Coord=Coord(0, 0),
@@ -191,7 +191,7 @@ def save_sixels(
         # max_labels=max_labels,
         grid_positioning=grid_positioning,
     )
-    outstream.text.write(glyph_map.as_sixels(
+    outstream.text.write(glyph_map.as_sixel(
         paper=paper, border=border, ink=ink,
     ))
 
