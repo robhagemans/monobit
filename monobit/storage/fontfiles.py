@@ -27,7 +27,7 @@ from .base import (
 ##############################################################################
 # loading
 
-@scriptable(wrapper=True, record=False)
+@scriptable(passthrough=loaders)
 def load(infile:Any='', *, format:str='', container_format:str='', match_case:bool=False, **kwargs):
     """
     Read font(s) from file.
@@ -176,7 +176,7 @@ def load_all(root_location, *, format='', **kwargs):
 ##############################################################################
 # saving
 
-@scriptable(wrapper=True, record=False, pack_operation=True)
+@scriptable(passthrough=savers, pack_operation=True)
 def save(
         pack_or_font,
         outfile:Any='', *,

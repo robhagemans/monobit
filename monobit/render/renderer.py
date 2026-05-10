@@ -41,10 +41,11 @@ except Exception as e:
             yield c
 
 from ..base.binary import ceildiv
-from ..base import Props, Coord
+from ..base import Props, Coord, RGB
 from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
+from ..storage.magic import MagicRegistry
 from ..plumbing import scriptable, manage_arguments
 from .glyphmap import GlyphMap
 
@@ -66,11 +67,13 @@ ALIGNMENTS = {
 
 
 ###############################################################################
-# write command
+# render command
 
-@scriptable(wrapper=True)
+renderers = MagicRegistry(default_text='text')
+
+@scriptable(passthrough=renderers, output=True)
 def write(
-        font, text:str, *, margin:Coord=None, direction:str='', align:str='',
+        font, text:str='', *, margin:Coord=None, direction:str='', align:str='',
         format:str='text', **kwargs
     ):
     """
@@ -82,16 +85,67 @@ def write(
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     format: rendering style (text, blocks, shades, sixel; default: text)
     """
-    glyph_map = render(font, text, margin=margin, direction=direction, align=align)
-    if format == 'text':
-        print(manage_arguments(glyph_map.as_text)(**kwargs))
-    elif format == 'blocks':
-        print(manage_arguments(glyph_map.as_blocks)(**kwargs))
-    elif format == 'sixel':
-        print(manage_arguments(glyph_map.as_sixel)(**kwargs))
-    elif format == 'shades':
-        print(manage_arguments(glyph_map.as_shades)(**kwargs))
+    glyph_map = render(
+        font, text, margin=margin, direction=direction, align=align
+    )
+    matching = renderers.get_for(format=format)
+    if not matching:
+        raise ValueError(f'Format specification `{format}` not recognised')
+    renderer, *_ = matching
+    renderer = manage_arguments(renderer)
+    renderer(glyph_map, **kwargs)
     return font
+
+
+@renderers.register('text')
+def output_text(glyph_map, *, inklevels:str=' @', border:str=None):
+    """
+    Write as text characters
+
+    inklevels: characters representing each level (default: ' @', for 2 levels)
+    border: border character (default: same as inklevel 0)
+    """
+    print(glyph_map.as_text(inklevels=inklevels, border=border))
+
+
+@renderers.register('blocks')
+def output_blocks(glyph_map, *, resolution:Coord=Coord(2, 2)):
+    """
+    Write as block semigraphics
+
+    resolution: XxY density of blocks per character (default: 2x2)
+    """
+    print(glyph_map.as_blocks(resolution=resolution))
+
+
+@renderers.register('shades')
+def output_shades(
+        glyph_map, *,
+        paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
+    ):
+    """
+    Write using ANSI escape colours
+
+    paper: R,G,B colour for uninked areas (default: 255,255,255)
+    ink: R,G,B colour for inked areas (default: 0,0,0)
+    border: R,G,B colour for inked areas (default: terminal background)
+    """
+    print(glyph_map.as_shades(paper=paper, ink=ink, border=border))
+
+
+@renderers.register('sixel')
+def output_sixel(
+        glyph_map, *,
+        paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
+    ):
+    """
+    Write as sixel graphics
+
+    paper: R,G,B colour for uninked areas (default: 255,255,255)
+    ink: R,G,B colour for inked areas (default: 0,0,0)
+    border: R,G,B colour for inked areas (default: terminal background)
+    """
+    print(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
 ###############################################################################
