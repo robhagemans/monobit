@@ -292,7 +292,7 @@ class TestContainers(BaseTester):
         file = self.temp_path / 'testfontdir.zip' / 'test.bbc'
         try:
             # expected to fail
-            fonts = self.fixed8x16(file)
+            fonts = monobit.save(self.fixed8x16, file, format='bbc')
         except Exception:
             pass
         # no new zip file after failure
@@ -305,7 +305,7 @@ class TestContainers(BaseTester):
         (self.temp_path / 'test0').mkdir()
         try:
             # expected to fail
-            fonts = self.fixed8x16(file)
+            fonts = monobit.save(self.fixed8x16, file, format='bbc')
         except Exception:
             pass
         # no new file or new directory after failure
@@ -313,6 +313,12 @@ class TestContainers(BaseTester):
         assert not (self.temp_path / 'test0' / 'test1').is_dir()
         # existing empty dir is retained
         assert (self.temp_path / 'test0').is_dir()
+
+    def test_format_dir(self):
+        """Test overriding with format='dir'."""
+        file = self.temp_path / 'testfontdir.zip' / 'test.yaff'
+        fonts = monobit.save(self.fixed8x16, file, container_format='dir')
+        assert (self.temp_path / 'testfontdir.zip').is_dir()
 
     def _test_update_container(self, suffix, format='', preserve_names=True):
         """Test adding file to existing zip."""
