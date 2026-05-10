@@ -118,7 +118,7 @@ def _print_context_help(command, args, kwargs, **ignore):
         func = funcs[0]
         _print_section(f'-container-format={func.format}', func)
     container_classes = containers.get_for(format=container_format)
-    if containers:
+    if container_classes:
         if command == 'load':
             func = container_classes[0].decode
         else:
