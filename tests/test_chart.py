@@ -50,7 +50,7 @@ class TestChart(BaseTester):
         """Test exporting shaded blocks chart."""
         from pathlib import Path
         txt_file = self.temp_path / 'sixels.txt'
-        monobit.save(self.prop, txt_file, format='sixels', grid_positioning=False)
+        monobit.save(self.prop, txt_file, format='sixel', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'sixels.txt') as model:
             self.assertListEqual(list(output), list(model))
 
