@@ -423,7 +423,7 @@ if Image:
             fonts, outfile, *,
             image_format:str='png',
             image_mode:str='RGB',
-            glyphs_per_line:int=32,
+            glyphs_per_line:int=16,
             margin:Coord=Coord(0, 0),
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
@@ -432,7 +432,7 @@ if Image:
             paper:RGB=RGB(0, 0, 0),
             ink:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
-            grid_positioning:bool=True,
+            grid_positioning:bool=False,
         ):
         """
         Export font to chart image.
@@ -447,8 +447,8 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
         border: border colour R,G,B 0--255 (default 32,32,32)
-        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
-        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepsoints)
+        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
         """
         # 'imagechart' is the same as 'image' but with different defaults
         return save_image(

@@ -14,6 +14,7 @@ from monobit.base import Props, Coord, RGB, blockstr
 from monobit.core.raster import turn_method
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
+from .sixel import matrix_to_sixel
 from .rgb import create_image_colours
 
 
@@ -179,6 +180,21 @@ class GlyphMap:
         canvas = self.to_canvas(sheet=sheet)
         return canvas.as_blocks(resolution)
 
+    def as_sixel(
+            self, *,
+            paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None,
+            sheet=0
+        ):
+        """Convert glyph map to a sixel sequence."""
+        canvas = self.to_canvas(sheet=sheet)
+        inklevels = create_image_colours(
+            image_mode='RGB', rgb_table=self._rgb_table,
+            levels=self._levels, ink=ink, paper=paper
+        )
+        return canvas.as_sixel(
+            inklevels=inklevels, border=border
+        )
+
     def as_shades(
             self, *,
             paper=RGB(0, 0, 0), ink=RGB(255, 255, 255), border=None,
@@ -319,6 +335,16 @@ class _Canvas:
         self._write_labels_to_matrix(block_matrix)
         blocks = '\n'.join(''.join(_row) for _row in block_matrix)
         return blockstr(blocks + '\n')
+
+    def as_sixel(self, *, inklevels, border):
+        """Convert canvas to a sixel sequence."""
+        if not self.height:
+            return ''
+        sequence = matrix_to_sixel(
+            self._pixels, inklevels=inklevels, border=border,
+        )
+        #self._write_labels_to_matrix(block_matrix)
+        return blockstr(sequence)
 
     def stretch(self, factor_x:int=1, factor_y:int=1):
         """
