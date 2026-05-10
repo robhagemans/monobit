@@ -15,7 +15,6 @@ from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, RGB
 from monobit.core import Codepoint, Glyph, Char
 from monobit.storage import savers
-from monobit.plumbing import scriptable
 from monobit.encoding.unicode import is_showable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
