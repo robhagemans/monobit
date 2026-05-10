@@ -71,7 +71,7 @@ def main():
                         args=[command_args[0].args.pop()])
                     )
             # ensure last command is save
-            if command_args[-1].command not in ('to', 'save'):
+            if command_args[-1].command not in ('to', 'save', 'write'):
                 command_args.append(argrecord(command='save', func=operations['save']))
 
             fonts = []

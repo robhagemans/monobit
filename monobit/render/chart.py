@@ -5,8 +5,11 @@ monobit.render.chart - create font chart
 licence: https://opensource.org/licenses/MIT
 """
 
-from itertools import product
+from itertools import product, chain
 from pathlib import Path
+
+from monobit.base import safe_import
+Image = safe_import('PIL.Image')
 
 from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, RGB
@@ -18,6 +21,9 @@ from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
 
 
+DEFAULT_IMAGE_FORMAT = 'png'
+
+
 @savers.register(name='chart')
 def save_chart(
         fonts, outstream, *,
@@ -26,10 +32,11 @@ def save_chart(
         padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
-        border:str=' ',
-        inklevels:tuple[str]=(' ', '@'),
+        border:str='\xa0',
+        inklevels:tuple[str]=('\xa0', '@'),
         codepoint_range:tuple[Codepoint]=None,
-        grid_positioning:bool=False,
+        grid_positioning:bool=True,
+        skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
     """
@@ -43,7 +50,8 @@ def save_chart(
     border: character to use for border pixels (default: space)
     inklevels: characters to use for pixels (default: space, '2')
     codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
-    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
+    skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
@@ -55,6 +63,7 @@ def save_chart(
         direction=direction,
         codepoint_range=codepoint_range,
         grid_positioning=grid_positioning,
+        skip_empty_lines=skip_empty_lines,
         max_labels=max_labels,
     )
     outstream.text.write(
@@ -72,7 +81,8 @@ def save_blocks(
         direction:str=None,
         resolution:Coord=Coord(1, 1),
         codepoint_range:tuple[Codepoint]=None,
-        grid_positioning:bool=False,
+        grid_positioning:bool=True,
+        skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
     """
@@ -85,7 +95,8 @@ def save_blocks(
     direction: two-part string such as 'left-to-right top-to-bottom'. Default: font direction.
     resolution: blocks per text character; 1x1 (default), 1x2, 1x3, 1x4, 2x1, 2x3, 2x4
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
-    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
+    skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
@@ -98,6 +109,7 @@ def save_blocks(
         codepoint_range=codepoint_range,
         max_labels=max_labels,
         grid_positioning=grid_positioning,
+        skip_empty_lines=skip_empty_lines,
         label_height=resolution.y,
     )
     outstream.text.write(glyph_map.as_blocks(resolution=resolution))
@@ -115,7 +127,8 @@ def save_shades(
         paper:RGB=RGB(0, 0, 0),
         ink:RGB=RGB(255, 255, 255),
         codepoint_range:tuple[Codepoint]=None,
-        grid_positioning:bool=False,
+        grid_positioning:bool=True,
+        skip_empty_lines:bool=True,
         max_labels:int=1,
     ):
     """
@@ -130,7 +143,8 @@ def save_shades(
     ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
     border: border colour R,G,B 0--255 (default: terminal background)
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
-    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
+    skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
     glyph_map = create_chart(
@@ -143,6 +157,7 @@ def save_shades(
         codepoint_range=codepoint_range,
         max_labels=max_labels,
         grid_positioning=grid_positioning,
+        skip_empty_lines=skip_empty_lines,
     )
     outstream.text.write(glyph_map.as_shades(
         paper=paper, border=border, ink=ink,
@@ -162,7 +177,8 @@ def save_sixel(
         paper:RGB=RGB(0, 0, 0),
         ink:RGB=RGB(255, 255, 255),
         codepoint_range:tuple[Codepoint]=None,
-        grid_positioning:bool=False,
+        grid_positioning:bool=True,
+        skip_empty_lines:bool=True,
         # max_labels:int=1,
     ):
     """
@@ -177,7 +193,8 @@ def save_sixel(
     ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
     border: border colour R,G,B 0--255 (default: terminal background)
     codepoint_range: range of codepoints to include (includes bounds; default: all codepoints)
-    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+    grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
+    skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     """
     # max_labels: maximum number of labels to show per glyph (default: 1)
     glyph_map = create_chart(
@@ -190,11 +207,77 @@ def save_sixel(
         codepoint_range=codepoint_range,
         # max_labels=max_labels,
         grid_positioning=grid_positioning,
+        skip_empty_lines=skip_empty_lines,
     )
-    outstream.text.write(glyph_map.as_sixel(
-        paper=paper, border=border, ink=ink,
-    ))
+    outstream.text.write(
+        glyph_map.as_sixel(paper=paper, border=border, ink=ink)
+    )
 
+if Image:
+
+    @savers.register(name='imagechart')
+    def save_imagechart(
+            fonts, outfile, *,
+            image_format:str='png',
+            image_mode:str='RGB',
+            glyphs_per_line:int=16,
+            margin:Coord=Coord(0, 0),
+            padding:Coord=Coord(1, 1),
+            scale:Coord=Coord(1, 1),
+            direction:str='left-to-right top-to-bottom',
+            border:RGB=RGB(32, 32, 32),
+            paper:RGB=RGB(0, 0, 0),
+            ink:RGB=RGB(255, 255, 255),
+            codepoint_range:tuple[Codepoint]=None,
+            grid_positioning:bool=True,
+            skip_empty_lines:bool=True,
+        ):
+        """
+        Export font to chart image.
+
+        image_format: image file format (default: 'png')
+        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
+        margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
+        padding: number of pixels in X,Y direction between glyphs (default: 1x1)
+        scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
+        direction: two-part string, default 'left-to-right top-to-bottom'
+        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
+        border: border colour R,G,B 0--255 (default 32,32,32)
+        codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepsoints)
+        grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
+        skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
+        """
+        # NOTE 'imagechart' and 'image' are the same but with different defaults
+        glyph_map = create_chart(
+            fonts,
+            glyphs_per_line=glyphs_per_line,
+            margin=margin,
+            padding=padding,
+            scale=scale,
+            direction=direction,
+            codepoint_range=codepoint_range,
+            grid_positioning=grid_positioning,
+            skip_empty_lines=skip_empty_lines,
+        )
+        img, = glyph_map.to_images(
+            border=border, paper=paper, ink=ink,
+            transparent=False,
+            image_mode=image_mode,
+        )
+        write_imagefile(outfile, img, image_format)
+
+
+def write_imagefile(outfile, img, image_format):
+    """Write a PIL image to file."""
+    try:
+        img.save(outfile, format=image_format or Path(outfile).suffix[1:])
+    except (KeyError, ValueError, TypeError):
+        img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
+
+
+###############################################################################
 
 def create_chart(
         fonts, *,
@@ -208,12 +291,13 @@ def create_chart(
         max_labels=0,
         label_height=1,
         grid_positioning=False,
+        skip_empty_lines=False,
     ):
     """Create chart glyph map of font."""
     font = ensure_single(fonts)
     font = font.equalise_horizontal()
     if grid_positioning:
-        font = grid_resample(font, glyphs_per_line, codepoint_range)
+        font = grid_resample(font, glyphs_per_line, codepoint_range, skip_empty_lines)
     elif codepoint_range:
         font = font.subset(codepoint_range)
     font = font.stretch(*scale)
@@ -271,12 +355,12 @@ def format_label(label):
 ###############################################################################
 # grid functions
 
-def grid_resample(font, glyphs_per_line, codepoint_range):
+def grid_resample(font, glyphs_per_line, codepoint_range, skip_empty_lines):
     """Resample font for grid representation."""
-    codepoint_range = tuple(codepoint_range)
     if codepoint_range:
+        codepoint_range = tuple(codepoint_range)
         # limit to only the glyphs in range
-        font = font.resample(codepoint_range, missing='empty', relabel=False)
+        font = font.resample(codepoint_range, missing=None, relabel=False)
         # don't bring in more codepoints through charmap
         font = font.label(codepoint_from=font.encoding)
         font = font.modify(encoding=None)
@@ -286,11 +370,18 @@ def grid_resample(font, glyphs_per_line, codepoint_range):
     except ValueError:
         # empty sequence
         raise ValueError('No codepoint labels found.')
-    # start at a codepoint that is a multiple of the number of columns
-    grid_range = range(
-        glyphs_per_line * (int(min(codepoints, default=0)) // glyphs_per_line),
-        int(max(codepoints, default=0)) + 1,
-    )
+    if skip_empty_lines:
+        lines = {int(_cp) // glyphs_per_line for _cp in codepoints}
+        grid_range = chain(*(
+            range(glyphs_per_line*_l, glyphs_per_line*(_l+1))
+            for _l in sorted(lines)
+        ))
+    else:
+        # start at a codepoint that is a multiple of the number of columns
+        grid_range = range(
+            glyphs_per_line * (int(min(codepoints, default=0)) // glyphs_per_line),
+            int(max(codepoints, default=0)) + 1,
+        )
     font = font.resample(grid_range, missing='empty', relabel=False)
     return font
 
@@ -322,30 +413,33 @@ def grid_map(
     rows = rows or ceildiv(len(font.glyphs), columns)
     columns = columns or ceildiv(len(font.glyphs), rows)
     glyphs_per_page = rows * columns
-    glyph_pages = tuple(
-        font.glyphs[_s : _s + glyphs_per_page]
-        for _s in range(0, len(font.glyphs), glyphs_per_page)
-    )
-    # horizontal alignment (left or right)
-    # note that we have equalised glyphs to the same height
-    # so vertical alignment is not needed
-    right_align = aligns_right(direction)
-    # output glyph maps
-    glyph_map = (
-        Props(
-            glyph=_glyph, sheet=_sheet,
-            x=(
-                margin.x + col*step_x
-                + (font.raster_size.x - _glyph.width if right_align else 0)
-            ),
-            y=margin.y + row*step_y,
+    if not glyphs_per_page:
+        glyph_map = ()
+    else:
+        glyph_pages = tuple(
+            font.glyphs[_s : _s + glyphs_per_page]
+            for _s in range(0, len(font.glyphs), glyphs_per_page)
         )
-        for _sheet, _glyph_page in enumerate(glyph_pages)
-        for _glyph, (row, col) in zip(
-            _glyph_page,
-            grid_traverser(columns, rows, direction, invert_y)
+        # horizontal alignment (left or right)
+        # note that we have equalised glyphs to the same height
+        # so vertical alignment is not needed
+        right_align = aligns_right(direction)
+        # output glyph maps
+        glyph_map = (
+            Props(
+                glyph=_glyph, sheet=_sheet,
+                x=(
+                    margin.x + col*step_x
+                    + (font.raster_size.x - _glyph.width if right_align else 0)
+                ),
+                y=margin.y + row*step_y,
+            )
+            for _sheet, _glyph_page in enumerate(glyph_pages)
+            for _glyph, (row, col) in zip(
+                _glyph_page,
+                grid_traverser(columns, rows, direction, invert_y)
+            )
         )
-    )
     glyph_map = GlyphMap(
         glyph_map, levels=font.levels,
         rgb_table=font.rgb_table,

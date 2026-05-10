@@ -1062,7 +1062,7 @@ def _draw_images(glyph_map, packed):
     # pack 4 sheets per image in RGBA layers
     if packed:
         images = glyph_map.to_images(
-            invert_y=True, transparent=False, image_mode='L',
+            invert_y=True, transparent=False, image_mode='grey',
         )
         width, height = images[0].width, images[0].height
         # grouper: quartets, fill with empties

@@ -273,8 +273,8 @@ def main():
                 border = RGB.create(args.border) if args.border else paper
                 text = glyph_map.as_sixel(paper=paper, ink=ink, border=border)
             else:
-                ink = args.ink or '@'
-                paper = args.paper or '.'
+                ink = args.ink or '#'
+                paper = args.paper or '\xa0'
                 inklevels = args.inklevels or (paper, ink)
                 border = args.border or paper
                 text = glyph_map.as_text(inklevels=inklevels, border=border) + '\n'
