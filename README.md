@@ -215,6 +215,7 @@ These write-only formats output a table of glyphs.
 | Block elements    | `blocks`     |
 | ANSI colours      | `shades`     |
 | Image [P]         | `imagechart` |
+| Sixel image       | `sixel`      |
 | PDF [R]           | `pdf`        |
 
 [P] requires **PIL**  
