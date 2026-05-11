@@ -13,18 +13,17 @@ if reportlab:
     from reportlab.lib.units import mm
     from reportlab.pdfgen.canvas import Canvas
 
-from monobit.storage import savers
 from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
-from .chart import create_chart, aligns_right
+from .chart import create_chart, aligns_right, charters
 from .glyphmap import create_image_colours
 
 
 if reportlab:
 
-    @savers.register(
+    @charters.register(
         name='pdf',
         patterns=('*.pdf',),
     )

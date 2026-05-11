@@ -12,9 +12,11 @@ from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
 from monobit.base.binary import ceildiv
-from monobit.base import Props, Coord, RGB
+from monobit.base import Props, Coord, RGB, Any
 from monobit.core import Codepoint, Glyph, Char
-from monobit.storage import savers
+from monobit.plumbing import scriptable
+from monobit.storage.magic import MagicRegistry
+from monobit.storage.fontfiles import output_pack_or_font
 from monobit.encoding.unicode import is_showable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
@@ -22,9 +24,35 @@ from .glyphmap import GlyphMap
 
 DEFAULT_IMAGE_FORMAT = 'png'
 
+charters = MagicRegistry(default_text='text')
 
-@savers.register(name='chart')
-def save_chart(
+
+@scriptable(passthrough=charters, pack_operation=True, output=True)
+def chart(
+        pack_or_font,
+        outfile:Any='', *,
+        format:str='', overwrite:bool=False,
+        container_format:str='',
+        **kwargs
+    ):
+    """
+    Write font chart(s) to file.
+
+    outfile: output file or path (default: stdout)
+    format: font file format (default: infer from filename)
+    container_format: container/wrapper formats separated by . (default: infer from filename)
+    overwrite: if outfile is a path, allow overwriting existing file
+    """
+    return output_pack_or_font(
+        pack_or_font, outfile,
+        format=format, overwrite=overwrite,
+        container_format=container_format, registry=charters,
+        **kwargs
+    )
+
+
+@charters.register(name='text')
+def chart_text(
         fonts, outstream, *,
         glyphs_per_line:int=16,
         margin:Coord=Coord(0, 0),
@@ -70,8 +98,8 @@ def save_chart(
     )
 
 
-@savers.register(name='blocks')
-def save_blocks(
+@charters.register(name='blocks')
+def chart_blocks(
         fonts, outstream, *,
         glyphs_per_line:int=16,
         margin:Coord=Coord(0, 0),
@@ -114,8 +142,8 @@ def save_blocks(
     outstream.text.write(glyph_map.as_blocks(resolution=resolution))
 
 
-@savers.register(name='shades')
-def save_shades(
+@charters.register(name='shades')
+def chart_shades(
         fonts, outstream, *,
         glyphs_per_line:int=16,
         margin:Coord=Coord(0, 0),
@@ -164,8 +192,8 @@ def save_shades(
 
 
 
-@savers.register(name='sixel')
-def save_sixel(
+@charters.register(name='sixel')
+def chart_sixel(
         fonts, outstream, *,
         glyphs_per_line:int=16,
         margin:Coord=Coord(0, 0),
@@ -181,7 +209,7 @@ def save_sixel(
         # max_labels:int=1,
     ):
     """
-    Export font to ansi-coloured blocks chart.
+    Export font to chart as sixel image.
 
     glyphs_per_line: number of glyphs per line in glyph chart (default: 16)
     margin: number of pixels in X,Y direction around glyph chart (default: 0x0)
@@ -214,8 +242,8 @@ def save_sixel(
 
 if Image:
 
-    @savers.register(name='imagechart')
-    def save_imagechart(
+    @charters.register(name='image')
+    def chart_image(
             fonts, outfile, *,
             image_format:str='png',
             image_mode:str='RGB',
