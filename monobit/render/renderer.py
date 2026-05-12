@@ -46,6 +46,7 @@ from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
 from ..storage.magic import MagicRegistry
+from ..storage.location import open_location
 from ..plumbing import scriptable, manage_arguments
 from .glyphmap import GlyphMap
 
@@ -73,7 +74,7 @@ renderers = MagicRegistry(default_text='text')
 
 @scriptable(passthrough=renderers, output=True)
 def write(
-        font, text:str='', *, margin:Coord=None, direction:str='', align:str='',
+        font, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
         format:str='text', **kwargs
     ):
     """
@@ -85,6 +86,11 @@ def write(
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     format: rendering style (text, blocks, shades, sixel; default: text)
     """
+    if textfile:
+        if text:
+            raise ValueError('Only one of `text` and `textfile` can be specified.')
+        with open_location(textfile) as location:
+            text = location.get_stream().text.read()
     glyph_map = render(
         font, text, margin=margin, direction=direction, align=align
     )
