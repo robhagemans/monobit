@@ -1,7 +1,7 @@
 """
-monobit.storage.fontformats.pkfont - TeX packed font font files
+monobit.storage.fontformats.pkfont - METAFONT / TeX packed font font files
 
-(c) 2023 Rob Hagemans
+(c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
