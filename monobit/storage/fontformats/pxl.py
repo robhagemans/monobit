@@ -59,7 +59,7 @@ def load_pxl(instream):
     data = instream.read()
     font_directory = (_DIR_ENTRY * 128).from_bytes(data[-2048-20:-20])
     postamble = _PXL_POST.from_bytes(data[-20:])
-    glyphs = []
+    glyphs = {}
     for cp, entry in enumerate(font_directory):
         if entry.raster_pointer == 0:
             glyph = Glyph(codepoint=cp, **vars(entry))
@@ -78,8 +78,141 @@ def load_pxl(instream):
                 left_bearing=-entry.x_offset,
                 **{'metafont.tfm_width': entry.tfm_width/2**20},
             )
-        glyphs.append(glyph)
+        glyphs[cp] = glyph
+    tfm_name = instream.name.replace('.PXL', '.TFM')
+    try:
+        with instream.where.open(tfm_name, 'r') as tfm_stream:
+            tfm_dict, glyph_tfm_data = read_tfm(tfm_stream)
+    except EnvironmentError as err:
+        logging.info(f'Could not open TFM file {instream.where}/{tfm_name}')
+        tfm_dict = {}
+        glyph_tfm_data = {}
+    empty = Glyph()
+    for cp, glyph_dict in glyph_tfm_data.items():
+        glyphs[cp] = glyphs.get(cp, empty).modify(
+            **{f'tfm.{_k}': _v for _k, _v in glyph_tfm_data[cp].items()},
+            # xppp=(glyphs[cp].width / (glyph_tfm_data[cp]['width'] * tfm_dict['design_size'])) if cp in glyphs and glyphs[cp].width else None,
+            # yppp=(glyphs[cp].height / (glyph_tfm_data[cp]['height'] * tfm_dict['design_size'])) if cp in glyphs and glyph_tfm_data[cp]['height'] else None,
+        )
     return Font(
-        glyphs, point_size=postamble.designsize/2**20,
+        glyphs.values(), point_size=postamble.designsize/2**20,
+        **{f'tfm.{_k}': _v for _k, _v in tfm_dict.items()},
         **{'metafont.magnification': postamble.magnification / 1000},
     )
+
+
+# https://web.archive.org/web/20120722013525/http://www-users.math.umd.edu/~asnowden/comp-cont/tfm.html
+
+from monobit.base.struct import bitfield
+
+_TFM_HEADER = be.Struct(
+    # > length of the entire file, in words
+    lf='uint16',
+    # > length of the header data, in words
+    lh='uint16',
+    # > smallest character code in the font
+    bc='uint16',
+    # > largest character code in the font
+    ec='uint16',
+    # > number of words in the width table
+    nw='uint16',
+    # > number of words in the height table
+    nh='uint16',
+    # > number of words in the depth table
+    nd='uint16',
+    # > number of words in the italic correction table
+    ni='uint16',
+    # > number of words in the lig/kern table
+    nl='uint16',
+    # > number of words in the kern table
+    nk='uint16',
+    # > number of words in the extensible character table
+    ne='uint16',
+    # > number of font parameter words
+    np='uint16',
+)
+
+_HEADER = be.Struct(
+    # > a 32-bit check sum that TeX will copy into the DVI output file whenever it uses the font
+    checksum='uint32',
+    # > a fix_word containing the design size of the font, in units of TeX points (7227 TeX points = 254 cm)
+    design_size='uint32',
+    coding_scheme_len='uint8',
+    coding_scheme='39s',
+    family_len='uint8',
+    family='19s',
+    seven_bit_safe_flag='uint8',
+    ignored='uint16',
+    face='uint8',
+)
+
+_CHAR_INFO = be.Struct(
+    width_index=bitfield('uint32', 8),
+    height_index=bitfield('uint32', 4),
+    depth_index=bitfield('uint32', 4),
+    italic_index=bitfield('uint32', 6),
+    tag=bitfield('uint32', 2),
+    remainder=bitfield('uint32', 8),
+)
+
+_LIG_KERN = be.Struct(
+    skip_byte='uint8',
+    next_char='uint8',
+    op_byte='uint8',
+    remainder='uint8',
+)
+
+_EXTENSIBLE_RECIPE = be.Struct(
+    top='uint8',
+    mid='uint8',
+    bot='uint8',
+    rep='uint8',
+)
+
+_PARAM = be.Struct(
+    slant='int32',
+    space='uint32',
+    space_stretch='int32',
+    space_shrink='int32',
+    x_height='uint32',
+    quad='uint32',
+    extra_space='uint32',
+)
+
+def read_tfm(instream):
+    """Read a Tex Font Metrics file."""
+    tfmh = _TFM_HEADER.read_from(instream)
+    headerbytes = (be.uint32 * tfmh.lh).read_from(instream)
+    headerbytes = bytes(headerbytes).ljust(_HEADER.size, b'\0')
+    header = _HEADER.from_bytes(headerbytes[:_HEADER.size])
+    n_chars = tfmh.ec - tfmh.bc + 1
+    char_info = (_CHAR_INFO * n_chars).read_from(instream)
+    widths = (be.uint32 * tfmh.nw).read_from(instream)
+    heights = (be.uint32 * tfmh.nh).read_from(instream)
+    depths = (be.int32 * tfmh.nd).read_from(instream)
+    italics = (be.int32 * tfmh.ni).read_from(instream)
+    lig_kerns = (_LIG_KERN * tfmh.nl).read_from(instream)
+    kerns = (be.int32 * tfmh.nk).read_from(instream)
+    extens = (_EXTENSIBLE_RECIPE * tfmh.ne).read_from(instream)
+    parambytes = (be.uint32 * tfmh.np).read_from(instream)
+    parambytes = bytes(parambytes).ljust(_PARAM.size, b'\0')
+    param = _PARAM.from_bytes(parambytes[:_PARAM.size])
+    tfm_glyph_data = {
+        _cp: dict(
+            codepoint=_cp,
+            width=widths[_ci.width_index] / 2**20,
+            height=heights[_ci.height_index] / 2**20,
+            depth=depths[_ci.depth_index] / 2**20,
+            italic_adj=italics[_ci.italic_index] / 2**20,
+            tag=_ci.tag,
+            remainder=_ci.remainder,
+            lig_kern=lig_kerns[_ci.remainder] if _ci.tag == 1 else None,
+            ext=extens[_ci.remainder] if _ci.tag == 3 else None,
+        )
+        for _cp, _ci in enumerate(char_info, tfmh.bc)
+    }
+    tfm_data = dict(
+        design_size=header.design_size/2**20,
+        **vars(param)
+    )
+    return tfm_data, tfm_glyph_data
