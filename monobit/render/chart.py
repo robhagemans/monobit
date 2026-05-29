@@ -276,7 +276,7 @@ if Image:
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
         """
-        # NOTE 'imagechart' and 'image' are the same but with different defaults
+        # NOTE 'chart image' and 'save image' are the same but with different defaults
         glyph_map = create_chart(
             fonts,
             glyphs_per_line=glyphs_per_line,
