@@ -41,12 +41,14 @@ except Exception as e:
             yield c
 
 from ..base.binary import ceildiv
-from ..base import Props, Coord, RGB
+from ..base import Props, Coord, RGB, Any
 from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
+from ..storage.fontfiles import output_pack_or_font
 from ..storage.magic import MagicRegistry
 from ..storage.location import open_location
+from ..storage.utils.limitations import ensure_single
 from ..plumbing import scriptable, manage_arguments
 from .glyphmap import GlyphMap
 
@@ -72,20 +74,33 @@ ALIGNMENTS = {
 
 renderers = MagicRegistry(default_text='text')
 
-@scriptable(passthrough=renderers, output=True)
+@scriptable(passthrough=renderers, output=True, pack_operation=True)
 def write(
-        font, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
-        format:str='text', **kwargs
+        fonts, outfile:Any='', *,
+        format:str='text', container_format:str='', overwrite:bool=False,
+        **kwargs
     ):
     """
-    Write text to standard output, using the current font.
+    Write text to file or standard output, using the current font.
 
-    text: the text to render
-    margin: HxV margin around the text, in pixels (default: minimum needed)
-    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
-    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
+    outfile: output file or path (default: stdout)
     format: rendering style (text, blocks, shades, sixel; default: text)
+    container_format: container/wrapper formats separated by . (default: infer from filename)
+    overwrite: if outfile is a path, allow overwriting existing file
     """
+    return output_pack_or_font(
+        fonts, outfile,
+        format=format, overwrite=overwrite,
+        container_format=container_format, registry=renderers,
+        **kwargs
+    )
+
+
+def _prepare_output(
+        fonts, outfile, *,
+        text:str='', textfile:str='', margin:Coord=None, direction:str='', align:str='',
+    ):
+    font = ensure_single(fonts)
     if textfile:
         if text:
             raise ValueError('Only one of `text` and `textfile` can be specified.')
@@ -94,39 +109,56 @@ def write(
     glyph_map = render(
         font, text, margin=margin, direction=direction, align=align
     )
-    matching = renderers.get_for(format=format)
-    if not matching:
-        raise ValueError(f'Format specification `{format}` not recognised')
-    renderer, *_ = matching
-    renderer = manage_arguments(renderer)
-    renderer(glyph_map, **kwargs)
-    return font
+    return glyph_map
 
 
 @renderers.register('text')
-def output_text(glyph_map, *, inklevels:str=' @', border:str=None):
+def output_text(
+        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        format:str='text', inklevels:str=' @', border:str=None
+    ):
     """
     Write as text characters
 
+    text: text to render
+    textfile: input file with text to render
+    margin: HxV margin around the text, in pixels (default: minimum needed)
+    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     inklevels: characters representing each level (default: ' @', for 2 levels)
     border: border character (default: same as inklevel 0)
     """
-    print(glyph_map.as_text(inklevels=inklevels, border=border))
+    glyph_map = _prepare_output(
+        fonts, outfile,
+        text=text, textfile=textfile,
+        margin=margin, direction=direction, align=align,
+    )
+    outfile.text.write(glyph_map.as_text(inklevels=inklevels, border=border))
 
 
 @renderers.register('blocks')
-def output_blocks(glyph_map, *, resolution:Coord=Coord(2, 2)):
+def output_blocks(fonts, outfile, *, resolution:Coord=Coord(2, 2)):
     """
     Write as block semigraphics
 
+    text: text to render
+    textfile: input file with text to render
+    margin: HxV margin around the text, in pixels (default: minimum needed)
+    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     resolution: XxY density of blocks per character (default: 2x2)
     """
-    print(glyph_map.as_blocks(resolution=resolution))
+    glyph_map = _prepare_output(
+        fonts, outfile,
+        text=text, textfile=textfile,
+        margin=margin, direction=direction, align=align,
+    )
+    outfile.text.write(glyph_map.as_blocks(resolution=resolution))
 
 
 @renderers.register('shades')
 def output_shades(
-        glyph_map, *,
+        glyph_map, outfile, *,
         paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
     ):
     """
@@ -136,12 +168,12 @@ def output_shades(
     ink: R,G,B colour for inked areas (default: 0,0,0)
     border: R,G,B colour for inked areas (default: terminal background)
     """
-    print(glyph_map.as_shades(paper=paper, ink=ink, border=border))
+    outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
 @renderers.register('sixel')
 def output_sixel(
-        glyph_map, *,
+        glyph_map, outfile, *,
         paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
     ):
     """
@@ -151,7 +183,7 @@ def output_sixel(
     ink: R,G,B colour for inked areas (default: 0,0,0)
     border: R,G,B colour for inked areas (default: terminal background)
     """
-    print(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
+    outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
 ###############################################################################
