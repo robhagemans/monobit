@@ -206,7 +206,6 @@ def read_tfm(instream):
         for _k, _v in param_dict.items()
         if _k != 'slant'
     }
-    param_dict['slant'] = param.slant / 2**20
     tfm_glyph_data = {
         _cp: dict(
             codepoint=_cp,
@@ -223,6 +222,7 @@ def read_tfm(instream):
     }
     tfm_data = dict(
         design_size=header.design_size / 2**20,
+        slant=param.slant / 2**20,
         **param_dict
     )
     return tfm_data, tfm_glyph_data
