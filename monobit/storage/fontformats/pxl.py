@@ -59,6 +59,12 @@ def load_pxl(instream):
     data = instream.read()
     font_directory = (_DIR_ENTRY * 128).from_bytes(data[-2048-20:-20])
     postamble = _PXL_POST.from_bytes(data[-20:])
+    ### convert properties
+    point_size = postamble.designsize / 2**20
+    # magnification is scaled by 1000 in PXL file. magnification 1.0 means 200dpi, it seems.
+    dpi = 200 * postamble.magnification / 1000
+    pixels_per_point = dpi / 72.27
+    ### convert glyphs
     glyphs = {}
     for cp, entry in enumerate(font_directory):
         if entry.raster_pointer == 0:
@@ -76,7 +82,7 @@ def load_pxl(instream):
                 codepoint=cp,
                 shift_up=-entry.pixel_height+entry.y_offset+1,
                 left_bearing=-entry.x_offset,
-                **{'pxl.tfm_width': entry.tfm_width/2**20 * postamble.designsize/2**20},
+                **{'pxl.tfm_width': entry.tfm_width/2**20 * point_size * pixels_per_point},
             )
         glyphs[cp] = glyph
     tfm_name = instream.name.replace('.PXL', '.TFM')
@@ -89,17 +95,18 @@ def load_pxl(instream):
         glyph_tfm_data = {}
     empty = Glyph()
     for cp, glyph_dict in glyph_tfm_data.items():
+        size_props = ('width', 'height', 'depth')
         glyphs[cp] = glyphs.get(cp, empty).modify(
-            **{f'tfm.{_k}': _v for _k, _v in glyph_tfm_data[cp].items()},
+            **{f'tfm.{_k}': _v * pixels_per_point for _k, _v in glyph_tfm_data[cp].items() if _k in size_props},
+            **{f'tfm.{_k}': _v for _k, _v in glyph_tfm_data[cp].items() if _k not in size_props},
         )
         glyphs[cp] = glyphs[cp].modify(pixel_width=glyphs[cp].width, pixel_height=glyphs[cp].height)
     return Font(
         glyphs.values(),
-        point_size=postamble.designsize / 2**20,
-        # magnification is scaled by 1000 in PXL file. magnification 1.0 means 200dpi, it seems.
-        dpi=200 * postamble.magnification / 1000,
-        pixels_per_point = 200 * postamble.magnification / 1000 / 72.27,
-        **{f'tfm.{_k}': _v for _k, _v in tfm_dict.items()},
+        point_size=point_size,
+        dpi=dpi,
+        **{'tfm.slant': tfm_dict['slant']},
+        **{f'tfm.{_k}': _v * pixels_per_point for _k, _v in tfm_dict.items() if _k != 'slant'},
     )
 
 
@@ -208,7 +215,7 @@ def read_tfm(instream):
     }
     tfm_glyph_data = {
         _cp: dict(
-            codepoint=_cp,
+            # codepoint=_cp,
             width=widths[_ci.width_index] * size_factor,
             height=heights[_ci.height_index] * size_factor,
             depth=depths[_ci.depth_index] * size_factor,
