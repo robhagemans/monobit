@@ -76,7 +76,7 @@ def load_pxl(instream):
                 codepoint=cp,
                 shift_up=-entry.pixel_height+entry.y_offset+1,
                 left_bearing=-entry.x_offset,
-                **{'metafont.tfm_width': entry.tfm_width/2**20},
+                **{'pxl.tfm_width': entry.tfm_width/2**20 * postamble.designsize/2**20},
             )
         glyphs[cp] = glyph
     tfm_name = instream.name.replace('.PXL', '.TFM')
@@ -91,13 +91,15 @@ def load_pxl(instream):
     for cp, glyph_dict in glyph_tfm_data.items():
         glyphs[cp] = glyphs.get(cp, empty).modify(
             **{f'tfm.{_k}': _v for _k, _v in glyph_tfm_data[cp].items()},
-            # xppp=(glyphs[cp].width / (glyph_tfm_data[cp]['width'] * tfm_dict['design_size'])) if cp in glyphs and glyphs[cp].width else None,
-            # yppp=(glyphs[cp].height / (glyph_tfm_data[cp]['height'] * tfm_dict['design_size'])) if cp in glyphs and glyph_tfm_data[cp]['height'] else None,
         )
+        glyphs[cp] = glyphs[cp].modify(pixel_width=glyphs[cp].width, pixel_height=glyphs[cp].height)
     return Font(
-        glyphs.values(), point_size=postamble.designsize/2**20,
+        glyphs.values(),
+        point_size=postamble.designsize / 2**20,
+        # magnification is scaled by 1000 in PXL file. magnification 1.0 means 200dpi, it seems.
+        dpi=200 * postamble.magnification / 1000,
+        pixels_per_point = 200 * postamble.magnification / 1000 / 72.27,
         **{f'tfm.{_k}': _v for _k, _v in tfm_dict.items()},
-        **{'metafont.magnification': postamble.magnification / 1000},
     )
 
 
@@ -197,13 +199,21 @@ def read_tfm(instream):
     parambytes = (be.uint32 * tfmh.np).read_from(instream)
     parambytes = bytes(parambytes).ljust(_PARAM.size, b'\0')
     param = _PARAM.from_bytes(parambytes[:_PARAM.size])
+    param_dict = vars(param)
+    size_factor = header.design_size / 2**20 / 2**20
+    param_dict = {
+        _k: _v * size_factor
+        for _k, _v in param_dict.items()
+        if _k != 'slant'
+    }
+    param_dict['slant'] = param.slant / 2**20
     tfm_glyph_data = {
         _cp: dict(
             codepoint=_cp,
-            width=widths[_ci.width_index] / 2**20,
-            height=heights[_ci.height_index] / 2**20,
-            depth=depths[_ci.depth_index] / 2**20,
-            italic_adj=italics[_ci.italic_index] / 2**20,
+            width=widths[_ci.width_index] * size_factor,
+            height=heights[_ci.height_index] * size_factor,
+            depth=depths[_ci.depth_index] * size_factor,
+            italic_adj=italics[_ci.italic_index] * size_factor,
             tag=_ci.tag,
             remainder=_ci.remainder,
             lig_kern=lig_kerns[_ci.remainder] if _ci.tag == 1 else None,
@@ -212,7 +222,7 @@ def read_tfm(instream):
         for _cp, _ci in enumerate(char_info, tfmh.bc)
     }
     tfm_data = dict(
-        design_size=header.design_size/2**20,
-        **vars(param)
+        design_size=header.design_size / 2**20,
+        **param_dict
     )
     return tfm_data, tfm_glyph_data
