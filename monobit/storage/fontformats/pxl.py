@@ -100,15 +100,18 @@ def load_pxl(instream):
         )
         glyph_tfm_data = {}
     empty = Glyph()
-    for cp, glyph_dict in glyph_tfm_data.items():
+    for cp, glyph_data in glyph_tfm_data.items():
         size_props = ('width', 'height', 'depth')
-        glyphs[cp] = glyphs.get(cp, empty).modify(
-            scalable_width=round(glyph_tfm_data[cp].width * pixels_per_point, 2),
-            # scalable_height=round((glyph_tfm_data[cp].height+glyph_tfm_data[cp].depth) * pixels_per_point),
-            # **{'tfm.depth': glyph_tfm_data[cp].depth * pixels_per_point or None},
-            **{f'tfm.{_k}': _v for _k, _v in vars(glyph_tfm_data[cp]).items() if _v and _k not in size_props},
-        )
-        # glyphs[cp] = glyphs[cp].modify(pixel_width=glyphs[cp].width, pixel_height=glyphs[cp].height)
+        try:
+            glyphs[cp] = glyphs[cp].modify(
+                scalable_width=round(glyph_data.width * pixels_per_point, 2),
+                # scalable_height=round((glyph_tfm_data[cp].height+glyph_tfm_data[cp].depth) * pixels_per_point),
+                # **{'tfm.depth': glyph_tfm_data[cp].depth * pixels_per_point or None},
+                **{f'tfm.{_k}': _v for _k, _v in vars(glyph_data).items() if _v and _k not in size_props},
+            )
+            # glyphs[cp] = glyphs[cp].modify(pixel_width=glyphs[cp].width, pixel_height=glyphs[cp].height)
+        except KeyError:
+            pass
     return Font(
         glyphs.values(),
         point_size=point_size,
@@ -230,10 +233,18 @@ def read_tfm(instream):
             height=heights[_ci.height_index] * size_factor,
             depth=depths[_ci.depth_index] * size_factor,
             italic_adj=italics[_ci.italic_index] * size_factor,
-            tag=_ci.tag,
-            remainder=_ci.remainder,
-            lig_kern=lig_kerns[_ci.remainder] if _ci.tag == 1 else None,
-            ext=extens[_ci.remainder] if _ci.tag == 3 else None,
+            # > 0   no_tag      means that remainder is unused.
+            # > 1   lig_tag     means that this character has a ligature/kerning program starting
+            # >                 at lig_kern[remainder].
+            # > 2   list_tag    means that this character is part of a chain of characters of ascending
+            # >                 sizes, and not the largest in the chain. The remainder field gives the
+            # >                 character code of the next larger character.
+            # > 3   ext_tag     means that this character code represents an extensible character, i.e.,
+            # >                 a character that is built up of smaller pieces so that it can be made arbitrarily
+            # >                 large. The pieces are specified in exten[remainder].
+            lig_kern_index=_ci.remainder if _ci.tag == 1 else None,
+            list_next=_ci.remainder if _ci.tag == 2 else None,
+            extensible_recipe=extens[_ci.remainder] if _ci.tag == 3 else None,
         )
         for _cp, _ci in enumerate(char_info, tfmh.bc)
     }
