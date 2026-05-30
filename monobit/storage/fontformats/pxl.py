@@ -91,15 +91,19 @@ def load_pxl(instream):
             tfm_data, glyph_tfm_data = read_tfm(tfm_stream)
     except EnvironmentError as err:
         logging.info(f'Could not open TFM file {instream.where}/{tfm_name}')
-        tfm_data = Props()
+        tfm_data = Props(
+            x_height=0,
+            space=0,
+            extra_space=0,
+        )
         glyph_tfm_data = {}
     empty = Glyph()
     for cp, glyph_dict in glyph_tfm_data.items():
         size_props = ('width', 'height', 'depth')
         glyphs[cp] = glyphs.get(cp, empty).modify(
-            scalable_width=glyph_tfm_data[cp].width * pixels_per_point,
-            scalable_height=(glyph_tfm_data[cp].height+glyph_tfm_data[cp].depth) * pixels_per_point,
-            **{'tfm.depth': glyph_tfm_data[cp].depth * pixels_per_point if glyph_tfm_data[cp].depth else None},
+            scalable_width=round(glyph_tfm_data[cp].width * pixels_per_point, 2),
+            # scalable_height=round((glyph_tfm_data[cp].height+glyph_tfm_data[cp].depth) * pixels_per_point),
+            # **{'tfm.depth': glyph_tfm_data[cp].depth * pixels_per_point or None},
             **{f'tfm.{_k}': _v for _k, _v in vars(glyph_tfm_data[cp]).items() if _v and _k not in size_props},
         )
         # glyphs[cp] = glyphs[cp].modify(pixel_width=glyphs[cp].width, pixel_height=glyphs[cp].height)
@@ -107,8 +111,10 @@ def load_pxl(instream):
         glyphs.values(),
         point_size=point_size,
         dpi=dpi,
-        **{'tfm.slant': tfm_data.slant},
-        **{f'tfm.{_k}': _v * pixels_per_point for _k, _v in vars(tfm_data).items() if _k != 'slant'},
+        x_height=round(tfm_data.x_height * pixels_per_point) or None,
+        word_space=round(tfm_data.space * pixels_per_point) or None,
+        sentence_space=round((tfm_data.space + tfm_data.extra_space) * pixels_per_point) or None,
+        # **{'tfm.slant': tfm_data.slant or None},
     )
 
 
