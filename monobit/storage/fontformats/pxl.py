@@ -82,7 +82,9 @@ def load_pxl(instream):
                 codepoint=cp,
                 shift_up=-entry.pixel_height+entry.y_offset+1,
                 left_bearing=-entry.x_offset,
-                scalable_width=entry.tfm_width/2**20 * point_size * pixels_per_point,
+                scalable_width=round(
+                    entry.tfm_width/2**20 * point_size * pixels_per_point, 2
+                ),
             )
         glyphs[cp] = glyph
     tfm_name = instream.name.replace('.PXL', '.TFM')
