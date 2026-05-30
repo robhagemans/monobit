@@ -10,7 +10,7 @@ import logging
 from monobit.storage import loaders, savers, Glob
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import align
-from monobit.base import FileFormatError, UnsupportedError
+from monobit.base import FileFormatError, UnsupportedError, Props
 from monobit.core import Font, Glyph
 
 
@@ -82,31 +82,33 @@ def load_pxl(instream):
                 codepoint=cp,
                 shift_up=-entry.pixel_height+entry.y_offset+1,
                 left_bearing=-entry.x_offset,
-                **{'pxl.tfm_width': entry.tfm_width/2**20 * point_size * pixels_per_point},
+                scalable_width=entry.tfm_width/2**20 * point_size * pixels_per_point,
             )
         glyphs[cp] = glyph
     tfm_name = instream.name.replace('.PXL', '.TFM')
     try:
         with instream.where.open(tfm_name, 'r') as tfm_stream:
-            tfm_dict, glyph_tfm_data = read_tfm(tfm_stream)
+            tfm_data, glyph_tfm_data = read_tfm(tfm_stream)
     except EnvironmentError as err:
         logging.info(f'Could not open TFM file {instream.where}/{tfm_name}')
-        tfm_dict = {}
+        tfm_data = Props()
         glyph_tfm_data = {}
     empty = Glyph()
     for cp, glyph_dict in glyph_tfm_data.items():
         size_props = ('width', 'height', 'depth')
         glyphs[cp] = glyphs.get(cp, empty).modify(
-            **{f'tfm.{_k}': _v * pixels_per_point for _k, _v in glyph_tfm_data[cp].items() if _k in size_props},
-            **{f'tfm.{_k}': _v for _k, _v in glyph_tfm_data[cp].items() if _k not in size_props},
+            scalable_width=glyph_tfm_data[cp].width * pixels_per_point,
+            scalable_height=(glyph_tfm_data[cp].height+glyph_tfm_data[cp].depth) * pixels_per_point,
+            **{'tfm.depth': glyph_tfm_data[cp].depth * pixels_per_point if glyph_tfm_data[cp].depth else None},
+            **{f'tfm.{_k}': _v for _k, _v in vars(glyph_tfm_data[cp]).items() if _v and _k not in size_props},
         )
-        glyphs[cp] = glyphs[cp].modify(pixel_width=glyphs[cp].width, pixel_height=glyphs[cp].height)
+        # glyphs[cp] = glyphs[cp].modify(pixel_width=glyphs[cp].width, pixel_height=glyphs[cp].height)
     return Font(
         glyphs.values(),
         point_size=point_size,
         dpi=dpi,
-        **{'tfm.slant': tfm_dict['slant']},
-        **{f'tfm.{_k}': _v * pixels_per_point for _k, _v in tfm_dict.items() if _k != 'slant'},
+        **{'tfm.slant': tfm_data.slant},
+        **{f'tfm.{_k}': _v * pixels_per_point for _k, _v in vars(tfm_data).items() if _k != 'slant'},
     )
 
 
@@ -214,7 +216,7 @@ def read_tfm(instream):
         if _k != 'slant'
     }
     tfm_glyph_data = {
-        _cp: dict(
+        _cp: Props(
             # codepoint=_cp,
             width=widths[_ci.width_index] * size_factor,
             height=heights[_ci.height_index] * size_factor,
@@ -227,7 +229,7 @@ def read_tfm(instream):
         )
         for _cp, _ci in enumerate(char_info, tfmh.bc)
     }
-    tfm_data = dict(
+    tfm_data = Props(
         design_size=header.design_size / 2**20,
         slant=param.slant / 2**20,
         **param_dict
