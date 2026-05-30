@@ -69,6 +69,10 @@ class Props(SimpleNamespace):
             + '\n)'
         )
 
+    def __bool__(self):
+        """Empty properties is falsy."""
+        return bool(vars(self))
+
     def __ior__(self, rhs):
         """Update with other Properties object."""
         self.__dict__.update(vars(rhs))

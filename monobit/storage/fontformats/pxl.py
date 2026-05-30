@@ -248,6 +248,36 @@ def read_tfm(instream):
         )
         for _cp, _ci in enumerate(char_info, tfmh.bc)
     }
+    # parse lig_kern table
+    for cp, props in tfm_glyph_data.items():
+        kern_table = {}
+        lig_table = Props()
+        if props.lig_kern_index is not None:
+            step = props.lig_kern_index
+            while True:
+                lig_kern = lig_kerns[step]
+                # > op_byte indicates a ligature step if less than 128, a kern step otherwise.
+                is_ligature = lig_kern.op_byte < 128
+                # ligature step not implemented
+                if is_ligature:
+                    a = (lig_kern.op_byte >> 2) & 31
+                    b = (lig_kern.op_byte >> 1) & 1
+                    c = (lig_kern.op_byte >> 0) & 1
+                    lig_table.insert = lig_kern.remainder
+                    lig_table.next_char = lig_kern.next_char
+                    lig_table.delete_current = b == 0
+                    lig_table.delete_next = c == 0
+                    lig_table.skip = a
+                else:
+                    kern_table[lig_kern.next_char] = (
+                        kerns[256 * (lig_kern.op_byte-128) + lig_kern.remainder] / 2**20
+                    )
+                if lig_kern.skip_byte >= 128:
+                    break
+                step += (lig_kern.skip_byte & 0x7f) + 1
+        tfm_glyph_data[cp].kerns = kern_table
+        tfm_glyph_data[cp].ligatures = lig_table
+        del tfm_glyph_data[cp].lig_kern_index
     tfm_data = Props(
         design_size=header.design_size / 2**20,
         slant=param.slant / 2**20,
