@@ -13,6 +13,9 @@ from monobit.base.struct import bitfield
 
 
 # https://web.archive.org/web/20120722013525/http://www-users.math.umd.edu/~asnowden/comp-cont/tfm.html
+# https://www.tug.org/TUGboat/Articles/tb02-1/tb02fuchstfm.pdf
+# https://en.wikipedia.org/wiki/TeX_font_metric
+
 
 _TFM_HEADER = be.Struct(
     # > length of the entire file, in words
