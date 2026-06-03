@@ -186,7 +186,9 @@ def read_command(instream):
 
 def parse_commands(commands):
     preamble = None
+    postamble = None
     glyphs = []
+    metrics = {}
     current_char = None
     paint_switch = 0
     for command, value in commands:
@@ -221,10 +223,13 @@ def parse_commands(commands):
             command = Command.new_row_0
         elif command in (Command.xxx1, Command.xxx2, Command.xxx3, Command.xxx4):
             command = Command.xxx1
+        elif command == Command.char_loc0:
+            command = Command.char_loc
+            value = Props(c=value.c, dx=65536*value.dm, dy=0, w=value.w, p=value.p)
 
         if command == Command.boc:
             current_char = Props(
-                codepoint=value.c,
+                c=value.c,
                 p=value.p,
                 width=value.max_m - value.min_m + 1,
                 height=value.max_n - value.min_n + 1,
@@ -251,7 +256,6 @@ def parse_commands(commands):
             current_char.matrix.append('0' * value)
             paint_switch = 1
 
-
         elif command == Command.eoc:
             current_char.matrix[-1] = (
                 current_char.matrix[-1].ljust(current_char.width, '0')
@@ -261,11 +265,45 @@ def parse_commands(commands):
             )
             glyph = Glyph.from_matrix(
                 current_char.matrix, inklevels='01',
-                codepoint=current_char.codepoint,
-                # p=current_char.p
+                codepoint=current_char.c,
             )
             glyphs.append(glyph)
-    return Font(glyphs)
+
+        elif command == Command.post:
+            postamble = value
+
+        elif command == Command.char_loc:
+            metrics[value.c] = Props(
+                advance_width=value.dx / 2**16,
+                # dy is vertical displacement, do we support this?
+                scalable_width=value.w / 2**20 * postamble.ds / 2**20 * postamble.hppp / 2**16,
+            )
+
+        elif command == Command.post_post:
+            break
+
+    metriclist = (
+        # > Characters whose codes differ by a multiple of 256
+        # > are assumed to share the same font metric infor-
+        # > mation, hence the TFM file contains only residues
+        # > of character codes modulo 256. This convention
+        # > is intended for oriental languages, when there are
+        # > many character shapes but few distinct widths.
+        metrics[ord(_g.codepoint) % 256] for _g in glyphs
+    )
+    glyphs = (
+        _g.modify(
+            right_bearing=_m.advance_width-_g.width,
+            scalable_width=round(_m.scalable_width, 2),
+        )
+        for _g, _m in zip(glyphs, metriclist)
+    )
+    return Font(
+        glyphs,
+        point_size=postamble.ds / 2**20,
+        dpi=(round(postamble.hppp * 72.27 / 2**16), round(postamble.vppp * 72.27 / 2**16)),
+        **{'metafont.checksum': postamble.cs},
+    )
 
 
 def _load_gf(instream):
