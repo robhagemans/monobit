@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.pk - METAFONT / TeX packed font font files
+monobit.storage.fontformats.pk - METAFONT / TeX packed font files
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -21,7 +21,6 @@ from monobit.base.binary import ceildiv, align
     magic=(b'\xf7\x59',),
     # file name pattern is '{name}.{dpi}PK'
     patterns=(Regex(r'.+\.\d+pk'),),
-
 )
 def load_pkfont(instream):
     """Load fonts from a METAFONT/TeX PKFONT."""
@@ -95,7 +94,7 @@ def _read_command(command, instream):
         return None
     elif command == 247:
         raise ValueError('Preamble not expected here')
-    raise ValueError('Invalid command %d', command)
+    raise ValueError(f'Invalid command {command}')
 
 
 # flag byte
