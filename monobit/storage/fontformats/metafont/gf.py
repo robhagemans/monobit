@@ -45,7 +45,8 @@ def read_string32(instream):
     return instream.read(k)
 
 
-class Command:
+class Opcode:
+    """Command opcodes."""
     paint_0 = 0
     # paint_1, ...,
     paint_63 = 63
@@ -129,62 +130,110 @@ _POST_POST = be.Struct(
 )
 
 
-def read_command(instream):
-    """Read a command."""
-    command = ord(instream.read(1))
-    if Command.paint_0 <= command <= Command.paint_63:
+def read_opcode(instream):
+    """Read a command opcode and accompanying values."""
+    opcode = ord(instream.read(1))
+    if Opcode.paint_0 <= opcode <= Opcode.paint_63:
         value = None
-    elif command == Command.paint1:
+    elif opcode == Opcode.paint1:
         value = int(be.uint8.read_from(instream))
-    elif command == Command.paint2:
+    elif opcode == Opcode.paint2:
         value = int(be.uint16.read_from(instream))
-    elif command == Command.paint3:
+    elif opcode == Opcode.paint3:
         value = read_uint24(instream)
-    elif command == Command.boc:
+    elif opcode == Opcode.boc:
         value = _BOC.read_from(instream)
-    elif command == Command.boc1:
+    elif opcode == Opcode.boc1:
         value = _BOC1.read_from(instream)
-    elif command == Command.eoc:
+    elif opcode == Opcode.eoc:
         value = None
-    elif command == Command.skip0:
+    elif opcode == Opcode.skip0:
         value = None
-    elif command == Command.skip1:
+    elif opcode == Opcode.skip1:
         value = int(be.uint8.read_from(instream))
-    elif command == Command.skip2:
+    elif opcode == Opcode.skip2:
         value = int(be.uint16.read_from(instream))
-    elif command == Command.skip3:
+    elif opcode == Opcode.skip3:
         value = read_uint24(instream)
-    elif Command.new_row_0 <= command <= Command.new_row_164:
+    elif Opcode.new_row_0 <= opcode <= Opcode.new_row_164:
         value = None
-    elif command == Command.xxx1:
+    elif opcode == Opcode.xxx1:
         value = read_string8(instream)
-    elif command == Command.xxx2:
+    elif opcode == Opcode.xxx2:
         value = read_string16(instream)
-    elif command == Command.xxx3:
+    elif opcode == Opcode.xxx3:
         value = read_string24(instream)
-    elif command == Command.xxx4:
+    elif opcode == Opcode.xxx4:
         value = read_string32(instream)
-    elif command == Command.yyy:
+    elif opcode == Opcode.yyy:
         value = int(be.uint32.read_from(instream))
-    elif command == Command.no_op:
+    elif opcode == Opcode.no_op:
         value = None
-    elif command == Command.char_loc:
+    elif opcode == Opcode.char_loc:
         value = _CHAR_LOC.read_from(instream)
-    elif command == Command.char_loc0:
+    elif opcode == Opcode.char_loc0:
         value = _CHAR_LOC0.read_from(instream)
-    elif command == Command.pre:
+    elif opcode == Opcode.pre:
         value = Props(i=int(be.uint8.read_from(instream)), x=read_string8(instream))
-    elif command == Command.post:
+    elif opcode == Opcode.post:
         value = _POST.read_from(instream)
-    elif command == Command.post_post:
+    elif opcode == Opcode.post_post:
         value = _POST_POST.read_from(instream)
         instream.read()
     else:
-        raise FileFormatError(f'Unrecognised GF command {command}')
+        raise FileFormatError(f'Unrecognised GF opcode {opcode}')
+    return opcode, value
+
+
+def preprocess_command(opcode, value):
+    """Convert opcodes into a condensed set of commands."""
+    if opcode == Opcode.boc1:
+        command = 'boc'
+        value = Props(
+            c=value.c,
+            p=-1,
+            min_m=value.max_m-value.del_m, max_m=value.max_m,
+            min_n=value.max_n-value.del_n, max_n=value.max_n,
+        )
+    elif opcode == Opcode.boc:
+        command = 'boc'
+    elif opcode == Opcode.eoc:
+        command = 'eoc'
+    elif Opcode.paint_0 <= opcode <= Opcode.paint_63:
+        command = 'paint'
+        value = opcode - Opcode.paint_0
+    elif opcode in (Opcode.paint1, Opcode.paint2, Opcode.paint3):
+        command = 'paint'
+    elif opcode == Opcode.skip0:
+        command = 'skip'
+        value = 0
+    elif opcode in (Opcode.skip1, Opcode.skip2, Opcode.skip3):
+        command = 'skip'
+    elif Opcode.new_row_0 <= opcode <= Opcode.new_row_164:
+        command = 'new_row'
+        value = opcode - Opcode.new_row_0
+    elif opcode in (Opcode.xxx1, Opcode.xxx2, Opcode.xxx3, Opcode.xxx4):
+        command = 'xxx'
+    elif opcode == Opcode.yyy:
+        command = 'yyy'
+    elif opcode == Opcode.no_op:
+        command = 'no_op'
+    elif opcode == Opcode.char_loc:
+        command = 'char_loc'
+    elif opcode == Opcode.char_loc0:
+        command = 'char_loc'
+        value = Props(c=value.c, dx=65536*value.dm, dy=0, w=value.w, p=value.p)
+    elif opcode == Opcode.pre:
+        command = 'pre'
+    elif opcode == Opcode.post:
+        command = 'post'
+    elif opcode == Opcode.post_post:
+        command = 'post_post'
     return command, value
 
 
 def parse_commands(commands):
+    """Convert commands to font."""
     preamble = None
     postamble = None
     glyphs = []
@@ -192,42 +241,13 @@ def parse_commands(commands):
     current_char = None
     paint_switch = 0
     for command, value in commands:
-
         # preamble
         if not preamble:
-            if command != Command.pre or value.i != 131:
+            if command != 'pre' or value.i != 131:
                 raise FileFormatError('Not a GF file: incorrect signature')
             preamble = value
 
-        # preprocess commands
-        if command == Command.boc1:
-            command = Command.boc
-            value = Props(
-                c=value.c,
-                p=-1,
-                min_m=value.max_m-value.del_m, max_m=value.max_m,
-                min_n=value.max_n-value.del_n, max_n=value.max_n,
-            )
-        elif Command.paint_0 <= command <= Command.paint_63:
-            value = command - Command.paint_0
-            command = Command.paint1
-        elif command in (Command.paint2, Command.paint3):
-            command = Command.paint1
-        elif command == Command.skip0:
-            command = Command.skip1
-            value = 0
-        elif command in (Command.skip2, Command.skip3):
-            command = Command.skip1
-        elif Command.new_row_0 <= command <= Command.new_row_164:
-            value = command - Command.new_row_0
-            command = Command.new_row_0
-        elif command in (Command.xxx1, Command.xxx2, Command.xxx3, Command.xxx4):
-            command = Command.xxx1
-        elif command == Command.char_loc0:
-            command = Command.char_loc
-            value = Props(c=value.c, dx=65536*value.dm, dy=0, w=value.w, p=value.p)
-
-        if command == Command.boc:
+        if command == 'boc':
             current_char = Props(
                 c=value.c,
                 p=value.p,
@@ -237,11 +257,11 @@ def parse_commands(commands):
             )
             paint_switch = 0
 
-        elif command == Command.paint1:
+        elif command == 'paint':
             current_char.matrix[-1] += chr(ord('0') + paint_switch) * value
             paint_switch = 1 - paint_switch
 
-        elif command == Command.skip1:
+        elif command == 'skip':
             current_char.matrix[-1] = (
                 current_char.matrix[-1].ljust(current_char.width, '0')
             )
@@ -249,14 +269,14 @@ def parse_commands(commands):
             current_char.matrix.append('')
             paint_switch = 0
 
-        elif command == Command.new_row_0:
+        elif command == 'new_row':
             current_char.matrix[-1] = (
                 current_char.matrix[-1].ljust(current_char.width, '0')
             )
             current_char.matrix.append('0' * value)
             paint_switch = 1
 
-        elif command == Command.eoc:
+        elif command == 'eoc':
             current_char.matrix[-1] = (
                 current_char.matrix[-1].ljust(current_char.width, '0')
             )
@@ -269,17 +289,17 @@ def parse_commands(commands):
             )
             glyphs.append(glyph)
 
-        elif command == Command.post:
+        elif command == 'post':
             postamble = value
 
-        elif command == Command.char_loc:
+        elif command == 'char_loc':
             metrics[value.c] = Props(
                 advance_width=value.dx / 2**16,
                 # dy is vertical displacement, do we support this?
                 scalable_width=value.w / 2**20 * postamble.ds / 2**20 * postamble.hppp / 2**16,
             )
 
-        elif command == Command.post_post:
+        elif command == 'post_post':
             break
 
     metriclist = (
@@ -310,5 +330,6 @@ def _load_gf(instream):
     """Load fonts from a METAFONT/TeX GF."""
     gf_commands = []
     while instream.peek(0):
-        gf_commands.append(read_command(instream))
+        opcode, value = read_opcode(instream)
+        gf_commands.append(preprocess_command(opcode, value))
     return parse_commands(gf_commands)
