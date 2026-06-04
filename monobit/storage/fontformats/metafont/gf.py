@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, Regex
+from monobit.storage import loaders, savers, Regex, Glob
 from monobit.core import Font, Glyph, Raster
 from monobit.base import FileFormatError, UnsupportedError, Props
 from monobit.base.struct import big_endian as be
@@ -16,12 +16,16 @@ from monobit.base.struct import big_endian as be
 @loaders.register(
     name='gf',
     magic=(b'\xf7\x83',),
-    # file name pattern is '{name}.{dpi}PK'
-    # patterns=(Regex(r'.+\.\d+pk'),),
+    # file name pattern is '{name}.{dpi}GF' or '{name}.GF'
+    patterns=(Regex(r'.+\.\d+gf'), Glob('*.gf')),
 )
 def load_gf(instream):
     """Load fonts from a METAFONT/TeX GF."""
-    return _load_gf(instream)
+    gf_commands = []
+    while instream.peek(0):
+        opcode, value = read_opcode(instream)
+        gf_commands.append(preprocess_command(opcode, value))
+    return parse_commands(gf_commands)
 
 
 def read_string8(instream):
@@ -324,12 +328,3 @@ def parse_commands(commands):
         dpi=(round(postamble.hppp * 72.27 / 2**16), round(postamble.vppp * 72.27 / 2**16)),
         **{'metafont.checksum': postamble.cs},
     )
-
-
-def _load_gf(instream):
-    """Load fonts from a METAFONT/TeX GF."""
-    gf_commands = []
-    while instream.peek(0):
-        opcode, value = read_opcode(instream)
-        gf_commands.append(preprocess_command(opcode, value))
-    return parse_commands(gf_commands)
