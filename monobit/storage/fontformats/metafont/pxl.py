@@ -7,12 +7,12 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.storage import loaders, savers, Glob
+from monobit.storage import loaders, savers, Glob, Regex
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import align
 from monobit.base import FileFormatError, UnsupportedError, Props
 from monobit.core import Font, Glyph
-from .tfm import read_tfm
+from .tfm import apply_tfm
 
 
 # https://tug.org/TUGboat/tb02-3/tb04fuchspxl.pdf
@@ -43,10 +43,15 @@ _DIR_ENTRY = be.Struct(
 @loaders.register(
     name='pxl',
     magic=_PXL_IDS,
-    patterns=(Glob('*.PXL'),),
+    # file name pattern is '{name}.{metafont.magnification}PXL' or '{name}.PXL'
+    patterns=(Regex(r'.+\.\d+pxl'), Glob('*.pxl')),
 )
-def load_pxl(instream):
-    """Load fonts from a METAFONT PXL file."""
+def load_pxl(instream, tfm:str=''):
+    """
+    Load fonts from a METAFONT PXL Matrix Format file.
+
+    tfm: name of TeX Font metrics file to apply (default: determine from filename)
+    """
     preamble = _PXL_PRE.read_from(instream)
     if bytes(preamble) not in _PXL_IDS:
         raise FileFormatError(
@@ -66,7 +71,7 @@ def load_pxl(instream):
     dpi = 200 * postamble.magnification / 1000
     pixels_per_point = dpi / 72.27
     ### convert glyphs
-    glyphs = {}
+    glyphs = []
     for cp, entry in enumerate(font_directory):
         if entry.raster_pointer == 0:
             glyph = Glyph(codepoint=cp, **vars(entry))
@@ -87,39 +92,9 @@ def load_pxl(instream):
                     entry.tfm_width/2**20 * point_size * pixels_per_point, 2
                 ),
             )
-        glyphs[cp] = glyph
-    tfm_name = instream.name.replace('.PXL', '.TFM')
-    try:
-        with instream.where.open(tfm_name, 'r') as tfm_stream:
-            tfm_data, glyph_tfm_data = read_tfm(tfm_stream)
-    except EnvironmentError as err:
-        logging.info(f'Could not open TFM file {instream.where}/{tfm_name}')
-        tfm_data = Props(
-            x_height=0,
-            space=0,
-            extra_space=0,
-        )
-        glyph_tfm_data = {}
-    empty = Glyph()
-    for cp, glyph_data in glyph_tfm_data.items():
-        size_props = ('width', 'height', 'depth', 'kerns')
-        try:
-            glyphs[cp] = glyphs[cp].modify(
-                scalable_width=round(glyph_data.width * pixels_per_point, 2),
-                # scalable_height=round((glyph_tfm_data[cp].height+glyph_tfm_data[cp].depth) * pixels_per_point),
-                # **{'tfm.depth': glyph_tfm_data[cp].depth * pixels_per_point or None},
-                right_kerning={_k: round(_v * pixels_per_point, 2) for _k, _v in glyph_data.kerns.items()},
-                **{f'tfm.{_k}': _v for _k, _v in vars(glyph_data).items() if _v and _k not in size_props},
-            )
-            # glyphs[cp] = glyphs[cp].modify(pixel_width=glyphs[cp].width, pixel_height=glyphs[cp].height)
-        except KeyError:
-            pass
-    return Font(
-        glyphs.values(),
-        point_size=point_size,
-        dpi=dpi,
-        x_height=round(tfm_data.x_height * pixels_per_point) or None,
-        word_space=round(tfm_data.space * pixels_per_point) or None,
-        sentence_space=round((tfm_data.space + tfm_data.extra_space) * pixels_per_point) or None,
-        # **{'tfm.slant': tfm_data.slant or None},
-    )
+        glyphs.append(glyph)
+    font = Font(glyphs, point_size=point_size, dpi=dpi)
+    # apply TFM, if available
+    tfm_name = tfm or instream.name.partition('.')[0] + '.tfm'
+    font = apply_tfm(font, instream.where, tfm_name, pixels_per_point)
+    return font

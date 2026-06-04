@@ -11,6 +11,7 @@ from monobit.storage import loaders, savers, Regex, Glob
 from monobit.core import Font, Glyph, Raster
 from monobit.base import FileFormatError, UnsupportedError, Props
 from monobit.base.struct import big_endian as be
+from .tfm import apply_tfm
 
 
 @loaders.register(
@@ -19,13 +20,22 @@ from monobit.base.struct import big_endian as be
     # file name pattern is '{name}.{dpi}GF' or '{name}.GF'
     patterns=(Regex(r'.+\.\d+gf'), Glob('*.gf')),
 )
-def load_gf(instream):
-    """Load fonts from a METAFONT/TeX GF."""
+def load_gf(instream, tfm:str=''):
+    """
+    Load fonts from a METAFONT Generic Font file.
+
+    tfm: name of TeX Font metrics file to apply (default: determine from filename)
+    """
     gf_commands = []
     while instream.peek(0):
         opcode, value = read_opcode(instream)
         gf_commands.append(preprocess_command(opcode, value))
-    return parse_commands(gf_commands)
+    font = parse_commands(gf_commands)
+    # apply TFM, if available
+    tfm_name = tfm or instream.name.partition('.')[0] + '.tfm'
+    font = apply_tfm(font, instream.where, tfm_name, font.dpi.x / 72.27, font.dpi.y / 72.27)
+    return font
+
 
 
 def read_string8(instream):

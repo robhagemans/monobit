@@ -10,6 +10,7 @@ import logging
 from monobit.base.struct import big_endian as be
 from monobit.base import Props
 from monobit.base.struct import bitfield
+from monobit.core import Font
 
 
 # https://web.archive.org/web/20120722013525/http://www-users.math.umd.edu/~asnowden/comp-cont/tfm.html
@@ -91,8 +92,43 @@ _PARAM = be.Struct(
     extra_space='uint32',
 )
 
+
+def apply_tfm(font, location, tfm_name, hppp, vppp=None):
+    """Enrich font with metrics from TFM file, if found."""
+    try:
+        with location.open(tfm_name, 'r') as tfm_stream:
+            tfm_data, glyph_tfm_data = read_tfm(tfm_stream)
+    except EnvironmentError as err:
+        logging.info(f'Could not open TFM file {location}/{tfm_name}')
+        return font
+    if vppp is None:
+        vppp = hppp
+    glyphs = []
+    for glyph in font.glyphs:
+        try:
+            glyph_data = glyph_tfm_data[int(glyph.codepoint)]
+        except KeyError:
+            continue
+        size_props = ('width', 'height', 'depth', 'kerns')
+        glyph = glyph.modify(
+            scalable_width=round(glyph_data.width * hppp, 2),
+            # scalable_height=round((glyph_data.height+glyph_data.depth) * vppp),
+            # **{'tfm.depth': glyph_tfm_data[cp].depth * hppp or None},
+            right_kerning={_k: round(_v * hppp, 2) for _k, _v in glyph_data.kerns.items()},
+            **{f'tfm.{_k}': _v for _k, _v in vars(glyph_data).items() if _v and _k not in size_props},
+        )
+        glyphs.append(glyph)
+    return font.modify(
+        glyphs,
+        x_height=round(tfm_data.x_height * vppp) or None,
+        word_space=round(tfm_data.space * hppp) or None,
+        sentence_space=round((tfm_data.space + tfm_data.extra_space) * hppp) or None,
+        # **{'tfm.slant': tfm_data.slant or None},
+    )
+
+
 def read_tfm(instream):
-    """Read a Tex Font Metrics file."""
+    """Read a TeX Font Metrics file."""
     tfmh = _TFM_HEADER.read_from(instream)
     headerbytes = (be.uint32 * tfmh.lh).read_from(instream)
     headerbytes = bytes(headerbytes).ljust(_HEADER.size, b'\0')
