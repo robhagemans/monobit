@@ -196,7 +196,7 @@ def read_tfm(instream):
                     lig_table.skip = a
                 else:
                     kern_table[lig_kern.next_char] = (
-                        kerns[256 * (lig_kern.op_byte-128) + lig_kern.remainder] / 2**20
+                        kerns[256 * (lig_kern.op_byte-128) + lig_kern.remainder] * size_factor
                     )
                 if lig_kern.skip_byte >= 128:
                     break
