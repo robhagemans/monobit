@@ -280,7 +280,7 @@ def parse_commands(commands):
             current_char.matrix[-1] = (
                 current_char.matrix[-1].ljust(current_char.width, '0')
             )
-            current_char.matrix += ['0' * current_char.width] * (value-1)
+            current_char.matrix += ['0' * current_char.width] * value
             current_char.matrix.append('')
             paint_switch = 0
 
