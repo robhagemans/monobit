@@ -106,6 +106,7 @@ Proportional-spacing formats
 | OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB O (MB K) |
 | Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | O        |
 | GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|&check;| binary | M; see `vlir` |
+| METAFONT Generic Font | `gf`       | `.*gf`  (+ `.tfm`)          |&check;|       | binary | O K      |
 | Adafruit GFX font     | `gfxfont`  | `.h`                        |&check;|&check;| coded  | O        |
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
 | HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB O  |
@@ -124,11 +125,12 @@ Proportional-spacing formats
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
 | PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
-| TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       | binary | O        |
+| METAFONT/TeX Packed   | `pkfont`   | `.*pk`  (+ `.tfm`)          |&check;|       | binary | O K      |
 | PolyPrint             | `polyprint`|                             |&check;|       | binary | -        |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | G (V)    |
 | Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       | binary | O        |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       | binary | -        |
+| METAFONT PXL Matrix   | `pxl`      | `.*pxl`  (+ `.tfm`)         |&check;|       | binary | O K      |
 | RISCOS x90y45 format  | `riscos-xy`|                             |&check;|       | binary | O G      |
 | RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |

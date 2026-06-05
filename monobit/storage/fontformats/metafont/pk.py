@@ -1,12 +1,13 @@
 """
-monobit.storage.fontformats.pkfont - TeX packed font font files
+monobit.storage.fontformats.pk - METAFONT / TeX packed font files
 
-(c) 2023 Rob Hagemans
+(c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
 from itertools import count
+from pathlib import Path
 
 from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
@@ -14,6 +15,7 @@ from monobit.base import Props
 from monobit.base import struct
 from monobit.base.struct import big_endian as be, bitfield, sizeof
 from monobit.base.binary import ceildiv, align
+from .tfm import apply_tfm
 
 
 @loaders.register(
@@ -21,11 +23,14 @@ from monobit.base.binary import ceildiv, align
     magic=(b'\xf7\x59',),
     # file name pattern is '{name}.{dpi}PK'
     patterns=(Regex(r'.+\.\d+pk'),),
-
 )
-def load_pkfont(instream):
-    """Load fonts from a METAFONT/TeX PKFONT."""
-    return _load_pkfont(instream)
+def load_pkfont(instream, tfm:str=''):
+    """
+    Load fonts from a METAFONT/TeX Packed Font file.
+
+    tfm: name of TeX Font metrics file to apply (default: determine from filename)
+    """
+    return _load_pkfont(instream, tfm)
 
 
 ###############################################################################
@@ -95,7 +100,7 @@ def _read_command(command, instream):
         return None
     elif command == 247:
         raise ValueError('Preamble not expected here')
-    raise ValueError('Invalid command %d', command)
+    raise ValueError(f'Invalid command {command}')
 
 
 # flag byte
@@ -363,8 +368,8 @@ def _pk_packed_num(iternyb, dyn_f):
     return run, repeat
 
 
-def _load_pkfont(instream):
-    """Load fonts from a METAFONT/TeX PKFONT."""
+def _load_pkfont(instream, tfm):
+    """Load fonts from a METAFONT Packed Font file."""
     # read preamble
     preamble = _read_preamble(instream)
     # read char definitions and _special_ strings
@@ -382,4 +387,8 @@ def _load_pkfont(instream):
             chars.append(char)
     # converter
     glyphs = tuple(_convert_char(_char) for _char in chars)
-    return Font(glyphs)
+    font = Font(glyphs)
+    # apply TFM, if available
+    tfm_name = tfm or Path(instream.name).stem + '.tfm'
+    font = apply_tfm(font, instream.where, tfm_name, font.dpi.x / 72.27)
+    return font
