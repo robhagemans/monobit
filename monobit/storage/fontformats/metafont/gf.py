@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from pathlib import Path
 
 from monobit.storage import loaders, savers, Regex, Glob
 from monobit.core import Font, Glyph, Raster
@@ -32,7 +33,7 @@ def load_gf(instream, tfm:str=''):
         gf_commands.append(preprocess_command(opcode, value))
     font = parse_commands(gf_commands)
     # apply TFM, if available
-    tfm_name = tfm or instream.name.partition('.')[0] + '.tfm'
+    tfm_name = tfm or Path(instream.name).stem + '.tfm'
     font = apply_tfm(font, instream.where, tfm_name, font.dpi.x / 72.27, font.dpi.y / 72.27)
     return font
 

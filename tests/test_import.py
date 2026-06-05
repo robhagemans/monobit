@@ -1033,18 +1033,24 @@ class TestImport(BaseTester):
         font, *_ = monobit.load(self.font_path / 'cmr10/cmr10.96pk')
         self.assertEqual(len(font.glyphs), 128)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.cmr10_A)
+        # test kerning, read from TFM file
+        assert round(font.get_glyph(b'A').right_kerning[b'V']) == -1
 
     def test_import_metafont_gf(self):
         """Test importing GF files."""
         font, *_ = monobit.load(self.font_path / 'cmr10/cmr10.96gf')
         self.assertEqual(len(font.glyphs), 128)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.cmr10_A)
+        # test kerning, read from TFM file
+        assert round(font.get_glyph(b'A').right_kerning[b'V']) == -1
 
     def test_import_metafont_pxl(self):
         """Test importing PXL files."""
         font, *_ = monobit.load(self.font_path / 'cmr10/cmr10.96pxl')
         self.assertEqual(len(font.glyphs), 128)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.cmr10_A)
+        # test kerning, read from TFM file
+        assert round(font.get_glyph(b'A').right_kerning[b'V']) == -1
 
 
     # sfnt

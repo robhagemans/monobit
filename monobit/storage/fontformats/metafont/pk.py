@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from itertools import count
+from pathlib import Path
 
 from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
@@ -388,6 +389,6 @@ def _load_pkfont(instream, tfm):
     glyphs = tuple(_convert_char(_char) for _char in chars)
     font = Font(glyphs)
     # apply TFM, if available
-    tfm_name = tfm or instream.name.partition('.')[0] + '.tfm'
+    tfm_name = tfm or Path(instream.name).stem + '.tfm'
     font = apply_tfm(font, instream.where, tfm_name, font.dpi.x / 72.27)
     return font

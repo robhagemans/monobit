@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from pathlib import Path
 
 from monobit.storage import loaders, savers, Glob, Regex
 from monobit.base.struct import big_endian as be
@@ -95,6 +96,6 @@ def load_pxl(instream, tfm:str=''):
         glyphs.append(glyph)
     font = Font(glyphs, point_size=point_size, dpi=dpi)
     # apply TFM, if available
-    tfm_name = tfm or instream.name.partition('.')[0] + '.tfm'
+    tfm_name = tfm or Path(instream.name).stem + '.tfm'
     font = apply_tfm(font, instream.where, tfm_name, pixels_per_point)
     return font
