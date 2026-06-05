@@ -31,10 +31,10 @@ Original sources:
   - https://archive.org/details/a8b_abbuc_353_b
   - distributed with FONTSPLIT.MAC by John McGowan
   - in the public domain  
-* `cmbx10.120pk`
+* Computer Modern, `cmr10.96gf`, `cmr10.96pk`, `cmr10.96pxl`, `cmr10.tfm`
   - https://www.ctan.org/pkg/cm
-  - unmodified bitmap of the Computer Modern font created by Donald Knuth
-  - released under his usual licence: https://ctan.org/license/knuth
+  - created by Donald Knuth, released under his usual licence: https://ctan.org/license/knuth
+  - compiled from source using METAFONT, `gftopk`, and `gftopxl`
 * `SHILLING.cvt.gz`
   - https://www.commodore.ca/manuals/funet/cbm/geos/graphics/fonts/unsorted/
   - Symbol font created by Dick Estel - copyright 1989 - released for free use

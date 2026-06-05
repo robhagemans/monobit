@@ -1015,25 +1015,37 @@ class TestImport(BaseTester):
 @@..@@
 """)
 
-    # TeX PKFONT
+    # METAFONT
 
-    def test_import_pkfont(self):
-        """Test importing PKFONT files."""
-        font, *_ = monobit.load(self.font_path / 'cmbx10.120pk')
+    cmr10_A = """\
+....@....
+....@....
+...@.@...
+...@.@...
+...@.@...
+..@@@@@..
+..@...@..
+@@@@.@@@@
+"""
+
+    def test_import_metafont_pk(self):
+        """Test importing PK files."""
+        font, *_ = monobit.load(self.font_path / 'cmr10/cmr10.96pk')
         self.assertEqual(len(font.glyphs), 128)
-        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
-.....@.....
-....@@@....
-....@@@....
-....@@@....
-...@.@@@...
-...@.@@@...
-...@.@@@...
-..@...@@@..
-..@@@@@@@..
-.@....@@@@.
-@@@@.@@@@@@
-""")
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.cmr10_A)
+
+    def test_import_metafont_gf(self):
+        """Test importing GF files."""
+        font, *_ = monobit.load(self.font_path / 'cmr10/cmr10.96gf')
+        self.assertEqual(len(font.glyphs), 128)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.cmr10_A)
+
+    def test_import_metafont_pxl(self):
+        """Test importing PXL files."""
+        font, *_ = monobit.load(self.font_path / 'cmr10/cmr10.96pxl')
+        self.assertEqual(len(font.glyphs), 128)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.cmr10_A)
+
 
     # sfnt
 
