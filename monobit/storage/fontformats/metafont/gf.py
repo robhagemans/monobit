@@ -38,7 +38,6 @@ def load_gf(instream, tfm:str=''):
     return font
 
 
-
 def read_string8(instream):
     k = int(be.uint8.read_from(instream))
     return instream.read(k)
@@ -118,7 +117,7 @@ _CHAR_LOC = be.Struct(
 
 _CHAR_LOC0 = be.Struct(
     c='uint8',
-    dm='uint8', # signed int?
+    dm='uint8', # 0 <= dm < 256
     w='uint32',
     p='int32',
 )
@@ -268,7 +267,8 @@ def parse_commands(commands):
                 p=value.p,
                 width=value.max_m - value.min_m + 1,
                 height=value.max_n - value.min_n + 1,
-                matrix=['']
+                min_m=value.min_m, max_m=value.max_m, min_n=value.min_n, max_n=value.max_n,
+                matrix=[''],
             )
             paint_switch = 0
 
@@ -280,7 +280,7 @@ def parse_commands(commands):
             current_char.matrix[-1] = (
                 current_char.matrix[-1].ljust(current_char.width, '0')
             )
-            current_char.matrix += ['0' * current_char.width] * (value-1)
+            current_char.matrix += ['0' * current_char.width] * value
             current_char.matrix.append('')
             paint_switch = 0
 
@@ -301,6 +301,8 @@ def parse_commands(commands):
             glyph = Glyph.from_matrix(
                 current_char.matrix, inklevels='01',
                 codepoint=current_char.c,
+                left_bearing=current_char.min_m,
+                shift_up=current_char.min_n,
             )
             glyphs.append(glyph)
 
@@ -328,7 +330,7 @@ def parse_commands(commands):
     )
     glyphs = (
         _g.modify(
-            right_bearing=_m.advance_width-_g.width,
+            right_bearing=_m.advance_width-_g.width-_g.left_bearing,
             scalable_width=round(_m.scalable_width, 2),
         )
         for _g, _m in zip(glyphs, metriclist)
