@@ -8,6 +8,8 @@ licence: https://opensource.org/licenses/MIT
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
+from monobit.storage.magic import Magic
+
 
 DEFAULT_IMAGE_FORMAT = 'png'
 
@@ -21,15 +23,16 @@ IMAGE_MAGIC = (
     # PNG
     b'\x89PNG\r\n\x1a\n',
     # BMP
-    #b'BM',   # -- clash with bmfont b'BMF'
+    b'BM' + Magic.offset(10) + b'\0\0\c\0\0\0' + Magic.offset(4) + b'\1\0' + Magic.offset(1) + b'\0',
+    b'BM' + Magic.offset(10) + b'\0\0' + Magic.offset(1) + b'\0\0\0' + Magic.offset(8) + b'\1\0' + Magic.offset(1) + b'\0',
     # GIF
     b'GIF87a', b'GIF89a',
     # TIFF
     b'\x4D\x4D\x00\x2A', b'\x49\x49\x2A\x00'
     # PNM
-    b'P1', b'P2', b'P3',
+    b'P1', b'P2', b'P3', b'P4', b'P5', b'P6',
     # WebP
-    b'RIFF',
+    b'RIFF' + Magic.offset(4) + b'WEBP',
     # PCX
     b'\n\x00', b'\n\x02', b'\n\x03', b'\n\x04', b'\n\x05',
     # JPEG
