@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+import codecs
 from unicodedata import bidirectional, normalize, category
 
 try:
@@ -106,12 +107,12 @@ def _prepare_output(
         if text:
             raise ValueError('Only one of `text` and `textfile` can be specified.')
         with open_location(textfile) as location:
-            text = location.get_stream().text.read()
-    if raw:
-        # convert from str to bytes
-        text = text.encode('latin-1')
+            if raw:
+                text = location.get_stream().read()
+            else:
+                text = location.get_stream().text.read()
     glyph_map = render_text(
-        font, text, margin=margin, direction=direction, align=align
+        font, text, raw=raw, margin=margin, direction=direction, align=align
     )
     return glyph_map
 
@@ -225,11 +226,14 @@ def output_sixel(
 # text rendering
 
 def render_text(
-        font, text, *, margin=None, adjust_bearings=0,
+        font, text, *, raw=False, margin=None, adjust_bearings=0,
         direction='', align='',
         missing='default', transformations=(),
     ):
     """Render text string to bitmap."""
+    if raw:
+        # convert from str to bytes if needed
+        text = as_raw_bytes(text, font.get_default_glyph())
     direction, line_direction, base_direction, align = _get_direction(
         font, text, direction, align
     )
@@ -483,6 +487,7 @@ def _get_text_glyphs(
         for _line in lines
     )
 
+
 def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
@@ -526,3 +531,20 @@ def _iter_labels(font, text, missing='raise'):
         else:
             yield font.get_glyph(labeltype(remaining[:1]), missing=missing)
             remaining = remaining[1:]
+
+
+def as_raw_bytes(text, default):
+    """Convert input text str to raw bytes."""
+    if isinstance(text, bytes):
+        return text
+    # note that we use latin-1 strings to represent bytes here
+    # if no replacement char or it has no codepoint, replace with empty
+    default_cp = default.codepoint.decode('latin-1')
+    # register the codepoint for replacement char
+    def _handler(e):
+        return default_cp, e.end
+    codecs.register_error('custom_replace', _handler)
+    # see input string as a sequence of bytes to render through codepage
+    # replace anything with more than 8-bit codepoints
+    text = text.encode('latin-1', errors='custom_replace')
+    return text
