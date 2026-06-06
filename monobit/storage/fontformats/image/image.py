@@ -21,7 +21,7 @@ from monobit.core import Font, Glyph, Codepoint
 from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
     create_image_colours, RGBTable, create_gradient,
-    write_imagefile,
+    write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 )
 
 from monobit.storage.utils.limitations import ensure_single
@@ -107,29 +107,8 @@ def _identify_background(colours, background):
 if Image:
     @loaders.register(
         name='image',
-        patterns=(
-            '*.png', '*.bmp', '*.gif', '*.tif', '*.tiff',
-            '*.ppm', '*.pgm', '*.pbm', '*.pnm', '*.webp',
-            '*.pcx', '*.tga', '*.jpg', '*.jpeg',
-        ),
-        magic=(
-            # PNG
-            b'\x89PNG\r\n\x1a\n',
-            # BMP
-            #b'BM',   # -- clash with bmfont b'BMF'
-            # GIF
-            b'GIF87a', b'GIF89a',
-            # TIFF
-            b'\x4D\x4D\x00\x2A', b'\x49\x49\x2A\x00'
-            # PNM
-            b'P1', b'P2', b'P3',
-            # WebP
-            b'RIFF',
-            # PCX
-            b'\n\x00', b'\n\x02', b'\n\x03', b'\n\x04', b'\n\x05',
-            # JPEG
-            b'\xFF\xD8\xFF',
-        ),
+        patterns=IMAGE_PATTERNS,
+        magic=IMAGE_MAGIC,
     )
     def load_image(
             infile,

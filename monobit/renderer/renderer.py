@@ -9,6 +9,9 @@ import logging
 import codecs
 from unicodedata import bidirectional, normalize, category
 
+from monobit.base import safe_import
+Image = safe_import('PIL.Image')
+
 try:
     from bidi.algorithm import get_display, get_base_level
 except Exception as e:
@@ -52,7 +55,7 @@ from ..storage.location import open_location
 from ..storage.utils.limitations import ensure_single
 from ..plumbing import scriptable
 from .glyphmap import GlyphMap
-from .createchart import write_imagefile
+from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 
 
 DIRECTIONS = {
@@ -229,44 +232,49 @@ def output_sixel(
     outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
-@renderers.register('image')
-def output_image(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
-        margin:Coord=None, direction:str='', align:str='',
-        image_format:str='png',
-        image_mode:str='RGB',
-        border:RGB=None,
-        paper:RGB=RGB(255, 255, 255),
-        ink:RGB=RGB(0, 0, 0),
-    ):
-    """
-    Render text to image.
+if Image:
 
-    text: text to render
-    textfile: input file with text to render
-    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
-    margin: HxV margin around the text, in pixels (default: minimum needed)
-    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
-    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
-    image_format: image file format (default: 'png')
-    image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
-    paper: background colour R,G,B 0--255 (default: 255,255,255)
-    ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
-    border: border colour R,G,B 0--255 (default: same as paper)
-    """
-    glyph_map = _prepare_output(
-        fonts, outfile,
-        text=text, textfile=textfile, raw=raw,
-        margin=margin, direction=direction, align=align,
+    @renderers.register(
+        name='image',
+        patterns=IMAGE_PATTERNS,
     )
-    if border is None:
-        border = paper
-    img, = glyph_map.to_images(
-        border=border, paper=paper, ink=ink,
-        transparent=False,
-        image_mode=image_mode,
-    )
-    write_imagefile(outfile, img, image_format)
+    def output_image(
+            fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+            margin:Coord=None, direction:str='', align:str='',
+            image_format:str='png',
+            image_mode:str='RGB',
+            border:RGB=None,
+            paper:RGB=RGB(255, 255, 255),
+            ink:RGB=RGB(0, 0, 0),
+        ):
+        """
+        Render text to image.
+
+        text: text to render
+        textfile: input file with text to render
+        raw: interpret text input as codepoints (raw bytes) instead of characters (default)
+        margin: HxV margin around the text, in pixels (default: minimum needed)
+        direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+        align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
+        image_format: image file format (default: 'png')
+        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        paper: background colour R,G,B 0--255 (default: 255,255,255)
+        ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
+        border: border colour R,G,B 0--255 (default: same as paper)
+        """
+        glyph_map = _prepare_output(
+            fonts, outfile,
+            text=text, textfile=textfile, raw=raw,
+            margin=margin, direction=direction, align=align,
+        )
+        if border is None:
+            border = paper
+        img, = glyph_map.to_images(
+            border=border, paper=paper, ink=ink,
+            transparent=False,
+            image_mode=image_mode,
+        )
+        write_imagefile(outfile, img, image_format)
 
 
 ###############################################################################

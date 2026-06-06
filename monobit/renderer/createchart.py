@@ -20,9 +20,8 @@ from monobit.storage.fontfiles import output_pack_or_font
 from monobit.encoding.unicode import is_showable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
+from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 
-
-DEFAULT_IMAGE_FORMAT = 'png'
 
 charters = MagicRegistry(default_text='text')
 
@@ -240,9 +239,12 @@ def chart_sixel(
         glyph_map.as_sixel(paper=paper, border=border, ink=ink)
     )
 
-if Image:
 
-    @charters.register(name='image')
+if Image:
+    @charters.register(
+        name='image',
+        patterns=IMAGE_PATTERNS,
+    )
     def chart_image(
             fonts, outfile, *,
             image_format:str='png',
@@ -294,14 +296,6 @@ if Image:
             image_mode=image_mode,
         )
         write_imagefile(outfile, img, image_format)
-
-
-def write_imagefile(outfile, img, image_format):
-    """Write a PIL image to file."""
-    try:
-        img.save(outfile, format=image_format or Path(outfile).suffix[1:])
-    except (KeyError, ValueError, TypeError):
-        img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
 
 
 ###############################################################################
