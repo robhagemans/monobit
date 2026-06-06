@@ -23,7 +23,7 @@ from monobit.base.struct import little_endian as le
 from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
-from monobit.render import GlyphMap, grid_map, RGBTable
+from monobit.renderer import GlyphMap, grid_map, RGBTable
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP

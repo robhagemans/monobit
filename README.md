@@ -209,14 +209,14 @@ MC multi-cell glyphs
 Charts
 ------
 
-These write-only formats output a table of glyphs.  
+Use the `chart` command to output an annotated table of glyphs.  
 
 | Format            | Short Name   |
 |-------------------|--------------|
-| Text              | `chart`      |
+| Text              | `text`       |
 | Block elements    | `blocks`     |
 | ANSI colours      | `shades`     |
-| Image [P]         | `imagechart` |
+| Image [P]         | `image`      |
 | Sixel image       | `sixel`      |
 | PDF [R]           | `pdf`        |
 

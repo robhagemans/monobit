@@ -18,7 +18,7 @@ class TestChart(BaseTester):
     def test_export_pdf(self):
         """Test exporting pdf files."""
         pdf_file = self.temp_path / 'chart.pdf'
-        monobit.save(self.prop, pdf_file)
+        monobit.chart(self.prop, pdf_file)
         # we're only checking a pdf file was produced
         # the file is timestamped so not fully reproducible
         with open(pdf_file, 'rb') as pdf:
@@ -28,29 +28,29 @@ class TestChart(BaseTester):
     def test_export_chart(self):
         """Test exporting text chart."""
         txt_file = self.temp_path / 'chart.txt'
-        monobit.save(self.prop, txt_file, format='chart', inklevels='-@', border=' ', grid_positioning=False)
+        monobit.chart(self.prop, txt_file, format='text', inklevels='-@', border=' ', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'chart.txt') as model:
             self.assertListEqual(list(output), list(model))
 
     def test_export_blocks(self):
         """Test exporting blocks chart."""
         txt_file = self.temp_path / 'blocks.txt'
-        monobit.save(self.prop, txt_file, format='blocks', grid_positioning=False)
+        monobit.chart(self.prop, txt_file, format='blocks', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'blocks.txt') as model:
             self.assertListEqual(list(output), list(model))
 
     def test_export_shades(self):
         """Test exporting shaded blocks chart."""
         txt_file = self.temp_path / 'shades.txt'
-        monobit.save(self.prop, txt_file, format='shades', grid_positioning=False)
+        monobit.chart(self.prop, txt_file, format='shades', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'shades.txt') as model:
             self.assertListEqual(list(output), list(model))
 
     def test_export_sixel(self):
-        """Test exporting shaded blocks chart."""
+        """Test exporting sixel chart."""
         from pathlib import Path
         txt_file = self.temp_path / 'sixels.txt'
-        monobit.save(self.prop, txt_file, format='sixel', grid_positioning=False)
+        monobit.chart(self.prop, txt_file, format='sixel', grid_positioning=False)
         with open(txt_file) as output, open(self.font_path / 'sixels.txt') as model:
             self.assertListEqual(list(output), list(model))
 

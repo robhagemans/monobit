@@ -1,5 +1,5 @@
 """
-monobit.render.blocks - output pixels as text using block elements
+monobit.renderer.blocks - output pixels as text using block elements
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

@@ -13,7 +13,7 @@ from codecs import escape_decode
 import monobit
 from monobit.plumbing import wrap_main
 from monobit.base import Coord, RGB
-from monobit.render import render
+from monobit.renderer import render_text
 from monobit.core import Font
 
 
@@ -237,7 +237,7 @@ def main():
             transformations.append((Font.outline, (), {}))
         #######################################################################
         # render
-        glyph_map = render(
+        glyph_map = render_text(
             font, args.text,
             margin=args.margin,
             direction=args.direction, align=args.align, adjust_bearings=args.expand,

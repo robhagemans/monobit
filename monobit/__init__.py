@@ -14,7 +14,7 @@ from .base import FileFormatError, UnsupportedError
 from .storage import load, save, loaders, savers
 from .plumbing import scriptables as _operations
 from .encoding import encoder, encodings
-from .render import render, chart
+from .renderer import render_text, render, chart
 
 
 # inject font operations into main module namespace

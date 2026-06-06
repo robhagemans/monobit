@@ -45,7 +45,7 @@ class TestColour(BaseTester):
             text = 't'
         else:
             text = b't'
-        rendered_text = monobit.render(font2, text).as_shades(border=(0,0,0))
+        rendered_text = monobit.render_text(font2, text).as_shades(border=(0,0,0))
         assert_text_eq(ascii(rendered_text), self.sampletext)
 
     def test_yaff_colour(self):

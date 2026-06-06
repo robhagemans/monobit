@@ -92,23 +92,24 @@ def print_help(command_args, usage, operations, global_options):
                 continue
             func = ns.func
             _print_section(op, func)
-            if op in ('load', 'save', 'to'):
+            if func.passthrough:
                 _print_context_help(**vars(ns))
 
 
-def _print_context_help(command, args, kwargs, **ignore):
+def _print_context_help(command, func, args, kwargs, **ignore):
     format = kwargs.get('format', '')
+    funcs = []
     if command == 'load':
         funcs = container_loaders.get_for(format=format)
-        if not funcs:
-            funcs = loaders.get_for(format=format)
-    else:
+    elif command in ('save', 'to'):
         funcs = container_savers.get_for(format=format)
-        if not funcs:
-            funcs = savers.get_for(format=format)
+    if not funcs:
+        funcs = func.passthrough.get_for(format=format)
     if funcs:
         func = funcs[0]
         _print_section(f'{command} -format={func.format}', func)
+    if command not in ('load', 'save', 'to'):
+        return
     container_format = kwargs.get('container_format', '')
     if command == 'load':
         funcs = decoders.get_for(format=container_format)

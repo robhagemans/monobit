@@ -27,7 +27,7 @@ from .base import (
 ##############################################################################
 # loading
 
-@scriptable(wrapper=True, record=False)
+@scriptable(passthrough=loaders)
 def load(infile:Any='', *, format:str='', container_format:str='', match_case:bool=False, **kwargs):
     """
     Read font(s) from file.
@@ -176,7 +176,7 @@ def load_all(root_location, *, format='', **kwargs):
 ##############################################################################
 # saving
 
-@scriptable(wrapper=True, record=False, pack_operation=True)
+@scriptable(passthrough=savers, pack_operation=True, output=True)
 def save(
         pack_or_font,
         outfile:Any='', *,
@@ -192,6 +192,22 @@ def save(
     container_format: container/wrapper formats separated by . (default: infer from filename)
     overwrite: if outfile is a path, allow overwriting existing file
     """
+    return output_pack_or_font(
+        pack_or_font, outfile,
+        format=format, overwrite=overwrite,
+        container_format=container_format, registry=savers,
+        **kwargs
+    )
+
+
+def output_pack_or_font(
+        pack_or_font,
+        outfile, *,
+        format, overwrite,
+        container_format,
+        registry,
+        **kwargs
+    ):
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
     if outfile == sys.stdout:
@@ -199,7 +215,7 @@ def save(
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
     if not pack:
-        raise ValueError('No fonts to save')
+        raise ValueError('No fonts to output')
     make_dir = format in container_savers.get_formats()
     with open_location(
             outfile, mode='w', overwrite=overwrite,
@@ -208,64 +224,64 @@ def save(
             make_dir=make_dir,
         ) as location:
         if location.is_dir():
-            _save_container(
-                pack, location, format=format, **location.argdict
+            _output_to_container(
+                pack, location, format=format, registry=registry,
+                **location.argdict
             )
         else:
-            _save_stream(
-                pack, location.get_stream(), format=format, **location.argdict
+            _output_to_stream(
+                pack, location.get_stream(), format=format, registry=registry,
+                **location.argdict
             )
     return pack_or_font
 
 
-def _save_stream(pack, outstream, *, format='', **kwargs):
+def _output_to_stream(pack, outstream, *, format, registry, **kwargs):
     """Save fonts to an open stream."""
-    matching_savers = savers.get_for(outstream, format=format)
-    if not matching_savers:
+    matching = registry.get_for(outstream, format=format)
+    if not matching:
         if format:
             raise ValueError(f'Format specification `{format}` not recognised')
         else:
             raise ValueError(
-                f'Could not infer output file format from filename `{outstream.name}`, '
+                f'Could not infer output file format from filename {outstream.name}, '
                 'please specify -format'
             )
-    if len(matching_savers) > 1:
+    if len(matching) > 1:
         raise ValueError(
-            f"Format for output filename '{outstream.name}' is ambiguous: "
+            f"Format for output filename {outstream.name} is ambiguous: "
             f'specify -format with one of the values '
-            f'({", ".join(_s.format for _s in matching_savers)})'
+            f'({", ".join(_s.format for _s in matching)})'
         )
-    saver, *_ = matching_savers
-    logging.info('Saving `%s` as %s.', outstream.name, saver.format)
+    outputter, *_ = matching
+    logging.info('Outputting %s as format `%s`.', outstream.name, outputter.format)
     # apply wrappers to saver function
-    saver = manage_arguments(saver)
-    saver(pack, outstream, **kwargs)
+    outputter = manage_arguments(outputter)
+    outputter(pack, outstream, **kwargs)
 
 
-def _save_container(pack, location, *, format, **kwargs):
+def _output_to_container(pack, location, *, format, registry, **kwargs):
     """Save font(s) to container."""
     for saver in iter_funcs_from_registry(
             container_savers, instream=None, format=format
         ):
         logging.info(
-            "Saving '%s' as container format `%s`", location.path, saver.format
+            "Outputting %s as container format `%s`", location.path, saver.format
         )
         saver(pack, location, **kwargs)
         break
     else:
-        save_all(pack, location, format=format, **kwargs)
+        _output_all(pack, location, format=format, registry=registry, **kwargs)
 
 
-def save_all(
-        pack, location, *, format='', template='', **kwargs
-    ):
+def _output_all(pack, location, *, format, registry, template='', **kwargs):
     """Save fonts to a container."""
     format = format or DEFAULT_TEXT_FORMAT
-    logging.info('Writing all to `%s`.', location)
+    logging.info('Outputting all to %s.', location)
     for font in pack:
         if format and not template:
             # generate name from format
-            template = savers.get_template(format)
+            template = registry.get_template(format)
         # fill out template
         name = font.format_properties(template)
         # sanitise name
@@ -275,11 +291,12 @@ def save_all(
         filename = location.unused_name(name)
         try:
             with location.join(filename) as new_location:
-                _save_stream(
+                _output_to_stream(
                     Pack(font),
                     new_location.get_stream(),
                     format=format,
+                    registry=registry,
                     **kwargs
                 )
         except (FileFormatError, UnsupportedError) as e:
-            logging.error('Could not save `%s`: %s', filename, e)
+            logging.error('Could not output %s: %s', filename, e)

@@ -18,7 +18,7 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.render import (
+from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
     create_image_colours, RGBTable, create_gradient,
     write_imagefile,
