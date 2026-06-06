@@ -98,7 +98,8 @@ def render(
 
 def _prepare_output(
         fonts, outfile, *,
-        text:str='', textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        text:str='', textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
     ):
     font = ensure_single(fonts)
     if textfile:
@@ -106,6 +107,9 @@ def _prepare_output(
             raise ValueError('Only one of `text` and `textfile` can be specified.')
         with open_location(textfile) as location:
             text = location.get_stream().text.read()
+    if raw:
+        # convert from str to bytes
+        text = text.encode('latin-1')
     glyph_map = render_text(
         font, text, margin=margin, direction=direction, align=align
     )
@@ -114,7 +118,8 @@ def _prepare_output(
 
 @renderers.register('text')
 def output_text(
-        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
         format:str='text', inklevels:str=' @', border:str=None
     ):
     """
@@ -122,6 +127,7 @@ def output_text(
 
     text: text to render
     textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
@@ -130,7 +136,7 @@ def output_text(
     """
     glyph_map = _prepare_output(
         fonts, outfile,
-        text=text, textfile=textfile,
+        text=text, textfile=textfile, raw=raw,
         margin=margin, direction=direction, align=align,
     )
     outfile.text.write(glyph_map.as_text(inklevels=inklevels, border=border))
@@ -138,7 +144,8 @@ def output_text(
 
 @renderers.register('blocks')
 def output_blocks(
-        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
         format:str='text', resolution:Coord=Coord(2, 2)
     ):
     """
@@ -146,6 +153,7 @@ def output_blocks(
 
     text: text to render
     textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
@@ -153,7 +161,7 @@ def output_blocks(
     """
     glyph_map = _prepare_output(
         fonts, outfile,
-        text=text, textfile=textfile,
+        text=text, textfile=textfile, raw=raw,
         margin=margin, direction=direction, align=align,
     )
     outfile.text.write(glyph_map.as_blocks(resolution=resolution))
@@ -161,7 +169,8 @@ def output_blocks(
 
 @renderers.register('shades')
 def output_shades(
-        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
         paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
     ):
     """
@@ -169,6 +178,7 @@ def output_shades(
 
     text: text to render
     textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
@@ -178,7 +188,7 @@ def output_shades(
     """
     glyph_map = _prepare_output(
         fonts, outfile,
-        text=text, textfile=textfile,
+        text=text, textfile=textfile, raw=raw,
         margin=margin, direction=direction, align=align,
     )
     outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
@@ -186,7 +196,8 @@ def output_shades(
 
 @renderers.register('sixel')
 def output_sixel(
-        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
         paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
     ):
     """
@@ -194,6 +205,7 @@ def output_sixel(
 
     text: text to render
     textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
@@ -203,7 +215,7 @@ def output_sixel(
     """
     glyph_map = _prepare_output(
         fonts, outfile,
-        text=text, textfile=textfile,
+        text=text, textfile=textfile, raw=raw,
         margin=margin, direction=direction, align=align,
     )
     outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
