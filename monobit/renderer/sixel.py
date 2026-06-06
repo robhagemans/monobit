@@ -21,21 +21,24 @@ def bits_to_sixel(bits):
 def matrix_to_sixel(matrix, *, inklevels, border):
     """Convert bit matrix to sixel/characters."""
     bitblockrows = bit_block_rows(matrix, nrows=6, ncols=1)
-    sixel_matrices = {}
-    border = border or inklevels[0]
+    sixel_matrices = []
+    colour_defs = []
+    if border is None:
+        border = inklevels[0]
     for level, (r, g, b) in enumerate((border, *inklevels), -1):
-        sixel_matrices[r, g, b] = [
+        colour_defs.append((r, g, b))
+        sixel_matrices.append([
             ''.join(
                 bits_to_sixel(_b == level for _b in _bitblock)
                 for _bitblock in _row
             )
             for _row in bitblockrows
-        ]
+        ])
     seq = [
         f'#{level};2;{(r*100)//255};{(g*100)//255};{(b*100)//255};'
-        for level, (r, g, b) in enumerate(sixel_matrices.keys())
+        for level, (r, g, b) in enumerate(colour_defs)
     ]
-    for sixel_rows in zip(*sixel_matrices.values()):
+    for sixel_rows in zip(*sixel_matrices):
         seq.append(
             '$'.join(
                 f'#{_level}'

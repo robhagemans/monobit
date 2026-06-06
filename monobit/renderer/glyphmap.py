@@ -308,7 +308,7 @@ class _Canvas:
             return ''
         if self.levels > len(inklevels):
             raise ValueError(f'Requires at least {self.levels} greyscale levels.')
-        if not border:
+        if border is None:
             border = inklevels[0]
         colourdict = {-1: border} | {
             _i: _v for _i, _v in enumerate(inklevels)
