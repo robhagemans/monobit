@@ -765,7 +765,7 @@ class Raster:
         elif direction == 'r':
             return type(self)(
                 tuple(
-                    empty[:_y] + _row[:self.width-_y]
+                    empty[:_y] + _row[:max(0, self.width-_y)]
                     for _row, _y in zip(self._pixels, shiftrange)
                 ),
                 inklevels=self._inklevels,
