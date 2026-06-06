@@ -346,7 +346,7 @@ if Image:
     @savers.register(linked=load_image)
     def save_image(
             fonts, outfile, *,
-            image_format:str='png',
+            image_format:str='',
             image_mode:str='RGB',
             glyphs_per_line:int=32,
             margin:Coord=Coord(0, 0),

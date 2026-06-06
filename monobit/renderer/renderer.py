@@ -82,7 +82,7 @@ renderers = MagicRegistry(default_text='text')
 @scriptable(passthrough=renderers, output=True, pack_operation=True)
 def render(
         fonts, outfile:Any='', *,
-        format:str='text', container_format:str='', overwrite:bool=False,
+        format:str='', container_format:str='', overwrite:bool=False,
         **kwargs
     ):
     """
@@ -241,7 +241,7 @@ if Image:
     def output_image(
             fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
             margin:Coord=None, direction:str='', align:str='',
-            image_format:str='png',
+            image_format:str='',
             image_mode:str='RGB',
             border:RGB=None,
             paper:RGB=RGB(255, 255, 255),
