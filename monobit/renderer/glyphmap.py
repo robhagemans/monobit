@@ -300,7 +300,7 @@ class _Canvas:
 
     def as_text(
             self, *,
-            inklevels=' @', border=None,
+            inklevels=' @', border=' ',
             start='', end='\n'
         ):
         """Convert glyph map to text."""
@@ -308,8 +308,6 @@ class _Canvas:
             return ''
         if self.levels > len(inklevels):
             raise ValueError(f'Requires at least {self.levels} greyscale levels.')
-        if border is None:
-            border = inklevels[0]
         colourdict = {-1: border} | {
             _i: _v for _i, _v in enumerate(inklevels)
         }

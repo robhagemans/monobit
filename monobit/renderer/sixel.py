@@ -24,9 +24,12 @@ def matrix_to_sixel(matrix, *, inklevels, border):
     bitblockrows = bit_block_rows(matrix, nrows=6, ncols=1, fillvalue=-2)
     sixel_matrices = []
     colour_defs = []
-    if border is None:
-        border = inklevels[0]
-    for level, (r, g, b) in enumerate((border, *inklevels), -1):
+    # if border not specified, leave uncoloured (terminal background)
+    if border is not None:
+        iterator = enumerate((border, *inklevels), -1)
+    else:
+        iterator = enumerate(inklevels)
+    for level, (r, g, b) in iterator:
         colour_defs.append((r, g, b))
         sixel_matrices.append([
             ''.join(
