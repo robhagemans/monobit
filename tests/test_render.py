@@ -18,7 +18,7 @@ class TestRender(BaseTester):
     # all directions
 
     def test_render_ltr_ttb(self):
-        text = monobit.render(self.fixed4x6, 't\n12', direction='l t f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='l t f').as_text(inklevels='.@')
         assert_text_eq(text, """\
 .@......
 @@@.....
@@ -35,7 +35,7 @@ class TestRender(BaseTester):
 """)
 
     def test_render_ltr_btt(self):
-        text = monobit.render(self.fixed4x6, 't\n12', direction='l b f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='l b f').as_text(inklevels='.@')
         assert_text_eq(text, """\
 .@...@..
 @@..@.@.
@@ -52,7 +52,7 @@ class TestRender(BaseTester):
 """)
 
     def test_render_rtl_ttb(self):
-        text = monobit.render(self.fixed4x6, 't\n12', direction='r t f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='r t f').as_text(inklevels='.@')
         assert_text_eq(text, """\
 .....@..
 ....@@@.
@@ -69,7 +69,7 @@ class TestRender(BaseTester):
 """)
 
     def test_render_rtl_btt(self):
-        text = monobit.render(self.fixed4x6, 't\n12', direction='r b f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='r b f').as_text(inklevels='.@')
         assert_text_eq(text, """\
 .@...@..
 @.@.@@..
@@ -87,7 +87,7 @@ class TestRender(BaseTester):
 
 
     def test_render_ttb_rtl(self):
-        text = monobit.render(self.fixed4x6, 't\n12', direction='t r f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='t r f').as_text(inklevels='.@')
         assert_text_eq(text, """\
 .@...@..
 @@..@@@.
@@ -105,7 +105,7 @@ class TestRender(BaseTester):
 
 
     def test_render_ttb_ltr(self):
-        text = monobit.render(self.fixed4x6, 't\n12', direction='t l f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='t l f').as_text(inklevels='.@')
         assert_text_eq(text, """\
 .@...@..
 @@@.@@..
@@ -123,7 +123,7 @@ class TestRender(BaseTester):
 
 
     def test_render_btt_rtl(self):
-        text = monobit.render(self.fixed4x6, 't\n12', direction='b r f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='b r f').as_text(inklevels='.@')
         assert_text_eq(text, """\
 .@......
 @.@.....
@@ -140,7 +140,7 @@ class TestRender(BaseTester):
 """)
 
     def test_render_btt_ltr(self):
-        text = monobit.render(self.fixed4x6, 't\n12', direction='b l f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='b l f').as_text(inklevels='.@')
         assert_text_eq(text, """\
 .....@..
 ....@.@.
@@ -182,7 +182,7 @@ class TestRender(BaseTester):
     def test_compose(self):
         file = get_stringio(self.unscii8_sample)
         f,  *_ = monobit.load(file, format='unifont')
-        text = monobit.render(
+        text = monobit.render_text(
             f, 'u\u0305\u0327u \u0305\u0327 \u0305 \u0327'
         ).as_text(inklevels='.@')
         assert_text_eq(text, self.composed)
@@ -191,7 +191,7 @@ class TestRender(BaseTester):
 
     def test_render_text(self):
         """Render text format, 2 ink levels"""
-        text = monobit.render(self.fixed4x6, '1').as_text(inklevels='-X', border='.')
+        text = monobit.render_text(self.fixed4x6, '1').as_text(inklevels='-X', border='.')
         assert_text_eq(text, """\
 -X-.
 XX-.
@@ -203,7 +203,7 @@ XXX.
 
     def test_render_blocks_1x1(self):
         """Render 1x1 blocks format, 2 ink levels"""
-        text = monobit.render(self.fixed4x6, '1').as_blocks((1, 1))
+        text = monobit.render_text(self.fixed4x6, '1').as_blocks((1, 1))
         assert_text_eq(text, (
             ' █  \n'
             '██  \n'
@@ -215,7 +215,7 @@ XXX.
 
     def test_render_blocks_2x2(self):
         """Render 2x2 blocks format, 2 ink levels"""
-        text = monobit.render(self.fixed4x6, '1').as_blocks((2, 2))
+        text = monobit.render_text(self.fixed4x6, '1').as_blocks((2, 2))
         assert_text_eq(text, (
             '▟ \n'
             '▐ \n'
@@ -224,7 +224,7 @@ XXX.
 
     def test_render_blocks_2x3(self):
         """Render 2x3 blocks format, 2 ink levels"""
-        text = monobit.render(self.fixed4x6, '1').as_blocks((2, 3))
+        text = monobit.render_text(self.fixed4x6, '1').as_blocks((2, 3))
         assert_text_eq(text, (
             '🬫 \n'
             '🬍🬃\n'
@@ -232,7 +232,7 @@ XXX.
 
     def test_render_blocks_2x4(self):
         """Render 2x4 blocks format, 2 ink levels"""
-        text = monobit.render(self.fixed4x6, '1').as_blocks((2, 4))
+        text = monobit.render_text(self.fixed4x6, '1').as_blocks((2, 4))
         assert_text_eq(text, (
             '⢺⠀\n'
             '⠉⠁\n'
@@ -240,7 +240,7 @@ XXX.
 
     def test_render_blocks_1x2(self):
         """Render 1x2 blocks format, 2 ink levels"""
-        text = monobit.render(self.fixed4x6, '1').as_blocks((1, 2))
+        text = monobit.render_text(self.fixed4x6, '1').as_blocks((1, 2))
         assert_text_eq(text, (
             '▄█  \n'
             ' █  \n'
@@ -249,7 +249,7 @@ XXX.
 
     def test_render_blocks_1x3(self):
         """Render 1x3 blocks format, 2 ink levels"""
-        text = monobit.render(self.fixed4x6, '1').as_blocks((1, 3))
+        text = monobit.render_text(self.fixed4x6, '1').as_blocks((1, 3))
         assert_text_eq(text, (
             '🬋█  \n'
             '🬋🬎🬋 \n'
@@ -265,7 +265,7 @@ levels: 4
     def test_render_4shades(self):
         """Render 1x1 shaded blocks format, 4 ink levels"""
         font, *_ = monobit.load(get_stringio(self.shades_4))
-        text = monobit.render(font, '-').as_shades(border=(0,0,0))
+        text = monobit.render_text(font, '-').as_shades(border=(0,0,0))
         assert_text_eq(text,
             '\x1b[38;2;0;0;0m\u2588\x1b[0m'
             '\x1b[38;2;85;85;85m\u2588\x1b[0m'
@@ -283,7 +283,7 @@ levels: 16
     def test_render_16shades(self):
         """Render 1x1 shaded blocks format, 16 ink levels"""
         font, *_ = monobit.load(get_stringio(self.shades_16))
-        text = monobit.render(font, '-').as_shades(border=(0,0,0))
+        text = monobit.render_text(font, '-').as_shades(border=(0,0,0))
         assert_text_eq(text,
             '\x1b[38;2;0;0;0m\u2588\x1b[0m'
             '\x1b[38;2;17;17;17m\u2588\x1b[0m'
@@ -314,7 +314,7 @@ levels: 256
     def test_render_256shades(self):
         """Render 1x1 shaded blocks format, 256 ink levels"""
         font, *_ = monobit.load(get_stringio(self.shades_256))
-        text = monobit.render(font, '-').as_shades(border=(0,0,0))
+        text = monobit.render_text(font, '-').as_shades(border=(0,0,0))
         assert_text_eq(text,
             ''.join(
                 f'\x1b[38;2;{_s};{_s};{_s}m\u2588\x1b[0m'

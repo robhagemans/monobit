@@ -5,7 +5,7 @@ monobit.render - render to bitmaps
 licence: https://opensource.org/licenses/MIT
 """
 
-from .renderer import render
+from .renderer import render, render_text
 from .chart import (
     create_chart, grid_map, grid_traverser, write_imagefile,
 )

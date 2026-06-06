@@ -75,13 +75,13 @@ ALIGNMENTS = {
 renderers = MagicRegistry(default_text='text')
 
 @scriptable(passthrough=renderers, output=True, pack_operation=True)
-def write(
+def render(
         fonts, outfile:Any='', *,
         format:str='text', container_format:str='', overwrite:bool=False,
         **kwargs
     ):
     """
-    Write text to file or standard output, using the current font.
+    Render text to file or standard output, using the current font.
 
     outfile: output file or path (default: stdout)
     format: rendering style (text, blocks, shades, sixel; default: text)
@@ -106,7 +106,7 @@ def _prepare_output(
             raise ValueError('Only one of `text` and `textfile` can be specified.')
         with open_location(textfile) as location:
             text = location.get_stream().text.read()
-    glyph_map = render(
+    glyph_map = render_text(
         font, text, margin=margin, direction=direction, align=align
     )
     return glyph_map
@@ -189,7 +189,7 @@ def output_sixel(
 ###############################################################################
 # text rendering
 
-def render(
+def render_text(
         font, text, *, margin=None, adjust_bearings=0,
         direction='', align='',
         missing='default', transformations=(),
@@ -219,13 +219,13 @@ def render(
         for _row in glyphs
     )
     if direction in ('top-to-bottom', 'bottom-to-top'):
-        _render = _render_vertical
+        _render_func = _render_vertical
         min_margin = 0, _adjust_margins_vertical(glyphs)
     else:
-        _render = _render_horizontal
+        _render_func = _render_horizontal
         min_margin = _adjust_margins_horizontal(glyphs), 0
     margin_x, margin_y = margin or min_margin
-    glyph_map = _render(
+    glyph_map = _render_func(
         font, glyphs, margin_x, margin_y, align, adjust_bearings
     )
     return glyph_map

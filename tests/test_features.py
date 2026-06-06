@@ -44,18 +44,18 @@ class TestFeatures(BaseTester):
 
     def test_render_bdf_vertical(self):
         vert2, *_ = monobit.load(self.font_path / 'vertical.bdf')
-        text2 = monobit.render(vert2, b'\x27\x27', direction='top-to-bottom').as_text(inklevels='.@')
+        text2 = monobit.render_text(vert2, b'\x27\x27', direction='top-to-bottom').as_text(inklevels='.@')
         assert text2 == self.verttext, f'"""{text2}"""\n != \n"""{self.verttext}"""'
 
     def test_render_yaff_vertical(self):
         vert1, *_ = monobit.load(self.font_path / 'vertical.yaff')
-        text1 = monobit.render(vert1, b'\x27\x27', direction='top-to-bottom').as_text(inklevels='.@')
+        text1 = monobit.render_text(vert1, b'\x27\x27', direction='top-to-bottom').as_text(inklevels='.@')
         assert text1 == self.verttext, f'"""{text1}"""\n != \n"""{self.verttext}"""'
 
     def test_render_sfnt_vertical(self):
         vert1, *_ = monobit.load(self.font_path / 'vertical.otb')
         # we currently don't support storing non-unicode encoding in sfnt
-        text1 = monobit.render(vert1, '\x27\x27', direction='top-to-bottom').as_text(inklevels='.@')
+        text1 = monobit.render_text(vert1, '\x27\x27', direction='top-to-bottom').as_text(inklevels='.@')
         assert text1 == self.verttext, f'"""{text1}"""\n != \n"""{self.verttext}"""'
 
 
@@ -89,7 +89,7 @@ class TestFeatures(BaseTester):
             text = 'testing'
         else:
             text = b'testing'
-        rendered_text = monobit.render(prop2, text).as_text(inklevels=inklevels)
+        rendered_text = monobit.render_text(prop2, text).as_text(inklevels=inklevels)
         assert_text_eq(rendered_text, self.proptext)
 
     def test_amiga_proportional(self):
@@ -215,7 +215,7 @@ class TestFeatures(BaseTester):
             text = 'sjifjij'
         else:
             text = b'sjifjij'
-        rendered_text = monobit.render(webby_mod2, text).as_text(inklevels='.@')
+        rendered_text = monobit.render_text(webby_mod2, text).as_text(inklevels='.@')
         assert_text_eq(rendered_text, self.kerntext)
 
     def test_render_yaff_kerning(self):
@@ -243,7 +243,7 @@ class TestFeatures(BaseTester):
 
     def test_render_yaff_kerning_bearings(self):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
-        text = monobit.render(font, b'01234').as_text(inklevels='.@')
+        text = monobit.render_text(font, b'01234').as_text(inklevels='.@')
         assert_text_eq(text, self.testtext)
 
     def _render_kerning_bearings(self, format, char=False, **save_kwargs):
@@ -257,7 +257,7 @@ class TestFeatures(BaseTester):
             text = '01234'
         else:
             text = b'01234'
-        rendered_text = monobit.render(font, text).as_text(inklevels='.@')
+        rendered_text = monobit.render_text(font, text).as_text(inklevels='.@')
         assert_text_eq(rendered_text, self.testtext)
 
     def test_render_bmf_kerning_bearings_binary(self):
@@ -291,9 +291,9 @@ class TestFeatures(BaseTester):
         monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
         font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
         if char:
-            text = monobit.render(font, '012').as_text(inklevels=inklevels)
+            text = monobit.render_text(font, '012').as_text(inklevels=inklevels)
         else:
-            text = monobit.render(font, b'012').as_text(inklevels=inklevels)
+            text = monobit.render_text(font, b'012').as_text(inklevels=inklevels)
         assert_text_eq(text, self.bearing_testtext)
 
     # proportional formats that have writers but don't support negative bearings:
@@ -373,7 +373,7 @@ class TestFeatures(BaseTester):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
         monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
         font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
-        text = monobit.render(font, '678', direction='ttb').as_text(inklevels='.@')
+        text = monobit.render_text(font, '678', direction='ttb').as_text(inklevels='.@')
         assert_text_eq(text, self.testvert)
 
     def test_vert_neg_bearings_yaff(self):
