@@ -118,7 +118,7 @@ def output_text(
         format:str='text', inklevels:str=' @', border:str=None
     ):
     """
-    Write as text characters
+    Render text as text characters
 
     text: text to render
     textfile: input file with text to render
@@ -137,9 +137,12 @@ def output_text(
 
 
 @renderers.register('blocks')
-def output_blocks(fonts, outfile, *, resolution:Coord=Coord(2, 2)):
+def output_blocks(
+        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        format:str='text', resolution:Coord=Coord(2, 2)
+    ):
     """
-    Write as block semigraphics
+    Render text as block semigraphics
 
     text: text to render
     textfile: input file with text to render
@@ -158,31 +161,51 @@ def output_blocks(fonts, outfile, *, resolution:Coord=Coord(2, 2)):
 
 @renderers.register('shades')
 def output_shades(
-        glyph_map, outfile, *,
+        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
         paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
     ):
     """
-    Write using ANSI escape colours
+    Render text using ANSI escape colours
 
+    text: text to render
+    textfile: input file with text to render
+    margin: HxV margin around the text, in pixels (default: minimum needed)
+    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     paper: R,G,B colour for uninked areas (default: 255,255,255)
     ink: R,G,B colour for inked areas (default: 0,0,0)
     border: R,G,B colour for inked areas (default: terminal background)
     """
+    glyph_map = _prepare_output(
+        fonts, outfile,
+        text=text, textfile=textfile,
+        margin=margin, direction=direction, align=align,
+    )
     outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
 @renderers.register('sixel')
 def output_sixel(
-        glyph_map, outfile, *,
+        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
         paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
     ):
     """
-    Write as sixel graphics
+    Render text as sixel graphics
 
+    text: text to render
+    textfile: input file with text to render
+    margin: HxV margin around the text, in pixels (default: minimum needed)
+    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     paper: R,G,B colour for uninked areas (default: 255,255,255)
     ink: R,G,B colour for inked areas (default: 0,0,0)
     border: R,G,B colour for inked areas (default: terminal background)
     """
+    glyph_map = _prepare_output(
+        fonts, outfile,
+        text=text, textfile=textfile,
+        margin=margin, direction=direction, align=align,
+    )
     outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
