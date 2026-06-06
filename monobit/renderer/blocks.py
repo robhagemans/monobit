@@ -115,7 +115,7 @@ def matrix_to_blocks(matrix, ncols, nrows):
     return block_matrix
 
 
-def bit_block_rows(matrix, nrows, ncols):
+def bit_block_rows(matrix, nrows, ncols, fillvalue=0):
     """Convert matrix into rows of blocks of pixels of given size."""
     return tuple(
         tuple(
@@ -126,7 +126,7 @@ def bit_block_rows(matrix, nrows, ncols):
                     for _row in range(nrows)
                     for _col in range(ncols)
                 ),
-                fillvalue=0
+                fillvalue=fillvalue
             )
         )
         for _bitrows in zip_longest(
