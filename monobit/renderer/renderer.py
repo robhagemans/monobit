@@ -50,7 +50,7 @@ from ..storage.fontfiles import output_pack_or_font
 from ..storage.magic import MagicRegistry
 from ..storage.location import open_location
 from ..storage.utils.limitations import ensure_single
-from ..plumbing import scriptable, manage_arguments
+from ..plumbing import scriptable
 from .glyphmap import GlyphMap
 
 

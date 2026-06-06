@@ -42,6 +42,7 @@ def scriptable(
     script_args: additional arguments not given in annotations
     pack_operation: function works on sequence of fonts
     passthrough: enable keyword argument passthrough
+    output: mark as output function
     """
     if not args:
         # called as @scriptable(script_args=...)
