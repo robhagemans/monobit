@@ -52,6 +52,7 @@ from ..storage.location import open_location
 from ..storage.utils.limitations import ensure_single
 from ..plumbing import scriptable
 from .glyphmap import GlyphMap
+from .createchart import write_imagefile
 
 
 DIRECTIONS = {
@@ -220,6 +221,44 @@ def output_sixel(
         margin=margin, direction=direction, align=align,
     )
     outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
+
+
+@renderers.register('image')
+def output_image(
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
+        image_format:str='png',
+        image_mode:str='RGB',
+        border:RGB=RGB(32, 32, 32),
+        paper:RGB=RGB(0, 0, 0),
+        ink:RGB=RGB(255, 255, 255),
+    ):
+    """
+    Render text to image.
+
+    text: text to render
+    textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
+    margin: HxV margin around the text, in pixels (default: minimum needed)
+    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
+    image_format: image file format (default: 'png')
+    image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+    paper: background colour R,G,B 0--255 (default: 0,0,0)
+    ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
+    border: border colour R,G,B 0--255 (default 32,32,32)
+    """
+    glyph_map = _prepare_output(
+        fonts, outfile,
+        text=text, textfile=textfile, raw=raw,
+        margin=margin, direction=direction, align=align,
+    )
+    img, = glyph_map.to_images(
+        border=border, paper=paper, ink=ink,
+        transparent=False,
+        image_mode=image_mode,
+    )
+    write_imagefile(outfile, img, image_format)
 
 
 ###############################################################################
