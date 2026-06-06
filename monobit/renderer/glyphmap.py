@@ -1,5 +1,5 @@
 """
-monobit.render.glyphmap - glyph maps
+monobit.renderer.glyphmap - glyph maps
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

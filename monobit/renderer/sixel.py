@@ -1,5 +1,5 @@
 """
-monobit.render.sixel - output pixels to terminal through sixel escape codes
+monobit.renderer.sixel - output pixels to terminal through sixel escape codes
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

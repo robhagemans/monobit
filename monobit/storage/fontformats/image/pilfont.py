@@ -15,7 +15,7 @@ from monobit.storage import loaders, savers
 from monobit.base import FileFormatError
 from monobit.core import Font, Glyph
 from monobit.base.struct import big_endian as be
-from monobit.render import GlyphMap
+from monobit.renderer import GlyphMap
 
 from monobit.storage.utils.limitations import ensure_single
 

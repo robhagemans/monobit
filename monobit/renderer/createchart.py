@@ -1,5 +1,5 @@
 """
-monobit.render.chart - create font chart
+monobit.renderer.createchart - create font chart
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

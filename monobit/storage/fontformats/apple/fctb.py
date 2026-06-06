@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 from monobit.base.struct import big_endian as be
 from monobit.base import RGBTable
-from monobit.render import create_gradient
+from monobit.renderer import create_gradient
 
 
 # https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_V_1986.pdf
