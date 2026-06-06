@@ -308,6 +308,9 @@ class _Canvas:
             return ''
         if self.levels > len(inklevels):
             raise ValueError(f'Requires at least {self.levels} greyscale levels.')
+        # if unspecified, border is terminal background
+        if border is None:
+            border = ' '
         colourdict = {-1: border} | {
             _i: _v for _i, _v in enumerate(inklevels)
         }
