@@ -351,17 +351,22 @@ levels: 256
         with open(file) as output:
             text = output.read()
         assert_text_eq(text,
-            '\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
-            ' \x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
-            ' \n\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
-            ' \x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[0m'
-            ' \n\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
-            ' \x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[0m'
-            ' \n\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
-            ' \x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
-            ' \n\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[0m'
-            ' \x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[0m \n\x1b[0m'
-            ' \x1b[0m \x1b[0m \x1b[0m \x1b[0m \x1b[0m \x1b[0m \x1b[0m \n'
+            '\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\n\x1b[38;2;255;255;255m█'
+            '\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█'
+            '\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\n\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█'
+            '\x1b[0m\n\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\n\x1b[38;2;255;255;255m█'
+            '\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█'
+            '\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\n\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█'
+            '\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\n'
         )
 
     def test_render_command_sixel(self):
@@ -369,7 +374,7 @@ levels: 256
         monobit.render(self.fixed4x6, file, text='12', format='sixel')
         with open(file) as output:
             text = output.read()
-        assert_text_eq(text, '\x1bPq#0;2;0;0;0;#1;2;100;100;100;#0L?N?LEH?$#1Q^O?QXU?-\x1b\\')
+        assert_text_eq(text, '\x1bPq#0;2;0;0;0;#1;2;0;0;0;#2;2;100;100;100;#0___~___~$#1L?N?LEH?$#2Q^O?QXU?-\x1b\\')
 
     def test_render_command_image(self):
         file = self.temp_path / 'rendered.png'
@@ -377,11 +382,11 @@ levels: 256
         with open(file, 'rb') as output:
             bin = output.read()
         assert bin == (
-            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x08\x00\x00'
-            b'\x00\x06\x08\x02\x00\x00\x00qgH\xac\x00\x00\x006IDATx\x9ce'
-            b'\x8dA\n\x000\x08\xc3R_\xe2\xff?\xd9\x1d:\x86\xc3\x1cJP\xaa'
-            b"\x00\xb6\x81\xee\x9e^\xb1`[R&%\xe9-\xa6\x17?)\x01\xf7\xd4N\xe5\xe7"
-            b"\xe6\x00'\xb5\x1f\x18\xe9Bk\x10\x00\x00\x00\x00IEND\xaeB`\x82"
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x08\x00\x00\x00"
+            b"\x06\x08\x02\x00\x00\x00qgH\xac\x00\x00\x000IDATx\x9ce\x8cA\x0e"
+            b"\x00 \x0c\xc2\xca\xfe\xff\xe7z0\x9a9{ \x10\x08Q\x93\xa8\x00"
+            b"\xd0=\x80\xba\xf3\xd5\xea}\xf7\xc5\xcb\xbc\x1as\xf5\xeb\x0f\x0b"
+            b"\xe8g&\xe9Z\x00\\'\x00\x00\x00\x00IEND\xaeB`\x82"
         )
 
 
