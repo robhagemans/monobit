@@ -18,7 +18,7 @@ class TestRender(BaseTester):
     # all directions
 
     def test_render_ltr_ttb(self):
-        text = monobit.render_text(self.fixed4x6, 't\n12', direction='l t f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='l t f').as_text(inklevels='.@', border='.')
         assert_text_eq(text, """\
 .@......
 @@@.....
@@ -35,7 +35,7 @@ class TestRender(BaseTester):
 """)
 
     def test_render_ltr_btt(self):
-        text = monobit.render_text(self.fixed4x6, 't\n12', direction='l b f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='l b f').as_text(inklevels='.@', border='.')
         assert_text_eq(text, """\
 .@...@..
 @@..@.@.
@@ -52,7 +52,7 @@ class TestRender(BaseTester):
 """)
 
     def test_render_rtl_ttb(self):
-        text = monobit.render_text(self.fixed4x6, 't\n12', direction='r t f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='r t f').as_text(inklevels='.@', border='.')
         assert_text_eq(text, """\
 .....@..
 ....@@@.
@@ -69,7 +69,7 @@ class TestRender(BaseTester):
 """)
 
     def test_render_rtl_btt(self):
-        text = monobit.render_text(self.fixed4x6, 't\n12', direction='r b f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='r b f').as_text(inklevels='.@', border='.')
         assert_text_eq(text, """\
 .@...@..
 @.@.@@..
@@ -87,7 +87,7 @@ class TestRender(BaseTester):
 
 
     def test_render_ttb_rtl(self):
-        text = monobit.render_text(self.fixed4x6, 't\n12', direction='t r f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='t r f').as_text(inklevels='.@', border='.')
         assert_text_eq(text, """\
 .@...@..
 @@..@@@.
@@ -105,7 +105,7 @@ class TestRender(BaseTester):
 
 
     def test_render_ttb_ltr(self):
-        text = monobit.render_text(self.fixed4x6, 't\n12', direction='t l f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='t l f').as_text(inklevels='.@', border='.')
         assert_text_eq(text, """\
 .@...@..
 @@@.@@..
@@ -123,7 +123,7 @@ class TestRender(BaseTester):
 
 
     def test_render_btt_rtl(self):
-        text = monobit.render_text(self.fixed4x6, 't\n12', direction='b r f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='b r f').as_text(inklevels='.@', border='.')
         assert_text_eq(text, """\
 .@......
 @.@.....
@@ -140,7 +140,7 @@ class TestRender(BaseTester):
 """)
 
     def test_render_btt_ltr(self):
-        text = monobit.render_text(self.fixed4x6, 't\n12', direction='b l f').as_text(inklevels='.@')
+        text = monobit.render_text(self.fixed4x6, 't\n12', direction='b l f').as_text(inklevels='.@', border='.')
         assert_text_eq(text, """\
 .....@..
 ....@.@.
@@ -184,7 +184,7 @@ class TestRender(BaseTester):
         f,  *_ = monobit.load(file, format='unifont')
         text = monobit.render_text(
             f, 'u\u0305\u0327u \u0305\u0327 \u0305 \u0327'
-        ).as_text(inklevels='.@')
+        ).as_text(inklevels='.@', border='.')
         assert_text_eq(text, self.composed)
 
     # rendering output formats
