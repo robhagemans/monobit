@@ -7,23 +7,12 @@ Print a banner using a bitmap font
 import sys
 import argparse
 import logging
-from codecs import escape_decode
 
 import monobit
-from monobit.plumbing import wrap_main
+from monobit.plumbing import wrap_main, unescape
 from monobit.base import Coord, RGB
 from monobit.renderer import render_text
 from monobit.core import Font
-
-
-def unescape(text):
-    """Interpolate escape sequences."""
-    # escape_decode is undocumented/unsupported and will leave \u escapes untouched
-    # simpler variant - using documented/supported codecs
-    #   raw-unicode-escape encodes to latin-1, leaves existing backslashes untouched but escapes non-latin-1
-    #   (while unicode-escape would escape backslashes and all non-ascii)
-    #   unicode-escape decodes from latin-1 and unescapes standard c escapes, \x.. and \u.. \U..
-    return text.encode('raw-unicode-escape').decode('unicode_escape')
 
 
 def main():
