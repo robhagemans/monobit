@@ -322,6 +322,55 @@ levels: 256
             ) + '\n'
         )
 
+    # render command (render to file)
+
+    def test_render_command_text(self):
+        file = self.temp_path / 'rendered.txt'
+        monobit.render(self.fixed4x6, file, text='12', format='text', inklevels='.@')
+        with open(file) as output:
+            text = output.read()
+        assert_text_eq(text, """\
+.@...@..
+@@..@.@.
+.@....@.
+.@...@..
+@@@.@@@.
+........
+""")
+
+    def test_render_command_blocks(self):
+        file = self.temp_path / 'rendered.blocks'
+        monobit.render(self.fixed4x6, file, text='12', format='blocks', resolution='2x3')
+        with open(file) as output:
+            text = output.read()
+        assert_text_eq(text, '🬫\xa0🬅🬓\n🬍🬃🬍🬃\n')
+
+    def test_render_command_shades(self):
+        file = self.temp_path / 'rendered.shades'
+        monobit.render(self.fixed4x6, file, text='12', format='shades')
+        with open(file) as output:
+            text = output.read()
+        assert_text_eq(text,
+            '\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
+            ' \x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
+            ' \n\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
+            ' \x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[0m'
+            ' \n\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
+            ' \x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[0m'
+            ' \n\x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
+            ' \x1b[38;2;0;0;0m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;0;0;0m█\x1b[0m\x1b[0m'
+            ' \n\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[0m'
+            ' \x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[38;2;255;255;255m█\x1b[0m\x1b[0m \n\x1b[0m'
+            ' \x1b[0m \x1b[0m \x1b[0m \x1b[0m \x1b[0m \x1b[0m \x1b[0m \n'
+        )
+
+    def test_render_command_sixel(self):
+        file = self.temp_path / 'rendered.sixel'
+        monobit.render(self.fixed4x6, file, text='12', format='sixel')
+        with open(file) as output:
+            text = output.read()
+        assert_text_eq(text, '\x1bPq#0;2;0;0;0;#1;2;100;100;100;#0L?N?LEH?$#1Q^O?QXU?-\x1b\\')
+
 
 if __name__ == '__main__':
     unittest.main()
