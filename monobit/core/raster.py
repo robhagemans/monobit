@@ -61,6 +61,13 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
+# shift calculation for shearing
+
+def shear_shift(y, xpitch, ypitch, modulo):
+    """Shift amount for a given row height when shearing."""
+    return (y*xpitch + modulo)//ypitch - (modulo==ypitch)
+
+
 class Raster:
     """Bit matrix."""
 
@@ -748,9 +755,10 @@ class Raster:
         """Transform raster by shearing diagonally."""
         direction = direction[0].lower()
         xpitch, ypitch = pitch
+        # horizontal shift amount for each row
         shiftrange = range(self.height)[::-1]
         shiftrange = (
-            (_y*xpitch + modulo)//ypitch - (modulo==ypitch)
+            shear_shift(_y, xpitch, ypitch, modulo)
             for _y in shiftrange
         )
         empty = self._paper * self.width
