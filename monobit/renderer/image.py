@@ -45,5 +45,4 @@ def write_imagefile(outfile, img, image_format):
     try:
         img.save(outfile, format=image_format or None)
     except (KeyError, ValueError, TypeError) as e:
-        logging.debug(e)
         img.save(outfile, format=DEFAULT_IMAGE_FORMAT)
