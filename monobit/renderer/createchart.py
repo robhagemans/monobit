@@ -105,7 +105,7 @@ def chart_blocks(
         padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
-        resolution:Coord=Coord(1, 1),
+        resolution:Coord=Coord(2, 3),
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=True,
         skip_empty_lines:bool=True,

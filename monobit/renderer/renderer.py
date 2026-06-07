@@ -153,7 +153,7 @@ def output_text(
 def output_blocks(
         fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        format:str='text', resolution:Coord=Coord(2, 2)
+        format:str='text', resolution:Coord=Coord(2, 3)
     ):
     """
     Render text as block semigraphics

@@ -125,8 +125,8 @@ def main():
         help=('output as image')
     )
     parser.add_argument(
-        '--blocks', nargs='?', const='1x1', default='',
-        help=('output as block element characters of given XxY density. Default: 1x1')
+        '--blocks', nargs='?', const='2x3', default='',
+        help=('output as block element characters of given XxY density. Default: 2x3')
     )
     parser.add_argument(
         '--shades', action='store_true',
