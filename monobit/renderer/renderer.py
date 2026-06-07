@@ -6,7 +6,11 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+import codecs
 from unicodedata import bidirectional, normalize, category
+
+from monobit.base import safe_import
+Image = safe_import('PIL.Image')
 
 try:
     from bidi.algorithm import get_display, get_base_level
@@ -49,8 +53,9 @@ from ..storage.fontfiles import output_pack_or_font
 from ..storage.magic import MagicRegistry
 from ..storage.location import open_location
 from ..storage.utils.limitations import ensure_single
-from ..plumbing import scriptable, manage_arguments
+from ..plumbing import scriptable
 from .glyphmap import GlyphMap
+from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 
 
 DIRECTIONS = {
@@ -77,7 +82,7 @@ renderers = MagicRegistry(default_text='text')
 @scriptable(passthrough=renderers, output=True, pack_operation=True)
 def render(
         fonts, outfile:Any='', *,
-        format:str='text', container_format:str='', overwrite:bool=False,
+        format:str='', container_format:str='', overwrite:bool=False,
         **kwargs
     ):
     """
@@ -98,30 +103,36 @@ def render(
 
 def _prepare_output(
         fonts, outfile, *,
-        text:str='', textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        text:str='', textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
     ):
     font = ensure_single(fonts)
     if textfile:
         if text:
             raise ValueError('Only one of `text` and `textfile` can be specified.')
         with open_location(textfile) as location:
-            text = location.get_stream().text.read()
+            if raw:
+                text = location.get_stream().read()
+            else:
+                text = location.get_stream().text.read()
     glyph_map = render_text(
-        font, text, margin=margin, direction=direction, align=align
+        font, text, raw=raw, margin=margin, direction=direction, align=align
     )
     return glyph_map
 
 
 @renderers.register('text')
 def output_text(
-        fonts, outfile, text:str='', *, textfile:str='', margin:Coord=None, direction:str='', align:str='',
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
         format:str='text', inklevels:str=' @', border:str=None
     ):
     """
-    Write as text characters
+    Render text as text characters
 
     text: text to render
     textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
@@ -130,19 +141,26 @@ def output_text(
     """
     glyph_map = _prepare_output(
         fonts, outfile,
-        text=text, textfile=textfile,
+        text=text, textfile=textfile, raw=raw,
         margin=margin, direction=direction, align=align,
     )
+    if border is None:
+        border = inklevels[0]
     outfile.text.write(glyph_map.as_text(inklevels=inklevels, border=border))
 
 
 @renderers.register('blocks')
-def output_blocks(fonts, outfile, *, resolution:Coord=Coord(2, 2)):
+def output_blocks(
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
+        format:str='text', resolution:Coord=Coord(2, 3)
+    ):
     """
-    Write as block semigraphics
+    Render text as block semigraphics
 
     text: text to render
     textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
@@ -150,7 +168,7 @@ def output_blocks(fonts, outfile, *, resolution:Coord=Coord(2, 2)):
     """
     glyph_map = _prepare_output(
         fonts, outfile,
-        text=text, textfile=textfile,
+        text=text, textfile=textfile, raw=raw,
         margin=margin, direction=direction, align=align,
     )
     outfile.text.write(glyph_map.as_blocks(resolution=resolution))
@@ -158,43 +176,119 @@ def output_blocks(fonts, outfile, *, resolution:Coord=Coord(2, 2)):
 
 @renderers.register('shades')
 def output_shades(
-        glyph_map, outfile, *,
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
         paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
     ):
     """
-    Write using ANSI escape colours
+    Render text using ANSI escape colours
 
-    paper: R,G,B colour for uninked areas (default: 255,255,255)
-    ink: R,G,B colour for inked areas (default: 0,0,0)
-    border: R,G,B colour for inked areas (default: terminal background)
+    text: text to render
+    textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
+    margin: HxV margin around the text, in pixels (default: minimum needed)
+    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
+    paper: R,G,B colour for uninked areas (default: 0,0,0)
+    ink: R,G,B colour for inked areas (default: 255,255,255)
+    border: R,G,B colour for inked areas (default: same as paper)
     """
+    glyph_map = _prepare_output(
+        fonts, outfile,
+        text=text, textfile=textfile, raw=raw,
+        margin=margin, direction=direction, align=align,
+    )
+    if border is None:
+        border = paper
     outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
 @renderers.register('sixel')
 def output_sixel(
-        glyph_map, outfile, *,
+        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        margin:Coord=None, direction:str='', align:str='',
         paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
     ):
     """
-    Write as sixel graphics
+    Render text as sixel graphics
 
+    text: text to render
+    textfile: input file with text to render
+    raw: interpret text input as codepoints (raw bytes) instead of characters (default)
+    margin: HxV margin around the text, in pixels (default: minimum needed)
+    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     paper: R,G,B colour for uninked areas (default: 255,255,255)
     ink: R,G,B colour for inked areas (default: 0,0,0)
-    border: R,G,B colour for inked areas (default: terminal background)
+    border: R,G,B colour for inked areas (default: same as paper)
     """
+    glyph_map = _prepare_output(
+        fonts, outfile,
+        text=text, textfile=textfile, raw=raw,
+        margin=margin, direction=direction, align=align,
+    )
+    if border is None:
+        border = paper
     outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
+
+
+if Image:
+
+    @renderers.register(
+        name='image',
+        patterns=IMAGE_PATTERNS,
+    )
+    def output_image(
+            fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+            margin:Coord=None, direction:str='', align:str='',
+            image_format:str='',
+            image_mode:str='RGB',
+            border:RGB=None,
+            paper:RGB=RGB(255, 255, 255),
+            ink:RGB=RGB(0, 0, 0),
+        ):
+        """
+        Render text to image.
+
+        text: text to render
+        textfile: input file with text to render
+        raw: interpret text input as codepoints (raw bytes) instead of characters (default)
+        margin: HxV margin around the text, in pixels (default: minimum needed)
+        direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+        align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
+        image_format: image file format (default: 'png')
+        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        paper: background colour R,G,B 0--255 (default: 255,255,255)
+        ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
+        border: border colour R,G,B 0--255 (default: same as paper)
+        """
+        glyph_map = _prepare_output(
+            fonts, outfile,
+            text=text, textfile=textfile, raw=raw,
+            margin=margin, direction=direction, align=align,
+        )
+        if border is None:
+            border = paper
+        img, = glyph_map.to_images(
+            border=border, paper=paper, ink=ink,
+            transparent=False,
+            image_mode=image_mode,
+        )
+        write_imagefile(outfile, img, image_format)
 
 
 ###############################################################################
 # text rendering
 
 def render_text(
-        font, text, *, margin=None, adjust_bearings=0,
+        font, text, *, raw=False, margin=None, adjust_bearings=0,
         direction='', align='',
         missing='default', transformations=(),
     ):
     """Render text string to bitmap."""
+    if raw:
+        # convert from str to bytes if needed
+        text = as_raw_bytes(text, font.get_default_glyph())
     direction, line_direction, base_direction, align = _get_direction(
         font, text, direction, align
     )
@@ -448,6 +542,7 @@ def _get_text_glyphs(
         for _line in lines
     )
 
+
 def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
@@ -491,3 +586,17 @@ def _iter_labels(font, text, missing='raise'):
         else:
             yield font.get_glyph(labeltype(remaining[:1]), missing=missing)
             remaining = remaining[1:]
+
+
+def as_raw_bytes(text, default):
+    """Convert input text str to raw bytes."""
+    if isinstance(text, bytes):
+        return text
+    # if no replacement char or it has no codepoint, replace with ?
+    def _handler(e):
+        return (default.codepoint or b'?') * (e.end - e.start), e.end
+    codecs.register_error('custom_replace', _handler)
+    # see input string as a sequence of bytes to render through codepage
+    # replace anything with more than 8-bit codepoints
+    text = text.encode('latin-1', errors='custom_replace')
+    return text

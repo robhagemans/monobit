@@ -7,31 +7,13 @@ Print a banner using a bitmap font
 import sys
 import argparse
 import logging
-import codecs
-from codecs import escape_decode
+from importlib.resources import open_text
 
 import monobit
-from monobit.plumbing import wrap_main
+from monobit.plumbing import wrap_main, unescape
 from monobit.base import Coord, RGB
 from monobit.renderer import render_text
 from monobit.core import Font
-
-
-def unescape(text):
-    """Interpolate escape sequences."""
-    # escape_decode is undocumented/unsupported and will leave \u escapes untouched
-    # simpler variant - using documented/supported codecs
-    #   raw-unicode-escape encodes to latin-1, leaves existing backslashes untouched but escapes non-latin-1
-    #   (while unicode-escape would escape backslashes and all non-ascii)
-    #   unicode-escape decodes from latin-1 and unescapes standard c escapes, \x.. and \u.. \U..
-    return text.encode('raw-unicode-escape').decode('unicode_escape')
-
-
-def register_handler(handler_name, default_char):
-    """Register an encode/decode error handler with custom replacement char."""
-    def _handler(e):
-        return default_char, e.end
-    codecs.register_error(handler_name, _handler)
 
 
 def main():
@@ -143,8 +125,8 @@ def main():
         help=('output as image')
     )
     parser.add_argument(
-        '--blocks', nargs='?', const='1x1', default='',
-        help=('output as block element characters of given XxY density. Default: 1x1')
+        '--blocks', nargs='?', const='2x3', default='',
+        help=('output as block element characters of given XxY density. Default: 2x3')
     )
     parser.add_argument(
         '--shades', action='store_true',
@@ -196,6 +178,8 @@ def main():
         args.text = unescape(args.text)
         args.inklevels = unescape(args.inklevels)
         #######################################################################
+        if not args.font:
+            args.font = open_text('monobit.resources', 'unscii-16.hex')
         # take first font from pack
         font, *_ = monobit.load(args.font, format=args.format)
         #######################################################################
@@ -212,16 +196,7 @@ def main():
                 'Using `--encoding=raw` as fallback.'
             )
             args.encoding = 'raw'
-        if args.encoding == 'raw':
-            # register the codepoint for replacement char
-            # note that we use latin-1 strings to represent bytes here
-            # if no replacement char or it has no codepoint, replace with empty
-            default_cp = font.get_default_glyph().codepoint.decode('latin-1')
-            register_handler('custom_replace', default_cp)
-            # see input string as a sequence of bytes to render through codepage
-            # replace anything with more than 8-bit codepoints
-            args.text = args.text.encode('latin-1', errors='custom_replace')
-        elif args.encoding:
+        if args.encoding and args.encoding != 'raw':
             font = font.modify(encoding=args.encoding).label()
         #######################################################################
         # line up effects
@@ -238,7 +213,7 @@ def main():
         #######################################################################
         # render
         glyph_map = render_text(
-            font, args.text,
+            font, args.text, raw=args.encoding=='raw',
             margin=args.margin,
             direction=args.direction, align=args.align, adjust_bearings=args.expand,
             missing='default',

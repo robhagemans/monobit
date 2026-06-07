@@ -221,7 +221,7 @@ class TestBigCell(BaseTester):
 class TestMultiCell(BaseTester):
     """Test exporting multi-cell fonts."""
 
-    unscii_16 = monobit.load(BaseTester.font_path / 'unscii-16.hex')
+    unscii_16 = monobit.load('monobit/resources/unscii-16.hex')
 
     unscii_16_A = """\
 ..@@..

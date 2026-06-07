@@ -11,6 +11,9 @@ import logging
 from types import SimpleNamespace
 from contextlib import contextmanager
 
+from ..base import CONVERTERS
+
+
 ARG_PREFIX = '-'
 GLOBAL_ARG_PREFIX = '--'
 FALSE_PREFIX = 'no-'
@@ -29,6 +32,10 @@ class IsSetFlag:
         return ''
 
 SET = IsSetFlag()
+
+
+class external_str(str):
+    """Marker for external script input, so that it can be treated differently."""
 
 
 def argrecord(command='', func=None, args=None, kwargs=None):
@@ -95,8 +102,29 @@ def _split_argv(*command_words):
         if arg in command_words:
             yield part_argv
             part_argv = []
-        part_argv.append(arg)
+        part_argv.append(external_str(arg))
     yield part_argv
+
+
+###############################################################################
+# unescape string inputs from command line
+
+def unescape(text):
+    """Interpolate escape sequences."""
+    # escape_decode is undocumented/unsupported and will leave \u escapes untouched
+    # simpler variant - using documented/supported codecs
+    #   raw-unicode-escape encodes to latin-1, leaves existing backslashes untouched but escapes non-latin-1
+    #   (while unicode-escape would escape backslashes and all non-ascii)
+    #   unicode-escape decodes from latin-1 and unescapes standard c escapes, \x.. and \u.. \U..
+    return text.encode('raw-unicode-escape').decode('unicode_escape')
+
+
+def _to_str(text=''):
+    if isinstance(text, external_str):
+        return unescape(text)
+    return text
+
+CONVERTERS[str] = _to_str
 
 
 ###############################################################################

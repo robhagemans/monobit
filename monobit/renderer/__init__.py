@@ -11,5 +11,6 @@ from .createchart import (
 )
 from .glyphmap import GlyphMap, glyph_to_image
 from .rgb import RGBTable, create_image_colours, create_gradient
+from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 
 from . import pdf

@@ -550,7 +550,7 @@ def _convert_amiga_props(amiga_props):
     name = bytes(amiga_props.dfh_Name).decode(_ENCODING).strip()
     if name:
         props.name = name
-    props.revision = amiga_props.dfh_Revision
+    props.revision = str(amiga_props.dfh_Revision)
     # tf_Style
     if amiga_props.tf_Style.FSF_BOLD:
         props.weight = 'bold'

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import monobit
 from monobit.plumbing import (
-    wrap_main, parse_subcommands, argrecord, GLOBAL_ARG_PREFIX
+    wrap_main, parse_subcommands, argrecord, GLOBAL_ARG_PREFIX, external_str
 )
 from monobit.plumbing.help import print_help
 
