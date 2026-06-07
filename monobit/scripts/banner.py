@@ -7,6 +7,7 @@ Print a banner using a bitmap font
 import sys
 import argparse
 import logging
+from importlib.resources import open_text
 
 import monobit
 from monobit.plumbing import wrap_main, unescape
@@ -177,6 +178,8 @@ def main():
         args.text = unescape(args.text)
         args.inklevels = unescape(args.inklevels)
         #######################################################################
+        if not args.font:
+            args.font = open_text('monobit.resources', 'unscii-16.hex')
         # take first font from pack
         font, *_ = monobit.load(args.font, format=args.format)
         #######################################################################
