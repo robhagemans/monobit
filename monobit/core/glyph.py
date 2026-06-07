@@ -14,7 +14,7 @@ from monobit.base import HasProps, checked_property, writable_property
 from monobit.base import Coord, Bounds, to_number, NOT_SET
 from monobit.plumbing.scripting import scriptable
 
-from .raster import Raster, turn_method
+from .raster import Raster, turn_method, shear_shift
 from .vector import StrokePath
 from .labels import Codepoint, Char, Tag, to_label
 
@@ -838,11 +838,12 @@ class Glyph(HasProps):
             return self
         pitch_x, pitch_y = pitch
         direction = direction[0].lower()
-        extra_width = (self.height-1) * pitch_x // pitch_y
         # adjustment to start diagonal at baseline
         modulo = pitch_y - (-self.shift_up*pitch_x) % pitch_y
+        # expand raster to support maximum horizontal shift
+        extra_width = shear_shift(self.height-1, pitch_x, pitch_y, modulo)
         # adjust for shift at baseline height, to keep it fixed
-        pre = (-self.shift_up * pitch_x + modulo) // pitch_y - (modulo==pitch_y)
+        pre = shear_shift(-self.shift_up, pitch_x, pitch_y, modulo)
         if direction == 'r':
             new_metrics = dict(
                 left_bearing=self.left_bearing-pre,
