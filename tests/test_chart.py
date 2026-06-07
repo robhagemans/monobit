@@ -35,7 +35,7 @@ class TestChart(BaseTester):
     def test_export_blocks(self):
         """Test exporting blocks chart."""
         txt_file = self.temp_path / 'blocks.txt'
-        monobit.chart(self.prop, txt_file, format='blocks', grid_positioning=False)
+        monobit.chart(self.prop, txt_file, format='blocks', grid_positioning=False, resolution=(1, 1))
         with open(txt_file) as output, open(self.font_path / 'blocks.txt') as model:
             self.assertListEqual(list(output), list(model))
 
