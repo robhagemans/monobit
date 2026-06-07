@@ -23,7 +23,7 @@ IMAGE_MAGIC = (
     # PNG
     b'\x89PNG\r\n\x1a\n',
     # BMP
-    b'BM' + Magic.offset(10) + b'\0\0\c\0\0\0' + Magic.offset(4) + b'\1\0' + Magic.offset(1) + b'\0',
+    b'BM' + Magic.offset(10) + b'\0\0\x0c\0\0\0' + Magic.offset(4) + b'\1\0' + Magic.offset(1) + b'\0',
     b'BM' + Magic.offset(10) + b'\0\0' + Magic.offset(1) + b'\0\0\0' + Magic.offset(8) + b'\1\0' + Magic.offset(1) + b'\0',
     # GIF
     b'GIF87a', b'GIF89a',
