@@ -592,12 +592,9 @@ def as_raw_bytes(text, default):
     """Convert input text str to raw bytes."""
     if isinstance(text, bytes):
         return text
-    # note that we use latin-1 strings to represent bytes here
-    # if no replacement char or it has no codepoint, replace with empty
-    default_cp = default.codepoint.decode('latin-1')
-    # register the codepoint for replacement char
+    # if no replacement char or it has no codepoint, replace with ?
     def _handler(e):
-        return default_cp, e.end
+        return (default.codepoint or b'?') * (e.end - e.start), e.end
     codecs.register_error('custom_replace', _handler)
     # see input string as a sequence of bytes to render through codepage
     # replace anything with more than 8-bit codepoints
