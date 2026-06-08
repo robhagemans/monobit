@@ -9,11 +9,11 @@ import json
 import shlex
 import logging
 from pathlib import Path
-import xml.etree.ElementTree as etree
 from math import ceil, sqrt
 from itertools import zip_longest
 
 from monobit.base import safe_import
+etree = safe_import('xml.etree.ElementTree')
 Image = safe_import('PIL.Image')
 
 from monobit.base import Coord, Bounds, RGB

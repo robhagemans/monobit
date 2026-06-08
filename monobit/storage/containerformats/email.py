@@ -16,9 +16,10 @@ https://docs.python.org/3/library/email.examples.html
 > See https://docs.python.org/license.html for more information.
 """
 
-import email
-from email.message import EmailMessage
-from email.policy import SMTP, default
+# stdlib but heavy, use lazy import
+from monobit.base import safe_import
+email = safe_import('email')
+
 import mimetypes
 from pathlib import Path
 
@@ -64,7 +65,7 @@ class EmailContainer(FlatFilterContainer):
         if not data:
             return
         # Create the message
-        msg = EmailMessage()
+        msg = email.message.EmailMessage()
         msg.preamble = 'This is a multi-part message in MIME format.\n'
         for filename, filedict in data.items():
             msg['Subject'] = filedict['subject']
@@ -84,11 +85,11 @@ class EmailContainer(FlatFilterContainer):
                 filedata, maintype=maintype, subtype=subtype, filename=filename
             )
         # Now send or store the message
-        outstream.write(msg.as_bytes(policy=SMTP))
+        outstream.write(msg.as_bytes(policy=email.policy.SMTP))
 
     @classmethod
     def decode_all(cls, instream):
-        msg = email.message_from_binary_file(instream, policy=default)
+        msg = email.message_from_binary_file(instream, policy=email.policy.default)
         data = {}
         counter = 1
         for part in msg.walk():
