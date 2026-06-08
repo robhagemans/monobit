@@ -11,38 +11,9 @@ from unicodedata import bidirectional, normalize, category
 
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
-
-try:
-    from bidi.algorithm import get_display, get_base_level
-except Exception as e:
-    logging.debug('Could not import module `bidi`: %s', e)
-    def _bidi_not_found(*args, **kwargs):
-        raise ImportError(
-            'Bidirectional text requires module `python-bidi`; not found.'
-        )
-    get_display = _bidi_not_found
-    get_base_level = _bidi_not_found
-
-try:
-    from arabic_reshaper import reshape
-except Exception as e:
-    logging.debug('Could not import module `arabic_reshaper`: %s', e)
-    def reshape(text):
-        raise ImportError(
-            'Arabic text requires module `arabic-reshaper`; not found.'
-        )
-
-try:
-    from uniseg.graphemecluster import grapheme_clusters
-except Exception as e:
-    logging.debug('Could not import module `uniseg`: %s', e)
-    logging.warning(
-        'Module `uniseg` not available. Grapheme clusters may not render correctly.'
-    )
-    def grapheme_clusters(text):
-        """Use NFC as poor-man's grapheme cluster. This works... sometimes."""
-        for c in normalize('NFC', text):
-            yield c
+algorithm = safe_import('bidi.algorithm')
+arabic_reshaper = safe_import('arabic_reshaper')
+graphemecluster = safe_import('uniseg.graphemecluster')
 
 from ..base.binary import ceildiv
 from ..base import Props, Coord, RGB, Any
@@ -472,8 +443,12 @@ def _get_direction(font, text, direction, align):
             direction = 'normal'
         else:
             # use the class of the first directional character encountered
-            base_level = get_base_level(text)
-            base_direction = ('left-to-right', 'right-to-left')[base_level]
+            if algorithm:
+                base_level = algorithm.get_base_level(text)
+                base_direction = ('left-to-right', 'right-to-left')[base_level]
+            else:
+                logging.error('Bidirectional text requires module `python-bidi`; not found.')
+                base_direction = 'left-to-right'
     else:
         if direction == 'normal':
             if not isstr:
@@ -516,12 +491,14 @@ def _get_text_glyphs(
     """
     if isinstance(text, str) and direction not in ('top-to-bottom', 'bottom-to-top'):
         # reshape Arabic glyphs to contextual forms
-        try:
-            text = reshape(text)
-        except ImportError as e:
+        if arabic_reshaper:
+            text = arabic_reshaper.reshape(text)
+        else:
             # check common Arabic range - is there anything to reshape?
             if any(ord(_c) in range(0x600, 0x700) for _c in text):
-                logging.warning(e)
+                logging.warning(
+                    'Arabic text requires module `arabic-reshaper`; not found.'
+                )
         # put characters in visual order instead of logical
         if direction == 'normal':
             # decide direction based on bidi algorithm
@@ -529,7 +506,10 @@ def _get_text_glyphs(
                 'left-to-right': 'L',
                 'right-to-left': 'R'
             }[base_direction]
-            text = get_display(text, base_dir=base_dir)
+            if algorithm:
+                text = algorithm.get_display(text, base_dir=base_dir)
+            else:
+                logging.error('Bidirectional text requires module `python-bidi`; not found.')
     lines = text.splitlines()
     if direction in ('right-to-left', 'bottom-to-top'):
         # reverse glyph order for rendering
@@ -546,6 +526,13 @@ def _get_text_glyphs(
 def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
+        if graphemecluster:
+            grapheme_clusters = graphemecluster.grapheme_clusters
+        else:
+            # Use NFC as poor-man's grapheme cluster. This works... sometimes.
+            def grapheme_clusters(text):
+                for c in normalize('NFC', text):
+                    yield c
         # split text into standard grapheme clusters
         text = tuple(grapheme_clusters(text))
         # find the longest *number of standard grapheme clusters* per label
