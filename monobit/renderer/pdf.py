@@ -80,7 +80,7 @@ if reportlab:
 
         # assume A4
         # note mm is a )constant defining number of points in a millimetre
-        mm = reportlab.lib.units.mm
+        from reportlab.lib.units import mm
         # 1 point = 1/72 in
         page_x, page_y = page_size.x*mm, page_size.y*mm
         # margins and title position
@@ -113,7 +113,8 @@ if reportlab:
         direction = direction or font.direction
         right_align = aligns_right(direction)
 
-        canvas = reportlab.pdfgen.canvas.Canvas(outstream)
+        from reportlab.pdfgen.canvas import Canvas
+        canvas = Canvas(outstream)
         # draw title on first page
         canvas.translate(margin_x, margin_y)
         canvas.setFont('Helvetica-Bold', title_y)
