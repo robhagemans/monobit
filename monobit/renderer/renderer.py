@@ -269,9 +269,9 @@ def render_text(
     )
     # subset font to glyphs needed only
     if transformations:
+        rfont = font.modify(_g for _row in glyphs for _g in _row)
         # apply transformations to subsetted font
         # note we keep the original font as implied line metrics can differ
-        rfont = font.modify(_g for _row in glyphs for _g in _row)
         for func, args, kwargs in transformations:
             rfont = func(rfont, *args, **kwargs)
         # get glyph rows again, from transformed font
@@ -490,12 +490,12 @@ def _get_text_glyphs(
     Glyphs are reordered so that they can be rendered ltr ttb or ttb ltr
     """
     if isinstance(text, str) and direction not in ('top-to-bottom', 'bottom-to-top'):
-        # reshape Arabic glyphs to contextual forms
-        if arabic_reshaper:
-            text = arabic_reshaper.reshape(text)
-        else:
-            # check common Arabic range - is there anything to reshape?
-            if any(ord(_c) in range(0x600, 0x700) for _c in text):
+        # check common Arabic range - is there anything to reshape?
+        if any(ord(_c) in range(0x600, 0x700) for _c in text):
+            # reshape Arabic glyphs to contextual forms
+            if arabic_reshaper:
+                text = arabic_reshaper.reshape(text)
+            else:
                 logging.warning(
                     'Arabic text requires module `arabic-reshaper`; not found.'
                 )
