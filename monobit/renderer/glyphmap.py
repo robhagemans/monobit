@@ -396,6 +396,18 @@ class _Canvas:
         ]
         return type(self)(self._pixels[::-1], levels=self.levels, labels=labels)
 
+    def mirror(self):
+        """Reverse pixels horizontally."""
+        # adjust labels
+        labels = [
+            (_text, self.width-_x-1, _y, not _ralign)
+            for _text, _x, _y, _ralign in self._labels
+        ]
+        return type(self)(
+            [_row[::-1] for _row in self._pixels],
+            levels=self.levels, labels=labels
+        )
+
     def transpose(self):
         """Transpose glyph."""
         # adjust labels

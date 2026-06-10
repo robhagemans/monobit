@@ -48,9 +48,9 @@ class EncodingRegistry:
         return self._encoders[index]
 
     def __getitem__(self, name):
+        """Get charmap from registry by name; raise NotFoundError if not found."""
         index = self._get_index(name)
         encoder = self._encoders[index]
-        """Get charmap from registry by name; raise NotFoundError if not found."""
         # must be either an Encoder or a callable that produces one
         if not isinstance(encoder, Encoder):
             encoder = encoder()
