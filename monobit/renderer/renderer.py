@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 import codecs
-from unicodedata import bidirectional, normalize, category
+from unicodedata import bidirectional, normalize, category, combining
 
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
@@ -526,20 +526,24 @@ def _get_text_glyphs(
 def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
-        if graphemecluster:
-            grapheme_clusters = graphemecluster.grapheme_clusters
-        else:
-            # Use NFC as poor-man's grapheme cluster. This works... sometimes.
-            def grapheme_clusters(text):
-                for c in normalize('NFC', text):
-                    yield c
-        # split text into standard grapheme clusters
-        text = tuple(grapheme_clusters(text))
-        # find the longest *number of standard grapheme clusters* per label
-        # this will often be 1, except when the font has defined e.g. Zł or Ft
-        # as a char label for a single glyph
         labelset = font.get_chars()
-        max_length = max((len(tuple(grapheme_clusters(_c))) for _c in labelset), default=0)
+        combining_classes = {combining(_c) for _c in text}
+        if combining_classes == {0}:
+            max_length = max((len(tuple(_c)) for _c in labelset), default=0)
+        else:
+            if graphemecluster:
+                grapheme_clusters = graphemecluster.grapheme_clusters
+            else:
+                # Use NFC as poor-man's grapheme cluster. This works... sometimes.
+                def grapheme_clusters(text):
+                    for c in normalize('NFC', text):
+                        yield c
+            # split text into standard grapheme clusters
+            text = tuple(grapheme_clusters(text))
+            # find the longest *number of standard grapheme clusters* per label
+            # this will often be 1, except when the font has defined e.g. Zł or Ft
+            # as a char label for a single glyph
+            max_length = max((len(tuple(grapheme_clusters(_c))) for _c in labelset), default=0)
         # we need to combine multiple elements back into str to match a glyph
         def labeltype(seq):
             return Char(''.join(seq))
