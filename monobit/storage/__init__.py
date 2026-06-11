@@ -10,9 +10,3 @@ from .fontfiles import load, save
 from .magic import Regex, Glob, Magic
 from .streams import Stream, KeepOpen, get_stringio, get_bytesio
 from . import streams
-
-
-# ensure plugins get loaded
-from . import containerformats as _containerformats
-from . import fontformats as _fontformats
-from . import wrapperformats as _wrapperformats

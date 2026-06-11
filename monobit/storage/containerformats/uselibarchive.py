@@ -8,12 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-
 from monobit.base import safe_import
 libarchive = safe_import('libarchive')
-if libarchive:
-    from libarchive.entry import FileType
-
 
 from monobit.base import FileFormatError
 from ..base import containers

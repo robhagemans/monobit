@@ -24,6 +24,13 @@ from .base import (
 )
 
 
+def load_plugins():
+    """Ensure plugins get loaded."""
+    from . import containerformats
+    from . import fontformats
+    from . import wrapperformats
+
+
 ##############################################################################
 # loading
 
@@ -37,6 +44,7 @@ def load(infile:Any='', *, format:str='', container_format:str='', match_case:bo
     container_format: container/wrapper formats separated by . (default: infer from magic number or filename)
     match_case: interpret path as case-sensitive (if file system supports it; default: False)
     """
+    load_plugins()
     infile = infile or sys.stdin
     with open_location(
             infile, mode='r', match_case=match_case,
@@ -155,6 +163,7 @@ def _load_container(location, *, format='', **kwargs):
 
 def load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
+    load_plugins()
     logging.info('Reading all from `%s`.', root_location)
     packs = Pack()
     for location in root_location.walk():
@@ -192,6 +201,7 @@ def save(
     container_format: container/wrapper formats separated by . (default: infer from filename)
     overwrite: if outfile is a path, allow overwriting existing file
     """
+    load_plugins()
     return output_pack_or_font(
         pack_or_font, outfile,
         format=format, overwrite=overwrite,

@@ -3,17 +3,28 @@ Print a banner using a bitmap font
 (c) 2019--2026 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
-
 import sys
 import argparse
 import logging
+import pickle
 from importlib.resources import open_text
+
+from monobit.base import safe_import
+platformdirs = safe_import('platformdirs')
 
 import monobit
 from monobit.plumbing import wrap_main, unescape
 from monobit.base import Coord, RGB
 from monobit.renderer import render_text
 from monobit.core import Font
+
+
+if platformdirs:
+    CACHEPATH = platformdirs.user_cache_path() / 'monobit-banner'
+    DEFAULT_CACHE = CACHEPATH / 'defaultfont.pkl'
+else:
+    CACHEPATH = ''
+    DEFAULT_CACHE = ''
 
 
 def main():
@@ -42,6 +53,10 @@ def main():
     parser.add_argument(
         '--format', type=str, default='',
         help='format of file used in --font'
+    )
+    parser.add_argument(
+        '--set-default', action='store_true',
+        help='set font file as default. resets default if no font specified.'
     )
     parser.add_argument(
         '--ink', '--foreground', '-fg', type=str, default='',
@@ -178,10 +193,21 @@ def main():
         args.text = unescape(args.text)
         args.inklevels = unescape(args.inklevels)
         #######################################################################
-        if not args.font:
-            args.font = open_text('monobit.resources', 'unscii-16.hex')
-        # take first font from pack
-        font, *_ = monobit.load(args.font, format=args.format)
+        if args.font:
+            # take first font from pack
+            font, *_ = monobit.load(args.font, format=args.format)
+        elif args.set_default:
+            font = None
+        elif DEFAULT_CACHE:
+            try:
+                with open(DEFAULT_CACHE, 'rb') as f:
+                    font = pickle.load(f)
+            except Exception:
+                font = None
+        if font is None:
+            fontfile = open_text('monobit.resources', 'unscii-16.yaff.gz')
+            font, *_ = monobit.load(fontfile, format='yaff')
+            args.set_default = True
         #######################################################################
         # encoding
         # check if any characters are defined
@@ -258,6 +284,14 @@ def main():
             else:
                 with open(args.output, 'w') as outfile:
                     outfile.write(text)
+            if args.set_default and DEFAULT_CACHE:
+                try:
+                    DEFAULT_CACHE.parent.mkdir(parents=True, exist_ok=True)
+                    with open(DEFAULT_CACHE, 'wb') as f:
+                        pickle.dump(font, f, protocol=pickle.HIGHEST_PROTOCOL)
+                except EnvironmentError as e:
+                    logging.error(e)
+                    pass
 
 
 if __name__ == '__main__':

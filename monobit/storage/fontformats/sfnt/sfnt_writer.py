@@ -11,27 +11,16 @@ from monobit.core import Glyph
 from monobit.core import Tag
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
-from monobit.base import reverse_dict
-from monobit.base import to_number
+from monobit.base import reverse_dict, to_number, safe_import
 
-from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, check_fonttools
+from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, fonttools_loaded
 from .sfnt import load_sfnt, load_collection
 from ..common import to_postscript_name
 
-from . import fonttools
-from .fonttools import check_fonttools
+fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
 
-if fonttools.loaded:
-    from .fonttools import (
-        _setup_kern_table,
-        _setup_ebsc_table,
-        _create_sbit_line_metrics,
-        _create_index_subtables,
-        _create_bitmap_size_table,
-        ebdt_bitmap_classes,
-        SmallGlyphMetrics, BigGlyphMetrics,
-        Strike
-    )
+
+if fonttools_loaded:
 
     @savers.register(linked=load_sfnt)
     def save_sfnt(
@@ -81,7 +70,14 @@ if fonttools.loaded:
         )
         return fonts
 
+    def check_fonttools():
+        pass
 else:
+    def check_fonttools():
+        raise FileFormatError(
+            'Parsing `sfnt` resources requires package `fontTools`, '
+            'which is not available.'
+        )
     save_sfnt = check_fonttools
     save_collection = check_fonttools
 
@@ -315,11 +311,11 @@ def convert_to_glyph(glyph, fb, align):
         else:
             # bit aligned
             format = 2
-    ebdt_bitmap = ebdt_bitmap_classes[format]
+    ebdt_bitmap = fonttools.ebdt_bitmap_classes[format]
     bmga = ebdt_bitmap(data=b'', ttFont=fb.font)
     if format in (1, 2):
         # horizontal metrics
-        bmga.metrics = SmallGlyphMetrics()
+        bmga.metrics = fonttools.SmallGlyphMetrics()
         bmga.metrics.height = glyph.height
         bmga.metrics.width = glyph.width
         bmga.metrics.BearingX = glyph.left_bearing
@@ -327,7 +323,7 @@ def convert_to_glyph(glyph, fb, align):
         bmga.metrics.Advance = glyph.advance_width
     else:
         # 6, 7 - big glyph metrics
-        bmga.metrics = BigGlyphMetrics()
+        bmga.metrics = fonttools.BigGlyphMetrics()
         bmga.metrics.height = glyph.height
         bmga.metrics.width = glyph.width
         bmga.metrics.horiBearingX = glyph.left_bearing
@@ -353,8 +349,8 @@ def _setup_eblc_table(fb, font, flavour):
     eblc.strikes = []
     for sdata in fb.font[ebdt].strikeData:
         # create strike
-        strike = Strike()
-        hori = _create_sbit_line_metrics(
+        strike = fonttools.Strike()
+        hori = fonttools._create_sbit_line_metrics(
             ascender=font.ascent,
             descender=-font.descent,
             widthMax=font.max_width,
@@ -364,7 +360,7 @@ def _setup_eblc_table(fb, font, flavour):
             minAfterBL=min((_g.shift_up for _g in font.glyphs)),
         )
         if font.has_vertical_metrics():
-            vert = _create_sbit_line_metrics(
+            vert = fonttools._create_sbit_line_metrics(
                 ascender=font.right_extent,
                 descender=-font.left_extent,
                 widthMax=max((_g.advance_height for _g in font.glyphs), default=0),
@@ -375,12 +371,12 @@ def _setup_eblc_table(fb, font, flavour):
                 minAfterBL=min((-_g.shift_left - _g.width//2 + _g.width for _g in font.glyphs)),
             )
         else:
-            vert = _create_sbit_line_metrics()
-        strike.bitmapSizeTable = _create_bitmap_size_table(
+            vert = fonttools._create_sbit_line_metrics()
+        strike.bitmapSizeTable = fonttools._create_bitmap_size_table(
             font.pixel_size, hori, vert,
             depth=(font.levels-1).bit_length(),
         )
-        strike.indexSubTables = _create_index_subtables(fb, sdata)
+        strike.indexSubTables = fonttools._create_index_subtables(fb, sdata)
         # eblc strike locations are filled out by ebdt compiler
         # bitmap size table is not updated by fontTools, do it explicitly
         strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
@@ -444,7 +440,7 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
     _setup_ebdt_table(fb, glyphs, align, flavour)
     _setup_eblc_table(fb, font, flavour)
     if flavour == 'ms':
-        _setup_ebsc_table(fb, {font.pixel_size: EBSC_SIZES})
+        fonttools._setup_ebsc_table(fb, {font.pixel_size: EBSC_SIZES})
     if flavour != 'apple':
         fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
         fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
@@ -465,7 +461,7 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
         underlinePosition=-_to_funits(font.underline_descent),
         underlineThickness=_to_funits(font.underline_thickness),
     )
-    _setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
+    fonttools._setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
     # bitmap-only formats
     if flavour == 'otb':
         # OTB output

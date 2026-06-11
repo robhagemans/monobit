@@ -7,42 +7,13 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 import codecs
-from unicodedata import bidirectional, normalize, category
+from unicodedata import bidirectional, normalize, category, combining
 
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
-
-try:
-    from bidi.algorithm import get_display, get_base_level
-except Exception as e:
-    logging.debug('Could not import module `bidi`: %s', e)
-    def _bidi_not_found(*args, **kwargs):
-        raise ImportError(
-            'Bidirectional text requires module `python-bidi`; not found.'
-        )
-    get_display = _bidi_not_found
-    get_base_level = _bidi_not_found
-
-try:
-    from arabic_reshaper import reshape
-except Exception as e:
-    logging.debug('Could not import module `arabic_reshaper`: %s', e)
-    def reshape(text):
-        raise ImportError(
-            'Arabic text requires module `arabic-reshaper`; not found.'
-        )
-
-try:
-    from uniseg.graphemecluster import grapheme_clusters
-except Exception as e:
-    logging.debug('Could not import module `uniseg`: %s', e)
-    logging.warning(
-        'Module `uniseg` not available. Grapheme clusters may not render correctly.'
-    )
-    def grapheme_clusters(text):
-        """Use NFC as poor-man's grapheme cluster. This works... sometimes."""
-        for c in normalize('NFC', text):
-            yield c
+algorithm = safe_import('bidi.algorithm')
+arabic_reshaper = safe_import('arabic_reshaper')
+graphemecluster = safe_import('uniseg.graphemecluster')
 
 from ..base.binary import ceildiv
 from ..base import Props, Coord, RGB, Any
@@ -298,9 +269,9 @@ def render_text(
     )
     # subset font to glyphs needed only
     if transformations:
+        rfont = font.modify(_g for _row in glyphs for _g in _row)
         # apply transformations to subsetted font
         # note we keep the original font as implied line metrics can differ
-        rfont = font.modify(_g for _row in glyphs for _g in _row)
         for func, args, kwargs in transformations:
             rfont = func(rfont, *args, **kwargs)
         # get glyph rows again, from transformed font
@@ -472,8 +443,12 @@ def _get_direction(font, text, direction, align):
             direction = 'normal'
         else:
             # use the class of the first directional character encountered
-            base_level = get_base_level(text)
-            base_direction = ('left-to-right', 'right-to-left')[base_level]
+            if algorithm:
+                base_level = algorithm.get_base_level(text)
+                base_direction = ('left-to-right', 'right-to-left')[base_level]
+            else:
+                logging.error('Bidirectional text requires module `python-bidi`; not found.')
+                base_direction = 'left-to-right'
     else:
         if direction == 'normal':
             if not isstr:
@@ -515,13 +490,15 @@ def _get_text_glyphs(
     Glyphs are reordered so that they can be rendered ltr ttb or ttb ltr
     """
     if isinstance(text, str) and direction not in ('top-to-bottom', 'bottom-to-top'):
-        # reshape Arabic glyphs to contextual forms
-        try:
-            text = reshape(text)
-        except ImportError as e:
-            # check common Arabic range - is there anything to reshape?
-            if any(ord(_c) in range(0x600, 0x700) for _c in text):
-                logging.warning(e)
+        # check common Arabic range - is there anything to reshape?
+        if any(ord(_c) in range(0x600, 0x700) for _c in text):
+            # reshape Arabic glyphs to contextual forms
+            if arabic_reshaper:
+                text = arabic_reshaper.reshape(text)
+            else:
+                logging.warning(
+                    'Arabic text requires module `arabic-reshaper`; not found.'
+                )
         # put characters in visual order instead of logical
         if direction == 'normal':
             # decide direction based on bidi algorithm
@@ -529,7 +506,10 @@ def _get_text_glyphs(
                 'left-to-right': 'L',
                 'right-to-left': 'R'
             }[base_direction]
-            text = get_display(text, base_dir=base_dir)
+            if algorithm:
+                text = algorithm.get_display(text, base_dir=base_dir)
+            else:
+                logging.error('Bidirectional text requires module `python-bidi`; not found.')
     lines = text.splitlines()
     if direction in ('right-to-left', 'bottom-to-top'):
         # reverse glyph order for rendering
@@ -546,13 +526,24 @@ def _get_text_glyphs(
 def _iter_labels(font, text, missing='raise'):
     """Iterate over labels in text, yielding glyphs. text may be str or bytes."""
     if isinstance(text, str):
-        # split text into standard grapheme clusters
-        text = tuple(grapheme_clusters(text))
-        # find the longest *number of standard grapheme clusters* per label
-        # this will often be 1, except when the font has defined e.g. Zł or Ft
-        # as a char label for a single glyph
         labelset = font.get_chars()
-        max_length = max((len(tuple(grapheme_clusters(_c))) for _c in labelset), default=0)
+        combining_classes = {combining(_c) for _c in text}
+        if combining_classes == {0}:
+            max_length = max((len(tuple(_c)) for _c in labelset), default=0)
+        else:
+            if graphemecluster:
+                grapheme_clusters = graphemecluster.grapheme_clusters
+            else:
+                # Use NFC as poor-man's grapheme cluster. This works... sometimes.
+                def grapheme_clusters(text):
+                    for c in normalize('NFC', text):
+                        yield c
+            # split text into standard grapheme clusters
+            text = tuple(grapheme_clusters(text))
+            # find the longest *number of standard grapheme clusters* per label
+            # this will often be 1, except when the font has defined e.g. Zł or Ft
+            # as a char label for a single glyph
+            max_length = max((len(tuple(grapheme_clusters(_c))) for _c in labelset), default=0)
         # we need to combine multiple elements back into str to match a glyph
         def labeltype(seq):
             return Char(''.join(seq))
