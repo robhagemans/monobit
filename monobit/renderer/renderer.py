@@ -11,7 +11,7 @@ from unicodedata import bidirectional, normalize, category, combining
 
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
-algorithm = safe_import('bidi.algorithm')
+bidi = safe_import('bidi')
 arabic_reshaper = safe_import('arabic_reshaper')
 graphemecluster = safe_import('uniseg.graphemecluster')
 
@@ -443,8 +443,8 @@ def _get_direction(font, text, direction, align):
             direction = 'normal'
         else:
             # use the class of the first directional character encountered
-            if algorithm:
-                base_level = algorithm.get_base_level(text)
+            if bidi:
+                base_level = bidi.get_base_level(text)
                 base_direction = ('left-to-right', 'right-to-left')[base_level]
             else:
                 logging.error('Bidirectional text requires module `python-bidi`; not found.')
@@ -506,8 +506,8 @@ def _get_text_glyphs(
                 'left-to-right': 'L',
                 'right-to-left': 'R'
             }[base_direction]
-            if algorithm:
-                text = algorithm.get_display(text, base_dir=base_dir)
+            if bidi:
+                text = bidi.get_display(text, base_dir=base_dir)
             else:
                 logging.error('Bidirectional text requires module `python-bidi`; not found.')
     lines = text.splitlines()
