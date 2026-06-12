@@ -68,6 +68,7 @@ class KernTable(dict):
 class GlyphProperties:
     """Default, calculated and settable properties for glyph."""
 
+    # horizontal metrics
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int = 0
     # horizontal offset from matrix right edge to rightward origin
