@@ -189,7 +189,7 @@ def chart_shades(
     # don't override border, use terminal default
     paper, ink, border = default_colours(
         fonts[0], paper, ink, border,
-        default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
+        default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
     )
     outstream.text.write(glyph_map.as_shades(
         paper=paper, border=border, ink=ink,
@@ -243,7 +243,7 @@ def chart_sixel(
     # don't override border, use terminal default
     paper, ink, border = default_colours(
         fonts[0], paper, ink, border,
-        default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
+        default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
     )
     outstream.text.write(
         glyph_map.as_sixel(paper=paper, border=border, ink=ink)

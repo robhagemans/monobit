@@ -53,7 +53,6 @@ def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
     return inklevels
 
 
-
 def default_colours(
         font,
         paper, ink, border,
