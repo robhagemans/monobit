@@ -11,7 +11,7 @@ from unicodedata import bidirectional, normalize, category, combining
 
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
-algorithm = safe_import('bidi.algorithm')
+bidi = safe_import('bidi')
 arabic_reshaper = safe_import('arabic_reshaper')
 graphemecluster = safe_import('uniseg.graphemecluster')
 
@@ -105,7 +105,7 @@ def output_text(
     textfile: input file with text to render
     raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
-    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    direction: text direction (l, r, b, t, n; default: n)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     inklevels: characters representing each level (default: ' @', for 2 levels)
     border: border character (default: same as inklevel 0)
@@ -133,7 +133,7 @@ def output_blocks(
     textfile: input file with text to render
     raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
-    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    direction: text direction (l, r, b, t, n; default: n)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     resolution: XxY density of blocks per character (default: 2x2)
     """
@@ -158,7 +158,7 @@ def output_shades(
     textfile: input file with text to render
     raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
-    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    direction: text direction (l, r, b, t, n; default: n)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     paper: R,G,B colour for uninked areas (default: 0,0,0)
     ink: R,G,B colour for inked areas (default: 255,255,255)
@@ -187,7 +187,7 @@ def output_sixel(
     textfile: input file with text to render
     raw: interpret text input as codepoints (raw bytes) instead of characters (default)
     margin: HxV margin around the text, in pixels (default: minimum needed)
-    direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+    direction: text direction (l, r, b, t, n; default: n)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
     paper: R,G,B colour for uninked areas (default: 255,255,255)
     ink: R,G,B colour for inked areas (default: 0,0,0)
@@ -225,7 +225,7 @@ if Image:
         textfile: input file with text to render
         raw: interpret text input as codepoints (raw bytes) instead of characters (default)
         margin: HxV margin around the text, in pixels (default: minimum needed)
-        direction: base text direction for bidirectional rendering (l, r, b, t, n; default: n. use 'l f' 'r f' etc to override bidirectional algorithm)
+        direction: text direction (l, r, b, t, n; default: n)
         align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
         image_format: image file format (default: 'png')
         image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
@@ -402,9 +402,6 @@ def _get_direction(font, text, direction, align):
         else:
             direction = font.direction or 'l'
     direction = direction.lower()
-    force = direction.split(' ')[-1].startswith('f')
-    if force:
-        direction, _, _ = direction.rpartition(' ')
     # get line advance direction if given
     direction, _, line_direction = direction.partition(' ')
     try:
@@ -434,31 +431,27 @@ def _get_direction(font, text, direction, align):
             )
             + f'; not `{direction}`.'
         )
-    # determine base drection
-    if isstr and not force:
-        if direction in ('left-to-right', 'right-to-left'):
-            # for Unicode text with horizontal directions, always use bidi algo
-            # direction parameter is taken as *base direction* only
-            base_direction = direction
-            direction = 'normal'
-        else:
-            # use the class of the first directional character encountered
-            if algorithm:
-                base_level = algorithm.get_base_level(text)
-                base_direction = ('left-to-right', 'right-to-left')[base_level]
-            else:
-                logging.error('Bidirectional text requires module `python-bidi`; not found.')
-                base_direction = 'left-to-right'
+    # detect monodirectional text
+    if direction == 'normal':
+        if not isstr:
+            raise ValueError(
+                f'Writing direction `{direction}` only supported for Unicode text.'
+            )
+        # check strong-directional character classes only
+        bidi_cats = {bidirectional(_c) for _c in text} & {'L', 'R', 'AL'}
+        if not bidi_cats or bidi_cats == {'L'}:
+            direction = 'left-to-right'
+        elif 'L' not in bidi_cats:
+            direction = 'right-to-left'
+        elif not bidi:
+            logging.warning('Module `python-bidi` not found. Bidirectional text will be rendered left-to-right.')
+            direction = 'left-to-right'
+    # determine base direction
+    if direction == 'normal':
+        # use the class of the first directional character encountered
+        base_level = bidi.get_base_level(text)
+        base_direction = ('left-to-right', 'right-to-left')[base_level]
     else:
-        if direction == 'normal':
-            if not isstr:
-                raise ValueError(
-                    f'Writing direction `{direction}` only supported for Unicode text.'
-                )
-            else:
-                raise ValueError(
-                    f'Writing direction `{direction}` not supported with `force`.'
-                )
         base_direction = direction
     # determine alignment
     if align:
@@ -494,6 +487,7 @@ def _get_text_glyphs(
         if any(ord(_c) in range(0x600, 0x700) for _c in text):
             # reshape Arabic glyphs to contextual forms
             if arabic_reshaper:
+                logging.debug('Using Arabic reshaper on input text.')
                 text = arabic_reshaper.reshape(text)
             else:
                 logging.warning(
@@ -501,15 +495,8 @@ def _get_text_glyphs(
                 )
         # put characters in visual order instead of logical
         if direction == 'normal':
-            # decide direction based on bidi algorithm
-            base_dir = {
-                'left-to-right': 'L',
-                'right-to-left': 'R'
-            }[base_direction]
-            if algorithm:
-                text = algorithm.get_display(text, base_dir=base_dir)
-            else:
-                logging.error('Bidirectional text requires module `python-bidi`; not found.')
+            logging.debug('Using bidi algorithm on input text.')
+            text = bidi.get_display(text, base_dir=base_direction[0].upper())
     lines = text.splitlines()
     if direction in ('right-to-left', 'bottom-to-top'):
         # reverse glyph order for rendering
