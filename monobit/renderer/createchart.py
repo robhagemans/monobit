@@ -21,6 +21,7 @@ from monobit.encoding.unicode import is_showable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
 from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
+from .rgb import default_colours
 
 
 charters = MagicRegistry(default_text='text')
@@ -150,8 +151,8 @@ def chart_shades(
         scale:Coord=Coord(1, 1),
         direction:str=None,
         border:RGB=None,
-        paper:RGB=RGB(0, 0, 0),
-        ink:RGB=RGB(255, 255, 255),
+        paper:RGB=None,
+        ink:RGB=None,
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=True,
         skip_empty_lines:bool=True,
@@ -185,10 +186,14 @@ def chart_shades(
         grid_positioning=grid_positioning,
         skip_empty_lines=skip_empty_lines,
     )
+    # don't override border, use terminal default
+    paper, ink, border = default_colours(
+        fonts[0], paper, ink, border,
+        default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
+    )
     outstream.text.write(glyph_map.as_shades(
         paper=paper, border=border, ink=ink,
     ))
-
 
 
 @charters.register(name='sixel')
@@ -200,8 +205,8 @@ def chart_sixel(
         scale:Coord=Coord(1, 1),
         direction:str=None,
         border:RGB=None,
-        paper:RGB=RGB(0, 0, 0),
-        ink:RGB=RGB(255, 255, 255),
+        paper:RGB=None,
+        ink:RGB=None,
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=True,
         skip_empty_lines:bool=True,
@@ -235,6 +240,11 @@ def chart_sixel(
         grid_positioning=grid_positioning,
         skip_empty_lines=skip_empty_lines,
     )
+    # don't override border, use terminal default
+    paper, ink, border = default_colours(
+        fonts[0], paper, ink, border,
+        default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
+    )
     outstream.text.write(
         glyph_map.as_sixel(paper=paper, border=border, ink=ink)
     )
@@ -254,9 +264,9 @@ if Image:
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             direction:str='left-to-right top-to-bottom',
-            border:RGB=RGB(32, 32, 32),
-            paper:RGB=RGB(0, 0, 0),
-            ink:RGB=RGB(255, 255, 255),
+            border:RGB=None,
+            paper:RGB=None,
+            ink:RGB=None,
             codepoint_range:tuple[Codepoint]=None,
             grid_positioning:bool=True,
             skip_empty_lines:bool=True,
@@ -289,6 +299,11 @@ if Image:
             codepoint_range=codepoint_range,
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
+        )
+        paper, ink, border = default_colours(
+            fonts[0], paper, ink, border,
+            default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
+            default_border=RGB(32, 32, 32),
         )
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink,
