@@ -424,7 +424,6 @@ def _read_font_hunk(f):
     # the reference point for offsets in the hunk is just before the ReturnCode
     loc = - _AMIGA_HEADER.size + 4
     if amiga_props.tf_Style.FSF_COLORFONT:
-        # raise UnsupportedError('Amiga ColorFont not supported')
         ctf = _COLOR_TEXT_FONT.read_from(f)
         logging.debug('ColorTextFont: %s', ctf)
         amiga_props |= Props(**vars(ctf))
