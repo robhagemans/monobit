@@ -590,9 +590,6 @@ def _convert_amiga_props(amiga_props):
             logging.warning('Ignoring Amiga property %s', name)
             setattr(props, f'amiga.{name}', getattr(amiga_props, name))
 
-        # haven't implemented picking a ctf_FgColor
-        if amiga_props.ctf_FgColor not in (0xff, amiga_props.ctf_High):
-            _preserve_amiga_prop('ctf_FgColor')
         # use/meaning of ctf_Plane* are unclear
         if amiga_props.ctf_PlanePick != 0xff:
             _preserve_amiga_prop('ctf_PlanePick')
@@ -605,6 +602,12 @@ def _convert_amiga_props(amiga_props):
         # should a colour table also be defined? should we use it? who knows.
         if amiga_props.ctf_Flags.CT_COLORFONT:
             props.rgb_table = amiga_props.ctf_ColorTable
+            # 'predominant colour' to be repaced by the foreground
+            if amiga_props.ctf_FgColor not in (0xff, amiga_props.ctf_High):
+                # swap as we use highest-index -> full-ink and lowest-index -> paper
+                props.rgb_table[-1], props.rgb_table[amiga_props.ctf_FgColor] = (
+                    props.rgb_table[-1], props.rgb_table[amiga_props.ctf_FgColor]
+                )
     return props
 
 
