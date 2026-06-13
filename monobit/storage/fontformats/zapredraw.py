@@ -16,7 +16,9 @@ from monobit.base.struct import little_endian as le, bitfield
 from monobit.base.binary import ceildiv
 
 from .raw import load_bitmap, save_bitmap
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell, make_contiguous
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, make_contiguous, ensure_levels
+)
 
 
 ###############################################################################
@@ -129,6 +131,7 @@ def save_zapredraw(fonts, outstream):
     """Save a !ZapRedraw UCS font."""
     font = ensure_single(fonts)
     font = ensure_charcell(font)
+    font = ensure_levels(font, 2)
     # determine number of chunks:
     # first bytes of 16-bit unicode codepoints
     chunked_codepoints = tuple(sorted(

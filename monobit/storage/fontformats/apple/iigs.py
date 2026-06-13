@@ -14,6 +14,7 @@ import logging
 from monobit.base.struct import bitfield, little_endian as le
 from monobit.base import struct, Coord, NOT_SET, UnsupportedError
 from monobit.storage import loaders, savers
+from monobit.storage.utils.limitations import ensure_single
 from monobit.core import Font, Glyph, KernTable
 from monobit.encoding import EncodingName
 
@@ -40,9 +41,7 @@ def save_iigs(
     version: IIgs font format version (0x101, 0x105). Default: 0x101 unless needed for bitmap size.
     resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
     """
-    if len(fonts) > 1:
-        logging.warning('IIgs font file can only store one font.')
-    font = fonts[0]
+    font = ensure_single(fonts)
     _save_iigs(
         outstream, font, version=version, resample_encoding=resample_encoding
     )

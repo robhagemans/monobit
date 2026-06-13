@@ -14,7 +14,7 @@ from monobit.base import Props, FileFormatError
 from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Raster
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 @loaders.register(
@@ -51,6 +51,7 @@ def save_gdos(fonts, outstream, endianness:str='little'):
     endianness: (b)ig or (l)ittle-endian. default: little
     """
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     header, gdos_glyphs = _convert_to_gdos(font, endianness)
     logging.info('GDOS properties:')
     logging.info(header)

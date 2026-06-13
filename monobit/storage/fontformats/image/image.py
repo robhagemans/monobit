@@ -25,7 +25,7 @@ from monobit.renderer import (
 )
 from monobit.renderer.rgb import default_colours
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage.utils.perglyph import loop_load, loop_save
 
 
@@ -378,6 +378,8 @@ if Image:
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: false)
         """
+        if image_mode == 'mono':
+            fonts = ensure_levels(fonts, 2)
         # NOTE 'imagechart' and 'image' are the same but with different defaults
         glyph_map = create_chart(
             fonts,
@@ -449,7 +451,9 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
-        font = fonts[0]
+        font = ensure_single(fonts)
+        if image_mode == 'mono':
+            font = ensure_levels(font, 2)
         inklevels = create_image_colours(
             image_mode=image_mode, rgb_table=font.rgb_table,
             levels=font.levels, paper=paper, ink=ink,

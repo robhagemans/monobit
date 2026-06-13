@@ -15,7 +15,7 @@ from ..common import (
     WEIGHT_MAP, CHARSET_MAP, WEIGHT_REVERSE_MAP, CHARSET_REVERSE_MAP
 )
 from .draw import DrawComment, NonEmptyBlock, Empty, Unparsed, iter_blocks
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 FD_KEYS = {
@@ -50,6 +50,7 @@ def load_mkwinfont(instream):
 @savers.register(linked=load_mkwinfont)
 def save_mkwinfont(fonts, outstream):
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     return _write_mkwinfont(font, outstream)
 
 

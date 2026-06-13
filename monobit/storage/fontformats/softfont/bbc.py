@@ -11,7 +11,9 @@ from monobit.base import Props, FileFormatError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, ensure_levels
+)
 
 
 _BBC_VDU = b'\x17'
@@ -31,6 +33,7 @@ def load_bbc(instream):
 def save_bbc(fonts, outstream):
     """Save font to bbc file."""
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     _write_bbc(outstream, font)
 
 

@@ -19,7 +19,9 @@ from monobit.base.binary import ceildiv
 from monobit.base import Coord, FileFormatError, UnsupportedError
 from monobit.base import reverse_dict
 
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, ensure_levels
+)
 
 
 @loaders.register(
@@ -41,6 +43,7 @@ def save_dec_drcs(fonts, outstream, *, use_8bit:bool=False):
     """Write font to a DEC DRCS file."""
     font = ensure_single(fonts)
     font = ensure_charcell(font)
+    font = ensure_levels(font, 2)
     # upper size limits vary by device, not enforced.
     # lower sizes would conflict with vt200 size values
     if font.raster_size.x < 5 or font.raster_size.y < 1:

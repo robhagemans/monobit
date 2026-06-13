@@ -14,7 +14,7 @@ from monobit.base import Props, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 # beyond ASCII, multiple encodings are in use - set these manually after extraction
@@ -42,6 +42,7 @@ def load_fzx(instream):
 def save_fzx(fonts, outstream):
     """Save font to ZX Spectrum .FZX file."""
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     fzx_props, fzx_glyphs = _convert_to_fzx(font)
     logging.info('FZX properties:')
     for line in str(fzx_props).splitlines():
