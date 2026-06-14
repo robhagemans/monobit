@@ -517,17 +517,17 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_path(cls, path, *, advance_width=None, **kwargs):
+    def from_path(cls, path, *, advance_width=None, scale=1, **kwargs):
         """Draw the StrokePath and create a Glyph."""
         strokepath = StrokePath(path)
-        raster = strokepath.draw()
+        raster = strokepath.draw(scale=scale)
         if advance_width is None:
-            advance_width = strokepath.bounds.right
+            advance_width = strokepath.bounds.right*scale
         return cls(
             raster, path=strokepath,
-            right_bearing=advance_width-strokepath.bounds.right,
-            left_bearing=strokepath.bounds.left,
-            shift_up=strokepath.bounds.bottom,
+            right_bearing=advance_width-strokepath.bounds.right*scale,
+            left_bearing=strokepath.bounds.left*scale,
+            shift_up=strokepath.bounds.bottom*scale,
             **kwargs
         )
 
