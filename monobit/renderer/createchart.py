@@ -81,21 +81,22 @@ def chart_text(
     skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
-    glyph_map = create_chart(
-        fonts,
-        glyphs_per_line=glyphs_per_line,
-        margin=margin,
-        padding=padding,
-        scale=scale,
-        direction=direction,
-        codepoint_range=codepoint_range,
-        grid_positioning=grid_positioning,
-        skip_empty_lines=skip_empty_lines,
-        max_labels=max_labels,
-    )
-    outstream.text.write(
-        glyph_map.as_text(border=border, inklevels=inklevels)
-    )
+    for font in fonts:
+        glyph_map = create_chart(
+            (font,),
+            glyphs_per_line=glyphs_per_line,
+            margin=margin,
+            padding=padding,
+            scale=scale,
+            direction=direction,
+            codepoint_range=codepoint_range,
+            grid_positioning=grid_positioning,
+            skip_empty_lines=skip_empty_lines,
+            max_labels=max_labels,
+        )
+        outstream.text.write(
+            glyph_map.as_text(border=border, inklevels=inklevels)
+        )
 
 
 @charters.register(name='blocks')
@@ -126,20 +127,21 @@ def chart_blocks(
     skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
-    glyph_map = create_chart(
-        fonts,
-        glyphs_per_line=glyphs_per_line,
-        margin=margin,
-        padding=padding,
-        scale=scale,
-        direction=direction,
-        codepoint_range=codepoint_range,
-        max_labels=max_labels,
-        grid_positioning=grid_positioning,
-        skip_empty_lines=skip_empty_lines,
-        label_height=resolution.y,
-    )
-    outstream.text.write(glyph_map.as_blocks(resolution=resolution))
+    for font in fonts:
+        glyph_map = create_chart(
+            (font,),
+            glyphs_per_line=glyphs_per_line,
+            margin=margin,
+            padding=padding,
+            scale=scale,
+            direction=direction,
+            codepoint_range=codepoint_range,
+            max_labels=max_labels,
+            grid_positioning=grid_positioning,
+            skip_empty_lines=skip_empty_lines,
+            label_height=resolution.y,
+        )
+        outstream.text.write(glyph_map.as_blocks(resolution=resolution))
 
 
 @charters.register(name='shades')
@@ -174,26 +176,27 @@ def chart_shades(
     skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     max_labels: maximum number of labels to show per glyph (default: 1)
     """
-    glyph_map = create_chart(
-        fonts,
-        glyphs_per_line=glyphs_per_line,
-        margin=margin,
-        padding=padding,
-        scale=scale,
-        direction=direction,
-        codepoint_range=codepoint_range,
-        max_labels=max_labels,
-        grid_positioning=grid_positioning,
-        skip_empty_lines=skip_empty_lines,
-    )
-    # don't override border, use terminal default
-    paper, ink, border = default_colours(
-        fonts[0], paper, ink, border,
-        default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
-    )
-    outstream.text.write(glyph_map.as_shades(
-        paper=paper, border=border, ink=ink,
-    ))
+    for font in fonts:
+        glyph_map = create_chart(
+            (font,),
+            glyphs_per_line=glyphs_per_line,
+            margin=margin,
+            padding=padding,
+            scale=scale,
+            direction=direction,
+            codepoint_range=codepoint_range,
+            max_labels=max_labels,
+            grid_positioning=grid_positioning,
+            skip_empty_lines=skip_empty_lines,
+        )
+        # don't override border, use terminal default
+        paper, ink, border = default_colours(
+            fonts[0], paper, ink, border,
+            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
+        )
+        outstream.text.write(glyph_map.as_shades(
+            paper=paper, border=border, ink=ink,
+        ))
 
 
 @charters.register(name='sixel')
@@ -227,27 +230,27 @@ def chart_sixel(
     grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
     skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
     """
-    # max_labels: maximum number of labels to show per glyph (default: 1)
-    glyph_map = create_chart(
-        fonts,
-        glyphs_per_line=glyphs_per_line,
-        margin=margin,
-        padding=padding,
-        scale=scale,
-        direction=direction,
-        codepoint_range=codepoint_range,
-        # max_labels=max_labels,
-        grid_positioning=grid_positioning,
-        skip_empty_lines=skip_empty_lines,
-    )
-    # don't override border, use terminal default
-    paper, ink, border = default_colours(
-        fonts[0], paper, ink, border,
-        default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
-    )
-    outstream.text.write(
-        glyph_map.as_sixel(paper=paper, border=border, ink=ink)
-    )
+    for font in fonts:
+        glyph_map = create_chart(
+            (font,),
+            glyphs_per_line=glyphs_per_line,
+            margin=margin,
+            padding=padding,
+            scale=scale,
+            direction=direction,
+            codepoint_range=codepoint_range,
+            # max_labels=max_labels,
+            grid_positioning=grid_positioning,
+            skip_empty_lines=skip_empty_lines,
+        )
+        # don't override border, use terminal default
+        paper, ink, border = default_colours(
+            fonts[0], paper, ink, border,
+            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
+        )
+        outstream.text.write(
+            glyph_map.as_sixel(paper=paper, border=border, ink=ink)
+        )
 
 
 if Image:

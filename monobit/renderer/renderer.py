@@ -111,14 +111,15 @@ def output_text(
     inklevels: characters representing each level (default: ' @', for 2 levels)
     border: border character (default: same as inklevel 0)
     """
-    glyph_map = _prepare_output(
-        fonts, outfile,
-        text=text, textfile=textfile, raw=raw,
-        margin=margin, direction=direction, align=align,
-    )
-    if border is None:
-        border = inklevels[0]
-    outfile.text.write(glyph_map.as_text(inklevels=inklevels, border=border))
+    for font in fonts:
+        glyph_map = _prepare_output(
+            (font,), outfile,
+            text=text, textfile=textfile, raw=raw,
+            margin=margin, direction=direction, align=align,
+        )
+        if border is None:
+            border = inklevels[0]
+        outfile.text.write(glyph_map.as_text(inklevels=inklevels, border=border))
 
 
 @renderers.register('blocks')
@@ -165,17 +166,18 @@ def output_shades(
     ink: R,G,B colour for inked areas (default: 255,255,255)
     border: R,G,B colour for inked areas (default: same as paper)
     """
-    glyph_map = _prepare_output(
-        fonts, outfile,
-        text=text, textfile=textfile, raw=raw,
-        margin=margin, direction=direction, align=align,
-    )
-    paper, ink, border = default_colours(
-        fonts[0], paper, ink, border,
-        default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
-        border_match_paper=True,
-    )
-    outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
+    for font in fonts:
+        glyph_map = _prepare_output(
+            (font,), outfile,
+            text=text, textfile=textfile, raw=raw,
+            margin=margin, direction=direction, align=align,
+        )
+        paper, ink, border = default_colours(
+            font, paper, ink, border,
+            default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
+            border_match_paper=True,
+        )
+        outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
 @renderers.register('sixel')
@@ -197,17 +199,18 @@ def output_sixel(
     ink: R,G,B colour for inked areas (default: 0,0,0)
     border: R,G,B colour for inked areas (default: same as paper)
     """
-    glyph_map = _prepare_output(
-        fonts, outfile,
-        text=text, textfile=textfile, raw=raw,
-        margin=margin, direction=direction, align=align,
-    )
-    paper, ink, border = default_colours(
-        fonts[0], paper, ink, border,
-        default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
-        border_match_paper=True,
-    )
-    outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
+    for font in fonts:
+        glyph_map = _prepare_output(
+            (font,), outfile,
+            text=text, textfile=textfile, raw=raw,
+            margin=margin, direction=direction, align=align,
+        )
+        paper, ink, border = default_colours(
+            font, paper, ink, border,
+            default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
+            border_match_paper=True,
+        )
+        outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
 if Image:
