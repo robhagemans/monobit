@@ -37,7 +37,7 @@ class Pack:
         return Pack(self._fonts + Pack(other)._fonts)
 
     @scriptable(pack_operation=True)
-    def get(self, index:int=0):
+    def get(self, *, index:int=0):
         """
         Get a single-font pack by index.
 
