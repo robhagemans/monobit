@@ -1543,6 +1543,14 @@ class TestImport(BaseTester):
         self.assertEqual(len(font.glyphs), 144)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.tinyprint_A)
 
+    # Dr. Halo
+
+    def test_import_drhalo(self):
+        """Test importing Dr. Halo files."""
+        font, *_ = monobit.load(self.font_path / '4x6.drhalo')
+        self.assertEqual(len(font.glyphs), 96)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
 
 if __name__ == '__main__':
     unittest.main()
