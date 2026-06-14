@@ -216,6 +216,11 @@ def _convert_bdf_properties(bdf_props):
         'dpi': (xdpi, ydpi),
         'revision': bdf_props['CONTENTVERSION'],
     }
+    if not depth_info:
+        depth = 1
+    else:
+        depth = int(depth_info[0])
+    properties['levels'] = 1 << depth
     return properties
 
 

@@ -565,6 +565,9 @@ def parse_xlfd_properties(x_props, xlfd_name, to_int=int):
                 to_int(properties['strikethrough_ascent'])
                 + to_int(x_props.pop('STRIKEOUT_DESCENT'))
             )
+    # bits-per-pixel setting (fontforge extension)
+    if 'BITS_PER_PIXEL' in x_props:
+        properties['levels'] = 1 << int(x_props.pop('BITS_PER_PIXEL'))
     # encoding
     registry = from_quoted_string(x_props.pop('CHARSET_REGISTRY', '')).lower()
     encoding = from_quoted_string(x_props.pop('CHARSET_ENCODING', '')).lower()
@@ -687,6 +690,9 @@ def create_xlfd_properties(font):
         'MAX_SPACE': font.get_defined('max_word_space'),
         'END_SPACE': font.get_defined('sentence_space'),
     }
+    # fontforge extension for greyscale fonts, alongside depth parameter in size header
+    if font.levels > 2:
+        xlfd_props['BITS_PER_PIXEL'] = (font.levels-1).bit_length()
     # encoding dependent values
     default_glyph = font.get_default_glyph()
     if encodings.is_unicode(font.encoding):
