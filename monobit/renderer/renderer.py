@@ -75,7 +75,7 @@ def render(
 
 def _prepare_output(
         fonts, outfile, *,
-        text:str='', textfile:str='', raw:bool=False,
+        text:str='', textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
     ):
     font = ensure_single(fonts)
@@ -95,7 +95,7 @@ def _prepare_output(
 
 @renderers.register('text')
 def output_text(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
         format:str='text', inklevels:str=' @', border:str=None
     ):
@@ -111,19 +111,20 @@ def output_text(
     inklevels: characters representing each level (default: ' @', for 2 levels)
     border: border character (default: same as inklevel 0)
     """
-    glyph_map = _prepare_output(
-        fonts, outfile,
-        text=text, textfile=textfile, raw=raw,
-        margin=margin, direction=direction, align=align,
-    )
-    if border is None:
-        border = inklevels[0]
-    outfile.text.write(glyph_map.as_text(inklevels=inklevels, border=border))
+    for font in fonts:
+        glyph_map = _prepare_output(
+            (font,), outfile,
+            text=text, textfile=textfile, raw=raw,
+            margin=margin, direction=direction, align=align,
+        )
+        if border is None:
+            border = inklevels[0]
+        outfile.text.write(glyph_map.as_text(inklevels=inklevels, border=border))
 
 
 @renderers.register('blocks')
 def output_blocks(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
         format:str='text', resolution:Coord=Coord(2, 3)
     ):
@@ -148,7 +149,7 @@ def output_blocks(
 
 @renderers.register('shades')
 def output_shades(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
         paper:RGB=None, ink:RGB=None, border:RGB=None,
     ):
@@ -165,22 +166,23 @@ def output_shades(
     ink: R,G,B colour for inked areas (default: 255,255,255)
     border: R,G,B colour for inked areas (default: same as paper)
     """
-    glyph_map = _prepare_output(
-        fonts, outfile,
-        text=text, textfile=textfile, raw=raw,
-        margin=margin, direction=direction, align=align,
-    )
-    paper, ink, border = default_colours(
-        fonts[0], paper, ink, border,
-        default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
-        border_match_paper=True,
-    )
-    outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
+    for font in fonts:
+        glyph_map = _prepare_output(
+            (font,), outfile,
+            text=text, textfile=textfile, raw=raw,
+            margin=margin, direction=direction, align=align,
+        )
+        paper, ink, border = default_colours(
+            font, paper, ink, border,
+            default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
+            border_match_paper=True,
+        )
+        outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
 @renderers.register('sixel')
 def output_sixel(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
         paper:RGB=None, ink:RGB=None, border:RGB=None,
     ):
@@ -197,17 +199,18 @@ def output_sixel(
     ink: R,G,B colour for inked areas (default: 0,0,0)
     border: R,G,B colour for inked areas (default: same as paper)
     """
-    glyph_map = _prepare_output(
-        fonts, outfile,
-        text=text, textfile=textfile, raw=raw,
-        margin=margin, direction=direction, align=align,
-    )
-    paper, ink, border = default_colours(
-        fonts[0], paper, ink, border,
-        default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
-        border_match_paper=True,
-    )
-    outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
+    for font in fonts:
+        glyph_map = _prepare_output(
+            (font,), outfile,
+            text=text, textfile=textfile, raw=raw,
+            margin=margin, direction=direction, align=align,
+        )
+        paper, ink, border = default_colours(
+            font, paper, ink, border,
+            default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
+            border_match_paper=True,
+        )
+        outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
 if Image:
@@ -217,7 +220,7 @@ if Image:
         patterns=IMAGE_PATTERNS,
     )
     def output_image(
-            fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+            fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
             margin:Coord=None, direction:str='', align:str='',
             image_format:str='',
             image_mode:str='RGB',
@@ -447,14 +450,18 @@ def _get_direction(font, text, direction, align):
             raise ValueError(
                 f'Writing direction `{direction}` only supported for Unicode text.'
             )
-        # check strong-directional character classes only
-        bidi_cats = {bidirectional(_c) for _c in text} & {'L', 'R', 'AL'}
-        if not bidi_cats or bidi_cats == {'L'}:
+        bidi_cats = {bidirectional(_c) for _c in text}
+        logging.debug('Bidirectional categories: %s', bidi_cats)
+        require_bidi = {
+            # strong right-to-left
+            'AL', 'R',
+            # explicit bidi formatting
+            'LRE', 'LRO', 'RLE', 'RLO', 'PDF', 'LRI', 'RLI', 'FSI', 'PDI'
+        }
+        if not bidi_cats or not (bidi_cats & require_bidi):
             direction = 'left-to-right'
-        elif 'L' not in bidi_cats:
-            direction = 'right-to-left'
         elif not bidi:
-            logging.warning('Module `python-bidi` not found. Bidirectional text will be rendered left-to-right.')
+            logging.warning('Module `python-bidi` not found. Text will be rendered left-to-right. Set direction=r to override.')
             direction = 'left-to-right'
     # determine base direction
     if direction == 'normal':

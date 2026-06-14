@@ -364,7 +364,7 @@ class Raster:
             # widen each pixel to the expected number of bits
             # e.g 1->2bpp 0 -> 00 1 -> 11
             #     4->8bpp 5 -> 55 A -> AA
-            raster = raster.stretch(factor_x=factor)
+            raster = raster.stretch(factor=(factor, 1))
         if align == 'bit':
             inklevels = get_inklevels(self._levels)
             bits = ''.join(
@@ -677,13 +677,13 @@ class Raster:
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
-    def stretch(self, factor_x:int=1, factor_y:int=1):
+    def stretch(self, factor:Coord=Coord(1, 1)):
         """
         Repeat rows and/or columns.
 
-        factor_x: number of times to repeat horizontally
-        factor_y: number of times to repeat vertically
+        factor: number of times to repeat (horizontally, vertically)
         """
+        factor_x, factor_y = factor
         # vertical stretch
         pixels = (_row for _row in self._pixels for _ in range(factor_y))
         # horizontal stretch
@@ -693,13 +693,13 @@ class Raster:
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
-    def shrink(self, factor_x:int=1, factor_y:int=1):
+    def shrink(self, factor:Coord=Coord(1, 1)):
         """
         Remove rows and/or columns.
 
-        factor_x: factor to shrink horizontally
-        factor_y: factor to shrink vertically
+        factor: factor to shrink (horizontally, vertically)
         """
+        factor_x, factor_y = factor
         # vertical shrink
         shrunk = self._pixels[::factor_y]
         # horizontal shrink

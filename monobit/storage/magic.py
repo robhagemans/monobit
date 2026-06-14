@@ -89,8 +89,8 @@ class MagicRegistry:
         self._patterns = []
         self._templates = []
         self._names = {}
-        self._default_text = default_text
-        self._default_binary = default_binary
+        self.default_text_format = default_text
+        self.default_binary_format = default_binary
 
     def get_formats(self):
         """Get tuple of all registered format names."""
@@ -110,9 +110,9 @@ class MagicRegistry:
             converter = self.identify(file)
             if not converter:
                 if not file or file.mode == 'w' or looks_like_text(file):
-                    format = self._default_text
+                    format = self.default_text_format
                 else:
-                    format = self._default_binary
+                    format = self.default_binary_format
                 if file and format:
                     if Path(file.name).suffix:
                         level = logging.WARNING
