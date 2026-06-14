@@ -447,14 +447,18 @@ def _get_direction(font, text, direction, align):
             raise ValueError(
                 f'Writing direction `{direction}` only supported for Unicode text.'
             )
-        # check strong-directional character classes only
-        bidi_cats = {bidirectional(_c) for _c in text} & {'L', 'R', 'AL'}
-        if not bidi_cats or bidi_cats == {'L'}:
+        bidi_cats = {bidirectional(_c) for _c in text}
+        logging.debug('Bidirectional categories: %s', bidi_cats)
+        require_bidi = {
+            # strong right-to-left
+            'AL', 'R',
+            # explicit bidi formatting
+            'LRE', 'LRO', 'RLE', 'RLO', 'PDF', 'LRI', 'RLI', 'FSI', 'PDI'
+        }
+        if not bidi_cats or not (bidi_cats & require_bidi):
             direction = 'left-to-right'
-        elif 'L' not in bidi_cats:
-            direction = 'right-to-left'
         elif not bidi:
-            logging.warning('Module `python-bidi` not found. Bidirectional text will be rendered left-to-right.')
+            logging.warning('Module `python-bidi` not found. Text will be rendered left-to-right. Set direction=r to override.')
             direction = 'left-to-right'
     # determine base direction
     if direction == 'normal':
