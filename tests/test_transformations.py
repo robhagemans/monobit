@@ -270,7 +270,7 @@ class TestGlyphTrafo(BaseTester):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
-        m = one.stretch(2, 1)
+        m = one.stretch((2, 1))
         assert m.as_text() == '\n'.join((
             '................',
             '................',
@@ -297,7 +297,7 @@ class TestGlyphTrafo(BaseTester):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
-        m = one.shrink(2, 2)
+        m = one.shrink((2, 2))
         assert m.as_text() == '\n'.join((
             '....',
             '..@.',
@@ -705,7 +705,7 @@ class TestFontTrafo(BaseTester):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
-        f = f.stretch(2, 1)
+        f = f.stretch((2, 1))
         m = f.glyphs[0]
         assert m.as_text() == '\n'.join((
             '................',
@@ -733,7 +733,7 @@ class TestFontTrafo(BaseTester):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
-        f = f.shrink(2, 2)
+        f = f.shrink((2, 2))
         m = f.glyphs[0]
         assert m.as_text() == '\n'.join((
             '....',

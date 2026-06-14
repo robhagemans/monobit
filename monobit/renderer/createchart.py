@@ -336,7 +336,7 @@ def create_chart(
         font = grid_resample(font, glyphs_per_line, codepoint_range, skip_empty_lines)
     elif codepoint_range:
         font = font.subset(codepoint_range)
-    font = font.stretch(*scale)
+    font = font.stretch(scale)
     # create extra padding space to allow for labels
     if max_labels:
         label_padding = (max_labels+1) * label_height

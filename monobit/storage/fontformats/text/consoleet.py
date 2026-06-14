@@ -49,7 +49,7 @@ def _read_clt_glyph(instream):
         inklevels='.#',
         # encoding is not specified by spec or file - can be unicode or codepage
         codepoint=f'0x{codepoint}',
-    ).shrink(factor_x=2)
+    ).shrink(factor=(2, 1))
 
 
 def _write_clt_glyph(glyph, outstream):

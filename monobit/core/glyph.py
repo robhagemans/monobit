@@ -762,20 +762,20 @@ class Glyph(HasProps):
     # scaling
 
     def stretch(
-            self, factor_x:int=1, factor_y:int=1,
+            self, factor:Coord=Coord(1, 1),
             *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Stretch glyph by repeating rows and/or columns.
 
-        factor_x: number of times to repeat horizontally
-        factor_y: number of times to repeat vertically
+        factor: number of times to repeat (horizontally, vertically) (default: 1,1)
         adjust_metrics: also stretch metrics (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        factor_x, factor_y = factor
         if factor_x == factor_y == 1:
             return self
-        pixels = self._pixels.stretch(factor_x, factor_y)
+        pixels = self._pixels.stretch(factor)
         new_metrics = {}
         if adjust_metrics:
             new_metrics |= dict(
@@ -792,20 +792,20 @@ class Glyph(HasProps):
         return self.modify(pixels, **new_metrics)
 
     def shrink(
-            self, factor_x:int=1, factor_y:int=1,
+            self, factor:Coord=Coord(1, 1),
             *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Shrink by removing rows and/or columns.
 
-        factor_x: factor to shrink horizontally
-        factor_y: factor to shrink vertically
+        factor: factor to shrink (horizontally, vertically) (default: 1,1)
         adjust_metrics: also stretch metrics (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        factor_x, factor_y = factor
         if factor_x == factor_y == 1:
             return self
-        pixels = self._pixels.shrink(factor_x, factor_y)
+        pixels = self._pixels.shrink(factor)
         new_metrics = {}
         if adjust_metrics:
             new_metrics |= dict(
