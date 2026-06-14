@@ -75,7 +75,7 @@ def render(
 
 def _prepare_output(
         fonts, outfile, *,
-        text:str='', textfile:str='', raw:bool=False,
+        text:str='', textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
     ):
     font = ensure_single(fonts)
@@ -95,7 +95,7 @@ def _prepare_output(
 
 @renderers.register('text')
 def output_text(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
         format:str='text', inklevels:str=' @', border:str=None
     ):
@@ -124,7 +124,7 @@ def output_text(
 
 @renderers.register('blocks')
 def output_blocks(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
         format:str='text', resolution:Coord=Coord(2, 3)
     ):
@@ -149,7 +149,7 @@ def output_blocks(
 
 @renderers.register('shades')
 def output_shades(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
         paper:RGB=None, ink:RGB=None, border:RGB=None,
     ):
@@ -182,7 +182,7 @@ def output_shades(
 
 @renderers.register('sixel')
 def output_sixel(
-        fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+        fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
         paper:RGB=None, ink:RGB=None, border:RGB=None,
     ):
@@ -220,7 +220,7 @@ if Image:
         patterns=IMAGE_PATTERNS,
     )
     def output_image(
-            fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
+            fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
             margin:Coord=None, direction:str='', align:str='',
             image_format:str='',
             image_mode:str='RGB',
