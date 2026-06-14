@@ -108,6 +108,13 @@ class Raster:
         """Raster is not empty."""
         return bool(self.height and self.width)
 
+    def __eq__(self, other):
+        """Raster equals other raster."""
+        return self.as_pixels() == other.as_pixels()
+
+    def __hash__(self):
+        return hash(self.as_pixels())
+
     @property
     def levels(self):
         """Number of shades of ink."""
