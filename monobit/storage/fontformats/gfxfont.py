@@ -17,7 +17,9 @@ from monobit.base.binary import ceildiv
 from monobit.encoding import EncodingName
 
 from monobit.storage.utils.source import CCodeReader, CCodeWriter
-from monobit.storage.utils.limitations import ensure_single, make_contiguous, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, make_contiguous, ensure_charcell, ensure_levels
+)
 
 
 _GLYPH_FIELDS = (
@@ -109,6 +111,7 @@ def save_gfxfont(fonts, outstream):
     Save fonts to Adafruit GFX font header.
     """
     for font in fonts:
+        font = ensure_levels(font, 2)
         font = make_contiguous(font, missing='space')
         codepoints = font.get_codepoints()
         if not codepoints:

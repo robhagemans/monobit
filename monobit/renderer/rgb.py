@@ -40,6 +40,39 @@ def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
         border = 0
     elif rgb_table is not None:
         inklevels = RGBTable(rgb_table)
+        if paper is not None:
+            inklevels[0] = RGB(*paper)
+        if ink is not None:
+            inklevels[-1] = RGB(*ink)
     else:
+        if paper is None:
+            paper = (0, 0, 0)
+        if ink is None:
+            ink = (255, 255, 255)
         inklevels = create_gradient(paper=paper, ink=ink, levels=levels)
     return inklevels
+
+
+def default_colours(
+        font,
+        paper, ink, border,
+        default_paper, default_ink,
+        border_match_paper=False, default_border=None
+    ):
+    """Apply default colours based on input and colour table."""
+    if font.rgb_table:
+        if ink is None:
+            ink = font.rgb_table[-1]
+        if paper is None:
+            paper = font.rgb_table[0]
+    else:
+        if ink is None:
+            ink = default_ink
+        if paper is None:
+            paper = default_paper
+    if border is None:
+        if default_border is None and border_match_paper:
+            border = paper
+        else:
+            border = default_border
+    return paper, ink, border

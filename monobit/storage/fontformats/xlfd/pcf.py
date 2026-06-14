@@ -13,7 +13,7 @@ from monobit.storage import loaders, savers
 from monobit.base import Props
 from monobit.core import Font, Glyph, Raster, Tag, Codepoint
 from monobit.base.binary import align, ceildiv
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 from .bdf import swidth_to_pixel, pixel_to_swidth
 from .xlfd import (
@@ -52,6 +52,7 @@ def save_pcf(
     padding_bytes: make raster row a multiple of this number of bytes (1, 2, 4 or 8; default is 1)
     """
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     _write_pcf(
         outstream, font, endian=byte_order, create_ink_bounds=ink_bounds,
         scan_unit=scan_unit, padding_bytes=padding_bytes, bit_order=bit_order,

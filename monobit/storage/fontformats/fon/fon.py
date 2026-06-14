@@ -12,6 +12,7 @@ from monobit.storage import Stream
 from monobit.base import FileFormatError, UnsupportedError
 
 from monobit.storage.fontformats.sfnt import load_sfnt, SFNT_MAGIC
+from monobit.storage.utils.limitations import ensure_levels
 
 from .mz import MZ_HEADER, create_mz_stub
 from .windows.ne import create_ne, read_ne, NE_HEADER
@@ -23,7 +24,6 @@ from .windows.fnt import (
 from .os2.lx import read_lx
 from .os2.ne import read_os2_ne
 from .os2.gpifont import convert_os2_font_resource, GPI_MAGIC
-
 
 @loaders.register(
     name='mzfon',
@@ -113,6 +113,7 @@ def save_win_fon(fonts, outstream, version:int=2, vector:bool=False):
     version: Windows font format version (default 2)
     vector: output a vector font (if the input font has stroke paths defined; default False)
     """
+    fonts = ensure_levels(fonts, 2)
     stubdata = create_mz_stub()
     outstream.write(
         stubdata +

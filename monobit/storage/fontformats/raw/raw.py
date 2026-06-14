@@ -14,7 +14,7 @@ from monobit.storage import loaders, savers
 from monobit.storage import Regex, Glob
 from monobit.core import Font, Glyph, Raster
 from monobit.base import Coord, NOT_SET, FileFormatError
-from monobit.storage.utils.limitations import ensure_charcell
+from monobit.storage.utils.limitations import ensure_charcell, ensure_levels
 
 # patterns
 
@@ -283,6 +283,7 @@ def save_bitmap(
     Save character-cell font to binary bitmap.
     """
     font = ensure_charcell(font)
+    font = ensure_levels(font, 2)
     # get pixel rasters
     rasters = (_g.pixels for _g in font.glyphs)
     if align == 'bit':

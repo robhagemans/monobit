@@ -16,6 +16,7 @@ from monobit.base.binary import bytes_to_bits
 from monobit.base.struct import bitfield, big_endian as be, little_endian as le
 from monobit.core import Font, Glyph, KernTable, Char, Raster
 from monobit.storage import loaders, savers
+from monobit.storage.utils.limitations import ensure_single
 from monobit.encoding import EncodingName
 from monobit.base import Props, NOT_SET, UnsupportedError
 
@@ -57,9 +58,7 @@ def save_nfnt(
     create_height_table: include an image-height table in the resource (default: False)
     resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
     """
-    if len(fonts) > 1:
-        logging.warning('NFNT resource can only store one font.')
-    font = fonts[0]
+    font = ensure_single(fonts)
     data, _, _ = create_nfnt(
         font, endian='big', ndescent_is_high=True,
         create_width_table=create_width_table,

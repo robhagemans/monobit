@@ -22,7 +22,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.storage import loaders, savers
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.core import Glyph, Font, Codepoint
 from monobit.base.struct import little_endian as le
 from monobit.base import FileFormatError, UnsupportedError
@@ -121,6 +121,7 @@ def save_symbos(fonts, outstream, height:int=None):
     Strict output: always writes start_code 0x20 and exactly 96 glyphs (ASCII 32-127).
     """
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
 
     if height is None:
         height = max(glyph.height for glyph in font.glyphs if glyph.height > 0)

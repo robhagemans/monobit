@@ -16,6 +16,7 @@ from monobit.base.struct import little_endian as le, sizeof
 from monobit.storage import loaders, savers, Magic
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
+from monobit.storage.utils.limitations import ensure_levels
 
 
 _ID_MS = b'FONT   '
@@ -460,6 +461,7 @@ def _make_fit(fonts, codepage_prefix):
             'CPI format can only store 8xN character-cell fonts'
             ' encoded with a numbered codepage.'
         )
+    fonts = ensure_levels(fonts, 2)
     sizes = set(_f.cell_size for _f in fonts)
     codepages = sorted(set(_f.encoding for _f in fonts))
     # ensure all sizes exist for all codepages

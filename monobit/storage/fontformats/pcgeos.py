@@ -15,7 +15,7 @@ from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.base.struct import StructError, bitfield, flag, little_endian as le
 from monobit.base.binary import ceildiv
 
-from monobit.storage.utils.limitations import make_contiguous
+from monobit.storage.utils.limitations import make_contiguous, ensure_levels
 
 
 _BSWF_SIG = b'BSWF'
@@ -637,6 +637,7 @@ def _prepare_pcgeos(fonts):
         raise UnsupportedError(
             'PC-GEOS font file can only store fonts from one family.'
         )
+    fonts = ensure_levels(fonts, 2)
     common_props = _get_metadata(fonts[0])
     return fonts, common_props
 

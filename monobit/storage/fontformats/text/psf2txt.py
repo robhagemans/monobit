@@ -14,7 +14,9 @@ from monobit.core import Font, Glyph, Char
 from monobit.base import Props
 
 from .draw import NonEmptyBlock, Empty, iter_blocks, equal_firsts, Unparsed
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, ensure_levels
+)
 
 
 ###############################################################################
@@ -50,6 +52,7 @@ def load_psf2txt(instream):
 def save_psf2txt(fonts, outstream):
     """Save font to a psf2txt .txt file."""
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     _write_psf2txt(font, outstream)
 
 

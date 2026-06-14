@@ -16,7 +16,7 @@ from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 
 from .draw import load_draw, DrawGlyph, DrawComment, Empty
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 @loaders.register(
@@ -25,7 +25,7 @@ from monobit.storage.utils.limitations import ensure_single
     text=True,
 )
 def load_hex(instream):
-    """Load 8x16 multi-cell font from Unifont .HEX file."""
+    """Load multi-cell font from Unifont .HEX file."""
     return _load_hex(instream)
 
 
@@ -76,6 +76,7 @@ class HexGlyph(DrawGlyph):
 def _validate(fonts):
     """Check if font fits in file format."""
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     if font.spacing not in ('character-cell', 'multi-cell'):
         raise UnsupportedError(
             'This format only supports character-cell or multi-cell fonts.'

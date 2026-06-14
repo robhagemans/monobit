@@ -14,7 +14,9 @@ from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, ensure_levels
+)
 
 
 # PSF formats:
@@ -148,6 +150,7 @@ def save_psf(fonts, outstream, *, version:int=2, count:int=256):
     """
     font = ensure_single(fonts)
     font = ensure_charcell(font)
+    font = ensure_levels(font, 2)
     # ensure unicode labels exist if encoding is defined
     font = font.label()
     if version == 2:

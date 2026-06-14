@@ -27,6 +27,7 @@ from ..storage.utils.limitations import ensure_single
 from ..plumbing import scriptable
 from .glyphmap import GlyphMap
 from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
+from .rgb import default_colours
 
 
 DIRECTIONS = {
@@ -149,7 +150,7 @@ def output_blocks(
 def output_shades(
         fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
+        paper:RGB=None, ink:RGB=None, border:RGB=None,
     ):
     """
     Render text using ANSI escape colours
@@ -169,8 +170,11 @@ def output_shades(
         text=text, textfile=textfile, raw=raw,
         margin=margin, direction=direction, align=align,
     )
-    if border is None:
-        border = paper
+    paper, ink, border = default_colours(
+        fonts[0], paper, ink, border,
+        default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
+        border_match_paper=True,
+    )
     outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
@@ -178,7 +182,7 @@ def output_shades(
 def output_sixel(
         fonts, outfile, text:str='', *, textfile:str='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
+        paper:RGB=None, ink:RGB=None, border:RGB=None,
     ):
     """
     Render text as sixel graphics
@@ -198,8 +202,11 @@ def output_sixel(
         text=text, textfile=textfile, raw=raw,
         margin=margin, direction=direction, align=align,
     )
-    if border is None:
-        border = paper
+    paper, ink, border = default_colours(
+        fonts[0], paper, ink, border,
+        default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
+        border_match_paper=True,
+    )
     outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
@@ -215,8 +222,8 @@ if Image:
             image_format:str='',
             image_mode:str='RGB',
             border:RGB=None,
-            paper:RGB=RGB(255, 255, 255),
-            ink:RGB=RGB(0, 0, 0),
+            paper:RGB=None,
+            ink:RGB=None,
         ):
         """
         Render text to image.
@@ -238,8 +245,11 @@ if Image:
             text=text, textfile=textfile, raw=raw,
             margin=margin, direction=direction, align=align,
         )
-        if border is None:
-            border = paper
+        paper, ink, border = default_colours(
+            fonts[0], paper, ink, border,
+            default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
+            border_match_paper=True,
+        )
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink,
             transparent=False,

@@ -13,7 +13,7 @@ from monobit.base.struct import big_endian as be
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 # http://www.eonet.ne.jp/~hirotsu/bin/bmf_format.txt
@@ -106,6 +106,8 @@ def load_beos(instream):
 def save_beos(fonts, outstream):
     """Save font to BeOS file."""
     font = ensure_single(fonts)
+    # 4 bits per pixel
+    font = ensure_levels(font, 16)
     font = font.label()
     # drop multi-codepoint sequences and unlabelled glyphs
     glyphs = tuple(_g for _g in font.glyphs if len(_g.char) == 1)

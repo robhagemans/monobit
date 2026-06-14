@@ -118,7 +118,7 @@ class GlyphMap:
 
     def to_images(
             self, *,
-            paper=(0, 0, 0), ink=(255, 255, 255), border=(32, 32, 32),
+            paper=None, ink=None, border=(32, 32, 32),
             invert_y=False, transparent=True, image_mode='RGB',
         ):
         """Draw images based on sheets in glyph map."""
@@ -134,7 +134,7 @@ class GlyphMap:
 
     def as_image(
             self, *,
-            paper=(0, 0, 0), ink=(255, 255, 255), border=(32, 32, 32),
+            paper=None, ink=None, border=(32, 32, 32),
             sheet=0, invert_y=False, transparent=True, image_mode='RGB',
         ):
         """Convert glyph map to image."""
@@ -201,7 +201,7 @@ class GlyphMap:
 
     def as_sixel(
             self, *,
-            paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
+            paper:RGB=None, ink:RGB=None, border:RGB=None,
             sheet=0
         ):
         """Convert glyph map to a sixel sequence."""
@@ -216,7 +216,7 @@ class GlyphMap:
 
     def as_shades(
             self, *,
-            paper:RGB=RGB(0, 0, 0), ink:RGB=RGB(255, 255, 255), border:RGB=None,
+            paper:RGB=None, ink:RGB=None, border:RGB=None,
             sheet=0,
         ):
         """Convert glyph map to ansi coloured block characters."""

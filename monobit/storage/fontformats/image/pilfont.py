@@ -17,7 +17,7 @@ from monobit.core import Font, Glyph
 from monobit.base.struct import big_endian as be
 from monobit.renderer import GlyphMap
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 _PIL_METRICS = be.Struct(
@@ -93,6 +93,7 @@ if Image:
         max_width: maximum width of spritesheet
         """
         font = ensure_single(fonts)
+        font = ensure_levels(font, 2)
         outstream.write(b'PILfont\n')
         # I wonder if the other fields in this header were ever defined
         outstream.write(b';;;;;;%d;\n' % font.line_height)

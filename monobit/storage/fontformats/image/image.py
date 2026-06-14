@@ -23,8 +23,9 @@ from monobit.renderer import (
     create_image_colours, RGBTable, create_gradient,
     write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 )
+from monobit.renderer.rgb import default_colours
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage.utils.perglyph import loop_load, loop_save
 
 
@@ -353,9 +354,9 @@ if Image:
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             direction:str='left-to-right top-to-bottom',
-            border:RGB=RGB(32, 32, 32),
-            paper:RGB=RGB(0, 0, 0),
-            ink:RGB=RGB(255, 255, 255),
+            border:RGB=None,
+            paper:RGB=None,
+            ink:RGB=None,
             codepoint_range:tuple[Codepoint]=range(512),
             grid_positioning:bool=True,
             skip_empty_lines:bool=False,
@@ -377,6 +378,8 @@ if Image:
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: false)
         """
+        if image_mode == 'mono':
+            fonts = ensure_levels(fonts, 2)
         # NOTE 'imagechart' and 'image' are the same but with different defaults
         glyph_map = create_chart(
             fonts,
@@ -388,6 +391,11 @@ if Image:
             codepoint_range=codepoint_range,
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
+        )
+        paper, ink, border = default_colours(
+            fonts[0], paper, ink, border,
+            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
+            default_border=RGB(32, 32, 32),
         )
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink,
@@ -443,7 +451,9 @@ if Image:
         paper: background colour R,G,B 0--255 (default: 0,0,0)
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
-        font = fonts[0]
+        font = ensure_single(fonts)
+        if image_mode == 'mono':
+            font = ensure_levels(font, 2)
         inklevels = create_image_colours(
             image_mode=image_mode, rgb_table=font.rgb_table,
             levels=font.levels, paper=paper, ink=ink,

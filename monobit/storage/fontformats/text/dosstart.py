@@ -12,7 +12,9 @@ from io import StringIO
 from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster, StrokePath
-from monobit.storage.utils.limitations import ensure_single, make_contiguous
+from monobit.storage.utils.limitations import (
+    ensure_single, make_contiguous, ensure_levels
+)
 
 
 _DOSSTART_SIG = 'DosStartFont'
@@ -51,6 +53,7 @@ def load_dosstart(instream):
 def save_dosstart(fonts, outstream):
     """Save font to DosStart! .DSF file (format 1 only)."""
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     _write_dsf_format_1(font, outstream)
 
 
