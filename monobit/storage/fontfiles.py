@@ -286,7 +286,7 @@ def _output_to_container(pack, location, *, format, registry, **kwargs):
 
 def _output_all(pack, location, *, format, registry, template='', **kwargs):
     """Save fonts to a container."""
-    format = format or DEFAULT_TEXT_FORMAT
+    format = format or registry.default_text_format
     logging.info('Outputting all to %s.', location)
     for font in pack:
         if format and not template:
