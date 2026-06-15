@@ -1140,8 +1140,8 @@ class TestImport(BaseTester):
 
     # OS/2
 
-    def test_import_os2_lx(self):
-        """Test importing OS/2 fonts (LX container)."""
+    def test_import_os2_lx_exepack2(self):
+        """Test importing OS/2 fonts (LX container, exepack2)."""
         font, *_ = monobit.load(self.font_path / 'WARPSANS.FON')
         self.assertEqual(len(font.glyphs), 950)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
@@ -1156,6 +1156,38 @@ class TestImport(BaseTester):
 @.....@
 @.....@
 """)
+
+    merlinfont = 'https://hobbes.os-2.in/download/multimedia/fonts/bitmap/'
+    warpsans_11x14_A = """\
+...@...
+...@...
+..@.@..
+..@.@..
+.@...@.
+.@...@.
+.@@@@@.
+@.....@
+@.....@
+"""
+
+    def test_import_os2_lx_unpacked(self):
+        """Test importing OS/2 fonts (LX container, unpacked)."""
+        file = ensure_asset(self.merlinfont, 'merlinfont.zip')
+        font, *_ = monobit.load(file /  'WARPSANS.FON')
+        self.assertEqual(len(font.glyphs), 503)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.warpsans_11x14_A)
+
+
+    dspres = 'https://hobbes.os-2.in/download/os2/system-6/patches-3/warp-3/'
+
+    def test_import_os2_lx_exepack(self):
+        """Test importing OS/2 fonts (LX container, exepack)."""
+        file = ensure_asset(self.dspres, 'WarpSans_DSPRES_1996-04-29.zip')
+        fonts = monobit.load(file / 'dspres.dll')
+        font, *_ = fonts.select(bounding_box='11x14')
+        self.assertEqual(len(font.glyphs), 503)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.warpsans_11x14_A)
+
 
     bgafon = 'http://discmaster.textfiles.com/file/21050/NOVEMBER.bin/nov95/nov9/nov9022.zip/whbdlt1.zip/BGAFON.ZIP/'
 
