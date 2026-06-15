@@ -1079,6 +1079,16 @@ class TestImport(BaseTester):
         self.assertEqual(len(font.glyphs), 922)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_ttc(self):
+        """Test importing (fontforge produced) TTC collection."""
+        fonts = monobit.load(self.font_path / 'vertical-and-4x6.ttc')
+        self.assertEqual(len(fonts), 2)
+        font_v, font = fonts
+        self.assertEqual(len(font.glyphs), 922)
+        self.assertEqual(len(font_v.glyphs), 4)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+
     # geos
 
     def test_import_geos(self):

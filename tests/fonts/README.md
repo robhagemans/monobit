@@ -108,6 +108,9 @@ Original sources:
   - Niklaus Wirth and Jürg Gutknecht
   - released under MIT licence, https://www.projectoberon.net/wirth/ProjectOberon/license.txt
   - https://www.projectoberon.net/txt/FAQ.txt
+* `vertical.bdf`
+  - Example 1 from the Adobe BDF specification document, p.13
+  - https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
 
 
 ### Derivatives of `4x6`
@@ -133,6 +136,7 @@ Original sources:
 * `8X16-FE.COM` was created from `8X16-FRA.COM` using `FONTEDIT`
 * `8X16-REX.COM` was created from `8X16-FRA.COM` using Font Mania 2.2
 * `8x8-letafont.com` was created from `8x16.f16` and a stub Letafont file
+* `vertical-and-4x6.ttc` was created form `4x6.otb` and `vertical.otb` using FontForge
 
 
 ### Derivatives of `6x13`
@@ -155,3 +159,8 @@ Original sources:
 
 ### Derivatives of Konatu:
 * `konatu-ascii.yaff` was created from a subset of `Konatu_10` using `monobit`
+
+
+### Derivatives of `vertical.bdf`:
+* `vertical.otb` was created from `vertical.bdf` using `monobit`
+* `vertical-and-4x6.ttc` was created form `4x6.otb` and `vertical.otb` using FontForge
