@@ -1148,6 +1148,17 @@ class TestImport(BaseTester):
 """
 )
 
+    treo = 'https://palmarchive.com/files/?file=xandros9%20Archive/Device%20ROM%20Files/Treo%20755p/'
+
+    def test_import_palm_prc(self):
+        """Test importing Palm OS fonts from a PRC file."""
+        file = ensure_asset(self.treo, 'Security.prc')
+        # only sees NFNT resource, skips nfnt v2 (unless we implement that)
+        font, = monobit.load(file)
+        # NFNT resource just has a space glyph and a 'missing' glyph containing garbage
+        self.assertEqual(len(font.glyphs), 2)
+
+
     # OS/2
 
     def test_import_os2_lx_exepack2(self):
