@@ -10,6 +10,7 @@ from ..storage.base import (
     container_loaders, container_savers,
     encoders, decoders, containers,
 )
+from ..storage.fontfiles import load_plugins
 from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
 
@@ -97,6 +98,7 @@ def print_help(command_args, usage, operations, global_options):
 
 
 def _print_context_help(command, func, args, kwargs, **ignore):
+    load_plugins()
     format = kwargs.get('format', '')
     funcs = []
     if command == 'load':
