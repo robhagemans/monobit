@@ -430,6 +430,11 @@ class TestExport(BaseTester):
         # 920 as .notdef is added
         self._export_4x6(format='sfnt', count=920, save_kwargs=dict(version='apple'))
 
+    def test_export_sfnt_ms(self):
+        """Test exporting fake-ms sfnt files."""
+        # 920 as .notdef is added
+        self._export_4x6(format='sfnt', count=920, save_kwargs=dict(version='ms'))
+
     def test_export_sfnt_ttc(self):
         """Test exporting ttc files."""
         # 920 as .notdef is added
