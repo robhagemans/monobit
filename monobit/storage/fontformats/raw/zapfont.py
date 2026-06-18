@@ -69,10 +69,14 @@ def load_zapfont(instream):
 
 
 @savers.register(linked=load_zapfont)
-def save_zapfont(fonts, outstream):
+def save_zapfont(fonts, outstream, raw:bool=False):
     """Save a !Zapfont."""
     font = ensure_single(fonts)
     font = ensure_charcell(font)
+    if not raw:
+        # zapfont encoding is defined as latin-1
+        font = font.label()
+        font = font.label(codepoint_from='latin-1', overwrite=True)
     font = make_contiguous(font, supported_range=range(0, 256), missing='space')
     header = _ZAP_HEADER(
         magic=_ZAP_MAGIC,

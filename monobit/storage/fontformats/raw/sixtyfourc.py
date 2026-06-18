@@ -49,9 +49,15 @@ def load_64c(instream, charset:str='upper'):
 
 
 @savers.register(linked=load_64c)
-def save_64c(fonts, outstream):
+def save_64c(fonts, outstream, charset:str='upper'):
     """Save a 64C font."""
     font = ensure_single(fonts)
+    if charset == 'upper':
+        font = font.label()
+        font = font.label(codepoint_from='c64')
+    elif charset == 'lower':
+        font = font.label()
+        font = font.label(codepoint_from='c64-alternate')
     # not an actual magic sequence. we also see \0\x20 \0\x30 \0\x48 \0\xc8
     outstream.write(b'\x00\x38')
     save_bitmap(outstream, font)
