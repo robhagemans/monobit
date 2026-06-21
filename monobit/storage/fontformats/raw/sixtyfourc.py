@@ -12,7 +12,9 @@ from monobit.core import Glyph, Font, Char
 from monobit.base.struct import little_endian as le, bitfield
 
 from .raw import load_bitmap, save_bitmap
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, make_contiguous, reencode
+)
 
 
 ###############################################################################
@@ -29,7 +31,7 @@ def load_64c(instream, charset:str='upper'):
     """
     Load a 64C font.
 
-    charset: 'upper' for c64 uppercase & graphical, 'lower' for lowercase & uppercase, '' for not specified
+    charset: 'upper' for C64 uppercase & graphical (default), 'lower' for lowercase & uppercase, '' for not specified
     """
     # the second byte is likely a flag, the first is almost always null
     null = instream.read(1)
@@ -50,14 +52,23 @@ def load_64c(instream, charset:str='upper'):
 
 @savers.register(linked=load_64c)
 def save_64c(fonts, outstream, charset:str='upper'):
-    """Save a 64C font."""
+    """
+    Save a 64C font.
+
+    charset: 'upper' for C64 uppercase & graphical (default), 'lower' for lowercase & uppercase, '' to use font's codepoints 0--255
+    """
     font = ensure_single(fonts)
-    if charset == 'upper':
-        font = font.label()
-        font = font.label(codepoint_from='c64')
-    elif charset == 'lower':
-        font = font.label()
-        font = font.label(codepoint_from='c64-alternate')
+    font = ensure_charcell(font, cell_size=(8, 8))
+    if charset:
+        if charset.lower() == 'upper':
+            font = reencode(font, 'c64')
+        elif charset.lower() == 'lower':
+            font = reencode(font, 'c64-alternate')
+        else:
+            raise ValueError(
+                f"`charset` must be one of ('upper', 'lower'); got {charset} instead."
+            )
+    font = make_contiguous(font, full_range=range(0, 256), missing='space')
     # not an actual magic sequence. we also see \0\x20 \0\x30 \0\x48 \0\xc8
     outstream.write(b'\x00\x38')
     save_bitmap(outstream, font)

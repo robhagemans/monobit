@@ -14,7 +14,9 @@ from monobit.base.struct import little_endian as le, bitfield
 from monobit.base.binary import ceildiv
 
 from .raw import load_bitmap, save_bitmap
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell, make_contiguous
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, make_contiguous, reencode
+)
 
 
 ###############################################################################
@@ -70,13 +72,16 @@ def load_zapfont(instream):
 
 @savers.register(linked=load_zapfont)
 def save_zapfont(fonts, outstream, raw:bool=False):
-    """Save a !Zapfont."""
+    """
+    Save a !Zapfont.
+
+    raw: save as-is without applying latin-1 character encoding (default: False)
+    """
     font = ensure_single(fonts)
     font = ensure_charcell(font)
     if not raw:
         # zapfont encoding is defined as latin-1
-        font = font.label()
-        font = font.label(codepoint_from='latin-1', overwrite=True)
+        font = reencode(font, 'latin-1')
     font = make_contiguous(font, supported_range=range(0, 256), missing='space')
     header = _ZAP_HEADER(
         magic=_ZAP_MAGIC,
