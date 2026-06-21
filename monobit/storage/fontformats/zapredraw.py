@@ -17,7 +17,7 @@ from monobit.base.binary import ceildiv
 
 from .raw import load_bitmap, save_bitmap
 from monobit.storage.utils.limitations import (
-    ensure_single, ensure_charcell, make_contiguous, ensure_levels
+    ensure_single, ensure_charcell, make_contiguous, ensure_levels, reencode
 )
 
 
@@ -127,11 +127,18 @@ def load_zapredraw(instream):
 
 
 @savers.register(linked=load_zapredraw)
-def save_zapredraw(fonts, outstream):
-    """Save a !ZapRedraw UCS font."""
+def save_zapredraw(fonts, outstream, raw:bool=False):
+    """
+    Save a !ZapRedraw UCS font.
+
+    raw: save as-is without applying !ZapRedraw character encoding (default: False)
+    """
     font = ensure_single(fonts)
     font = ensure_charcell(font)
     font = ensure_levels(font, 2)
+    if not raw:
+        # encoding is RiscOS latin-1 for chunk 0, unicode elsewhere.
+        font = reencode(font, encoding='risc-os-latin1', fallback='unicode')
     # determine number of chunks:
     # first bytes of 16-bit unicode codepoints
     chunked_codepoints = tuple(sorted(

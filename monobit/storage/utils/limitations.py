@@ -67,7 +67,7 @@ def ensure_levels(fonts, levels):
     return fonts
 
 
-def reencode(font, encoding):
+def reencode(font, encoding, fallback=None):
     """Regenerate codepoints according to a different encoding."""
     # create char labels where possible
     font = font.label()
@@ -75,5 +75,6 @@ def reencode(font, encoding):
     font = font.label(codepoint_from=None, overwrite=True)
     # create new codepoint labels
     font = font.label(codepoint_from=encoding)
+    font = font.label(codepoint_from=fallback)
     font = font.modify(encoding=encoding)
     return font

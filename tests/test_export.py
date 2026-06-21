@@ -378,7 +378,7 @@ class TestExport(BaseTester):
     def test_export_64c(self):
         """Test exporting 64c files."""
         # labelling is not correct
-        self._export_8x8(format='64c', label=0x22)
+        self._export_8x8(format='64c', count=256)
 
     # +3DOS
 
