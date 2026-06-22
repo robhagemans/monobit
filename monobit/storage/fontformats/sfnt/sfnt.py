@@ -466,22 +466,33 @@ def _convert_sbix(sfnt):
     for strike in sfnt.sbix.strikes.values():
         crops = []
         for glyph in strike.glyphs.values():
-            print(glyph.glyphName, glyph.originOffsetX, glyph.originOffsetY)
             data = glyph.imageData
             if data:
-                img = Image.open(BytesIO(data))
-                crops.append(img.convert('RGB'))
-            # else:
-            #     img = Image.new(mode='RGB', size=(0, 0))
+                img = Image.open(BytesIO(data)).convert('RGB')
+            else:
+                img = Image.new(mode='RGB', size=(0, 0))
+            crops.append(img)
         # does sbix have a concept of background?
         # presumably it's just using alpha transparency
         background = 'darkest'
         font = convert_crops_to_font(enumerate(crops), background, keep_empty=True)
+        # update glyphs with metrics
+        glyphs = tuple(
+            _g.modify(
+                tag=_s.glyphName,
+                left_bearing=_s.originOffsetX,
+                shift_up=_s.originOffsetY,
+            )
+            for _s, _g in zip(strike.glyphs.values(), font.glyphs)
+        )
         props = _convert_props(sfnt, strike.ppem, strike.ppem)
         del props._hfupp
         del props._vfupp
         fonts.append(font.modify(
-            dpi=strike.resolution, source_format='sfnt (sbix)', **vars(props)
+            glyphs=glyphs,
+            dpi=strike.resolution,
+            source_format='sfnt (sbix)',
+            **vars(props)
         ))
     return fonts
 
