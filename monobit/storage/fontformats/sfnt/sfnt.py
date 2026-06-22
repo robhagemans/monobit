@@ -462,6 +462,8 @@ def _convert_sbix(sfnt):
     from PIL import Image
     from io import BytesIO
     from ..image.image import convert_crops_to_font
+    unitable = _get_unicode_table(sfnt)
+    enctable, encoding = _get_encoding_table(sfnt)
     fonts = []
     for strike in sfnt.sbix.strikes.values():
         crops = []
@@ -480,6 +482,8 @@ def _convert_sbix(sfnt):
         glyphs = tuple(
             _g.modify(
                 tag=_s.glyphName,
+                char=unitable.get(_s.glyphName, ''),
+                codepoint=enctable.get(_s.glyphName, b''),
                 left_bearing=_s.originOffsetX,
                 shift_up=_s.originOffsetY,
             )
@@ -491,6 +495,7 @@ def _convert_sbix(sfnt):
         fonts.append(font.modify(
             glyphs=glyphs,
             dpi=strike.resolution,
+            encoding=encoding or None,
             source_format='sfnt (sbix)',
             **vars(props)
         ))
