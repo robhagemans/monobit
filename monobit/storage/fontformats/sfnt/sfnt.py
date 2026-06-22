@@ -298,49 +298,54 @@ def _convert_sfnt(sfnt):
     sfnt.bdat = sfnt.bdat or sfnt.EBDT
     sfnt.bloc = sfnt.bloc or sfnt.EBLC
     sfnt.head = sfnt.bhed or sfnt.head
-    if sfnt.sbix:
-        _convert_sbix_glyphs(sfnt)
-        logging.warning('Bitmap strikes in `sbix` format not supported.')
     if sfnt.CBDT:
         logging.warning('Bitmap strikes in `CBDT` format not supported.')
-    if not sfnt.bdat or not sfnt.bloc:
+    if not sfnt.sbix and (not sfnt.bdat or not sfnt.bloc):
         raise ResourceFormatError(
-            'No `EBDT` or `bdat` bitmap strikes found in sfnt resource.'
+            'No `EBDT`, `bdat` or `sbix` bitmap strikes found in sfnt resource.'
         )
     fonts = []
-    unitable = _get_unicode_table(sfnt)
-    enctable, encoding = _get_encoding_table(sfnt)
-    for i_strike in range(sfnt.bloc.numSizes):
-        try:
-            props = _convert_props(sfnt, i_strike)
-            glyphs = _convert_glyphs(
-                sfnt, i_strike, props._hfupp, props._vfupp, unitable, enctable
-            )
+    if sfnt.sbix:
+        glyphsprops = _convert_sbix(sfnt)
+        for sbix_font, sbix_props in glyphsprops:
+            props = _convert_props(sfnt, sbix_props.ppem, sbix_props.ppem)
             del props._hfupp
             del props._vfupp
-            font = Font(
-                glyphs, source_format=source_format, encoding=encoding or None,
-                **vars(props)
-            )
-            # remove temporary names created by fontTools
-            # if there's no post table or it is empty
-            if not sfnt.post or sfnt.post.formatType == 3.0:
-                font = font.label(tag_from=None)
-            fonts.append(font)
-        except StrikeFormatError:
-            pass
+            fonts.append(sbix_font.modify(dpi=sbix_props.resolution, **vars(props)))
+    if sfnt.bdat and sfnt.bloc:
+        unitable = _get_unicode_table(sfnt)
+        enctable, encoding = _get_encoding_table(sfnt)
+        for i_strike in range(sfnt.bloc.numSizes):
+            try:
+                bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
+                props = _convert_bloc_props(sfnt.bloc, i_strike)
+                props |= _convert_props(sfnt, bmst.ppemX, bmst.ppemY)
+                glyphs = _convert_glyphs(
+                    sfnt, i_strike, props._hfupp, props._vfupp, unitable, enctable
+                )
+                del props._hfupp
+                del props._vfupp
+                font = Font(
+                    glyphs, source_format=source_format, encoding=encoding or None,
+                    **vars(props)
+                )
+                # remove temporary names created by fontTools
+                # if there's no post table or it is empty
+                if not sfnt.post or sfnt.post.formatType == 3.0:
+                    font = font.label(tag_from=None)
+                fonts.append(font)
+            except StrikeFormatError:
+                pass
     return fonts
 
 
-def _convert_props(sfnt, i_strike):
+def _convert_props(sfnt, ppemX, ppemY):
     """Build font properties from sfnt data."""
     # determine the size of a pixel in FUnits
-    bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
-    vert_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemY
-    hori_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemX
     # we also had pixels per em in the EBLC table, so now we know units per pixel
-    props = _convert_bloc_props(sfnt.bloc, i_strike)
-    props |= _convert_head_props(sfnt.head)
+    vert_fu_p_pix = sfnt.head.unitsPerEm / ppemY
+    hori_fu_p_pix = sfnt.head.unitsPerEm / ppemX
+    props = _convert_head_props(sfnt.head)
     props |= _convert_name_props(sfnt.name)
     props |= _convert_os_2_props(getattr(sfnt, 'OS/2'), vert_fu_p_pix, hori_fu_p_pix)
     props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
@@ -449,15 +454,13 @@ def _convert_glyph_metrics(metrics, small_is_vert):
 ###############################################################################
 # 'sbix' table
 
-def _convert_sbix_glyphs(sfnt):
+def _convert_sbix(sfnt):
     """Build glyphs and glyph properties from sfnt data."""
     from PIL import Image
     from io import BytesIO
     from ..image.image import convert_crops_to_font
-    glyphs = []
+    glyphs_props = []
     for strike in sfnt.sbix.strikes.values():
-        print(strike.ppem)
-        print(strike.resolution)
         crops = []
         for glyph in strike.glyphs.values():
             print(glyph.glyphName, glyph.originOffsetX, glyph.originOffsetY)
@@ -471,7 +474,8 @@ def _convert_sbix_glyphs(sfnt):
         # presumably it's just using alpha transparency
         background = 'darkest'
         font = convert_crops_to_font(enumerate(crops), background, keep_empty=True)
-        print(font.glyphs)
+        glyphs_props.append((font, Props(ppem=strike.ppem, resolution=strike.resolution)))
+    return glyphs_props
 
 
 ###############################################################################
