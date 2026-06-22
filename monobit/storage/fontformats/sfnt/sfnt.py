@@ -11,6 +11,7 @@ import json
 import math
 import re
 from unicodedata import bidirectional
+from io import BytesIO
 
 from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
 from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint
@@ -19,8 +20,10 @@ from monobit.storage import loaders, savers
 fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
 ttLib = safe_import('fontTools.ttLib')
 fonttools_loaded = ttLib is not None
+Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
+from ..image.image import convert_crops_to_font
 
 
 # specs
@@ -459,9 +462,11 @@ def _convert_glyph_metrics(metrics, small_is_vert):
 
 def _convert_sbix(sfnt):
     """Build glyphs and glyph properties from sfnt data."""
-    from PIL import Image
-    from io import BytesIO
-    from ..image.image import convert_crops_to_font
+    if not Image:
+        logging.error(
+            "Converting `sbix` strikes requires module `PIL`, which was not found."
+        )
+        return ()
     unitable = _get_unicode_table(sfnt)
     enctable, encoding = _get_encoding_table(sfnt)
     fonts = []
