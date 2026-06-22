@@ -13,7 +13,7 @@ from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster, StrokePath
 from monobit.storage.utils.limitations import (
-    ensure_single, make_contiguous, ensure_levels
+    ensure_single, make_contiguous, ensure_levels, reencode
 )
 
 
@@ -50,10 +50,16 @@ def load_dosstart(instream):
 
 
 @savers.register(linked=load_dosstart)
-def save_dosstart(fonts, outstream):
-    """Save font to DosStart! .DSF file (format 1 only)."""
+def save_dosstart(fonts, outstream, raw:bool=False):
+    """
+    Save font to DosStart! .DSF file (format 1 only).
+
+    raw: save as-is without applying ASCII character encoding (default: False)
+    """
     font = ensure_single(fonts)
     font = ensure_levels(font, 2)
+    if not raw:
+        font = reencode(font, 'ascii')
     _write_dsf_format_1(font, outstream)
 
 
