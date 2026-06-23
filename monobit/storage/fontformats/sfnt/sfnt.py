@@ -297,14 +297,14 @@ def _convert_sfnt(sfnt):
     sfnt.head = sfnt.bhed or sfnt.head
     if sfnt.CBDT:
         logging.warning('Bitmap strikes in `CBDT` format not supported.')
-    if not sfnt.sbix and (not sfnt.bdat or not sfnt.bloc):
+    if not sfnt.sbix and not sfnt.bdat and not sfnt.EBDT:
         raise ResourceFormatError(
             'No `EBDT`, `bdat` or `sbix` bitmap strikes found in sfnt resource.'
         )
     fonts = []
     if sfnt.sbix:
         fonts.extend(_convert_sbix(sfnt))
-    if sfnt.bdat and sfnt.bloc:
+    if sfnt.bdat or sfnt.EBDT:
         fonts.extend(_convert_bdat(sfnt))
     return fonts
 
@@ -318,6 +318,10 @@ def _convert_bdat(sfnt):
     # synonymous tables
     sfnt.bdat = sfnt.bdat or sfnt.EBDT
     sfnt.bloc = sfnt.bloc or sfnt.EBLC
+    if not sfnt.bloc:
+        raise ResourceFormatError(
+            'No `bloc` or `EBLC` table found in sfnt resource.'
+        )
     fonts = []
     unitable = _get_unicode_table(sfnt)
     enctable, encoding = _get_encoding_table(sfnt)
@@ -813,6 +817,8 @@ def _decode_name(namerecs, nameid):
 
 def _convert_version_string(version_string):
     """Convert standard sfnt version string to something more like ours."""
+    if not version_string:
+        return None
     # version is encoded as 'Version x.y', optionally followed by non-numeric info
     # split by non-(digit or dot)
     groups = re.split(r'([\d\.]+)', version_string)
