@@ -295,43 +295,39 @@ def _convert_sfnt(sfnt):
     """Convert sfnt data structure to Font."""
     # synonymous tables
     sfnt.head = sfnt.bhed or sfnt.head
-    if sfnt.CBDT:
-        logging.warning('Bitmap strikes in `CBDT` format not supported.')
-    if not sfnt.sbix and not sfnt.bdat and not sfnt.EBDT:
+    if not sfnt.sbix and not sfnt.bdat and not sfnt.EBDT and not sfnt.CBDT:
         raise ResourceFormatError(
             'No `EBDT`, `bdat` or `sbix` bitmap strikes found in sfnt resource.'
         )
     fonts = []
     if sfnt.sbix:
         fonts.extend(_convert_sbix(sfnt))
-    if sfnt.bdat or sfnt.EBDT:
-        fonts.extend(_convert_bdat(sfnt))
+    if sfnt.bdat:
+        fonts.extend(_convert_bdat(sfnt, 'bdat', 'bloc'))
+    if sfnt.EBDT:
+        fonts.extend(_convert_bdat(sfnt, 'EBDT', 'EBLC'))
+    if sfnt.CBDT:
+        fonts.extend(_convert_bdat(sfnt, 'CBDT', 'CBLC'))
     return fonts
 
 
-def _convert_bdat(sfnt):
-    """Convert a bdat/bloc or EBDT/EBLC bitmap sfnt."""
-    if sfnt.bdat:
-        source_format = 'sfnt (bdat)'
-    else:
-        source_format = 'sfnt (EBDT)'
-    # synonymous tables
-    sfnt.bdat = sfnt.bdat or sfnt.EBDT
-    sfnt.bloc = sfnt.bloc or sfnt.EBLC
-    if not sfnt.bloc:
-        raise ResourceFormatError(
-            'No `bloc` or `EBLC` table found in sfnt resource.'
-        )
+def _convert_bdat(sfnt, bdatname, blocname):
+    """Convert a bdat/bloc, EBDT/EBLC, or CBDT/CBLC bitmap sfnt."""
+    bdat = getattr(sfnt, bdatname)
+    bloc = getattr(sfnt, blocname)
+    source_format = f'sfnt ({bdatname})'
+    if not bloc:
+        raise ResourceFormatError(f'No `{blocname}` table found in sfnt resource.')
     fonts = []
     unitable = _get_unicode_table(sfnt)
     enctable, encoding = _get_encoding_table(sfnt)
-    for i_strike in range(sfnt.bloc.numSizes):
+    for i_strike in range(bloc.numSizes):
         try:
-            bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
-            props = _convert_bloc_props(sfnt.bloc, i_strike)
+            bmst = bloc.strikes[i_strike].bitmapSizeTable
+            props = _convert_bloc_props(bloc, i_strike)
             props |= _convert_props(sfnt, bmst.ppemX, bmst.ppemY)
             glyphs = _convert_bdat_glyphs(
-                sfnt, i_strike, props._hfupp, props._vfupp, unitable, enctable
+                sfnt, bdat, bloc, i_strike, props._hfupp, props._vfupp, unitable, enctable
             )
             del props._hfupp
             del props._vfupp
@@ -367,13 +363,15 @@ def _convert_props(sfnt, ppemX, ppemY):
 
 
 ###############################################################################
-# 'bdat'/'EBDT' and 'bloc'/'EBLC'
+# 'bdat'/'EBDT'/'CBDT' and 'bloc'/'EBLC'/'CBLC'
 
-def _convert_bdat_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enctable):
-    """Build glyphs and glyph properties from bdat/EBDT and bloc/EBLC data."""
+def _convert_bdat_glyphs(
+        sfnt, bdat, bloc, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enctable
+    ):
+    """Build glyphs and glyph properties from bdat/EBDT/CBDT and bloc/EBLC/CBLC data."""
     glyphs = []
-    strike = sfnt.bdat.strikeData[i_strike]
-    blocstrike = sfnt.bloc.strikes[i_strike]
+    strike = bdat.strikeData[i_strike]
+    blocstrike = bloc.strikes[i_strike]
     for subtable in blocstrike.indexSubTables:
         # some formats are byte aligned, others bit-aligned
         if subtable.imageFormat in (1, 6):
