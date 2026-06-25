@@ -275,8 +275,8 @@ if Image:
 
     def _identify_colours(crops, background):
         """Identify ink levels from cells."""
-        crops = (tuple(_crop.getdata()) for _crop in crops)
-        colours = sum(crops, ())
+        crops = (set(_crop.getdata()) for _crop in crops)
+        colours = set.union(*crops)
         return identify_inklevels(colours, background)
 
     def _crop_border(image, border):
