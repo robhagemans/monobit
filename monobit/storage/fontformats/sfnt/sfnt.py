@@ -369,15 +369,19 @@ def _convert_bdat_glyphs(
         sfnt, bdat, bloc, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enctable
     ):
     """Build glyphs and glyph properties from bdat/EBDT/CBDT and bloc/EBLC/CBLC data."""
-    glyphs = []
     strike = bdat.strikeData[i_strike]
     blocstrike = bloc.strikes[i_strike]
     for subtable in blocstrike.indexSubTables:
         # some formats are byte aligned, others bit-aligned
         if subtable.imageFormat in (1, 6):
+            png = False
             align = 'left'
         elif subtable.imageFormat in (2, 5, 7):
+            png = False
             align = 'bit'
+        elif subtable.imageFormat in (17, 18, 19):
+            # raw PNG data
+            png = True
         else:
             # format 8, 9: component bitmaps
             # format 3: obsolete, not used
@@ -386,6 +390,7 @@ def _convert_bdat_glyphs(
                 'Unsupported image format %d', subtable.imageFormat
             )
             continue
+        glyphdata = []
         for name in subtable.names:
             glyph = strike[name]
             try:
@@ -406,17 +411,36 @@ def _convert_bdat_glyphs(
             props = _convert_glyph_metrics(metrics, small_is_vert)
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
-            raster = Raster.from_bytes(
-                glyphbytes, width=width, align=align,
-                bits_per_pixel=blocstrike.bitmapSizeTable.bitDepth,
+            glyphdata.append((name, glyphbytes, width, height, props))
+        if png:
+            crops = []
+            for (name, glyphbytes, width, height, props) in glyphdata:
+                if glyphbytes:
+                    # TODO PNG is in 'sRGB' format (pre-multiplied with alpha) do we need to adjust?
+                    img = Image.open(BytesIO(glyphbytes)).convert('RGBA')
+                else:
+                    img = Image.new(mode='RGBA', size=(0, 0))
+                crops.append(img)
+            font = convert_crops_to_font(
+                enumerate(crops), background='darkest', keep_empty=True
             )
-            raster = raster.crop(bottom=max(0, raster.height-height))
-            glyph = Glyph(
-                raster,
-                tag=name, char=unitable.get(name, ''),
-                codepoint=enctable.get(name, b''), **props
-            )
-            glyphs.append(glyph)
+            # FIXME: we need the rgb table too
+            glyphs = font.glyphs
+        else:
+            glyphs = []
+            for (name, glyphbytes, width, height, props) in glyphdata:
+                # TODO bitDepth==256 stands for BGRA data in CBDT
+                raster = Raster.from_bytes(
+                    glyphbytes, width=width, align=align,
+                    bits_per_pixel=blocstrike.bitmapSizeTable.bitDepth,
+                )
+                raster = raster.crop(bottom=max(0, raster.height-height))
+                glyph = Glyph(
+                    raster,
+                    tag=name, char=unitable.get(name, ''),
+                    codepoint=enctable.get(name, b''), **props
+                )
+                glyphs.append(glyph)
     glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
     glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
     return glyphs
