@@ -324,13 +324,12 @@ def _convert_bdat(sfnt, bdatname, blocname):
     for i_strike in range(bloc.numSizes):
         try:
             bmst = bloc.strikes[i_strike].bitmapSizeTable
-            props = _convert_bloc_props(bloc, i_strike)
-            props |= _convert_props(sfnt, bmst.ppemX, bmst.ppemY)
+            bloc_props = _convert_bloc_props(bloc, i_strike)
+            props, hfupp, vfupp = _convert_props(sfnt, bmst.ppemX, bmst.ppemY)
+            props = bloc_props | props
             glyphs = _convert_bdat_glyphs(
-                sfnt, bdat, bloc, i_strike, props._hfupp, props._vfupp, unitable, enctable
+                sfnt, bdat, bloc, i_strike, hfupp, vfupp, unitable, enctable
             )
-            del props._hfupp
-            del props._vfupp
             font = Font(
                 glyphs, source_format=source_format, encoding=encoding or None,
                 **vars(props)
@@ -357,9 +356,7 @@ def _convert_props(sfnt, ppemX, ppemY):
     props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
     props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
     props |= _convert_post_props(sfnt.post, vert_fu_p_pix)
-    props._hfupp = hori_fu_p_pix
-    props._vfupp = vert_fu_p_pix
-    return props
+    return props, hori_fu_p_pix, vert_fu_p_pix
 
 
 ###############################################################################
@@ -514,9 +511,7 @@ def _convert_sbix(sfnt):
             )
             for _s, _g in zip(strike.glyphs.values(), font.glyphs)
         )
-        props = _convert_props(sfnt, strike.ppem, strike.ppem)
-        del props._hfupp
-        del props._vfupp
+        props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
         fonts.append(font.modify(
             glyphs=glyphs,
             dpi=strike.resolution,
