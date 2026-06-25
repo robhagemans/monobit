@@ -371,6 +371,7 @@ def _convert_bdat_glyphs(
     """Build glyphs and glyph properties from bdat/EBDT/CBDT and bloc/EBLC/CBLC data."""
     strike = bdat.strikeData[i_strike]
     blocstrike = bloc.strikes[i_strike]
+    glyphs = []
     for subtable in blocstrike.indexSubTables:
         # some formats are byte aligned, others bit-aligned
         if subtable.imageFormat in (1, 6):
@@ -425,9 +426,8 @@ def _convert_bdat_glyphs(
                 enumerate(crops), background='darkest', keep_empty=True
             )
             # FIXME: we need the rgb table too
-            glyphs = font.glyphs
+            glyphs.extend(font.glyphs)
         else:
-            glyphs = []
             for (name, glyphbytes, width, height, props) in glyphdata:
                 # TODO bitDepth==256 stands for BGRA data in CBDT
                 raster = Raster.from_bytes(
