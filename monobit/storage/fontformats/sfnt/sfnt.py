@@ -501,9 +501,9 @@ def _convert_sbix(sfnt):
         for glyph in strike.glyphs.values():
             data = glyph.imageData
             if data:
-                img = Image.open(BytesIO(data)).convert('RGB')
+                img = Image.open(BytesIO(data)).convert('RGBA')
             else:
-                img = Image.new(mode='RGB', size=(0, 0))
+                img = Image.new(mode='RGBA', size=(0, 0))
             crops.append(img)
         # does sbix have a concept of background?
         # presumably it's just using alpha transparency
