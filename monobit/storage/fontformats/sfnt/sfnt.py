@@ -414,14 +414,11 @@ def _convert_bdat_glyphs(
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
             glyphdata.append((name, glyphbytes, width, height, props))
         if png:
-            crops = []
-            for (name, glyphbytes, width, height, props) in glyphdata:
-                if glyphbytes:
-                    # TODO PNG is in 'sRGB' format (pre-multiplied with alpha) do we need to adjust?
-                    img = Image.open(BytesIO(glyphbytes)).convert('RGBA')
-                else:
-                    img = Image.new(mode='RGBA', size=(0, 0))
-                crops.append(img)
+            # TODO PNG is in 'sRGB' format (pre-multiplied with alpha) do we need to adjust?
+            crops = tuple(
+                _data_to_crop(_glyphbytes)
+                for (_, _glyphbytes, _, _, _) in glyphdata
+            )
             font = convert_crops_to_font(
                 enumerate(crops), background='darkest', keep_empty=True
             )
@@ -497,18 +494,15 @@ def _convert_sbix(sfnt):
     enctable, encoding = _get_encoding_table(sfnt)
     fonts = []
     for strike in sfnt.sbix.strikes.values():
-        crops = []
-        for glyph in strike.glyphs.values():
-            data = glyph.imageData
-            if data:
-                img = Image.open(BytesIO(data)).convert('RGBA')
-            else:
-                img = Image.new(mode='RGBA', size=(0, 0))
-            crops.append(img)
+        crops = tuple(
+            _data_to_crop(_glyph.imageData)
+            for _glyph in strike.glyphs.values()
+        )
         # does sbix have a concept of background?
         # presumably it's just using alpha transparency
-        background = 'darkest'
-        font = convert_crops_to_font(enumerate(crops), background, keep_empty=True)
+        font = convert_crops_to_font(
+            enumerate(crops), background='darkest', keep_empty=True
+        )
         # update glyphs with metrics
         glyphs = tuple(
             _g.modify(
@@ -531,6 +525,19 @@ def _convert_sbix(sfnt):
             **vars(props)
         ))
     return fonts
+
+
+def _data_to_crop(data):
+    """Convert RGBA data (may be empty) to RGB image with black background."""
+    if data:
+        mask = Image.open(BytesIO(data)).convert('RGBA')
+        size = mask.size
+    else:
+        size = (0, 0)
+    img = Image.new(mode='RGBA', size=size, color=(0, 0, 0, 255))
+    if data:
+        img.alpha_composite(mask)
+    return img.convert('RGB')
 
 
 ###############################################################################
