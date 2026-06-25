@@ -45,7 +45,9 @@ def identify_inklevels(colours, background):
     if len(colourset) < 2:
         raise FileFormatError('No glyphs or only blank glyphs found.')
     elif len(colourset) > 256:
-        raise UnsupportedError('More than 256 shades not supported.')
+        raise UnsupportedError(
+            f'More than 256 shades not supported (found {len(colourset)}).'
+        )
     elif len(colourset) > 2:
         # check for greyscales
         # any grey-only set in 24-bit RGB is a subset of 256-colour greyscale

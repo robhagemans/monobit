@@ -255,7 +255,7 @@ class Raster:
         order: 'row-major' (default) or 'column-major' order of the byte array (no effect if align == 'bit')
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be 1, 2 or 4 (default: 1)
+        bits_per_pixel: bit depth; must be 1, 2, 4 or 8 (default: 1)
         """
         if all(_arg is NOT_SET for _arg in (width, height, stride)):
             raise ValueError(
