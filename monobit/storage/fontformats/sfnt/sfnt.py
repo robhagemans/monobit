@@ -23,7 +23,7 @@ fonttools_loaded = ttLib is not None
 Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
-from ..image.image import convert_crops_to_font
+from ..image.image import convert_crops_to_font, identify_colours
 
 
 # specs
@@ -327,11 +327,14 @@ def _convert_bdat(sfnt, bdatname, blocname):
             bloc_props = _convert_bloc_props(bloc, i_strike)
             props, hfupp, vfupp = _convert_props(sfnt, bmst.ppemX, bmst.ppemY)
             props = bloc_props | props
-            glyphs = _convert_bdat_glyphs(
+            glyphs, rgbtable = _convert_bdat_glyphs(
                 sfnt, bdat, bloc, i_strike, hfupp, vfupp, unitable, enctable
             )
             font = Font(
-                glyphs, source_format=source_format, encoding=encoding or None,
+                glyphs,
+                source_format=source_format,
+                encoding=encoding or None,
+                rgb_table=rgbtable,
                 **vars(props)
             )
             # remove temporary names created by fontTools
@@ -368,7 +371,7 @@ def _convert_bdat_glyphs(
     """Build glyphs and glyph properties from bdat/EBDT/CBDT and bloc/EBLC/CBLC data."""
     strike = bdat.strikeData[i_strike]
     blocstrike = bloc.strikes[i_strike]
-    glyphs = []
+    glyphdata = []
     for subtable in blocstrike.indexSubTables:
         # some formats are byte aligned, others bit-aligned
         if subtable.imageFormat in (1, 6):
@@ -388,7 +391,6 @@ def _convert_bdat_glyphs(
                 'Unsupported image format %d', subtable.imageFormat
             )
             continue
-        glyphdata = []
         for name in subtable.names:
             glyph = strike[name]
             try:
@@ -410,34 +412,27 @@ def _convert_bdat_glyphs(
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
             glyphdata.append((name, glyphbytes, width, height, props))
-        if png:
-            # TODO PNG is in 'sRGB' format (pre-multiplied with alpha) do we need to adjust?
-            crops = tuple(
-                _data_to_crop(_glyphbytes)
-                for (_, _glyphbytes, _, _, _) in glyphdata
+    if png:
+        glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+    else:
+        glyphs = []
+        rgbtable = None
+        for (name, glyphbytes, width, height, props) in glyphdata:
+            # TODO bitDepth==32 stands for BGRA data in CBDT
+            raster = Raster.from_bytes(
+                glyphbytes, width=width, align=align,
+                bits_per_pixel=blocstrike.bitmapSizeTable.bitDepth,
             )
-            font = convert_crops_to_font(
-                enumerate(crops), background='darkest', keep_empty=True
+            raster = raster.crop(bottom=max(0, raster.height-height))
+            glyph = Glyph(
+                raster,
+                tag=name, char=unitable.get(name, ''),
+                codepoint=enctable.get(name, b''), **props
             )
-            # FIXME: we need the rgb table too
-            glyphs.extend(font.glyphs)
-        else:
-            for (name, glyphbytes, width, height, props) in glyphdata:
-                # TODO bitDepth==256 stands for BGRA data in CBDT
-                raster = Raster.from_bytes(
-                    glyphbytes, width=width, align=align,
-                    bits_per_pixel=blocstrike.bitmapSizeTable.bitDepth,
-                )
-                raster = raster.crop(bottom=max(0, raster.height-height))
-                glyph = Glyph(
-                    raster,
-                    tag=name, char=unitable.get(name, ''),
-                    codepoint=enctable.get(name, b''), **props
-                )
-                glyphs.append(glyph)
+            glyphs.append(glyph)
     glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
     glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
-    return glyphs
+    return glyphs, rgbtable
 
 
 def _convert_glyph_metrics(metrics, small_is_vert):
@@ -533,6 +528,31 @@ def _data_to_crop(data):
     if data:
         img.alpha_composite(mask)
     return img.convert('RGB')
+
+
+def _imagedata_to_glyphs(glyphdata, unitable, enctable):
+    """Convert glyph image data to glyphs."""
+    cropdata = tuple(
+        (_data_to_crop(_glyphbytes), _name, _props)
+        for _name, _glyphbytes, _, _, _props in glyphdata
+    )
+    inklevels = identify_colours(
+        (_item[0] for _item in cropdata),
+        background='darkest'
+    )
+    glyphs = tuple(
+        Glyph.from_vector(
+            tuple(_crop.getdata()),
+            stride=_crop.width,
+            inklevels=inklevels,
+            tag=_name,
+            char=unitable.get(_name, ''),
+            codepoint=enctable.get(_name, b''),
+            **_props
+        )
+        for _crop, _name, _props in cropdata
+    )
+    return glyphs, inklevels
 
 
 ###############################################################################
