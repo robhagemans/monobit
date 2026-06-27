@@ -508,7 +508,7 @@ class TestStreams(BaseTester):
 
     def test_binary_stream(self):
         """Test importing psf files from binary stream."""
-        with open(self.font_path / '4x6.psf', 'rb') as f:
+        with open(self.font_path / '4x6.psfu', 'rb') as f:
             fontbuffer = f.read()
         # we need peek()
         with io.BufferedReader(io.BytesIO(fontbuffer)) as stream:

@@ -115,11 +115,12 @@ Original sources:
 
 ### Derivatives of `4x6`
 
-* `4x6.yaff`, `4x6.fzx` and `4x6.psf` were created from `4x6.bdf` using `monobit`
+* `4x6.yaff`, `4x6.fzx` and `4x6.psfu` were created from `4x6.bdf` using `monobit`
 * `4x6.c`, `4x6.c`, `4x6.iigs`, `4x6.sfp`, `4x6*.raw` were created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
 * `4x6.dfont.as` was created from `4x6.dfont` using CiderPress2
-* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com`, `4x6.txt`, `4x6.wyse`, `4x6.wof` were created from `4x6.psf` using `psftools` v1.1.1
+* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com`, `4x6.txt`, `4x6.wyse`, `4x6.wof` were created from `4x6.psfu` using `psftools` v1.1.1
+* `4x6.psf` was created from `4x6.psfu` using `psfstriptable`
 * `4x6.ttf` was created from `4x6.bdf` using `fonttosfnt`
 * `4x6.otb`, `4x6.sfnt.dfont` and `4x6.ffms.ttf` were created from `4x6.bdf` using FontForge
 * `4x6.clt` was created from `4x6.bdf` using `vfontas`

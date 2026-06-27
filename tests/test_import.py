@@ -350,11 +350,17 @@ class TestImport(BaseTester):
 
     # PSF
 
-    def test_import_psf(self):
-        """Test importing psf files."""
-        font, *_ = monobit.load(self.font_path / '4x6.psf')
+    def test_import_psfu(self):
+        """Test importing psf files with Unicode table."""
+        font, *_ = monobit.load(self.font_path / '4x6.psfu')
         self.assertEqual(len(font.glyphs), 950)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_psfu(self):
+        """Test importing psf files without Unicode table."""
+        font, *_ = monobit.load(self.font_path / '4x6.psf')
+        self.assertEqual(len(font.glyphs), 950)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # FZX
 
