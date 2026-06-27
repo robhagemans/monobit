@@ -333,7 +333,7 @@ class TestImport(BaseTester):
     def test_import_psf2txt(self):
         """Test importing psf2txt files."""
         font, *_ = monobit.load(self.font_path / '4x6.txt', format='psf2txt')
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 950)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_clt(self):
@@ -353,7 +353,7 @@ class TestImport(BaseTester):
     def test_import_psf(self):
         """Test importing psf files."""
         font, *_ = monobit.load(self.font_path / '4x6.psf')
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 950)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     # FZX
@@ -677,19 +677,13 @@ class TestImport(BaseTester):
 
     def test_import_vfont_le(self):
         """Test importing little-endian vfont file."""
-        font, *_ = monobit.load(
-            self.font_path / '4x6.vfontle',
-            first_codepoint=0x1f
-        )
+        font, *_ = monobit.load(self.font_path / '4x6.vfontle')
         self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_vfont_be(self):
         """Test importing big-endian vfont file."""
-        font, *_ = monobit.load(
-            self.font_path / '4x6.vfontbe',
-            first_codepoint=0x1f
-        )
+        font, *_ = monobit.load(self.font_path / '4x6.vfontbe')
         self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
@@ -779,8 +773,7 @@ class TestImport(BaseTester):
         """Test importing bbc files."""
         font, *_ = monobit.load(self.font_path / '8x8.bbc')
         self.assertEqual(len(font.glyphs), 224)
-        # note that 8x8.bbc is incorrectly labelled with A at 0x22
-        assert_text_eq(font.get_glyph(0x22).reduce().as_text(), self.fixed4x6_A)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # HBF
 
@@ -837,9 +830,9 @@ class TestImport(BaseTester):
     def test_import_writeon(self):
         """Test importing Write On! files."""
         font, *_ = monobit.load(self.font_path / '4x6.wof')
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 950)
         # incorrectly labelled
-        assert_text_eq(font.get_glyph(0x22).reduce().as_text(), self.fixed4x6_A)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # Wyse
 
@@ -849,7 +842,7 @@ class TestImport(BaseTester):
         # only encoding codepoints < 0x0400 (4 banks)
         self.assertEqual(len(font.glyphs), 512)
         # incorrectly labelled
-        assert_text_eq(font.get_glyph(0x22).reduce().as_text(), self.fixed4x6_A)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # adafruit gfxfont
 
@@ -979,11 +972,8 @@ class TestImport(BaseTester):
 
     def test_import_psfcom(self):
         """Test importing PSF2AMS files."""
-        font, *_ = monobit.load(
-            self.font_path / '4x6-ams.com',
-            first_codepoint=0x1f
-        )
-        self.assertEqual(len(font.glyphs), 512)
+        font, *_ = monobit.load(self.font_path / '4x6-ams.com')
+        self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     udg = 'https://www.seasip.info/Unix/PSF/Amstrad/UDG/'

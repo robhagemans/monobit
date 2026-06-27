@@ -513,7 +513,7 @@ class TestStreams(BaseTester):
         # we need peek()
         with io.BufferedReader(io.BytesIO(fontbuffer)) as stream:
             font, *_ = monobit.load(stream)
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 950)
 
     def test_text_stream(self):
         """Test importing bdf files from text stream."""

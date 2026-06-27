@@ -115,7 +115,7 @@ Original sources:
 
 ### Derivatives of `4x6`
 
-* `4x6.yaff`, `4x6.fzx` were created from `4x6.bdf` using `monobit`
+* `4x6.yaff`, `4x6.fzx` and `4x6.psf` were created from `4x6.bdf` using `monobit`
 * `4x6.c`, `4x6.c`, `4x6.iigs`, `4x6.sfp`, `4x6*.raw` were created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
 * `4x6.dfont.as` was created from `4x6.dfont` using CiderPress2
