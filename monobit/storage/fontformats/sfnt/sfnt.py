@@ -23,7 +23,7 @@ fonttools_loaded = ttLib is not None
 Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
-from ..image.image import convert_crops_to_font, identify_colours
+from ..image.image import identify_colours
 
 
 # specs
@@ -477,38 +477,36 @@ def _convert_glyph_metrics(metrics, small_is_vert):
 
 def _convert_sbix(sfnt):
     """Build glyphs and glyph properties from sfnt data."""
-    if not Image:
-        logging.error(
-            "Converting `sbix` strikes requires module `PIL`, which was not found."
-        )
-        return ()
     unitable = _get_unicode_table(sfnt)
     enctable, encoding = _get_encoding_table(sfnt)
     fonts = []
     for strike in sfnt.sbix.strikes.values():
-        crops = tuple(
-            _data_to_crop(_glyph.imageData)
-            for _glyph in strike.glyphs.values()
-        )
-        # does sbix have a concept of background?
-        # presumably it's just using alpha transparency
-        font = convert_crops_to_font(
-            enumerate(crops), background='darkest', keep_empty=True
-        )
-        # update glyphs with metrics
-        glyphs = tuple(
-            _g.modify(
-                tag=_s.glyphName,
-                char=unitable.get(_s.glyphName, ''),
-                codepoint=enctable.get(_s.glyphName, b''),
-                left_bearing=_s.originOffsetX,
-                shift_up=_s.originOffsetY,
+        glyphdata = tuple(
+            (
+                glyph.glyphName,
+                glyph.imageData,
+                # width, height not known and not used by imagedata_to_glyphs
+                None, None,
+                # FIXME - these should combine with hmtx, vmtx in a complex way, see docs
+                dict(
+                    left_bearing=glyph.originOffsetX,
+                    shift_up=glyph.originOffsetY,
+                )
             )
-            for _s, _g in zip(strike.glyphs.values(), font.glyphs)
+            for glyph in strike.glyphs.values()
         )
+        try:
+            # does sbix have a concept of background?
+            # presumably it's just using alpha transparency
+            glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+        except StrikeFormatError as err:
+            logging.warning(e)
+            glyphs = ()
+            rgbtable = None
         props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
-        fonts.append(font.modify(
+        fonts.append(Font(
             glyphs=glyphs,
+            rgb_table=rgbtable,
             dpi=strike.resolution,
             encoding=encoding or None,
             source_format='sfnt (sbix)',
@@ -532,6 +530,11 @@ def _data_to_crop(data):
 
 def _imagedata_to_glyphs(glyphdata, unitable, enctable):
     """Convert glyph image data to glyphs."""
+    if not Image:
+        raise StrikeFormatError(
+            "Bitmaps are encoded as PNG; decoding require module `PIL`, which was not found."
+        )
+        return ()
     cropdata = tuple(
         (_data_to_crop(_glyphbytes), _name, _props)
         for _name, _glyphbytes, _, _, _props in glyphdata
