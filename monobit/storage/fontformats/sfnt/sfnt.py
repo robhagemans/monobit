@@ -297,7 +297,7 @@ def _convert_sfnt(sfnt):
     sfnt.head = sfnt.bhed or sfnt.head
     if not sfnt.sbix and not sfnt.bdat and not sfnt.EBDT and not sfnt.CBDT:
         raise ResourceFormatError(
-            'No `EBDT`, `bdat` or `sbix` bitmap strikes found in sfnt resource.'
+            'No `bdat`, `EBDT`, `CBDT` or `sbix` bitmap strikes found in sfnt resource.'
         )
     fonts = []
     if sfnt.sbix:
@@ -412,11 +412,14 @@ def _convert_bdat_glyphs(
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
             glyphdata.append((name, glyphbytes, width, height, props))
+    glyphs = []
+    rgbtable = None
     if png:
-        glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+        try:
+            glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+        except StrikeFormatError as err:
+            logging.warning(e)
     else:
-        glyphs = []
-        rgbtable = None
         for (name, glyphbytes, width, height, props) in glyphdata:
             # TODO bitDepth==32 stands for BGRA data in CBDT
             raster = Raster.from_bytes(
