@@ -477,6 +477,8 @@ def _convert_glyph_metrics(metrics, small_is_vert):
 
 ###############################################################################
 # 'sbix' table
+# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6sbix.html
+# https://learn.microsoft.com/en-us/typography/opentype/spec/sbix
 
 def _convert_sbix(sfnt):
     """Build glyphs and glyph properties from sfnt data."""
@@ -490,7 +492,29 @@ def _convert_sbix(sfnt):
                 glyph.imageData,
                 # width, height not known and not used by imagedata_to_glyphs
                 None, None,
-                # FIXME - these should combine with hmtx, vmtx in a complex way, see docs
+                # > The originOffsetX and originOffsetY values give the placement
+                # > of the bitmap graphic in relation to the standard coordinate
+                # > system of the glyph design space. For example,
+                # > if originOffsetX equals 20, the left edge of the bitmap is
+                # > place 20 units to the right of the origin;
+                # > if originOffsetY equals -30, then the bottom edge of the
+                # > graphic is 30 FUnits below the origin.
+                #
+                # > When placing the graphic within the line of text, the
+                # > placement depends upon whether there are contours in the
+                # > 'glyf' table for the current glyph ID:
+                #
+                # > If there is no glyph contour, the glyph design space origin
+                # > for the graphic is placed at the starting drawing position
+                # > for this glyph. The lsb value for the current glyph ID from
+                # > the 'hmtx' table has no effect.
+                #
+                # > If there is a glyph contour, the glyph design space origin
+                # > for the graphic is placed at the lower left corner of the
+                # > glyph bounding box (xMin, yMin).
+                #
+                # so if no glyf contour, offsets map to bearings directly
+                # if there is a glyf contour, offsets should be added to hmtx/vmtx based bearings
                 dict(
                     left_bearing=glyph.originOffsetX,
                     shift_up=glyph.originOffsetY,
@@ -506,9 +530,30 @@ def _convert_sbix(sfnt):
             logging.warning(e)
             glyphs = ()
             rgbtable = None
+        # update glyph props with hmtx/vmtx metrics
+        fu_p_pix = sfnt.head.unitsPerEm / strike.ppem
+        updated_glyphs = []
+        for glyph in glyphs:
+            # per the spec, this should only be done if the glyph occurs in the `glyf` table
+            # NOTE: for now, we do it always when hmtx/vmtx have been loaded
+            name = glyph.tags[0].value
+            hmtx_props = _convert_hmtx_metrics(sfnt.hmtx, name, fu_p_pix, glyph.width)
+            vmtx_props = _convert_vmtx_metrics(sfnt.vmtx, name, fu_p_pix, glyph.height)
+            glyph = glyph.modify(
+                left_bearing=glyph.left_bearing + (
+                    hmtx_props['left_bearing']
+                    if hmtx_props else 0
+                ),
+                right_bearing=(
+                    hmtx_props['right_bearing'] - glyph.left_bearing
+                    if hmtx_props else 0
+                ),
+                **vmtx_props,
+            )
+            updated_glyphs.append(glyph)
         props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
         fonts.append(Font(
-            glyphs=glyphs,
+            glyphs=updated_glyphs,
             rgb_table=rgbtable,
             dpi=strike.resolution,
             encoding=encoding or None,
