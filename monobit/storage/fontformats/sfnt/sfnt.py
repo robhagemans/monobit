@@ -427,6 +427,33 @@ def _convert_bdat_glyphs(
             glyphdata.append((name, glyphbytes, width, height, props))
     glyphs = []
     rgbtable = None
+    # bitDepth==32 stands for BGRA data in CBDT
+    # convert, then treat as PNG data below. this is a bit of a hack
+    # we can clean this up once we support RGBA glyphs directly
+    if blocstrike.bitmapSizeTable.bitDepth == 32:
+        if not Image:
+            raise StrikeFormatError(
+                "32-bit bitmaps require module `PIL`, which was not found."
+            )
+        updated_glyphdata = []
+        for (name, glyphbytes, width, height, props) in glyphdata:
+            # split into 4-byte chunks
+            iterators = [iter(glyphbytes)] * 4
+            bgra_list = zip(*iterators)
+            # convert each premultiplied BGRA to plain RGBA
+            rgba_list = tuple(
+                (int(255*_r/_a), int(255*_g/_a), int(255*_b/_a), _a)
+                if _a else (_r, _g, _b, 0)
+                for _b, _g, _r, _a in bgra_list
+            )
+            # convert to PNG image
+            bytesio = BytesIO()
+            image = Image.new('RGBA', (width, height))
+            image.putdata(rgba_list)
+            image.save(bytesio, format='png')
+            glyphbytes = bytesio.getvalue()
+            updated_glyphdata.append((name, glyphbytes, width, height, props))
+        png = True
     if png:
         try:
             glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
@@ -434,7 +461,6 @@ def _convert_bdat_glyphs(
             logging.warning(e)
     else:
         for (name, glyphbytes, width, height, props) in glyphdata:
-            # TODO bitDepth==32 stands for BGRA data in CBDT
             raster = Raster.from_bytes(
                 glyphbytes, width=width, align=align,
                 bits_per_pixel=blocstrike.bitmapSizeTable.bitDepth,
