@@ -194,8 +194,8 @@ _TAGS = (
 )
 
 def _get_tags(hmtx, vmtx, hhea, vhea, os_2, post):
-    """Get list of tables to extract."""
-    tags = list(_TAGS)
+    """Get set of tables to extract."""
+    tags = set(_TAGS)
     if not hmtx:
         tags.remove('hmtx')
     if not vmtx:
@@ -241,18 +241,28 @@ def _read_collection(instream, tags):
 def _sfnt_props(ttf, tags):
     """Decompile tables and convert from fontTools objects to data structure."""
     tables = {}
+    # sbix relies on hmtx, vmtx, which are off by default
+    if 'sbix' in tags:
+        # ttFont caches om decompilation so no need to keep.
+        if _load_table(ttf, 'sbix'):
+            tags = set(tags) | {'hmtx', 'vmtx'}
     for tag in _TAGS:
-        if tag not in tags:
+        if tag in tags:
+            tables[tag] = _load_table(ttf, tag)
+        else:
             tables[tag] = None
-            continue
-        try:
-            # __getitem__ forces a decompilation of the table
-            tables[tag] = ttf.get(tag, None)
-        except (fonttools.TTLibError, AssertionError) as e:
-            if not str(e):
-                e = f'{type(e).__name__} in fontTools library.'
-            logging.debug('Could not read `%s` table in sfnt: %s', tag, e)
     return Props(**_to_props(tables))
+
+
+def _load_table(ttf, tag):
+    try:
+        # __getitem__ forces a decompilation of the table
+        return ttf.get(tag, None)
+    except (fonttools.TTLibError, AssertionError) as e:
+        if not str(e):
+            e = f'{type(e).__name__} in fontTools library.'
+        logging.debug('Could not read `%s` table in sfnt: %s', tag, e)
+    return None
 
 
 def _to_props(obj):
