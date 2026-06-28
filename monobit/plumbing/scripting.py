@@ -28,7 +28,9 @@ scriptables = {}
 
 def scriptable(
         *args, script_args=None,
-        record=True, pack_operation=False, wrapper=False,
+        pack_operation=False,
+        passthrough=False,
+        output=False,
     ):
     """
     Decorator to register operation for scripting.
@@ -39,15 +41,17 @@ def scriptable(
 
     script_args: additional arguments not given in annotations
     pack_operation: function works on sequence of fonts
-    wrapper: enable keyword argument passthrough
+    passthrough: enable keyword argument passthrough
+    output: mark as output function
     """
     if not args:
         # called as @scriptable(script_args=...)
         # return decorator with these arguments set as extra args
         return partial(
             scriptable, script_args=script_args,
-            record=record, pack_operation=pack_operation,
-            wrapper=wrapper,
+            pack_operation=pack_operation,
+            passthrough=passthrough,
+            output=output,
         )
     # called as @scriptable
     func, = args
@@ -58,9 +62,11 @@ def scriptable(
 
     _scriptable_func.__annotations__.update(script_args or {})
     _scriptable_func = convert_arguments(_scriptable_func)
-    if not wrapper:
+    if not passthrough:
         _scriptable_func = check_arguments(_scriptable_func)
+    _scriptable_func.passthrough = passthrough
     _scriptable_func.pack_operation = pack_operation
+    _scriptable_func.output = output
     # register the scriptable function
     scriptables[_scriptable_func.__name__] = _scriptable_func
     return _scriptable_func
@@ -101,8 +107,8 @@ def convert_arguments(func):
     return _converted_func
 
 
-
 def manage_arguments(loader):
+    """Check if arguments are registered and convert to declared type."""
     loader = convert_arguments(loader)
     loader = check_arguments(loader)
     return loader

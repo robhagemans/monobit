@@ -14,7 +14,9 @@ from monobit.base import Props, FileFormatError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, ensure_levels
+)
 
 
 _FONTX_MAGIC = b'FONTX2'
@@ -39,6 +41,7 @@ def load_fontx(instream):
 def save_fontx(fonts, outstream, endianness:str='little'):
     """Save font to fontx file."""
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     endian = endianness[0].lower()
     props, blocks, glyphs = _convert_to_fontx(font)
     logging.info('fontx properties:')

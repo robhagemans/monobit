@@ -123,7 +123,7 @@ class TestExport(BaseTester):
 
     def test_export_psf(self):
         """Test exporting psf files."""
-        self._export_4x6(format='psf')
+        self._export_4x6(format='psf', save_kwargs=dict(version=2, count=0))
 
     def test_export_psf1(self):
         """Test exporting psf version 1 files."""
@@ -378,7 +378,7 @@ class TestExport(BaseTester):
     def test_export_64c(self):
         """Test exporting 64c files."""
         # labelling is not correct
-        self._export_8x8(format='64c', label=0x22)
+        self._export_8x8(format='64c', count=256)
 
     # +3DOS
 
@@ -429,6 +429,11 @@ class TestExport(BaseTester):
         """Test exporting apple-style sbit files (bare, not in dfont container)."""
         # 920 as .notdef is added
         self._export_4x6(format='sfnt', count=920, save_kwargs=dict(version='apple'))
+
+    def test_export_sfnt_ms(self):
+        """Test exporting fake-ms sfnt files."""
+        # 920 as .notdef is added
+        self._export_4x6(format='sfnt', count=920, save_kwargs=dict(version='ms'))
 
     def test_export_sfnt_ttc(self):
         """Test exporting ttc files."""

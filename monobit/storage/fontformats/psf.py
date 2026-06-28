@@ -14,7 +14,9 @@ from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 
 from .raw import load_bitmap
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, ensure_levels, make_contiguous
+)
 
 
 # PSF formats:
@@ -117,47 +119,71 @@ def load_psf(instream):
     if has_unicode_table:
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels
-        # ordinal-based codepoint is not meaningful
+        # keep index as codepoint as it is meaningful to setfont, psftools
         cells = tuple(
-            _glyph.modify(char=''.join(table[_index]), codepoint=None)
+            _glyph.modify(labels=table[_index], codepoint=_index)
             for _index, _glyph in enumerate(cells)
         )
         properties['encoding'] = 'unicode'
     return Font(cells, **properties)
 
 def _read_unicode_table(instream, separator, startseq, encoding):
-    """Read the Unicode table in a PSF2 file."""
+    """Read the Unicode table in a PSF file."""
     raw_table = instream.read()
-    entries = raw_table.split(separator)[:-1]
+    # for PSF2 (utf-8), step byte for byte.
+    # for PSF1 (utf-16), step in 2-byte chunks
+    iterators = [iter(raw_table)] * len(separator)
     table = []
-    for point, entry in enumerate(entries):
-        split = entry.split(startseq)
-        code_points = [_seq.decode(encoding) for _seq in split]
+    chunks = list(bytes(_chunk) for _chunk in zip(*iterators))
+    for entry in _split(chunks, separator):
+        split = list(_split(b''.join(entry), startseq))
+        code_points = tuple(bytes(_seq).decode(encoding) for _seq in split)
         # first entry is separate code points, following entries (if any) are sequences
-        table.append([_c for _c in code_points[0]] + code_points[1:])
+        table.append(tuple(code_points[0]) + code_points[1:])
     return table
+
+def _split(sequence, sep):
+    """Like str.split(sep), but for iterables."""
+    chunk = []
+    for val in sequence:
+        if val == sep:
+            yield chunk
+            chunk = []
+        else:
+            chunk.append(val)
+    yield chunk
 
 
 @savers.register(linked=load_psf)
-def save_psf(fonts, outstream, *, version:int=2, count:int=256):
+def save_psf(fonts, outstream, *, version:int=2, count:int=256, raw:bool=False):
     """
     Save character-cell font to PC Screen Font (.PSF) file.
 
-    version: psf format version, 1 or 2 (default)
-    count: number of glyphs - version 1 only; 256 (default) or 512
+    version: psf format version; 1 or 2 (default)
+    count: number of glyphs; 256 (default) or 512; use 0 for all glyphs (v2 only)
+    raw: do not resample. (default: False)
     """
+    if version not in (1, 2):
+        raise ValueError(f'`version` should be 1 or 2, not {version}')
+    if version == 1 and count not in (256, 512):
+        raise ValueError(f'For PSF v1, `count` should be 256 or 512, not {count}')
     font = ensure_single(fonts)
     font = ensure_charcell(font)
+    font = ensure_levels(font, 2)
+    if count <= 0:
+        count = len(font.glyphs)
     # ensure unicode labels exist if encoding is defined
     font = font.label()
+    # both setfont and psftools use the position value as codepoints,
+    # at least for printable ascii, instead of unicode, even if provided.
+    # this is not in the PSF spec but seems to be a consensus approach.
+    # ensure all codepoints exist and correspond to position values
+    if not raw:
+        font = make_contiguous(font, missing='default', full_range=range(0, count))
     if version == 2:
         _write_psf2(font, outstream)
     elif version == 1:
-        if count not in (256, 512):
-            raise ValueError(f'`count` should be 256 or 512, not {count}')
         _write_psf1(font, outstream, count)
-    else:
-        raise ValueError(f'`version` should be 1 or 2, not {version}')
 
 
 def _write_psf2(font, outstream):
@@ -207,27 +233,26 @@ def _write_psf1(font, outstream, count):
         raise UnsupportedError(
             f'This format only supports 8xN character-cell fonts.'
         )
-    # we need exactly 256 or 512 glyphs
-    glyphs = font.glyphs[:count]
-    if len(glyphs) < count:
-        # need more glyphs
-        glyphs.extend([font.get_default_glyph()] * (count-len(glyphs)))
     header = _PSF1_HEADER(
         mode=_PSF1_MODE(
             PSF1_MODE512=(count==512),
             PSF1_MODEHASTAB=1,
             # not sure what this flag is
-            PSF1_MODEHASSEQ=1,
+            # setfont, psftool reject fonts with MODEHASSEQ==1
+            PSF1_MODEHASSEQ=0,
         ),
         charsize=font.cell_size.y,
     )
     outstream.write(_PSF1_MAGIC)
     outstream.write(bytes(header))
+    glyphs = font.glyphs
     for glyph in glyphs:
         outstream.write(glyph.as_bytes())
     unicode_seq = [_glyph.char for _glyph in glyphs]
     _write_unicode_table(
-        outstream, unicode_seq, _PSF1_SEPARATOR, _PSF1_STARTSEQ, 'utf-16'
+        outstream, unicode_seq, _PSF1_SEPARATOR, _PSF1_STARTSEQ,
+        # we must use LE explicitly to avoid writing a BOM on every label
+        'utf-16le'
     )
     return font
 

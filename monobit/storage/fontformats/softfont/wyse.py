@@ -14,7 +14,9 @@ from monobit.storage import loaders, savers
 from monobit.core import Font, Raster, Glyph
 from monobit.base import Coord, FileFormatError
 
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, ensure_levels
+)
 
 
 _WYSE_ESC_SEQ = b'\x1bcA'
@@ -70,6 +72,7 @@ def save_wyse(fonts, outstream):
     """Save character-cell fonts to Wyse-60 soft font file."""
     font = ensure_single(fonts)
     font = ensure_charcell(font)
+    font = ensure_levels(font, 2)
     if (font.cell_size.x > 8 or font.cell_size.y > 16):
         raise ValueError(
             'This format can only store character-cell fonts '

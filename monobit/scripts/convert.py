@@ -10,7 +10,7 @@ from pathlib import Path
 
 import monobit
 from monobit.plumbing import (
-    wrap_main, parse_subcommands, argrecord, GLOBAL_ARG_PREFIX
+    wrap_main, parse_subcommands, argrecord, GLOBAL_ARG_PREFIX, external_str
 )
 from monobit.plumbing.help import print_help
 
@@ -70,8 +70,8 @@ def main():
                         command='save', func=operations['save'],
                         args=[command_args[0].args.pop()])
                     )
-            # ensure last command is save
-            if command_args[-1].command not in ('to', 'save'):
+            # ensure last command is save if not another output command
+            if not command_args[-1].func.output:
                 command_args.append(argrecord(command='save', func=operations['save']))
 
             fonts = []

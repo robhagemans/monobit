@@ -373,6 +373,8 @@ class YaffPropertyOrGlyph(YaffMultiline):
     def is_glyph(self):
         if self.n_keys > 1:
             return True
+        if len(self.lines) < 2:
+            return False
         # n_keys == 1, so first non-key line is 1
         first = self.lines[1].lstrip()
         # multiline block with single key

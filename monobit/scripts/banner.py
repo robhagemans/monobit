@@ -3,35 +3,28 @@ Print a banner using a bitmap font
 (c) 2019--2026 Rob Hagemans, licence: https://opensource.org/licenses/MIT
 """
 
-
 import sys
 import argparse
 import logging
-import codecs
-from codecs import escape_decode
+import pickle
+from importlib.resources import open_text
+
+from monobit.base import safe_import
+platformdirs = safe_import('platformdirs')
 
 import monobit
-from monobit.plumbing import wrap_main
+from monobit.plumbing import wrap_main, unescape
 from monobit.base import Coord, RGB
-from monobit.render import render
+from monobit.renderer import render_text
 from monobit.core import Font
 
 
-def unescape(text):
-    """Interpolate escape sequences."""
-    # escape_decode is undocumented/unsupported and will leave \u escapes untouched
-    # simpler variant - using documented/supported codecs
-    #   raw-unicode-escape encodes to latin-1, leaves existing backslashes untouched but escapes non-latin-1
-    #   (while unicode-escape would escape backslashes and all non-ascii)
-    #   unicode-escape decodes from latin-1 and unescapes standard c escapes, \x.. and \u.. \U..
-    return text.encode('raw-unicode-escape').decode('unicode_escape')
-
-
-def register_handler(handler_name, default_char):
-    """Register an encode/decode error handler with custom replacement char."""
-    def _handler(e):
-        return default_char, e.end
-    codecs.register_error(handler_name, _handler)
+if platformdirs:
+    CACHEPATH = platformdirs.user_cache_path() / 'monobit-banner'
+    DEFAULT_CACHE = CACHEPATH / 'defaultfont.pkl'
+else:
+    CACHEPATH = ''
+    DEFAULT_CACHE = ''
 
 
 def main():
@@ -60,6 +53,10 @@ def main():
     parser.add_argument(
         '--format', type=str, default='',
         help='format of file used in --font'
+    )
+    parser.add_argument(
+        '--set-default', action='store_true',
+        help='set font file as default. resets default if no font specified.'
     )
     parser.add_argument(
         '--ink', '--foreground', '-fg', type=str, default='',
@@ -143,12 +140,16 @@ def main():
         help=('output as image')
     )
     parser.add_argument(
-        '--blocks', nargs='?', const='1x1', default='',
-        help=('output as block element characters of given XxY density. Default: 1x1')
+        '--blocks', nargs='?', const='2x3', default='',
+        help=('output as block element characters of given XxY density. Default: 2x3')
     )
     parser.add_argument(
         '--shades', action='store_true',
         help=('output as ANSI-coloured 1x1 block element characters')
+    )
+    parser.add_argument(
+        '--sixel', action='store_true',
+        help=('output as sixel sequence')
     )
     # font / glyph effects
     parser.add_argument(
@@ -192,8 +193,21 @@ def main():
         args.text = unescape(args.text)
         args.inklevels = unescape(args.inklevels)
         #######################################################################
-        # take first font from pack
-        font, *_ = monobit.load(args.font, format=args.format)
+        if args.font:
+            # take first font from pack
+            font, *_ = monobit.load(args.font, format=args.format)
+        elif args.set_default:
+            font = None
+        elif DEFAULT_CACHE:
+            try:
+                with open(DEFAULT_CACHE, 'rb') as f:
+                    font = pickle.load(f)
+            except Exception:
+                font = None
+        if font is None:
+            fontfile = open_text('monobit.resources', 'unscii-16.yaff.gz')
+            font, *_ = monobit.load(fontfile, format='yaff')
+            args.set_default = True
         #######################################################################
         # encoding
         # check if any characters are defined
@@ -208,16 +222,7 @@ def main():
                 'Using `--encoding=raw` as fallback.'
             )
             args.encoding = 'raw'
-        if args.encoding == 'raw':
-            # register the codepoint for replacement char
-            # note that we use latin-1 strings to represent bytes here
-            # if no replacement char or it has no codepoint, replace with empty
-            default_cp = font.get_default_glyph().codepoint.decode('latin-1')
-            register_handler('custom_replace', default_cp)
-            # see input string as a sequence of bytes to render through codepage
-            # replace anything with more than 8-bit codepoints
-            args.text = args.text.encode('latin-1', errors='custom_replace')
-        elif args.encoding:
+        if args.encoding and args.encoding != 'raw':
             font = font.modify(encoding=args.encoding).label()
         #######################################################################
         # line up effects
@@ -233,8 +238,8 @@ def main():
             transformations.append((Font.outline, (), {}))
         #######################################################################
         # render
-        glyph_map = render(
-            font, args.text,
+        glyph_map = render_text(
+            font, args.text, raw=args.encoding=='raw',
             margin=args.margin,
             direction=args.direction, align=args.align, adjust_bearings=args.expand,
             missing='default',
@@ -263,9 +268,14 @@ def main():
                 paper = RGB.create(args.paper or (0, 0, 0))
                 border = RGB.create(args.border) if args.border else paper
                 text = glyph_map.as_shades(paper=paper, ink=ink, border=border)
+            elif args.sixel:
+                ink = RGB.create(args.ink or (255, 255, 255))
+                paper = RGB.create(args.paper or (0, 0, 0))
+                border = RGB.create(args.border) if args.border else paper
+                text = glyph_map.as_sixel(paper=paper, ink=ink, border=border)
             else:
-                ink = args.ink or '@'
-                paper = args.paper or '.'
+                ink = args.ink or '#'
+                paper = args.paper or '\xa0'
                 inklevels = args.inklevels or (paper, ink)
                 border = args.border or paper
                 text = glyph_map.as_text(inklevels=inklevels, border=border) + '\n'
@@ -274,6 +284,14 @@ def main():
             else:
                 with open(args.output, 'w') as outfile:
                     outfile.write(text)
+            if args.set_default and DEFAULT_CACHE:
+                try:
+                    DEFAULT_CACHE.parent.mkdir(parents=True, exist_ok=True)
+                    with open(DEFAULT_CACHE, 'wb') as f:
+                        pickle.dump(font, f, protocol=pickle.HIGHEST_PROTOCOL)
+                except EnvironmentError as e:
+                    logging.error(e)
+                    pass
 
 
 if __name__ == '__main__':

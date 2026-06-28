@@ -14,7 +14,7 @@ from monobit.base import HasProps, checked_property, writable_property
 from monobit.base import Coord, Bounds, to_number, NOT_SET
 from monobit.plumbing.scripting import scriptable
 
-from .raster import Raster, turn_method
+from .raster import Raster, turn_method, shear_shift
 from .vector import StrokePath
 from .labels import Codepoint, Char, Tag, to_label
 
@@ -68,6 +68,7 @@ class KernTable(dict):
 class GlyphProperties:
     """Default, calculated and settable properties for glyph."""
 
+    # horizontal metrics
     # horizontal offset from leftward origin to matrix left edge
     left_bearing: int = 0
     # horizontal offset from matrix right edge to rightward origin
@@ -516,17 +517,17 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_path(cls, path, *, advance_width=None, **kwargs):
+    def from_path(cls, path, *, advance_width=None, scale=1, **kwargs):
         """Draw the StrokePath and create a Glyph."""
         strokepath = StrokePath(path)
-        raster = strokepath.draw()
+        raster = strokepath.draw(scale=scale)
         if advance_width is None:
-            advance_width = strokepath.bounds.right
+            advance_width = strokepath.bounds.right*scale
         return cls(
             raster, path=strokepath,
-            right_bearing=advance_width-strokepath.bounds.right,
-            left_bearing=strokepath.bounds.left,
-            shift_up=strokepath.bounds.bottom,
+            right_bearing=advance_width-strokepath.bounds.right*scale,
+            left_bearing=strokepath.bounds.left*scale,
+            shift_up=strokepath.bounds.bottom*scale,
             **kwargs
         )
 
@@ -761,20 +762,20 @@ class Glyph(HasProps):
     # scaling
 
     def stretch(
-            self, factor_x:int=1, factor_y:int=1,
+            self, factor:Coord=Coord(1, 1),
             *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Stretch glyph by repeating rows and/or columns.
 
-        factor_x: number of times to repeat horizontally
-        factor_y: number of times to repeat vertically
+        factor: number of times to repeat (horizontally, vertically) (default: 1,1)
         adjust_metrics: also stretch metrics (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        factor_x, factor_y = factor
         if factor_x == factor_y == 1:
             return self
-        pixels = self._pixels.stretch(factor_x, factor_y)
+        pixels = self._pixels.stretch(factor)
         new_metrics = {}
         if adjust_metrics:
             new_metrics |= dict(
@@ -791,20 +792,20 @@ class Glyph(HasProps):
         return self.modify(pixels, **new_metrics)
 
     def shrink(
-            self, factor_x:int=1, factor_y:int=1,
+            self, factor:Coord=Coord(1, 1),
             *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Shrink by removing rows and/or columns.
 
-        factor_x: factor to shrink horizontally
-        factor_y: factor to shrink vertically
+        factor: factor to shrink (horizontally, vertically) (default: 1,1)
         adjust_metrics: also stretch metrics (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
+        factor_x, factor_y = factor
         if factor_x == factor_y == 1:
             return self
-        pixels = self._pixels.shrink(factor_x, factor_y)
+        pixels = self._pixels.shrink(factor)
         new_metrics = {}
         if adjust_metrics:
             new_metrics |= dict(
@@ -838,11 +839,12 @@ class Glyph(HasProps):
             return self
         pitch_x, pitch_y = pitch
         direction = direction[0].lower()
-        extra_width = (self.height-1) * pitch_x // pitch_y
         # adjustment to start diagonal at baseline
         modulo = pitch_y - (-self.shift_up*pitch_x) % pitch_y
+        # expand raster to support maximum horizontal shift
+        extra_width = shear_shift(self.height-1, pitch_x, pitch_y, modulo)
         # adjust for shift at baseline height, to keep it fixed
-        pre = (-self.shift_up * pitch_x + modulo) // pitch_y - (modulo==pitch_y)
+        pre = shear_shift(-self.shift_up, pitch_x, pitch_y, modulo)
         if direction == 'r':
             new_metrics = dict(
                 left_bearing=self.left_bearing-pre,

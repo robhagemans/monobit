@@ -9,7 +9,7 @@ import logging
 from itertools import chain
 
 from monobit.storage import loaders, savers
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.core import Font, Glyph, Raster
 from monobit.encoding.indexers import find_ranges
 from monobit.base import FileFormatError, UnsupportedError, struct
@@ -95,6 +95,7 @@ def save_oberon(fonts, outstream):
     Save font to ETH Project Oberon font file.
     """
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     # restrict to ascii
     font = font.label()
     font = font.subset(codepoints=range(256))

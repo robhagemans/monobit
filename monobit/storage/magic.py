@@ -12,6 +12,7 @@ import re
 
 from .streams import get_name
 from ..base import FileFormatError
+from ..plumbing import manage_arguments
 
 
 # number of bytes to read to check if something looks like text
@@ -67,6 +68,18 @@ def looks_like_text(instream):
     return True
 
 
+def iter_funcs_from_registry(registry, instream, format):
+    """
+    Iterate over and wrap functions stored in a MagicRegistry
+    that fit a given stream and format.
+    """
+    # identify file type
+    fitting_loaders = registry.get_for(instream, format=format)
+    for loader in fitting_loaders:
+        yield manage_arguments(loader)
+    return
+
+
 class MagicRegistry:
     """Retrieve file converters through magic sequences and name patterns."""
 
@@ -76,8 +89,8 @@ class MagicRegistry:
         self._patterns = []
         self._templates = []
         self._names = {}
-        self._default_text = default_text
-        self._default_binary = default_binary
+        self.default_text_format = default_text
+        self.default_binary_format = default_binary
 
     def get_formats(self):
         """Get tuple of all registered format names."""
@@ -97,9 +110,9 @@ class MagicRegistry:
             converter = self.identify(file)
             if not converter:
                 if not file or file.mode == 'w' or looks_like_text(file):
-                    format = self._default_text
+                    format = self.default_text_format
                 else:
-                    format = self._default_binary
+                    format = self.default_binary_format
                 if file and format:
                     if Path(file.name).suffix:
                         level = logging.WARNING
@@ -187,11 +200,16 @@ class MagicRegistry:
 
         return _decorator
 
-    def identify_filename(self, name):
+    def identify_filename(self, name, format=''):
         """Identify a type from a file name."""
         matches = []
+        # remove all but first suffix for pattern matching
+        # removes e.g. .gz suffixes
+        basename = '.'.join(name.split('.')[:2])
+        if '.' in basename and format:
+            return self.get_for(format=format)
         for pattern, converter in self._patterns:
-            if pattern.matches(name):
+            if pattern.matches(basename):
                 matches.append(converter)
         return tuple(matches)
 

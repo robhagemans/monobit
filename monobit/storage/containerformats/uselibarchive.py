@@ -8,12 +8,8 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from pathlib import Path
 
-
 from monobit.base import safe_import
 libarchive = safe_import('libarchive')
-if libarchive:
-    from libarchive.entry import FileType
-
 
 from monobit.base import FileFormatError
 from ..base import containers
@@ -36,7 +32,7 @@ if libarchive:
             return super().encode(name)
 
         @classmethod
-        def encode_all(cls, data, outstream):
+        def encode_all(cls, data, outstream, mode):
             """Write all items to archive."""
             format = cls.libarchive_format
             if not format:
@@ -64,7 +60,9 @@ if libarchive:
                                 if path != Path('.'):
                                     data[f'{path}/'] = b''
             except libarchive.ArchiveError as e:
-                raise FileFormatError(e) from e
+                if not data:
+                    raise FileFormatError(e) from e
+                logging.warning(f'Error while reading {instream.name}: {e}')
             return data
 
 

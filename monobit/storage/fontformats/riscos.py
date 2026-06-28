@@ -15,7 +15,7 @@ from monobit.storage import loaders, Magic, Regex
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph, Raster
 
-from .pkfont import unpack_bits
+from .metafont.pk import unpack_bits
 
 # https://web.archive.org/web/20210610120924/https://hwiegman.home.xs4all.nl/fileformats/acorn_font/font.htm
 # > (The original information can be found on page 1801 of Volume IV of

@@ -33,13 +33,24 @@ def is_graphical(char):
 
 
 def is_showable(char):
-    """Check if a char should be shown in yaff files."""
-    return (not char) or char == ' ' or is_graphical(char) and all(
-        # we keep everything that is_graphical except PUA, Other/Format, Not Assigned, Space Separator
+    """Check if a char should be shown in yaff files and charts."""
+    return (not char) or char == ' ' or all(
+        # subset of is_graphical
         # anything excluded will be shown as u+XXXX
-        unicodedata.category(_c) not in ('Co', 'Cf', 'Cn', 'Zs')
+        unicodedata.category(_c) not in (
+            # all Separators inc space separators; u+0020 excepted above
+            'Zs', 'Zl', 'Zp',
+            # all Other (inc PUA, not assigned)
+            'Cc', 'Cf', 'Cs', 'Co', 'Cn',
+        )
         for _c in char
     )
+
+
+def is_other_symbol(char):
+    """Emoji and other symbols not shown in yaff files by default, but shown in charts."""
+    # this is a very crude check, for more precision we need emoji-data.txt from unicode.org
+    return unicodedata.category(char) == 'So'
 
 
 def is_printable(char):

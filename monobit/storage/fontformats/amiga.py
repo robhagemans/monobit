@@ -16,7 +16,7 @@ from monobit.base.struct import flag, bitfield, big_endian as be
 from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, FileFormatError, UnsupportedError
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
-from monobit.render import RGBTable, create_gradient
+from monobit.renderer import RGBTable, create_gradient
 
 
 ###################################################################################################
@@ -424,7 +424,6 @@ def _read_font_hunk(f):
     # the reference point for offsets in the hunk is just before the ReturnCode
     loc = - _AMIGA_HEADER.size + 4
     if amiga_props.tf_Style.FSF_COLORFONT:
-        # raise UnsupportedError('Amiga ColorFont not supported')
         ctf = _COLOR_TEXT_FONT.read_from(f)
         logging.debug('ColorTextFont: %s', ctf)
         amiga_props |= Props(**vars(ctf))
@@ -535,6 +534,16 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
         )
         for _glyph in glyphs
     ]
+    # adjust reverse-path glyphs; negative to positive advance width.
+    glyphs = [
+        _glyph.modify(
+            right_bearing=-self.left_bearing - self.width,
+            left_bearing=-self.right_bearing - self.width,
+            **{'amiga.reverse_path': 1},
+        )
+        if _glyph.advance_width < 0 else _glyph
+        for _glyph in glyphs
+    ]
     glyphs = [
         _glyph.drop('kerning', 'spacing')
         for _glyph in glyphs
@@ -550,7 +559,7 @@ def _convert_amiga_props(amiga_props):
     name = bytes(amiga_props.dfh_Name).decode(_ENCODING).strip()
     if name:
         props.name = name
-    props.revision = amiga_props.dfh_Revision
+    props.revision = str(amiga_props.dfh_Revision)
     # tf_Style
     if amiga_props.tf_Style.FSF_BOLD:
         props.weight = 'bold'
@@ -581,9 +590,6 @@ def _convert_amiga_props(amiga_props):
             logging.warning('Ignoring Amiga property %s', name)
             setattr(props, f'amiga.{name}', getattr(amiga_props, name))
 
-        # haven't implemented picking a ctf_FgColor
-        if amiga_props.ctf_FgColor not in (0xff, amiga_props.ctf_High):
-            _preserve_amiga_prop('ctf_FgColor')
         # use/meaning of ctf_Plane* are unclear
         if amiga_props.ctf_PlanePick != 0xff:
             _preserve_amiga_prop('ctf_PlanePick')
@@ -596,6 +602,12 @@ def _convert_amiga_props(amiga_props):
         # should a colour table also be defined? should we use it? who knows.
         if amiga_props.ctf_Flags.CT_COLORFONT:
             props.rgb_table = amiga_props.ctf_ColorTable
+            # 'predominant colour' to be repaced by the foreground
+            if amiga_props.ctf_FgColor not in (0xff, amiga_props.ctf_High):
+                # swap as we use highest-index -> full-ink and lowest-index -> paper
+                props.rgb_table[-1], props.rgb_table[amiga_props.ctf_FgColor] = (
+                    props.rgb_table[-1], props.rgb_table[amiga_props.ctf_FgColor]
+                )
     return props
 
 

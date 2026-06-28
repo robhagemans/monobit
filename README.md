@@ -106,6 +106,7 @@ Proportional-spacing formats
 | OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB O (MB K) |
 | Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | O        |
 | GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|&check;| binary | M; see `vlir` |
+| METAFONT Generic Font | `gf`       | `.*gf`  (+ `.tfm`)          |&check;|       | binary | O K      |
 | Adafruit GFX font     | `gfxfont`  | `.h`                        |&check;|&check;| coded  | O        |
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
 | HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB O  |
@@ -124,10 +125,12 @@ Proportional-spacing formats
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
 | PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
-| TeX PKFONT            | `pkfont`   | `.pk`                       |&check;|       | binary | O        |
+| METAFONT/TeX Packed   | `pkfont`   | `.*pk`  (+ `.tfm`)          |&check;|       | binary | O K      |
+| PolyPrint             | `polyprint`|                             |&check;|       | binary | -        |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | G (V)    |
 | Xerox Alto PrePress   | `prepress` | `.ac`                       |&check;|       | binary | O        |
 | The Print Shop        | `printshop`| `.pnf`                      |&check;|       | binary | -        |
+| METAFONT PXL Matrix   | `pxl`      | `.*pxl`  (+ `.tfm`)         |&check;|       | binary | O K      |
 | RISCOS x90y45 format  | `riscos-xy`|                             |&check;|       | binary | O G      |
 | RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
@@ -206,14 +209,15 @@ MC multi-cell glyphs
 Charts
 ------
 
-These write-only formats output a table of glyphs.  
+Use the `chart` command to output an annotated table of glyphs.  
 
 | Format            | Short Name   |
 |-------------------|--------------|
-| Text              | `chart`      |
+| Text              | `text`       |
 | Block elements    | `blocks`     |
 | ANSI colours      | `shades`     |
-| Image [P]         | `imagechart` |
+| Image [P]         | `image`      |
+| Sixel image       | `sixel`      |
 | PDF [R]           | `pdf`        |
 
 [P] requires **PIL**  
@@ -254,41 +258,41 @@ Wrapper formats
 `monobit` will recurse and extract font files from a number of common container,
 archive, compression and encoding formats:
 
-| Format                | Name     | Typical Extension       | Read  | Write |
-|-----------------------|----------|-------------------------|-------|-------|
-| PKZip/WinZip          | `zip`    | `.zip`                  |&check;|&check;|
-| GNU tar               | `tar`    | `.tar` `.tgz`           |&check;|&check;|
-| RAR [A]               | `rar`    | `.rar`                  |&check;|       |
-| 7-Zip [A]             | `7zip`   | `.7z`                   |&check;|&check;|
-| MS Cabinet [A]        | `cabinet`| `.cab`                  |&check;|       |
-| LHarc/LHA/LZH [A]     | `lharc`  | `.lha` `.lzh`           |&check;|       |
-| ACE [C]               | `ace`    | `.ace`                  |&check;|       |
-| ISO 9660 [A]          | `iso9660`| `.iso`                  |&check;|&check;|
-| WARC [A]              | `warc`   | `.warc`                 |&check;|&check;|
-| CPIO [A]              | `cpio`   | `.cpio`                 |&check;|&check;|
-| PAX [A]               | `pax`    | `.pax`                  |&check;|&check;|
-| XAR [A]               | `xar`    | `.xar`                  |&check;|&check;|
-| AR [A]                | `ar`     | `.ar`                   |&check;|&check;|
-| GZip                  | `gzip`   | `.gz`                   |&check;|&check;|
-| BZip2                 | `bzip2`  | `.bz2`                  |&check;|&check;|
-| XZ/LZMA               | `lzma`   | `.xz` `.lzma`           |&check;|&check;|
-| Compress [Z]          | `compress`| `.Z`                   |&check;|&check;|
-| AppleSingle           | `apple1` | `.as`                   |&check;|       |
-| AppleDouble           | `apple2` | `.adf` `.rsrc`          |&check;|       |
-| MacBinary             | `macbin` | `.bin`                  |&check;|       |
-| BinHex 4.0            | `binhex` | `.hqx`                  |&check;|       |
-| BinSCII               | `binscii`| `.bsc` `.bsq`           |&check;|       |
-| Intel Hex             | `intel`  | `.ihex` `.ihx`          |&check;|&check;|
-| Base64                | `base64` |                         |&check;|&check;|
-| Quoted-printable      | `quopri` |                         |&check;|&check;|
-| UUEncode              | `uuencode`|                        |&check;|&check;|
-| yEncode [Y]           | `yenc`   |                         |&check;|&check;|
-| MIME multipart email  | `email`  | `.eml` `.msg`           |&check;|&check;|
-| C or C++ coded binary | `c`      | `.c` `.cpp` `.cc` `.h`  |&check;|&check;|
-| JSON coded binary     | `json`   | `.json`                 |&check;|&check;|
-| Python coded binary   | `python` | `.py`                   |&check;|&check;|
-| Pascal coded binary   | `pascal` | `.pas`                  |&check;|&check;|
-| BASIC coded binary    | `basic`  | `.bas`                  |&check;|&check;|
+| Format                | Name     | Typical Extension       | Read  | Write | Update |
+|-----------------------|----------|-------------------------|-------|-------|--------|
+| PKZip/WinZip          | `zip`    | `.zip`                  |&check;|&check;|&check; |
+| GNU tar               | `tar`    | `.tar` `.tgz`           |&check;|&check;|&check; |
+| RAR [A]               | `rar`    | `.rar`                  |&check;|       |        |
+| 7-Zip [A]             | `7zip`   | `.7z`                   |&check;|&check;|        |
+| MS Cabinet [A]        | `cabinet`| `.cab`                  |&check;|       |        |
+| LHarc/LHA/LZH [A]     | `lharc`  | `.lha` `.lzh`           |&check;|       |        |
+| ACE [C]               | `ace`    | `.ace`                  |&check;|       |        |
+| ISO 9660 [A]          | `iso9660`| `.iso`                  |&check;|&check;|        |
+| WARC [A]              | `warc`   | `.warc`                 |&check;|&check;|        |
+| CPIO [A]              | `cpio`   | `.cpio`                 |&check;|&check;|        |
+| PAX [A]               | `pax`    | `.pax`                  |&check;|&check;|        |
+| XAR [A]               | `xar`    | `.xar`                  |&check;|&check;|        |
+| AR [A]                | `ar`     | `.ar`                   |&check;|&check;|        |
+| GZip                  | `gzip`   | `.gz`                   |&check;|&check;|        |
+| BZip2                 | `bzip2`  | `.bz2`                  |&check;|&check;|        |
+| XZ/LZMA               | `lzma`   | `.xz` `.lzma`           |&check;|&check;|        |
+| Compress [Z]          | `compress`| `.Z`                   |&check;|&check;|        |
+| AppleSingle           | `apple1` | `.as`                   |&check;|       |        |
+| AppleDouble           | `apple2` | `.adf` `.rsrc`          |&check;|       |        |
+| MacBinary             | `macbin` | `.bin`                  |&check;|       |        |
+| BinHex 4.0            | `binhex` | `.hqx`                  |&check;|       |        |
+| BinSCII               | `binscii`| `.bsc` `.bsq`           |&check;|       |        |
+| Intel Hex             | `intel`  | `.ihex` `.ihx`          |&check;|&check;|        |
+| Base64                | `base64` |                         |&check;|&check;|        |
+| Quoted-printable      | `quopri` |                         |&check;|&check;|        |
+| UUEncode              | `uuencode`|                        |&check;|&check;|&check; |
+| yEncode [Y]           | `yenc`   |                         |&check;|&check;|&check; |
+| MIME multipart email  | `email`  | `.eml` `.msg`           |&check;|&check;|&check; |
+| C or C++ coded binary | `c`      | `.c` `.cpp` `.cc` `.h`  |&check;|&check;|&check; |
+| JSON coded binary     | `json`   | `.json`                 |&check;|&check;|        |
+| Python coded binary   | `python` | `.py`                   |&check;|&check;|&check; |
+| Pascal coded binary   | `pascal` | `.pas`                  |&check;|&check;|&check; |
+| BASIC coded binary    | `basic`  | `.bas`                  |&check;|&check;|        |
 
 [A] requires **libarchive**  
 [C] requires **acefile**  

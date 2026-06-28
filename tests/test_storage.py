@@ -8,6 +8,7 @@ import io
 import unittest
 import logging
 import glob
+from pathlib import Path
 
 import monobit
 from .base import BaseTester, ensure_asset
@@ -20,6 +21,7 @@ class TestCompressed(BaseTester):
         """Test importing/exporting compressed files."""
         compressed_file = self.temp_path / f'4x6.yaff.{format}'
         monobit.save(self.fixed4x6, compressed_file, container_format=format)
+        self.assertTrue(Path(compressed_file).is_file())
         self.assertTrue(os.path.getsize(compressed_file) > 0)
         font, *_ = monobit.load(compressed_file, container_format=format)
         self.assertEqual(len(font.glyphs), 919)
@@ -67,12 +69,15 @@ class TestCompressed(BaseTester):
 class TestContainers(BaseTester):
     """Test container formats."""
 
-    def _test_container(self, format):
+    def _test_container(self, format, suffix=None):
         """Test importing/exporting container files."""
-        container_file = self.temp_path / f'4x6.yaff.{format}'
-        monobit.save(self.fixed4x6, container_file, container_format=format, format='yaff')
-        self.assertTrue(os.path.getsize(container_file) > 0)
-        font, *_ = monobit.load(container_file, container_format=format, format='yaff')
+        if suffix is None:
+            suffix = format
+        container_path = self.temp_path / f'test.{suffix}' / '4x6.yaff'
+        monobit.save(self.fixed4x6, container_path, container_format=format, format='yaff')
+        self.assertTrue(Path(container_path.parent).is_file())
+        self.assertTrue(os.path.getsize(container_path.parent) > 0)
+        font, *_ = monobit.load(container_path, container_format=format, format='yaff')
         self.assertEqual(len(font.glyphs), 919)
 
     def test_zip(self):
@@ -85,7 +90,7 @@ class TestContainers(BaseTester):
 
     def test_tgz(self):
         """Test importing/exporting compressed tar files."""
-        self._test_container('tar.gz')
+        self._test_container('tar', suffix='tar.gz')
 
     def test_email(self):
         """Test importing/exporting MIME messages."""
@@ -281,6 +286,91 @@ class TestContainers(BaseTester):
         font, *_ = monobit.load(file)
         self.assertEqual(len(font.glyphs), 919)
 
+    def test_failedcreate_zip(self):
+        """Test failed creating file in new zip container."""
+        # bbc can only store 8x8
+        file = self.temp_path / 'testfontdir.zip' / 'test.bbc'
+        try:
+            # expected to fail
+            fonts = monobit.save(self.fixed8x16, file, format='bbc')
+        except Exception:
+            pass
+        # no new zip file after failure
+        assert not (self.temp_path / 'testfontdir.zip').is_file()
+
+    def test_failedcreate_dir(self):
+        """Test failed creating file in new directory."""
+        # bbc can only store 8x8
+        file = self.temp_path / 'test0' / 'test1' / 'test.bbc'
+        (self.temp_path / 'test0').mkdir()
+        try:
+            # expected to fail
+            fonts = monobit.save(self.fixed8x16, file, format='bbc')
+        except Exception:
+            pass
+        # no new file or new directory after failure
+        assert not (self.temp_path / 'test0' / 'test1' / 'test.bbc').is_file()
+        assert not (self.temp_path / 'test0' / 'test1').is_dir()
+        # existing empty dir is retained
+        assert (self.temp_path / 'test0').is_dir()
+
+    def test_format_dir(self):
+        """Test overriding with format='dir'."""
+        file = self.temp_path / 'testfontdir.zip' / 'test.yaff'
+        fonts = monobit.save(self.fixed8x16, file, container_format='dir')
+        assert (self.temp_path / 'testfontdir.zip').is_dir()
+
+    def _test_update_container(self, suffix, format='', preserve_names=True):
+        """Test adding file to existing zip."""
+        path = self.temp_path / f'fontdir.{suffix}'
+        file0 = path / '4x6.yaff'
+        monobit.save(self.fixed4x6, file0, container_format=format)
+        self.assertTrue(path.is_file())
+        file1 = path / 'subdir' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file1, container_format=format)
+        if preserve_names:
+            font, *_ = monobit.load(file0, container_format=format)
+            self.assertEqual(len(font.glyphs), 919)
+            font, *_ = monobit.load(file1, container_format=format)
+            self.assertEqual(len(font.glyphs), 919)
+        else:
+            pack = monobit.load(path, container_format=format)
+            self.assertEqual(len(pack), 2)
+            self.assertEqual(len(pack[0].glyphs), 919)
+            self.assertEqual(len(pack[1].glyphs), 919)
+
+    def test_update_zip(self):
+        """Test adding file to existing zip."""
+        self._test_update_container('zip')
+
+    def test_update_tar(self):
+        """Test adding file to existing tar."""
+        self._test_update_container('tar')
+
+    def test_update_yenc(self):
+        """Test adding file to existing yenc container."""
+        self._test_update_container('yenc', format='yenc')
+
+    def test_update_uu(self):
+        """Test adding file to existing uuencoded container."""
+        self._test_update_container('uu', format='uuencode')
+
+    def test_update_c(self):
+        """Test adding file to existing C container."""
+        self._test_update_container('c', format='c', preserve_names=False)
+
+    def test_update_py(self):
+        """Test adding file to existing Python list container."""
+        self._test_update_container('py', preserve_names=False)
+
+    def test_update_pytuple(self):
+        """Test adding file to existing Python tuple container."""
+        self._test_update_container('py', format='python-tuple', preserve_names=False)
+
+    def test_update_pas(self):
+        """Test adding file to existing Pascal container."""
+        self._test_update_container('pas', format='pascal', preserve_names=False)
+
 
 class TestForks(BaseTester):
 
@@ -303,6 +393,12 @@ class TestForks(BaseTester):
         file = ensure_asset(self.macfonts, 'Originals.zip')
         font, *_ = monobit.load(file / '__MACOSX/._Times  9')
         self.assertEqual(len(font.glyphs), 228)
+
+    def test_import_applesingle(self):
+        """Test importing appledouble files."""
+        font, *_ = monobit.load(self.font_path / '4x6.dfont.as')
+        self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
 
 class TestWrappers(BaseTester):
@@ -412,12 +508,12 @@ class TestStreams(BaseTester):
 
     def test_binary_stream(self):
         """Test importing psf files from binary stream."""
-        with open(self.font_path / '4x6.psf', 'rb') as f:
+        with open(self.font_path / '4x6.psfu', 'rb') as f:
             fontbuffer = f.read()
         # we need peek()
         with io.BufferedReader(io.BytesIO(fontbuffer)) as stream:
             font, *_ = monobit.load(stream)
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 950)
 
     def test_text_stream(self):
         """Test importing bdf files from text stream."""

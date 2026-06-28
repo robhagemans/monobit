@@ -78,7 +78,7 @@ class TestCharCell(BaseTester):
 
     def test_export_psf_r(self):
         """Test exporting psf files."""
-        self._test_export_charcell_reduced('psf', label='A')
+        self._test_export_charcell_reduced('psf', label='A', save_kwargs=dict(count=0))
 
     def test_export_dec_r(self):
         """Test exporting dec-drcs files."""
@@ -221,7 +221,7 @@ class TestBigCell(BaseTester):
 class TestMultiCell(BaseTester):
     """Test exporting multi-cell fonts."""
 
-    unscii_16 = monobit.load(BaseTester.font_path / 'unscii-16.hex')
+    unscii_16 = monobit.load('monobit/resources/unscii-16.yaff.gz')
 
     unscii_16_A = """\
 ..@@..

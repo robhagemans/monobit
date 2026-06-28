@@ -1,0 +1,13 @@
+# encoding used by PolyPrint for Amstrad CPC
+# codepoints 0x20 - 0xa7 are cp437
+# omitting codepoints 0xb0-0xba which repeat some ASCII glyphs and do not occur in the fonts
+# see appendix D - https://www.habisoft.com/pcwwiki/lib/exe/fetch.php?media=aplicaciones:manuales:manual_full_poly_system.pdf
+
+0xa8: u+00BF  # ¿
+0xa9: u+00A7  # §
+0xaa: u+00DF  # ß
+0xab: u+00A4  # ¤
+0xac: u+00B0  # °
+0xad: u+00D8  # Ø
+0xae: u+00A8  # ¨
+0xaf: u+00F8  # ø

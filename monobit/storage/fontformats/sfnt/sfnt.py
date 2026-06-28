@@ -12,12 +12,14 @@ import math
 import re
 from unicodedata import bidirectional
 
-from monobit.base import Props, FileFormatError, UnsupportedError
+from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
 from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint
 from monobit.storage import loaders, savers
 
-from . import fonttools
-from .fonttools import check_fonttools
+fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
+ttLib = safe_import('fontTools.ttLib')
+fonttools_loaded = ttLib is not None
+
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
 
 
@@ -39,7 +41,7 @@ class StrikeFormatError(UnsupportedError):
 SFNT_MAGIC = b'\0\1\0\0'
 
 
-if fonttools.loaded:
+if fonttools_loaded:
     @loaders.register(
         name='sfnt',
         magic=(
@@ -109,10 +111,18 @@ if fonttools.loaded:
             fonts.extend(_convert_sfnt(_sfnt))
         return fonts
 
+    def check_fonttools():
+        pass
 else:
     # ensure names are importable; sfnt used by mac, win modules
+    def check_fonttools():
+        raise FileFormatError(
+            'Parsing `sfnt` resources requires package `fontTools`, '
+            'which is not available.'
+        )
     load_sfnt = check_fonttools
     load_collection = check_fonttools
+
 
 
 ###############################################################################

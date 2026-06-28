@@ -10,6 +10,7 @@ from ..storage.base import (
     container_loaders, container_savers,
     encoders, decoders, containers,
 )
+from ..storage.fontfiles import load_plugins
 from .args import GLOBAL_ARG_PREFIX, ARG_PREFIX, FALSE_PREFIX
 
 
@@ -92,23 +93,25 @@ def print_help(command_args, usage, operations, global_options):
                 continue
             func = ns.func
             _print_section(op, func)
-            if op in ('load', 'save', 'to'):
+            if func.passthrough:
                 _print_context_help(**vars(ns))
 
 
-def _print_context_help(command, args, kwargs, **ignore):
+def _print_context_help(command, func, args, kwargs, **ignore):
+    load_plugins()
     format = kwargs.get('format', '')
+    funcs = []
     if command == 'load':
         funcs = container_loaders.get_for(format=format)
-        if not funcs:
-            funcs = loaders.get_for(format=format)
-    else:
+    elif command in ('save', 'to'):
         funcs = container_savers.get_for(format=format)
-        if not funcs:
-            funcs = savers.get_for(format=format)
+    if not funcs:
+        funcs = func.passthrough.get_for(format=format)
     if funcs:
         func = funcs[0]
         _print_section(f'{command} -format={func.format}', func)
+    if command not in ('load', 'save', 'to'):
+        return
     container_format = kwargs.get('container_format', '')
     if command == 'load':
         funcs = decoders.get_for(format=container_format)
@@ -118,7 +121,7 @@ def _print_context_help(command, args, kwargs, **ignore):
         func = funcs[0]
         _print_section(f'-container-format={func.format}', func)
     container_classes = containers.get_for(format=container_format)
-    if containers:
+    if container_classes:
         if command == 'load':
             func = container_classes[0].decode
         else:

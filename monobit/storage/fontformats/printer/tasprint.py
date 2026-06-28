@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.tasprint - TasPrint fonts
+monobit.storage.fontformats.printer.tasprint - TasPrint fonts
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -14,9 +14,10 @@ from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Raster, Glyph, Font, Char
 from monobit.base.struct import little_endian as le
 
-from .raw import load_bitmap, save_bitmap
-from .raw.plus3dos import _PLUS3DOS_HEADER, _PLUS3DOS_MAGIC
-from monobit.storage.utils.limitations import ensure_charcell, ensure_single
+from ..raw.plus3dos import _PLUS3DOS_HEADER, _PLUS3DOS_MAGIC
+from monobit.storage.utils.limitations import (
+    ensure_charcell, ensure_single, ensure_levels, reencode
+)
 
 
 # +3DOS: signature, issue==1, version==0, file_size=0xc82, file_type==3, data_length==3074, load_addr=30000
@@ -103,7 +104,7 @@ def parse_tasprint_48k(
             )
         except ValueError:
             break
-        font = font.label(char_from='ascii')
+        font = font.label(char_from='ascii-printable')
         fonts.append(font)
     return fonts
 
@@ -135,7 +136,7 @@ def load_tasprint_3dos(instream):
         logging.warning('+3DOS header values are not consistent with TasPrint file.')
     data = instream.read()
     font = _read_tasprint_strike(data, 96, 16, width)
-    font = font.label(char_from='ascii')
+    font = font.label(char_from='ascii-printable')
     return font
 
 
@@ -152,23 +153,29 @@ def load_tasprint_cpc(instream):
 
 
 @savers.register(linked=load_tasprint)
-def save_tasprint(fonts, outstream, version:str='48k'):
+def save_tasprint(fonts, outstream, version:str='48k', raw:bool=False):
     """
     Save a TasPrint font.
 
     version: tasprint format version, one of '48k', '+3', 'cpc', 'pcw'
+    raw: save as-is without applying tasprint character encoding (default: False)
     """
     if version == '48k':
         # ensure 10x16
         for font in fonts:
-            # FIXME: glyph count must be 96
             font = ensure_charcell(font, cell_size=(10, 16))
+            font = ensure_levels(font, 2)
+            if not raw:
+                font = reencode(font, 'ascii-printable')
             return _write_tasprint_strike(
                 outstream, font, codepoint_range=range(32, 128)
             )
     font = ensure_single(fonts)
     font = ensure_charcell(font)
+    font = ensure_levels(font, 2)
     if version == '+3':
+        if not raw:
+            font = reencode(font, 'ascii-printable')
         header = _PLUS3DOS_HEADER(
             signature=_PLUS3DOS_MAGIC,
             issue=1,
@@ -185,6 +192,8 @@ def save_tasprint(fonts, outstream, version:str='48k'):
         codepoint_range = range(32, 128)
     elif version == 'cpc':
         font = ensure_charcell(font, cell_size=(10, 16))
+        if not raw:
+            font = reencode(font, 'tasprint')
         name = font.name[:8].split(' ')[0].upper().ljust(8, ' ')
         header = _AMSDOS_HEADER(
             filename=name.encode('ascii', 'ignore'),
@@ -201,6 +210,8 @@ def save_tasprint(fonts, outstream, version:str='48k'):
         outstream.write(bytes(header))
         codepoint_range = range(256)
     elif version == 'pcw':
+        if not raw:
+            font = reencode(font, 'ascii-printable')
         codepoint_range = range(1, 129)
     else:
         raise UnsupportedError(f'Unsupported TasPrint version `{version}`; must be one of `48k`, `+3`, `cpc`, `pcw`.')

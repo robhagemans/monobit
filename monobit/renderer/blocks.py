@@ -1,5 +1,5 @@
 """
-monobit.render.blocks - output pixels as text using block elements
+monobit.renderer.blocks - output pixels as text using block elements
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -15,12 +15,16 @@ from monobit.base import blockstr
 # block elements
 
 BLOCKS = {
+
+    # fullsize blocks
     (1, 1): {
-        (0,): ' ',
+        (0,): '\xa0',
         (1,): '\u2588',
     },
+
+    # quadrants
     (2, 2): {
-        (0, 0, 0, 0): ' ',
+        (0, 0, 0, 0): '\xa0',
         (0, 0, 0, 1): '\u2597',
         (0, 0, 1, 0): '\u2596',
         (0, 0, 1, 1): '\u2584',
@@ -39,7 +43,9 @@ BLOCKS = {
     },
 }
 
-# sixel block elements in Unicode do not include full- and half-block elements defined elsewhere
+
+# sextant block elements in Unicode do not include full- and half-block elements defined elsewhere
+
 _SIXBITS = tuple(
     tuple(1*_b for _b in bytes_to_bits((_code,))[2:])
     for _code in range(1, 2**6-1)
@@ -49,11 +55,14 @@ BLOCKS[(2, 3)] = {
     (_0, _1, _2, _3, _4, _5): chr(0x1Fb00 + _i)
     for _i, (_5, _4, _3, _2, _1, _0) in enumerate(_SIXBITS)
 } | {
-    (0, 0, 0, 0, 0, 0): ' ',
+    (0, 0, 0, 0, 0, 0): '\xa0',
     (0, 1, 0, 1, 0, 1): '\u2590',
     (1, 0, 1, 0, 1, 0): '\u258c',
     (1, 1, 1, 1, 1, 1): '\u2588',
 }
+
+
+# Braille octants
 
 _EIGHTBITS = tuple(
     tuple(1*_b for _b in bytes_to_bits((_code,)))
@@ -98,7 +107,17 @@ def matrix_to_blocks(matrix, ncols, nrows):
         blockdict = BLOCKS[(ncols, nrows)]
     except KeyError:
         raise ValueError(f'Unsupported block resolution: {ncols}x{nrows}')
-    bitblockrows = tuple(
+    bitblockrows = bit_block_rows(matrix, nrows, ncols)
+    block_matrix = [
+        [blockdict[_bitblock] for _bitblock in _row]
+        for _row in bitblockrows
+    ]
+    return block_matrix
+
+
+def bit_block_rows(matrix, nrows, ncols, fillvalue=0):
+    """Convert matrix into rows of blocks of pixels of given size."""
+    return tuple(
         tuple(
             _bitblock
             for _bitblock in zip_longest(
@@ -107,18 +126,13 @@ def matrix_to_blocks(matrix, ncols, nrows):
                     for _row in range(nrows)
                     for _col in range(ncols)
                 ),
-                fillvalue=0
+                fillvalue=fillvalue
             )
         )
         for _bitrows in zip_longest(
             *(matrix[_ofs::nrows] for _ofs in range(nrows)), fillvalue=()
         )
     )
-    block_matrix = [
-        [blockdict[_bitblock] for _bitblock in _row]
-        for _row in bitblockrows
-    ]
-    return block_matrix
 
 
 def matrix_to_shades(matrix, *, inklevels, border):

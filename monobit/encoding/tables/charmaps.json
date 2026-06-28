@@ -1299,8 +1299,7 @@
     },
     "risc-os": {
         "aliases": [
-            "acorn-risc-os",
-            "risc-os-latin1"
+            "acorn-risc-os"
         ],
         "filename": "kreativekorp/RISCOSV.TXT"
     },
@@ -2274,6 +2273,26 @@
         "filename": "manual/tasprint.ucp",
         "overlays": [
             "ascii-printable"
+        ]
+    },
+    "polyprint-overlay" : {
+        "filename": "manual/polyprint.ucp"
+    },
+    "polyprint": {
+        "filename": "microsoft/PC/CP437.TXT",
+        "range": "0x20-0xa7",
+        "overlays": [
+            "polyprint-overlay"
+        ]
+    },
+    "risc-os-latin1-overlay": {
+        "filename": "kreativekorp/RISCOSV.TXT",
+        "range": "0x20-0x7e,0x80-0xff"
+    },
+    "risc-os-latin1": {
+        "filename": "iso-8859/8859-1.TXT",
+        "overlays": [
+            "risc-os-latin1-overlay"
         ]
     }
 }

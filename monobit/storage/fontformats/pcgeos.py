@@ -15,7 +15,9 @@ from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.base.struct import StructError, bitfield, flag, little_endian as le
 from monobit.base.binary import ceildiv
 
-from monobit.storage.utils.limitations import make_contiguous
+from monobit.storage.utils.limitations import (
+    make_contiguous, ensure_levels, reencode
+)
 
 
 _BSWF_SIG = b'BSWF'
@@ -459,13 +461,20 @@ def load_pcgeos(instream):
 
 
 @savers.register(linked=load_pcgeos)
-def save_pcgeos(fonts, outstream):
-    """Save to a PC/GEOS v2.0+ bitmap font file."""
+def save_pcgeos(fonts, outstream, raw:bool=True):
+    """
+    Save to a PC/GEOS v2.0+ bitmap font file.
+
+    raw: save as-is without applying PC/GEOS character encoding (default: False)
+    """
     fonts, common_props = _prepare_pcgeos(fonts)
-    fonts = tuple(
-        _f.label(codepoint_from=_f.encoding).subset(codepoints=range(256))
-        for _f in fonts if _f.glyphs
-    )
+    # drop empty fonts
+    fonts = tuple(_f for _f in fonts if _f.glyphs)
+    if not raw:
+        fonts = tuple(reencode(_f, 'pc-geos') for _f in fonts)
+    else:
+        fonts = tuple(_f.label(codepoint_from=_f.encoding) for _f in fonts)
+    fonts = tuple(_f.subset(codepoints=range(256)) for _f in fonts)
     n_sizes = len(fonts)
     # FontFileInfo header
     font_file_info = _FontFileInfo(
@@ -637,6 +646,7 @@ def _prepare_pcgeos(fonts):
         raise UnsupportedError(
             'PC-GEOS font file can only store fonts from one family.'
         )
+    fonts = ensure_levels(fonts, 2)
     common_props = _get_metadata(fonts[0])
     return fonts, common_props
 

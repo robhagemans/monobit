@@ -14,7 +14,7 @@ from monobit.core import Glyph, Raster, Font
 from monobit.base import Props, reverse_dict, UnsupportedError
 from monobit.encoding import EncodingName
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 @loaders.register(
@@ -48,6 +48,7 @@ def save_hppcl(fonts, outstream, orientation:str='portrait'):
     orientation: 'portrait' or 'landscape'
     """
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     if orientation.lower().startswith('p'):
         orientation = 0
     elif orientation.lower().startswith('l'):

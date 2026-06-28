@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from monobit.base import Coord
-from monobit.core import Glyph
+from monobit.core import Glyph, Font
 from monobit.base import UnsupportedError
 
 
@@ -49,4 +49,32 @@ def make_contiguous(font, *, missing, supported_range=None, full_range=None):
             max_range = min(max_range, max(supported_range))
         full_range = range(min_range, max_range+1)
     font = font.resample(codepoints=full_range, missing=missing)
+    return font
+
+
+def ensure_levels(fonts, levels):
+    """Check ink levels can be stored."""
+    if isinstance(fonts, Font):
+        iter_fonts = (fonts,)
+    else:
+        iter_fonts = fonts
+    for font in iter_fonts:
+        if font.levels > levels:
+            raise UnsupportedError(
+                f'This format can save at most {levels} ink levels; '
+                f'the font has {font.levels} levels.'
+            )
+    return fonts
+
+
+def reencode(font, encoding, fallback=None):
+    """Regenerate codepoints according to a different encoding."""
+    # create char labels where possible
+    font = font.label()
+    # remove all old codepoint labels
+    font = font.label(codepoint_from=None, overwrite=True)
+    # create new codepoint labels
+    font = font.label(codepoint_from=encoding)
+    font = font.label(codepoint_from=fallback)
+    font = font.modify(encoding=encoding)
     return font

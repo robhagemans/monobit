@@ -61,6 +61,13 @@ def turn(self, clockwise:int=NOT_SET, *, anti:int=NOT_SET):
 turn_method = turn
 
 
+# shift calculation for shearing
+
+def shear_shift(y, xpitch, ypitch, modulo):
+    """Shift amount for a given row height when shearing."""
+    return (y*xpitch + modulo)//ypitch - (modulo==ypitch)
+
+
 class Raster:
     """Bit matrix."""
 
@@ -80,9 +87,8 @@ class Raster:
         self._pixels = pixels
         self._width = width
         self._inklevels = inklevels
-        assert set(inklevels) >= set(''.join(pixels)), (
-            f"{set(inklevels)} >= {set(''.join(pixels))} fails"
-        )
+        if set(inklevels) < set(''.join(pixels)):
+            raise ValueError(f"{set(inklevels)} >= {set(''.join(pixels))} fails")
         self._paper = self._inklevels[0]
         self._levels = len(self._inklevels)
         # check pixel matrix types
@@ -101,6 +107,13 @@ class Raster:
     def __bool__(self):
         """Raster is not empty."""
         return bool(self.height and self.width)
+
+    def __eq__(self, other):
+        """Raster equals other raster."""
+        return self.as_pixels() == other.as_pixels()
+
+    def __hash__(self):
+        return hash(self.as_pixels())
 
     @property
     def levels(self):
@@ -358,7 +371,7 @@ class Raster:
             # widen each pixel to the expected number of bits
             # e.g 1->2bpp 0 -> 00 1 -> 11
             #     4->8bpp 5 -> 55 A -> AA
-            raster = raster.stretch(factor_x=factor)
+            raster = raster.stretch(factor=(factor, 1))
         if align == 'bit':
             inklevels = get_inklevels(self._levels)
             bits = ''.join(
@@ -671,13 +684,13 @@ class Raster:
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
-    def stretch(self, factor_x:int=1, factor_y:int=1):
+    def stretch(self, factor:Coord=Coord(1, 1)):
         """
         Repeat rows and/or columns.
 
-        factor_x: number of times to repeat horizontally
-        factor_y: number of times to repeat vertically
+        factor: number of times to repeat (horizontally, vertically)
         """
+        factor_x, factor_y = factor
         # vertical stretch
         pixels = (_row for _row in self._pixels for _ in range(factor_y))
         # horizontal stretch
@@ -687,13 +700,13 @@ class Raster:
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
-    def shrink(self, factor_x:int=1, factor_y:int=1):
+    def shrink(self, factor:Coord=Coord(1, 1)):
         """
         Remove rows and/or columns.
 
-        factor_x: factor to shrink horizontally
-        factor_y: factor to shrink vertically
+        factor: factor to shrink (horizontally, vertically)
         """
+        factor_x, factor_y = factor
         # vertical shrink
         shrunk = self._pixels[::factor_y]
         # horizontal shrink
@@ -748,9 +761,10 @@ class Raster:
         """Transform raster by shearing diagonally."""
         direction = direction[0].lower()
         xpitch, ypitch = pitch
+        # horizontal shift amount for each row
         shiftrange = range(self.height)[::-1]
         shiftrange = (
-            (_y*xpitch + modulo)//ypitch - (modulo==ypitch)
+            shear_shift(_y, xpitch, ypitch, modulo)
             for _y in shiftrange
         )
         empty = self._paper * self.width
@@ -765,7 +779,7 @@ class Raster:
         elif direction == 'r':
             return type(self)(
                 tuple(
-                    empty[:_y] + _row[:self.width-_y]
+                    empty[:_y] + _row[:max(0, self.width-_y)]
                     for _row, _y in zip(self._pixels, shiftrange)
                 ),
                 inklevels=self._inklevels,

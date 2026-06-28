@@ -1,5 +1,5 @@
 """
-monobit.render.pdf - pdf chart output
+monobit.renderer.pdf - pdf chart output
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -9,22 +9,18 @@ import logging
 
 from monobit.base import safe_import
 reportlab = safe_import('reportlab')
-if reportlab:
-    from reportlab.lib.units import mm
-    from reportlab.pdfgen.canvas import Canvas
 
-from monobit.storage import savers
 from monobit.base import Coord, RGB
 from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
-from .chart import create_chart, aligns_right
+from .createchart import create_chart, aligns_right, charters
 from .glyphmap import create_image_colours
 
 
 if reportlab:
 
-    @savers.register(
+    @charters.register(
         name='pdf',
         patterns=('*.pdf',),
     )
@@ -39,6 +35,7 @@ if reportlab:
             paper:RGB=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
             grid_positioning:bool=False,
+            skip_empty_lines:bool=True,
             max_labels:int=1,
             page_size:Coord=Coord(210, 297),
             margin:Coord=Coord(25, 25),
@@ -57,6 +54,7 @@ if reportlab:
         ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: all codepoints)
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: false)
+        skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: true)
         max_labels: maximum number of labels to show per glyph (default: 1)
         page_size: page size X,Y in millimetres (default 210x297 for A4)
         margin: margin X,Y in millimetres (default 25x25)
@@ -72,6 +70,7 @@ if reportlab:
             padding=padding,
             codepoint_range=codepoint_range,
             grid_positioning=grid_positioning,
+            skip_empty_lines=skip_empty_lines,
             margin=Coord(0, 0),
             scale=Coord(1, 1),
             max_labels=max_labels,
@@ -81,6 +80,7 @@ if reportlab:
 
         # assume A4
         # note mm is a )constant defining number of points in a millimetre
+        from reportlab.lib.units import mm
         # 1 point = 1/72 in
         page_x, page_y = page_size.x*mm, page_size.y*mm
         # margins and title position
@@ -113,6 +113,7 @@ if reportlab:
         direction = direction or font.direction
         right_align = aligns_right(direction)
 
+        from reportlab.pdfgen.canvas import Canvas
         canvas = Canvas(outstream)
         # draw title on first page
         canvas.translate(margin_x, margin_y)

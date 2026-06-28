@@ -14,7 +14,7 @@ from .base import BaseTester, get_stringio
 
 test = """
 # testing glyph
-"1":
+'1':
   ........
   ........
   ...@@...
@@ -270,7 +270,7 @@ class TestGlyphTrafo(BaseTester):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
-        m = one.stretch(2, 1)
+        m = one.stretch((2, 1))
         assert m.as_text() == '\n'.join((
             '................',
             '................',
@@ -297,7 +297,7 @@ class TestGlyphTrafo(BaseTester):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
-        m = one.shrink(2, 2)
+        m = one.shrink((2, 2))
         assert m.as_text() == '\n'.join((
             '....',
             '..@.',
@@ -435,22 +435,22 @@ class TestGlyphTrafo(BaseTester):
         one = f.glyphs[0]
         m = one.shear(pitch=(1, 2))
         assert m.as_text() == '\n'.join((
-            '...............',
-            '...............',
-            '..........@@...',
-            '........@@@....',
-            '.......@@@@....',
-            '........@@.....',
-            '........@@.....',
-            '.......@@......',
-            '.......@@......',
-            '......@@.......',
-            '......@@.......',
-            '.....@@........',
-            '...@@@@@@......',
-            '...............',
-            '...............',
-            '...............\n',
+            '................',
+            '................',
+            '..........@@....',
+            '........@@@.....',
+            '.......@@@@.....',
+            '........@@......',
+            '........@@......',
+            '.......@@.......',
+            '.......@@.......',
+            '......@@........',
+            '......@@........',
+            '.....@@.........',
+            '...@@@@@@.......',
+            '................',
+            '................',
+            '................\n',
         )), m
 
     def test_underline(self):
@@ -705,7 +705,7 @@ class TestFontTrafo(BaseTester):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
-        f = f.stretch(2, 1)
+        f = f.stretch((2, 1))
         m = f.glyphs[0]
         assert m.as_text() == '\n'.join((
             '................',
@@ -733,7 +733,7 @@ class TestFontTrafo(BaseTester):
         file = get_stringio(test)
         f,  *_ = monobit.load(file)
         one = f.glyphs[0]
-        f = f.shrink(2, 2)
+        f = f.shrink((2, 2))
         m = f.glyphs[0]
         assert m.as_text() == '\n'.join((
             '....',
@@ -809,6 +809,112 @@ class TestFontTrafo(BaseTester):
         # non-metrics preserved
         assert m.test == one.test
         assert m.comment == one.comment
+
+
+
+class TestGlyphMapTrafo(BaseTester):
+    """Test glyph map transformations."""
+
+    _file = get_stringio(test)
+    _font,  *_ = monobit.load(_file)
+
+    def test_turn1(self):
+        gmap = monobit.render_text(self._font, '1', direction='l t f')
+        gmap.turn(1)
+        bench = '''\
+...........
+...........
+@.......@..
+@.......@@.
+@@@@@@@@@@@
+@@@@@@@@@@@
+@..........
+@..........
+...........
+'''
+        assert gmap.as_text(inklevels='.@', border='.') == bench
+
+    def test_turn2(self):
+        gmap = monobit.render_text(self._font, '1', direction='l t f')
+        gmap.turn(2)
+        bench = '''\
+.@@@@@@..
+...@@....
+...@@....
+...@@....
+...@@....
+...@@....
+...@@....
+...@@....
+...@@@@..
+...@@@...
+...@@....
+'''
+        assert gmap.as_text(inklevels='.@', border='.') == bench
+
+    def test_turn3(self):
+        gmap = monobit.render_text(self._font, '1', direction='l t f')
+        gmap.turn(3)
+        bench = '''\
+...........
+..........@
+..........@
+@@@@@@@@@@@
+@@@@@@@@@@@
+.@@.......@
+..@.......@
+...........
+...........
+'''
+        assert gmap.as_text(inklevels='.@', border='.') == bench
+
+
+    def test_stretch_y(self):
+        gmap = monobit.render_text(self._font, '1', direction='l t f')
+        gmap.stretch(1, 2)
+        bench = '''\
+....@@...
+....@@...
+...@@@...
+...@@@...
+..@@@@...
+..@@@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+....@@...
+..@@@@@@.
+..@@@@@@.
+'''
+        assert gmap.as_text(inklevels='.@', border='.') == bench
+
+    def test_stretch_x(self):
+        gmap = monobit.render_text(self._font, '1', direction='l t f')
+        gmap.stretch(2, 1)
+        bench = '''\
+........@@@@......
+......@@@@@@......
+....@@@@@@@@......
+........@@@@......
+........@@@@......
+........@@@@......
+........@@@@......
+........@@@@......
+........@@@@......
+........@@@@......
+....@@@@@@@@@@@@..
+'''
+        assert gmap.as_text(inklevels='.@', border='.') == bench
 
 
 if __name__ == '__main__':

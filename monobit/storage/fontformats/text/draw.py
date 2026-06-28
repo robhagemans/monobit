@@ -13,7 +13,7 @@ from monobit.core import Font, Glyph, Tag, Char
 from monobit.encoding import encodings
 from monobit.base.binary import align
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 ##############################################################################
@@ -55,6 +55,7 @@ def save_hexdraw(fonts, outstream, ink:str='#', paper:str='-', unicode:bool=True
     unicode: use unicode char labels for codepoints (default: True)
     """
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     _save_draw(font, outstream.text, ink=ink, paper=paper, unicode=unicode)
 
 

@@ -15,7 +15,9 @@ from monobit.core import Font, Glyph, Raster
 from monobit.base.struct import little_endian as le
 from monobit.base.binary import ceildiv
 
-from monobit.storage.utils.limitations import ensure_single, make_contiguous
+from monobit.storage.utils.limitations import (
+    ensure_single, make_contiguous, ensure_levels
+)
 
 
 ###############################################################################
@@ -80,6 +82,7 @@ def load_geos_vlir_record(instream, *, extract_del:bool=False):
 def save_geos_vlir_record(fonts, outstream):
     """Save font to a bare GEOS font VLIR."""
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     font = _prepare_font_for_geos_vlir_record(font)
     outstream.write(_create_geos_vlir_record(font))
 

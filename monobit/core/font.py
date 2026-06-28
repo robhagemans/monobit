@@ -195,6 +195,8 @@ class FontProperties:
     source_name: str = ''
     source_path: str = ''
     source_format: str = ''
+    source_url: str = ''
+    source_hash: str = ''
     history: str = ''
 
 
@@ -1165,10 +1167,13 @@ class Font(HasProps):
             (_label, self.get_glyph(_label, missing=missing))
             for _label in labels
         )
-        # if missing=None, drop missing glyphs
-        labels, glyphs = zip(*(
+        labelsglyphs = tuple(
             (_l, _g) for _l, _g in labelsglyphs if _g is not None
-        ))
+        )
+        if not labelsglyphs:
+            return self.modify(())
+        # if missing=None, drop missing glyphs
+        labels, glyphs = zip(*labelsglyphs)
         font = self.modify(glyphs)
         if relabel:
             # relabel and relink glyphs
@@ -1438,22 +1443,19 @@ class Font(HasProps):
 
     @scriptable
     def stretch(
-            self, factor_x:int=1, factor_y:int=1,
-            *, adjust_metrics:bool=True
+            self, factor:Coord=Coord(1, 1), *, adjust_metrics:bool=True
         ):
         """
         Stretch by repeating rows and/or columns.
 
-        factor_x: number of times to repeat horizontally
-        factor_y: number of times to repeat vertically
+        factor: number of times to repeat (horizontally, vertically) (default: 1,1)
         adjust_metrics: also stretch metrics (default: True)
         """
+        factor_x, factor_y = factor
         if (factor_x, factor_y) == (1, 1):
             return self
         font = self.for_all(
-            Glyph.stretch,
-            factor_x=factor_x, factor_y=factor_y,
-            adjust_metrics=adjust_metrics,
+            Glyph.stretch, factor=factor, adjust_metrics=adjust_metrics,
         )
         if not adjust_metrics:
             return font
@@ -1465,22 +1467,19 @@ class Font(HasProps):
 
     @scriptable
     def shrink(
-            self, factor_x:int=1, factor_y:int=1,
-            *, adjust_metrics:bool=True
+            self, factor:Coord=Coord(1, 1), *, adjust_metrics:bool=True
         ):
         """
         Shrink by removing rows and/or columns.
 
-        factor_x: factor to shrink horizontally
-        factor_y: factor to shrink vertically
+        factor: factor to shrink (horizontally, vertically) (default: 1,1)
         adjust_metrics: also stretch metrics (default: True)
         """
+        factor_x, factor_y = factor
         if (factor_x, factor_y) == (1, 1):
             return self
         font = self.for_all(
-            Glyph.shrink,
-            factor_x=factor_x, factor_y=factor_y,
-            adjust_metrics=adjust_metrics,
+            Glyph.shrink, factor=factor, adjust_metrics=adjust_metrics,
         )
         if not adjust_metrics:
             return font

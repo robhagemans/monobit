@@ -16,18 +16,25 @@ from ..constants import MONOBIT
 from ..core import Font, Pack
 from ..plumbing import scriptable, manage_arguments
 from ..base import Any, FileFormatError, UnsupportedError
-from .magic import MagicRegistry
-from .location import open_location, iter_funcs_from_registry
+from .magic import MagicRegistry, iter_funcs_from_registry
+from .location import open_location
 from .base import (
     DEFAULT_TEXT_FORMAT, DEFAULT_BINARY_FORMAT,
     loaders, savers, container_loaders, container_savers
 )
 
 
+def load_plugins():
+    """Ensure plugins get loaded."""
+    from . import containerformats
+    from . import fontformats
+    from . import wrapperformats
+
+
 ##############################################################################
 # loading
 
-@scriptable(wrapper=True, record=False)
+@scriptable(passthrough=loaders)
 def load(infile:Any='', *, format:str='', container_format:str='', match_case:bool=False, **kwargs):
     """
     Read font(s) from file.
@@ -37,6 +44,7 @@ def load(infile:Any='', *, format:str='', container_format:str='', match_case:bo
     container_format: container/wrapper formats separated by . (default: infer from magic number or filename)
     match_case: interpret path as case-sensitive (if file system supports it; default: False)
     """
+    load_plugins()
     infile = infile or sys.stdin
     with open_location(
             infile, mode='r', match_case=match_case,
@@ -89,6 +97,7 @@ def _sanitise_filesystem_name(filename):
     If the source filename contains surrogate-escaped non-utf8 bytes
     preserve the byte values as backslash escapes
     """
+    filename = str(filename)
     try:
         filename.encode('utf-8')
     except UnicodeError:
@@ -106,7 +115,9 @@ def _annotate_fonts_with_source(
     # convert font or pack to pack
     pack = Pack(fonts)
     filename = _sanitise_filesystem_name(Path(filename).name)
-    filepath = _sanitise_filesystem_name(str(Path(str(location.root)) / location.path))
+    filepath = _sanitise_filesystem_name(location.relative_path)
+    if filepath == '.':
+        filepath = ''
     # source format arguments
     loader_args = ' '.join(
         f'{_k.replace("_", "-")}={shlex.join((str(_v),))}'
@@ -152,6 +163,7 @@ def _load_container(location, *, format='', **kwargs):
 
 def load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
+    load_plugins()
     logging.info('Reading all from `%s`.', root_location)
     packs = Pack()
     for location in root_location.walk():
@@ -173,7 +185,7 @@ def load_all(root_location, *, format='', **kwargs):
 ##############################################################################
 # saving
 
-@scriptable(wrapper=True, record=False, pack_operation=True)
+@scriptable(passthrough=savers, pack_operation=True, output=True)
 def save(
         pack_or_font,
         outfile:Any='', *,
@@ -189,6 +201,23 @@ def save(
     container_format: container/wrapper formats separated by . (default: infer from filename)
     overwrite: if outfile is a path, allow overwriting existing file
     """
+    load_plugins()
+    return output_pack_or_font(
+        pack_or_font, outfile,
+        format=format, overwrite=overwrite,
+        container_format=container_format, registry=savers,
+        **kwargs
+    )
+
+
+def output_pack_or_font(
+        pack_or_font,
+        outfile, *,
+        format, overwrite,
+        container_format,
+        registry,
+        **kwargs
+    ):
     pack = Pack(pack_or_font)
     outfile = outfile or sys.stdout
     if outfile == sys.stdout:
@@ -196,7 +225,7 @@ def save(
         # these may come from filesystem names using 'surrogateescape'
         sys.stdout.reconfigure(errors='replace')
     if not pack:
-        raise ValueError('No fonts to save')
+        raise ValueError('No fonts to output')
     make_dir = format in container_savers.get_formats()
     with open_location(
             outfile, mode='w', overwrite=overwrite,
@@ -205,75 +234,79 @@ def save(
             make_dir=make_dir,
         ) as location:
         if location.is_dir():
-            _save_container(
-                pack, location, format=format, **location.argdict
+            _output_to_container(
+                pack, location, format=format, registry=registry,
+                **location.argdict
             )
         else:
-            _save_stream(
-                pack, location.get_stream(), format=format, **location.argdict
+            _output_to_stream(
+                pack, location.get_stream(), format=format, registry=registry,
+                **location.argdict
             )
     return pack_or_font
 
 
-def _save_stream(pack, outstream, *, format='', **kwargs):
+def _output_to_stream(pack, outstream, *, format, registry, **kwargs):
     """Save fonts to an open stream."""
-    matching_savers = savers.get_for(outstream, format=format)
-    if not matching_savers:
+    matching = registry.get_for(outstream, format=format)
+    if not matching:
         if format:
             raise ValueError(f'Format specification `{format}` not recognised')
         else:
             raise ValueError(
-                f'Could not infer output file format from filename `{outstream.name}`, '
+                f'Could not infer output file format from filename {outstream.name}, '
                 'please specify -format'
             )
-    if len(matching_savers) > 1:
+    if len(matching) > 1:
         raise ValueError(
-            f"Format for output filename '{outstream.name}' is ambiguous: "
+            f"Format for output filename {outstream.name} is ambiguous: "
             f'specify -format with one of the values '
-            f'({", ".join(_s.format for _s in matching_savers)})'
+            f'({", ".join(_s.format for _s in matching)})'
         )
-    saver, *_ = matching_savers
-    logging.info('Saving `%s` as %s.', outstream.name, saver.format)
+    outputter, *_ = matching
+    logging.info('Outputting %s as format `%s`.', outstream.name, outputter.format)
     # apply wrappers to saver function
-    saver = manage_arguments(saver)
-    saver(pack, outstream, **kwargs)
+    outputter = manage_arguments(outputter)
+    outputter(pack, outstream, **kwargs)
 
 
-def _save_container(pack, location, *, format, **kwargs):
+def _output_to_container(pack, location, *, format, registry, **kwargs):
     """Save font(s) to container."""
     for saver in iter_funcs_from_registry(
             container_savers, instream=None, format=format
         ):
         logging.info(
-            "Saving '%s' as container format `%s`", location.path, saver.format
+            "Outputting %s as container format `%s`", location.path, saver.format
         )
         saver(pack, location, **kwargs)
         break
     else:
-        save_all(pack, location, format=format, **kwargs)
+        _output_all(pack, location, format=format, registry=registry, **kwargs)
 
 
-def save_all(
-        pack, location, *, format='', template='', **kwargs
-    ):
+def _output_all(pack, location, *, format, registry, template='', **kwargs):
     """Save fonts to a container."""
-    format = format or DEFAULT_TEXT_FORMAT
-    logging.info('Writing all to `%s`.', location)
+    format = format or registry.default_text_format
+    logging.info('Outputting all to %s.', location)
     for font in pack:
         if format and not template:
             # generate name from format
-            template = savers.get_template(format)
+            template = registry.get_template(format)
         # fill out template
         name = font.format_properties(template)
+        # sanitise name
+        name = ''.join(c for c in name if 0x20 <= ord(c) < 0x7f or ord(c) > 0xa0)
+        name = name.replace(' ', '_')
         # generate unique filename
-        filename = location.unused_name(name.replace(' ', '_'))
+        filename = location.unused_name(name)
         try:
             with location.join(filename) as new_location:
-                _save_stream(
+                _output_to_stream(
                     Pack(font),
                     new_location.get_stream(),
                     format=format,
+                    registry=registry,
                     **kwargs
                 )
         except (FileFormatError, UnsupportedError) as e:
-            logging.error('Could not save `%s`: %s', filename, e)
+            logging.error('Could not output %s: %s', filename, e)

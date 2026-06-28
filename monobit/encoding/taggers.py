@@ -10,7 +10,7 @@ from pathlib import Path
 from importlib.resources import files
 from functools import partial, wraps, cached_property
 
-from .unicode import unicode_name, is_showable
+from .unicode import unicode_name, is_showable, is_other_symbol
 from ..core.labels import to_label, Tag, Char, Codepoint
 from ..base import reverse_dict
 from .base import NotFoundError, Encoder, register_reader
@@ -70,6 +70,9 @@ class DescriptionTagger(Encoder):
         char = char.value
         name = unicode_name(char)
         if is_showable(char):
+            if is_other_symbol(char):
+                # request text presentation
+                char = '\ufe0e' + char
             return Tag('[{}] {}'.format(char, name))
         return Tag(name)
 

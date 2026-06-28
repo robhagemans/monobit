@@ -11,7 +11,7 @@ import logging
 from monobit.storage.base import container_loaders, container_savers
 from monobit.core import Font, Glyph
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage.utils.perglyph import loop_load, loop_save
 
 
@@ -28,6 +28,7 @@ def save_clt(fonts, location):
     """
     Save font to consoleet files.
     """
+    fonts = ensure_levels(fonts, 2)
     loop_save(
         fonts, location,
         prefix='', suffix='txt', save_func=_write_clt_glyph,
@@ -48,7 +49,7 @@ def _read_clt_glyph(instream):
         inklevels='.#',
         # encoding is not specified by spec or file - can be unicode or codepage
         codepoint=f'0x{codepoint}',
-    ).shrink(factor_x=2)
+    ).shrink(factor=(2, 1))
 
 
 def _write_clt_glyph(glyph, outstream):

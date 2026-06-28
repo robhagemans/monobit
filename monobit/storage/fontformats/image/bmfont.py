@@ -9,11 +9,11 @@ import json
 import shlex
 import logging
 from pathlib import Path
-import xml.etree.ElementTree as etree
 from math import ceil, sqrt
 from itertools import zip_longest
 
 from monobit.base import safe_import
+etree = safe_import('xml.etree.ElementTree')
 Image = safe_import('PIL.Image')
 
 from monobit.base import Coord, Bounds, RGB
@@ -23,7 +23,7 @@ from monobit.base.struct import little_endian as le
 from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
-from monobit.render import GlyphMap, grid_map, RGBTable
+from monobit.renderer import GlyphMap, grid_map, RGBTable
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
@@ -1062,7 +1062,7 @@ def _draw_images(glyph_map, packed):
     # pack 4 sheets per image in RGBA layers
     if packed:
         images = glyph_map.to_images(
-            invert_y=True, transparent=False, image_mode='L',
+            invert_y=True, transparent=False, image_mode='grey',
         )
         width, height = images[0].width, images[0].height
         # grouper: quartets, fill with empties
@@ -1107,21 +1107,27 @@ def spritesheet(font, *, size, spacing, padding):
         raise ValueError('Image size is too small for largest glyph.')
     glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
     sheets = []
+    stored_rasters = {}
     while True:
         # output glyphs
         sheets.append(SpriteNode(0, 0, use_width, use_height, depth=0))
         for number, glyph in enumerate(glyphs):
-            if glyph.height and glyph.width:
-                for i, sheet in enumerate(sheets):
-                    try:
-                        x, y = sheet.insert(glyph.width+spx, glyph.height+spy)
+            try:
+                # retrieve coords of previously stored raster
+                i, x, y = stored_rasters[glyph.pixels]
+            except KeyError:
+                if glyph.height and glyph.width:
+                    for i, sheet in enumerate(sheets):
+                        try:
+                            x, y = sheet.insert(glyph.width+spx, glyph.height+spy)
+                            break
+                        except (FullError, DoesNotFitError):
+                            pass
+                    else:
+                        # we don't fit, get next sheet
+                        glyphs = glyphs[number:]
                         break
-                    except (FullError, DoesNotFitError):
-                        pass
-                else:
-                    # we don't fit, get next sheet
-                    glyphs = glyphs[number:]
-                    break
+                stored_rasters[glyph.pixels] = i, x, y
             glyph_map.append_glyph(
                 glyph, x+padding.left, y+padding.top, sheet=i
             )

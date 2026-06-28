@@ -13,7 +13,9 @@ from monobit.base import Coord, UnsupportedError
 from monobit.core import Font, Glyph
 from monobit.encoding.indexers import find_ranges
 from monobit.base.binary import ceildiv
-from monobit.storage.utils.limitations import ensure_single, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_charcell, ensure_levels
+)
 
 from .bdf import read_props
 from .xlfd import parse_xlfd_properties, create_xlfd_properties, CUSTOM_NAMESPACE
@@ -62,6 +64,7 @@ def save_hbf(fonts, outstream, code_scheme:str=''):
     code_scheme: override HBF_CODE_SCHEME value (default: use encoding)
     """
     font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
     _save_hbf(font, outstream.text, outstream.where, code_scheme)
 
 

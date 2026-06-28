@@ -15,9 +15,9 @@ from monobit.storage import loaders, savers
 from monobit.base import FileFormatError
 from monobit.core import Font, Glyph
 from monobit.base.struct import big_endian as be
-from monobit.render import GlyphMap
+from monobit.renderer import GlyphMap
 
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
 _PIL_METRICS = be.Struct(
@@ -93,6 +93,7 @@ if Image:
         max_width: maximum width of spritesheet
         """
         font = ensure_single(fonts)
+        font = ensure_levels(font, 2)
         outstream.write(b'PILfont\n')
         # I wonder if the other fields in this header were ever defined
         outstream.write(b';;;;;;%d;\n' % font.line_height)
@@ -129,5 +130,5 @@ if Image:
         # write image
         image_name = Path(outstream.name).stem + '.pbm'
         with outstream.where.open(image_name, 'w') as image_file:
-            image = glyph_map.as_image(image_mode='1', invert_y=True)
+            image = glyph_map.as_image(image_mode='mono', invert_y=True)
             image.save(image_file, format='png')

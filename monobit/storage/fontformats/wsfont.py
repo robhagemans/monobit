@@ -16,7 +16,9 @@ from monobit.base.binary import ceildiv
 from monobit.encoding import EncodingName
 
 from monobit.storage.utils.source import CCodeReader, CCodeWriter
-from monobit.storage.utils.limitations import ensure_single, make_contiguous, ensure_charcell
+from monobit.storage.utils.limitations import (
+    ensure_single, make_contiguous, ensure_charcell, ensure_levels
+)
 
 from .raw import load_bitmap, save_bitmap
 
@@ -177,6 +179,7 @@ def save_netbsd(
     byte_order: 'left' or 'right'; default: same as bit-order
     add_visuals: add comments with visual representation of glyphs (default: True)
     """
+    fonts = ensure_levels(fonts, 2)
     for font in fonts:
         _write_netbsd(font, outstream, byte_order, bit_order, add_visuals)
 

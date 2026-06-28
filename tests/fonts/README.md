@@ -31,10 +31,10 @@ Original sources:
   - https://archive.org/details/a8b_abbuc_353_b
   - distributed with FONTSPLIT.MAC by John McGowan
   - in the public domain  
-* `cmbx10.120pk`
+* Computer Modern, `cmr10.96gf`, `cmr10.96pk`, `cmr10.96pxl`, `cmr10.tfm`
   - https://www.ctan.org/pkg/cm
-  - unmodified bitmap of the Computer Modern font created by Donald Knuth
-  - released under his usual licence: https://ctan.org/license/knuth
+  - created by Donald Knuth, released under his usual licence: https://ctan.org/license/knuth
+  - compiled from source using METAFONT, `gftopk`, and `gftopxl`
 * `SHILLING.cvt.gz`
   - https://www.commodore.ca/manuals/funet/cbm/geos/graphics/fonts/unsorted/
   - Symbol font created by Dick Estel - copyright 1989 - released for free use
@@ -108,14 +108,19 @@ Original sources:
   - Niklaus Wirth and Jürg Gutknecht
   - released under MIT licence, https://www.projectoberon.net/wirth/ProjectOberon/license.txt
   - https://www.projectoberon.net/txt/FAQ.txt
+* `vertical.bdf`
+  - Example 1 from the Adobe BDF specification document, p.13
+  - https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
 
 
 ### Derivatives of `4x6`
 
-* `4x6.yaff`, `4x6.fzx` were created from `4x6.bdf` using `monobit`
+* `4x6.yaff`, `4x6.fzx` and `4x6.psfu` were created from `4x6.bdf` using `monobit`
 * `4x6.c`, `4x6.c`, `4x6.iigs`, `4x6.sfp`, `4x6*.raw` were created from `4x6.yaff` using `monobit`
 * `4x6.dfont` and `4x6.bin` were created from `4x6.bdf` using `ufond` (part of `fondu`)
-* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com`, `4x6.txt`, `4x6.wyse`, `4x6.wof` were created from `4x6.psf` using `psftools` v1.1.1
+* `4x6.dfont.as` was created from `4x6.dfont` using CiderPress2
+* `8x8.bbc`, `4x6.vfont*`, `4x6-ams.com`, `4x6.txt`, `4x6.wyse`, `4x6.wof` were created from `4x6.psfu` using `psftools` v1.1.1
+* `4x6.psf` was created from `4x6.psfu` using `psfstriptable`
 * `4x6.ttf` was created from `4x6.bdf` using `fonttosfnt`
 * `4x6.otb`, `4x6.sfnt.dfont` and `4x6.ffms.ttf` were created from `4x6.bdf` using FontForge
 * `4x6.clt` was created from `4x6.bdf` using `vfontas`
@@ -123,6 +128,7 @@ Original sources:
 * `4x6*.pcf` were created from `4x6.bdf` using `bdftopcf`
 * `4x6.ihex` were created from `4x6.raw` using `srec_cat` (part of `srecord`)
 * `4x6.pil` and `4x6.pbm` were created from `4x6.bdf` using `pillow`
+* `4x6.drhalo` was created using a stub Dr. Halo file
 * `8x16.hex` was created from `4x6.yaff` using `bittermelon`
 * `8x16.draw` was created from `8x16.hex` using `hexdraw`
 * `8x16-*.cpi` were created from `8x16.hex` through a PSF intermediate using `monobit` and `psftools`
@@ -132,6 +138,7 @@ Original sources:
 * `8X16-FE.COM` was created from `8X16-FRA.COM` using `FONTEDIT`
 * `8X16-REX.COM` was created from `8X16-FRA.COM` using Font Mania 2.2
 * `8x8-letafont.com` was created from `8x16.f16` and a stub Letafont file
+* `vertical-and-4x6.ttc` was created form `4x6.otb` and `vertical.otb` using FontForge
 
 
 ### Derivatives of `6x13`
@@ -154,3 +161,8 @@ Original sources:
 
 ### Derivatives of Konatu:
 * `konatu-ascii.yaff` was created from a subset of `Konatu_10` using `monobit`
+
+
+### Derivatives of `vertical.bdf`:
+* `vertical.otb` was created from `vertical.bdf` using `monobit`
+* `vertical-and-4x6.ttc` was created form `4x6.otb` and `vertical.otb` using FontForge
