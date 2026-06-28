@@ -251,7 +251,10 @@ def _sfnt_props(ttf, tags):
             tables[tag] = _load_table(ttf, tag)
         else:
             tables[tag] = None
-    return Props(**_to_props(tables))
+    return Props(
+        name_to_id=ttf.getReverseGlyphMap(),
+        **_to_props(tables)
+    )
 
 
 def _load_table(ttf, tag):
@@ -496,10 +499,23 @@ def _convert_sbix(sfnt):
     enctable, encoding = _get_encoding_table(sfnt)
     fonts = []
     for strike in sfnt.sbix.strikes.values():
+        sfnt_glyphs = strike.glyphs.values()
+        # lookup table to deal with dupes
+        glyph_dict = {
+            sfnt.name_to_id.get(_g.glyphName, None): _g
+            for _g in sfnt_glyphs
+        }
         glyphdata = tuple(
             (
                 glyph.glyphName,
-                glyph.imageData,
+                (
+                    # > The special graphicType of 'dupe' indicates that the
+                    # > data field contains a uint16, big-endian glyph ID. The
+                    # > bitmap data for the indicated glyph must be used for
+                    # > the current glyph.
+                    glyph_dict[int.from_bytes(glyph.imageData, 'big')]
+                    if glyph.graphicType == 'dupe' else glyph.imageData
+                ),
                 # width, height not known and not used by imagedata_to_glyphs
                 None, None,
                 # > The originOffsetX and originOffsetY values give the placement
@@ -530,7 +546,7 @@ def _convert_sbix(sfnt):
                     shift_up=glyph.originOffsetY,
                 )
             )
-            for glyph in strike.glyphs.values()
+            for glyph in sfnt_glyphs
         )
         try:
             # does sbix have a concept of background?
