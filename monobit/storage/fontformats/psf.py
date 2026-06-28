@@ -119,25 +119,39 @@ def load_psf(instream):
     if has_unicode_table:
         table = _read_unicode_table(instream, separator, startseq, encoding)
         # convert unicode table to labels
-        # ordinal-based codepoint is not meaningful
+        # keep index as codepoint as it is meaningful to setfont, psftools
         cells = tuple(
-            _glyph.modify(char=''.join(table[_index]), codepoint=None)
+            _glyph.modify(labels=table[_index], codepoint=_index)
             for _index, _glyph in enumerate(cells)
         )
         properties['encoding'] = 'unicode'
     return Font(cells, **properties)
 
 def _read_unicode_table(instream, separator, startseq, encoding):
-    """Read the Unicode table in a PSF2 file."""
+    """Read the Unicode table in a PSF file."""
     raw_table = instream.read()
-    entries = raw_table.split(separator)[:-1]
+    # for PSF2 (utf-8), step byte for byte.
+    # for PSF1 (utf-16), step in 2-byte chunks
+    iterators = [iter(raw_table)] * len(separator)
     table = []
-    for point, entry in enumerate(entries):
-        split = entry.split(startseq)
-        code_points = [_seq.decode(encoding) for _seq in split]
+    chunks = list(bytes(_chunk) for _chunk in zip(*iterators))
+    for entry in _split(chunks, separator):
+        split = list(_split(b''.join(entry), startseq))
+        code_points = tuple(bytes(_seq).decode(encoding) for _seq in split)
         # first entry is separate code points, following entries (if any) are sequences
-        table.append([_c for _c in code_points[0]] + code_points[1:])
+        table.append(tuple(code_points[0]) + code_points[1:])
     return table
+
+def _split(sequence, sep):
+    """Like str.split(sep), but for iterables."""
+    chunk = []
+    for val in sequence:
+        if val == sep:
+            yield chunk
+            chunk = []
+        else:
+            chunk.append(val)
+    yield chunk
 
 
 @savers.register(linked=load_psf)
