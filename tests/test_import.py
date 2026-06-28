@@ -333,7 +333,7 @@ class TestImport(BaseTester):
     def test_import_psf2txt(self):
         """Test importing psf2txt files."""
         font, *_ = monobit.load(self.font_path / '4x6.txt', format='psf2txt')
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 950)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_clt(self):
@@ -350,11 +350,17 @@ class TestImport(BaseTester):
 
     # PSF
 
-    def test_import_psf(self):
-        """Test importing psf files."""
-        font, *_ = monobit.load(self.font_path / '4x6.psf')
-        self.assertEqual(len(font.glyphs), 919)
+    def test_import_psfu(self):
+        """Test importing psf files with Unicode table."""
+        font, *_ = monobit.load(self.font_path / '4x6.psfu')
+        self.assertEqual(len(font.glyphs), 950)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    def test_import_psfu(self):
+        """Test importing psf files without Unicode table."""
+        font, *_ = monobit.load(self.font_path / '4x6.psf')
+        self.assertEqual(len(font.glyphs), 950)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # FZX
 
@@ -677,19 +683,13 @@ class TestImport(BaseTester):
 
     def test_import_vfont_le(self):
         """Test importing little-endian vfont file."""
-        font, *_ = monobit.load(
-            self.font_path / '4x6.vfontle',
-            first_codepoint=0x1f
-        )
+        font, *_ = monobit.load(self.font_path / '4x6.vfontle')
         self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_import_vfont_be(self):
         """Test importing big-endian vfont file."""
-        font, *_ = monobit.load(
-            self.font_path / '4x6.vfontbe',
-            first_codepoint=0x1f
-        )
+        font, *_ = monobit.load(self.font_path / '4x6.vfontbe')
         self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
@@ -779,8 +779,7 @@ class TestImport(BaseTester):
         """Test importing bbc files."""
         font, *_ = monobit.load(self.font_path / '8x8.bbc')
         self.assertEqual(len(font.glyphs), 224)
-        # note that 8x8.bbc is incorrectly labelled with A at 0x22
-        assert_text_eq(font.get_glyph(0x22).reduce().as_text(), self.fixed4x6_A)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # HBF
 
@@ -837,9 +836,9 @@ class TestImport(BaseTester):
     def test_import_writeon(self):
         """Test importing Write On! files."""
         font, *_ = monobit.load(self.font_path / '4x6.wof')
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 950)
         # incorrectly labelled
-        assert_text_eq(font.get_glyph(0x22).reduce().as_text(), self.fixed4x6_A)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # Wyse
 
@@ -849,7 +848,7 @@ class TestImport(BaseTester):
         # only encoding codepoints < 0x0400 (4 banks)
         self.assertEqual(len(font.glyphs), 512)
         # incorrectly labelled
-        assert_text_eq(font.get_glyph(0x22).reduce().as_text(), self.fixed4x6_A)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     # adafruit gfxfont
 
@@ -979,11 +978,8 @@ class TestImport(BaseTester):
 
     def test_import_psfcom(self):
         """Test importing PSF2AMS files."""
-        font, *_ = monobit.load(
-            self.font_path / '4x6-ams.com',
-            first_codepoint=0x1f
-        )
-        self.assertEqual(len(font.glyphs), 512)
+        font, *_ = monobit.load(self.font_path / '4x6-ams.com')
+        self.assertEqual(len(font.glyphs), 256)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
     udg = 'https://www.seasip.info/Unix/PSF/Amstrad/UDG/'
@@ -1079,6 +1075,16 @@ class TestImport(BaseTester):
         self.assertEqual(len(font.glyphs), 922)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    def test_import_ttc(self):
+        """Test importing (fontforge produced) TTC collection."""
+        fonts = monobit.load(self.font_path / 'vertical-and-4x6.ttc')
+        self.assertEqual(len(fonts), 2)
+        font_v, font = fonts
+        self.assertEqual(len(font.glyphs), 922)
+        self.assertEqual(len(font_v.glyphs), 4)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+
     # geos
 
     def test_import_geos(self):
@@ -1138,10 +1144,21 @@ class TestImport(BaseTester):
 """
 )
 
+    treo = 'https://palmarchive.com/files/?file=xandros9%20Archive/Device%20ROM%20Files/Treo%20755p/'
+
+    def test_import_palm_prc(self):
+        """Test importing Palm OS fonts from a PRC file."""
+        file = ensure_asset(self.treo, 'Security.prc')
+        # only sees NFNT resource, skips nfnt v2 (unless we implement that)
+        font, = monobit.load(file)
+        # NFNT resource just has a space glyph and a 'missing' glyph containing garbage
+        self.assertEqual(len(font.glyphs), 2)
+
+
     # OS/2
 
-    def test_import_os2_lx(self):
-        """Test importing OS/2 fonts (LX container)."""
+    def test_import_os2_lx_exepack2(self):
+        """Test importing OS/2 fonts (LX container, exepack2)."""
         font, *_ = monobit.load(self.font_path / 'WARPSANS.FON')
         self.assertEqual(len(font.glyphs), 950)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), """\
@@ -1156,6 +1173,38 @@ class TestImport(BaseTester):
 @.....@
 @.....@
 """)
+
+    merlinfont = 'https://hobbes.os-2.in/download/multimedia/fonts/bitmap/'
+    warpsans_11x14_A = """\
+...@...
+...@...
+..@.@..
+..@.@..
+.@...@.
+.@...@.
+.@@@@@.
+@.....@
+@.....@
+"""
+
+    def test_import_os2_lx_unpacked(self):
+        """Test importing OS/2 fonts (LX container, unpacked)."""
+        file = ensure_asset(self.merlinfont, 'merlinfont.zip')
+        font, *_ = monobit.load(file /  'WARPSANS.FON')
+        self.assertEqual(len(font.glyphs), 503)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.warpsans_11x14_A)
+
+
+    dspres = 'https://hobbes.os-2.in/download/os2/system-6/patches-3/warp-3/'
+
+    def test_import_os2_lx_exepack(self):
+        """Test importing OS/2 fonts (LX container, exepack)."""
+        file = ensure_asset(self.dspres, 'WarpSans_DSPRES_1996-04-29.zip')
+        fonts = monobit.load(file / 'dspres.dll')
+        font, *_ = fonts.select(bounding_box='11x14')
+        self.assertEqual(len(font.glyphs), 503)
+        assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.warpsans_11x14_A)
+
 
     bgafon = 'http://discmaster.textfiles.com/file/21050/NOVEMBER.bin/nov95/nov9/nov9022.zip/whbdlt1.zip/BGAFON.ZIP/'
 
@@ -1542,6 +1591,14 @@ class TestImport(BaseTester):
         font, *_ = monobit.load(file, format='polyprint')
         self.assertEqual(len(font.glyphs), 144)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.tinyprint_A)
+
+    # Dr. Halo
+
+    def test_import_drhalo(self):
+        """Test importing Dr. Halo files."""
+        font, *_ = monobit.load(self.font_path / '4x6.drhalo')
+        self.assertEqual(len(font.glyphs), 96)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
 
 if __name__ == '__main__':

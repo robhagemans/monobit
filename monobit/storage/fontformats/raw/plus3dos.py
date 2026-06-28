@@ -72,9 +72,15 @@ def load_plus3dos(instream):
 
 
 @savers.register(linked=load_plus3dos)
-def save_plus3dos(fonts, outstream):
-    """Save a 768-byte raw font with +3DOS header."""
+def save_plus3dos(fonts, outstream, raw:bool=True):
+    """
+    Save a 768-byte raw font with +3DOS header.
+
+    raw: save as-is without applying ASCII character encoding (default: False)
+    """
     font = ensure_single(fonts)
+    if not raw:
+        font = reencode(font, raw)
     header = _PLUS3DOS_HEADER(
         signature=_PLUS3DOS_MAGIC,
         issue=1,

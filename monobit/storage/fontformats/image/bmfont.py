@@ -1107,21 +1107,27 @@ def spritesheet(font, *, size, spacing, padding):
         raise ValueError('Image size is too small for largest glyph.')
     glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
     sheets = []
+    stored_rasters = {}
     while True:
         # output glyphs
         sheets.append(SpriteNode(0, 0, use_width, use_height, depth=0))
         for number, glyph in enumerate(glyphs):
-            if glyph.height and glyph.width:
-                for i, sheet in enumerate(sheets):
-                    try:
-                        x, y = sheet.insert(glyph.width+spx, glyph.height+spy)
+            try:
+                # retrieve coords of previously stored raster
+                i, x, y = stored_rasters[glyph.pixels]
+            except KeyError:
+                if glyph.height and glyph.width:
+                    for i, sheet in enumerate(sheets):
+                        try:
+                            x, y = sheet.insert(glyph.width+spx, glyph.height+spy)
+                            break
+                        except (FullError, DoesNotFitError):
+                            pass
+                    else:
+                        # we don't fit, get next sheet
+                        glyphs = glyphs[number:]
                         break
-                    except (FullError, DoesNotFitError):
-                        pass
-                else:
-                    # we don't fit, get next sheet
-                    glyphs = glyphs[number:]
-                    break
+                stored_rasters[glyph.pixels] = i, x, y
             glyph_map.append_glyph(
                 glyph, x+padding.left, y+padding.top, sheet=i
             )

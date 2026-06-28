@@ -7,7 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from pathlib import Path
-from os.path import commonprefix
+from os.path import commonpath
 from dataclasses import dataclass, field
 
 from ..plumbing import take_arguments
@@ -28,7 +28,7 @@ def resolve_path(location='', *, subpath='', mode='r', **kwargs):
         path = Path(location) / subpath
         path = path.resolve()
         here = Path().resolve()
-        root = Path(commonprefix((path, here)))
+        root = Path(commonpath((path, here)))
         subpath = path.relative_to(root)
         # Directory objects doesn't really need to be closed
         # so it's OK that we won't close this one

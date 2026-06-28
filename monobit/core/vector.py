@@ -105,18 +105,18 @@ class StrokePath:
             bottom=min(ys), top=max(ys)+1,
         )
 
-    def draw(self):
+    def draw(self, scale=1):
         """Draw the path."""
         if not self._path:
             return Canvas.blank(0, 0).as_raster()
         canvas = Canvas.blank(
-            self.bounds.right - self.bounds.left,
-            self.bounds.top - self.bounds.bottom,
+            (self.bounds.right - self.bounds.left) * scale,
+            (self.bounds.top - self.bounds.bottom) * scale,
         )
         x, y = -self.bounds.left, -self.bounds.bottom
         for ink, dx, dy in self._path:
             if ink == self.LINE:
-                canvas.draw_line(x, y, x+dx, y+dy)
+                canvas.draw_line(x*scale, y*scale, (x+dx)*scale, (y+dy)*scale)
             x += dx
             y += dy
         return canvas.as_raster()

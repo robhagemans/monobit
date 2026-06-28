@@ -394,6 +394,12 @@ class TestForks(BaseTester):
         font, *_ = monobit.load(file / '__MACOSX/._Times  9')
         self.assertEqual(len(font.glyphs), 228)
 
+    def test_import_applesingle(self):
+        """Test importing appledouble files."""
+        font, *_ = monobit.load(self.font_path / '4x6.dfont.as')
+        self.assertEqual(len(font.glyphs), 195)
+        self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
+
 
 class TestWrappers(BaseTester):
     """Test wrappers."""
@@ -502,12 +508,12 @@ class TestStreams(BaseTester):
 
     def test_binary_stream(self):
         """Test importing psf files from binary stream."""
-        with open(self.font_path / '4x6.psf', 'rb') as f:
+        with open(self.font_path / '4x6.psfu', 'rb') as f:
             fontbuffer = f.read()
         # we need peek()
         with io.BufferedReader(io.BytesIO(fontbuffer)) as stream:
             font, *_ = monobit.load(stream)
-        self.assertEqual(len(font.glyphs), 919)
+        self.assertEqual(len(font.glyphs), 950)
 
     def test_text_stream(self):
         """Test importing bdf files from text stream."""
