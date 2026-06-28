@@ -6,12 +6,14 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from io import BytesIO
 
 from monobit.core import Glyph
 from monobit.core import Tag
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.base import reverse_dict, to_number, safe_import
+from monobit.renderer import glyph_to_image
 
 from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, fonttools_loaded
 from .sfnt import load_sfnt, load_collection
@@ -75,7 +77,7 @@ if fonttools_loaded:
 else:
     def check_fonttools():
         raise FileFormatError(
-            'Parsing `sfnt` resources requires package `fontTools`, '
+            'Writing `sfnt` resources requires package `fontTools`, '
             'which is not available.'
         )
     save_sfnt = check_fonttools
@@ -279,41 +281,55 @@ def _create_empty_glyf_props(glyphs):
     return {_name: fonttools.Glyph() for _name in glyphs}
 
 
-def _setup_ebdt_table(fb, glyphs, align, flavour):
-    """Build `EBDT` bitmap data table."""
-    if flavour == 'apple':
+def _setup_ebdt_table(fb, glyphs, align, flavour, rgb_table):
+    """Build `bdat`, `EBDT` or `CBDT` bitmap data table."""
+    if rgb_table: # or font.levels > 256:
+        tag = 'CBDT'
+        version = 3.0
+    elif flavour == 'apple':
         tag = 'bdat'
+        version = 2.0
     else:
         tag = 'EBDT'
+        version = 2.0
     ebdt = fonttools.newTable(tag)
-    ebdt.version = 2.0
+    ebdt.version = version
     # create one strike - multiple strikes of different size are possible
     ebdt.strikeData = [{
-        _name: convert_to_glyph(_g, fb, align)
+        _name: convert_to_glyph(_g, fb, align, rgb_table)
         for _name, _g in glyphs.items()
     }]
     fb.font[tag] = ebdt
 
 
-def convert_to_glyph(glyph, fb, align):
+_BITMAP_DATA_FORMATS = {
+    # (metrics, storage_method): format
+    ('small', 'byte'): fonttools.ebdt_bitmap_classes[1],
+    ('small', 'bit'): fonttools.ebdt_bitmap_classes[2],
+    # ('none', 'bit'): fonttools.ebdt_bitmap_classes[5],
+    ('big', 'byte'): fonttools.ebdt_bitmap_classes[6],
+    ('big', 'bit'): fonttools.ebdt_bitmap_classes[7],
+    # ('small', 'component'): fonttools.ebdt_bitmap_classes[8],
+    # ('big', 'component'): fonttools.ebdt_bitmap_classes[9],
+    ('small', 'png'): fonttools.cbdt_bitmap_classes[17],
+    ('big', 'png'): fonttools.cbdt_bitmap_classes[18],
+    # ('none', 'png'): fonttools.cbdt_bitmap_classes[18],
+}
+
+
+def convert_to_glyph(glyph, fb, align, rgb_table):
     """Create fontTools bitmap glyph."""
+    if rgb_table: # or font.levels > 256
+        # store as PNG data
+        # alternatively we could store RGB in format 1/2, 6/7
+        align = 'png'
     if glyph.has_vertical_metrics():
-        # big metrics
-        if align == 'byte':
-            format = 6
-        else:
-            # bit aligned
-            format = 7
+        metrics = 'big'
     else:
-        # small metrics
-        if align == 'byte':
-            format = 1
-        else:
-            # bit aligned
-            format = 2
-    ebdt_bitmap = fonttools.ebdt_bitmap_classes[format]
+        metrics = 'small'
+    ebdt_bitmap = _BITMAP_DATA_FORMATS[metrics, align]
     bmga = ebdt_bitmap(data=b'', ttFont=fb.font)
-    if format in (1, 2):
+    if metrics == 'small':
         # horizontal metrics
         bmga.metrics = fonttools.SmallGlyphMetrics()
         bmga.metrics.height = glyph.height
@@ -332,20 +348,33 @@ def convert_to_glyph(glyph, fb, align):
         bmga.metrics.vertBearingX = glyph.shift_left + glyph.width//2
         bmga.metrics.vertBearingY = glyph.top_bearing
         bmga.metrics.vertAdvance = glyph.advance_height
-    bmga.setRows(glyph.as_byterows(), bitDepth=(glyph.levels-1).bit_length())
+    if align == 'png':
+        # could use P for <=256-colour
+        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=rgb_table)
+        bytesio = BytesIO()
+        img.save(bytesio, format='png')
+        bmga.imageData = bytesio.getvalue()
+    else:
+        bmga.setRows(glyph.as_byterows(), bitDepth=(glyph.levels-1).bit_length())
     return bmga
 
 
 def _setup_eblc_table(fb, font, flavour):
     """Build `EBLC` bitmap locations table."""
-    if flavour == 'apple':
+    if font.rgb_table or font.levels > 256:
+        tag = 'CBLC'
+        ebdt = 'CBDT'
+        version = 3.0
+    elif flavour == 'apple':
         tag = 'bloc'
         ebdt = 'bdat'
+        version = 2.0
     else:
         tag = 'EBLC'
         ebdt = 'EBDT'
+        version = 2.0
     eblc = fonttools.newTable(tag)
-    eblc.version = 2.0
+    eblc.version = version
     eblc.strikes = []
     for sdata in fb.font[ebdt].strikeData:
         # create strike
@@ -416,7 +445,6 @@ def _prepare_for_sfnt(font, glyph_names):
     return font, default
 
 
-
 def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
     """Convert to a fontTools TTFont object."""
     # converter from pixels to design units
@@ -437,7 +465,7 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
     fb.setupGlyphOrder(glyphnames)
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-    _setup_ebdt_table(fb, glyphs, align, flavour)
+    _setup_ebdt_table(fb, glyphs, align, flavour, font.rgb_table)
     _setup_eblc_table(fb, font, flavour)
     if flavour == 'ms':
         fonttools._setup_ebsc_table(fb, {font.pixel_size: EBSC_SIZES})
