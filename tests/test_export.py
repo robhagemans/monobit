@@ -123,7 +123,7 @@ class TestExport(BaseTester):
 
     def test_export_psf(self):
         """Test exporting psf files."""
-        self._export_4x6(format='psf')
+        self._export_4x6(format='psf', save_kwargs=dict(version=2, count=0))
 
     def test_export_psf1(self):
         """Test exporting psf version 1 files."""

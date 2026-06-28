@@ -78,7 +78,7 @@ class TestCharCell(BaseTester):
 
     def test_export_psf_r(self):
         """Test exporting psf files."""
-        self._test_export_charcell_reduced('psf', label='A')
+        self._test_export_charcell_reduced('psf', label='A', save_kwargs=dict(count=0))
 
     def test_export_dec_r(self):
         """Test exporting dec-drcs files."""
