@@ -211,7 +211,7 @@ def _write_psf1(font, outstream, count):
             f'This format only supports 8xN character-cell fonts.'
         )
     # we need exactly 256 or 512 glyphs
-    glyphs = font.glyphs[:count]
+    glyphs = list(font.glyphs[:count])
     if len(glyphs) < count:
         # need more glyphs
         glyphs.extend([font.get_default_glyph()] * (count-len(glyphs)))
@@ -220,7 +220,8 @@ def _write_psf1(font, outstream, count):
             PSF1_MODE512=(count==512),
             PSF1_MODEHASTAB=1,
             # not sure what this flag is
-            PSF1_MODEHASSEQ=1,
+            # setfont, psftool reject fonts with MODEHASSEQ==1
+            PSF1_MODEHASSEQ=0,
         ),
         charsize=font.cell_size.y,
     )
@@ -230,7 +231,9 @@ def _write_psf1(font, outstream, count):
         outstream.write(glyph.as_bytes())
     unicode_seq = [_glyph.char for _glyph in glyphs]
     _write_unicode_table(
-        outstream, unicode_seq, _PSF1_SEPARATOR, _PSF1_STARTSEQ, 'utf-16'
+        outstream, unicode_seq, _PSF1_SEPARATOR, _PSF1_STARTSEQ,
+        # we must use LE explicitly to avoid writing a BOM on every label
+        'utf-16le'
     )
     return font
 
