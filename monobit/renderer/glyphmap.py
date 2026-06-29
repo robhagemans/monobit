@@ -38,10 +38,16 @@ def glyph_to_image(glyph, image_mode, inklevels):
             f'got {image_mode} instead.'
         )
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
+    # if using RGBA, inklevels must have 4 numbers per entry too
+    # rgb_table only has 3. set alpha to intransparent
+    if image_mode == 'RGBA' and len(inklevels[0]) == 3:
+        inklevels = [list(_c) + [255] for _c in inklevels]
     data = glyph.as_pixels(inklevels=inklevels)
+    if len(image_mode) != len(inklevels[0]):
+        raise ValueError("Image mode and ink levels not compatible")
     if image_mode in ('RGB', 'RGBA'):
         # itertools grouper idiom, split in groups of 3 or 4 bytes
-        iterators = [iter(data)] * len(image_mode)
+        iterators = [iter(data)] * len(inklevels[0])
         # strict=True requires python 3.10 or above
         data = tuple(zip(*iterators)) #, strict=True))
     charimg.putdata(data)
