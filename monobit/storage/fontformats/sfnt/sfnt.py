@@ -440,18 +440,14 @@ def _convert_bdat_glyphs(
             # split into 4-byte chunks
             iterators = [iter(glyphbytes)] * 4
             bgra_list = zip(*iterators)
-            # convert each premultiplied BGRA to plain RGBA
-            rgba_list = tuple(
-                (int(255*_r/_a), int(255*_g/_a), int(255*_b/_a), _a)
-                if _a else (_r, _g, _b, 0)
-                for _b, _g, _r, _a in bgra_list
-            )
+            rgba_list = tuple((_r, _g, _b, _a) for _b, _g, _r, _a in bgra_list)
             # convert to PNG image
-            bytesio = BytesIO()
-            image = Image.new('RGBA', (width, height))
-            image.putdata(rgba_list)
-            image.save(bytesio, format='png')
-            glyphbytes = bytesio.getvalue()
+            with BytesIO() as bytesio:
+                # note the lowercase a for pre-multiplied RGBA (as per CBDT spec)
+                image = Image.new('RGBa', (width, height))
+                image.putdata(rgba_list)
+                image.save(bytesio, format='png')
+                glyphbytes = bytesio.getvalue()
             updated_glyphdata.append((name, glyphbytes, width, height, props))
         png = True
     if png:
