@@ -135,9 +135,9 @@ Proportional-spacing formats
 | RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
-| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G (C) |
+| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G C |
 | SymbOS font           | `symbos`   | `.fnt`                      |&check;|&check;| binary | -        |
-| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G (C) |
+| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G C |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
 | Bare GEOS font record | `vlir`     |                             |&check;|&check;| binary | O        |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
@@ -339,8 +339,10 @@ This is true even for fonts with a pixelised look.
 To convert these you first need to _rasterise_ them, which `monobit` does not do.
 Some of the other font tools linked below do have rasterising features.
 
-`monobit` can experimentally output OpenType Bitmap (`.otb`) files, a bitmap-only
-file format supported by Linux desktops.
+`monobit` can output TrueType/OpenType files of the following types:
+- OpenType Bitmap (`.otb`) files, a bitmap-only file format supported by Linux desktops
+- Apple's bitmap-only TrueType fonts (a.k.a. `sbit` fonts)
+- colour bitmap fonts in either Google's `CBDT` or Apple's `sbix` format
 
 
 Dependencies
