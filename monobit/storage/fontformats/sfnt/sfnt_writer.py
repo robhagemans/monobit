@@ -281,25 +281,25 @@ def _create_empty_glyf_props(glyphs):
     return {_name: fonttools.Glyph() for _name in glyphs}
 
 
-def _setup_ebdt_table(fb, glyphs, align, flavour, rgb_table):
-    """Build `bdat`, `EBDT` or `CBDT` bitmap data table."""
-    if rgb_table: # or font.levels > 256:
-        tag = 'CBDT'
-        version = 3.0
+def _determine_table_types(font, flavour):
+    """Determine what type of tables to create."""
+    if font.rgb_table or font.levels > 256:
+        return 'CBDT', 'CBLC'
     elif flavour == 'apple':
-        tag = 'bdat'
-        version = 2.0
-    else:
-        tag = 'EBDT'
-        version = 2.0
-    ebdt = fonttools.newTable(tag)
-    ebdt.version = version
+        return 'bdat', 'bloc'
+    return 'EBDT', 'EBLC'
+
+
+def _setup_ebdt_table(fb, font, glyphs, align, ebdt_name):
+    """Build `bdat`, `EBDT` or `CBDT` bitmap data table."""
+    ebdt = fonttools.newTable(ebdt_name)
+    ebdt.version = 3.0 if ebdt_name == 'CBDT' else 2.0
     # create one strike - multiple strikes of different size are possible
     ebdt.strikeData = [{
-        _name: convert_to_glyph(_g, fb, align, rgb_table)
+        _name: convert_to_glyph(_g, fb, align, font.rgb_table)
         for _name, _g in glyphs.items()
     }]
-    fb.font[tag] = ebdt
+    fb.font[ebdt_name] = ebdt
 
 
 _BITMAP_DATA_FORMATS = {
@@ -359,45 +359,42 @@ def convert_to_glyph(glyph, fb, align, rgb_table):
     return bmga
 
 
-def _setup_eblc_table(fb, font, flavour):
+def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name):
     """Build `EBLC` bitmap locations table."""
-    if font.rgb_table or font.levels > 256:
-        tag = 'CBLC'
-        ebdt = 'CBDT'
-        version = 3.0
-    elif flavour == 'apple':
-        tag = 'bloc'
-        ebdt = 'bdat'
-        version = 2.0
-    else:
-        tag = 'EBLC'
-        ebdt = 'EBDT'
-        version = 2.0
-    eblc = fonttools.newTable(tag)
-    eblc.version = version
+    eblc = fonttools.newTable(eblc_name)
+    eblc.version = 3.0 if eblc_name == 'CBLC' else 2.0
     eblc.strikes = []
-    for sdata in fb.font[ebdt].strikeData:
+    for sdata in fb.font[ebdt_name].strikeData:
         # create strike
         strike = fonttools.Strike()
         hori = fonttools._create_sbit_line_metrics(
             ascender=font.ascent,
             descender=-font.descent,
             widthMax=font.max_width,
-            minOriginSB=min((_g.left_bearing for _g in font.glyphs)),
-            minAdvanceSB=min((_g.right_bearing for _g in font.glyphs)),
-            maxBeforeBL=max((_g.height + _g.shift_up for _g in font.glyphs)),
-            minAfterBL=min((_g.shift_up for _g in font.glyphs)),
+            minOriginSB=min((_g.left_bearing for _g in glyphs.values())),
+            minAdvanceSB=min((_g.right_bearing for _g in glyphs.values())),
+            maxBeforeBL=max((_g.height + _g.shift_up for _g in glyphs.values())),
+            minAfterBL=min((_g.shift_up for _g in glyphs.values())),
         )
         if font.has_vertical_metrics():
             vert = fonttools._create_sbit_line_metrics(
                 ascender=font.right_extent,
                 descender=-font.left_extent,
-                widthMax=max((_g.advance_height for _g in font.glyphs), default=0),
-                minOriginSB=min((_g.top_bearing for _g in font.glyphs)),
-                minAdvanceSB=min((_g.bottom_bearing for _g in font.glyphs)),
-                maxBeforeBL=max((_g.shift_left + _g.width//2 for _g in font.glyphs)),
+                widthMax=max(
+                    (_g.advance_height for _g in glyphs.values()),
+                    default=0
+                ),
+                minOriginSB=min((_g.top_bearing for _g in glyphs.values())),
+                minAdvanceSB=min((_g.bottom_bearing for _g in glyphs.values())),
+                maxBeforeBL=max((
+                    _g.shift_left + _g.width//2
+                    for _g in glyphs.values()
+                )),
                 # ??
-                minAfterBL=min((-_g.shift_left - _g.width//2 + _g.width for _g in font.glyphs)),
+                minAfterBL=min((
+                    -_g.shift_left - _g.width//2 + _g.width
+                    for _g in glyphs.values()
+                )),
             )
         else:
             vert = fonttools._create_sbit_line_metrics()
@@ -410,7 +407,7 @@ def _setup_eblc_table(fb, font, flavour):
         # bitmap size table is not updated by fontTools, do it explicitly
         strike.bitmapSizeTable.numberOfIndexSubTables = len(strike.indexSubTables)
         eblc.strikes.append(strike)
-    fb.font[tag] = eblc
+    fb.font[eblc_name] = eblc
 
 
 def _prepare_for_sfnt(font, glyph_names):
@@ -465,8 +462,9 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
     fb.setupGlyphOrder(glyphnames)
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
-    _setup_ebdt_table(fb, glyphs, align, flavour, font.rgb_table)
-    _setup_eblc_table(fb, font, flavour)
+    ebdt_name, eblc_name = _determine_table_types(font, flavour)
+    _setup_ebdt_table(fb, font, glyphs, align, ebdt_name)
+    _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name)
     if flavour == 'ms':
         fonttools._setup_ebsc_table(fb, {font.pixel_size: EBSC_SIZES})
     if flavour != 'apple':
