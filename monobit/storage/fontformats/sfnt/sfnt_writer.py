@@ -12,6 +12,7 @@ from monobit.core import Glyph
 from monobit.core import Tag
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
+from monobit.storage.utils.limitations import ensure_single
 from monobit.base import reverse_dict, to_number, safe_import
 from monobit.renderer import glyph_to_image
 
@@ -27,26 +28,23 @@ if fonttools_loaded:
     @savers.register(linked=load_sfnt)
     def save_sfnt(
             fonts, outfile,
-            funits_per_em:int=1024, align:str='bit', version:str='otb',
+            funits_per_em:int=1024, strike_format:str='bit', flavour:str='otb',
             glyph_names:str=None,
         ):
         """
-        Save font to an SFNT resource.
-        Currently only saves bitmap-only SFNTs (OTB flavour)
+        Save bitmap font to an sfnt resource (TrueType/OpenType file).
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
-        align: 'byte' or 'bit' (default) alignment of the bitmaps
-        version: file type flavour, 'otb' (default) or 'apple'
+        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png'
+        flavour: type of sfnt resource: 'otb' (EBDT or CBDT-based; default) or 'apple' (bdat or sbix-based)
         glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
-        font, *rest = fonts
-        if rest:
-            raise ValueError(
-                'Currently only supporting saving one font to SFNT.'
-            )
+        # some sfnt flavours *can* store multiple fonts, e.g. different dpi in sbix
+        # we don't currently support that.
+        font = ensure_single(fonts)
         tt_font = _create_sfnt(
-            font, funits_per_em, align,
-            flavour=version.lower(),
+            font, funits_per_em, strike_format,
+            flavour=flavour.lower(),
             glyph_names=glyph_names,
         )
         tt_font.save(outfile)
@@ -55,20 +53,20 @@ if fonttools_loaded:
     @savers.register(linked=load_collection)
     def save_collection(
             fonts, outfile,
-            funits_per_em:int=1024, align:str='bit', version:str='otb',
+            funits_per_em:int=1024, strike_format:str='bit', flavour:str='otb',
             glyph_names:str=None,
         ):
         """
-        Save fonts to a TrueType/OpenType Collection file.
+        Save bitmap fonts to a TrueType/OpenType Collection file.
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
-        align: 'byte' or 'bit' (default) alignment of the bitmaps
-        version: file type flavour, 'otb' (default) or 'apple'
+        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png'
+        flavour: type of sfnt resource: 'otb' (EBDT- or CBDT-based; default) or 'apple' (bdat- or sbix-based)
         glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
         _write_collection(
-            fonts, outfile, funits_per_em, align, flavour=version.lower(),
-            glyph_names=glyph_names,
+            fonts, outfile, funits_per_em, strike_format,
+            flavour=flavour.lower(), glyph_names=glyph_names,
         )
         return fonts
 
@@ -290,20 +288,20 @@ def _determine_table_types(font, flavour):
     return 'EBDT', 'EBLC'
 
 
-def _setup_ebdt_table(fb, font, glyphs, align, ebdt_name):
+def _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name):
     """Build `bdat`, `EBDT` or `CBDT` bitmap data table."""
     ebdt = fonttools.newTable(ebdt_name)
     ebdt.version = 3.0 if ebdt_name == 'CBDT' else 2.0
     # create one strike - multiple strikes of different size are possible
     ebdt.strikeData = [{
-        _name: convert_to_glyph(_g, fb, align, font.rgb_table)
+        _name: convert_to_glyph(_g, fb, strike_format, font.rgb_table)
         for _name, _g in glyphs.items()
     }]
     fb.font[ebdt_name] = ebdt
 
 
 _BITMAP_DATA_FORMATS = {
-    # (metrics, storage_method): format
+    # (metrics, strike_format): format
     ('small', 'byte'): fonttools.ebdt_bitmap_classes[1],
     ('small', 'bit'): fonttools.ebdt_bitmap_classes[2],
     # ('none', 'bit'): fonttools.ebdt_bitmap_classes[5],
@@ -317,17 +315,17 @@ _BITMAP_DATA_FORMATS = {
 }
 
 
-def convert_to_glyph(glyph, fb, align, rgb_table):
+def convert_to_glyph(glyph, fb, strike_format, rgb_table):
     """Create fontTools bitmap glyph."""
     if rgb_table: # or font.levels > 256
         # store as PNG data
         # alternatively we could store RGB in format 1/2, 6/7
-        align = 'png'
+        strike_format = 'png'
     if glyph.has_vertical_metrics():
         metrics = 'big'
     else:
         metrics = 'small'
-    ebdt_bitmap = _BITMAP_DATA_FORMATS[metrics, align]
+    ebdt_bitmap = _BITMAP_DATA_FORMATS[metrics, strike_format]
     bmga = ebdt_bitmap(data=b'', ttFont=fb.font)
     if metrics == 'small':
         # horizontal metrics
@@ -348,7 +346,7 @@ def convert_to_glyph(glyph, fb, align, rgb_table):
         bmga.metrics.vertBearingX = glyph.shift_left + glyph.width//2
         bmga.metrics.vertBearingY = glyph.top_bearing
         bmga.metrics.vertAdvance = glyph.advance_height
-    if align == 'png':
+    if strike_format == 'png':
         # could use P for <=256-colour
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=rgb_table)
         bytesio = BytesIO()
@@ -442,7 +440,7 @@ def _prepare_for_sfnt(font, glyph_names):
     return font, default
 
 
-def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
+def _create_sfnt(font, funits_per_em, strike_format, flavour, glyph_names):
     """Convert to a fontTools TTFont object."""
     # converter from pixels to design units
     # note that x and y ppem are equal - if not, fontforge rejects the bitmap
@@ -463,7 +461,7 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
     ebdt_name, eblc_name = _determine_table_types(font, flavour)
-    _setup_ebdt_table(fb, font, glyphs, align, ebdt_name)
+    _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name)
     _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name)
     if flavour == 'ms':
         fonttools._setup_ebsc_table(fb, {font.pixel_size: EBSC_SIZES})
@@ -505,12 +503,12 @@ def _create_sfnt(font, funits_per_em, align, flavour, glyph_names):
         del fb.font['loca']
     return fb.font
 
-def _write_collection(fonts, outfile, funits_per_em, align, flavour, glyph_names):
+def _write_collection(fonts, outfile, funits_per_em, strike_format, flavour, glyph_names):
     """Convert to TrueType collection and write out."""
     check_fonttools()
     ttc = fonttools.TTCollection()
     ttc.fonts = tuple(
-        _create_sfnt(_font, funits_per_em, align, flavour, glyph_names)
+        _create_sfnt(_font, funits_per_em, strike_format, flavour, glyph_names)
         for _font in fonts
     )
     ttc.save(outfile)
