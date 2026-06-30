@@ -198,3 +198,8 @@ else:
                 for size in from_sizes
             ]
         ebsc.numSizes = len(ebsc.bitmapScaleTables)
+
+    # `sbix`
+
+    from fontTools.ttLib.tables._s_b_i_x import Strike as sbixStrike
+    from fontTools.ttLib.tables.sbixGlyph import Glyph as sbixGlyph

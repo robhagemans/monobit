@@ -409,6 +409,35 @@ def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name):
     fb.font[eblc_name] = eblc
 
 
+def _setup_sbix_table(fb, font, glyphs):
+    """Build `sbix` bitmap table."""
+    sbix = fonttools.newTable('sbix')
+    sbix.version = 1
+    # > Bit 0: Set to 1.
+    # > Bit 1: Draw outlines.
+    # > Bits 2 to 15: reserved (set to 0).
+    sbix.flags = 1
+    # create strike
+    strike = fonttools.sbixStrike()
+    strike.ppem = font.pixel_size
+    strike.resolution = font.dpi[0]
+    strike.glyphs = {}
+    for name, glyph in glyphs.items():
+        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=font.rgb_table)
+        bytesio = BytesIO()
+        img.save(bytesio, format='png')
+        sbix_glyph = fonttools.sbixGlyph(
+            glyphName=name,
+            # keep originOffsets as 0, use hmtx/vmtx instead
+            # png - this could become an arg, tiff and jpeg are also possible
+            graphicType='png ',
+            imageData=bytesio.getvalue()
+        )
+        strike.glyphs[name] = sbix_glyph
+    sbix.strikes = {0: strike}
+    fb.font['sbix'] = sbix
+
+
 def _prepare_for_sfnt(font, glyph_names):
     """Prepare monobit font for storing in sfnt."""
     # get char labels if we don't have them but we do have an encoding
@@ -462,8 +491,11 @@ def _create_sfnt(font, funits_per_em, strike_format, flavour, glyph_names):
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
     ebdt_name, eblc_name = _determine_table_types(font, flavour)
-    _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name)
-    _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name)
+    if font.rgb_table and flavour == 'apple':
+        _setup_sbix_table(fb, font, glyphs)
+    else:
+        _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name)
+        _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name)
     if flavour == 'ms':
         fonttools._setup_ebsc_table(fb, {font.pixel_size: EBSC_SIZES})
     if flavour != 'apple':
@@ -498,10 +530,14 @@ def _create_sfnt(font, funits_per_em, strike_format, flavour, glyph_names):
         # del `loca` in ms file? fontforge does.
     elif flavour == 'apple':
         fb.font.recalcBBoxes = False
-        fb.font['bhed'] = fb.font['head']
-        del fb.font['head']
-        del fb.font['glyf']
-        del fb.font['loca']
+        # glyf, loca tables are usually omitted in apple sbit fonts,
+        # but must be present in sbix fonts for hmtx/vmtx to be used
+        if not font.rgb_table:
+            # bhed is used to indicate glyf is not present
+            fb.font['bhed'] = fb.font['head']
+            del fb.font['head']
+            del fb.font['glyf']
+            del fb.font['loca']
     return fb.font
 
 def _write_collection(fonts, outfile, funits_per_em, strike_format, flavour, glyph_names):
