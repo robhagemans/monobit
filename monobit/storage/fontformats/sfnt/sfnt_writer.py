@@ -35,7 +35,7 @@ if fonttools_loaded:
         Save bitmap font to an sfnt resource (TrueType/OpenType file).
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
-        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png'
+        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png' or 'tiff' (sbix only)
         flavour: type of sfnt resource: 'otb' (EBDT or CBDT-based; default) or 'apple' (bdat or sbix-based)
         glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
@@ -60,7 +60,7 @@ if fonttools_loaded:
         Save bitmap fonts to a TrueType/OpenType Collection file.
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
-        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png'
+        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png' or 'tiff' (sbix only)
         flavour: type of sfnt resource: 'otb' (EBDT- or CBDT-based; default) or 'apple' (bdat- or sbix-based)
         glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
@@ -291,7 +291,18 @@ def _determine_table_types(font, flavour):
 def _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name):
     """Build `bdat`, `EBDT` or `CBDT` bitmap data table."""
     ebdt = fonttools.newTable(ebdt_name)
-    ebdt.version = 3.0 if ebdt_name == 'CBDT' else 2.0
+    strike_format = strike_format.lower()
+    if ebdt_name == 'CBDT':
+        allowed_formats = ('bit', 'byte', 'png')
+        ebdt.version = 3.0
+    else:
+        allowed_formats = ('bit', 'byte')
+        ebdt.version = 2.0
+    if strike_format not in allowed_formats:
+        raise ValueError(
+            f"For `{ebdt_name}` tables, `strike_format` must be one of "
+            f"{allowed_formats}; not '{strike_format}'."
+        )
     # create one strike - multiple strikes of different size are possible
     ebdt.strikeData = [{
         _name: convert_to_glyph(_g, fb, strike_format, font.rgb_table)
@@ -409,8 +420,15 @@ def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name):
     fb.font[eblc_name] = eblc
 
 
-def _setup_sbix_table(fb, font, glyphs):
+def _setup_sbix_table(fb, font, glyphs, strike_format):
     """Build `sbix` bitmap table."""
+    strike_format = strike_format[:4].lower().ljust(4)
+    if strike_format not in ('png ', 'tiff'):
+        # sbix supports 'jpeg' but the glyph isn't preserved correctly
+        raise ValueError(
+            "For `sbix` tables, `strike_format` must be one of "
+            f"('png', 'tiff'); not '{strike_format}'."
+        )
     sbix = fonttools.newTable('sbix')
     sbix.version = 1
     # > Bit 0: Set to 1.
@@ -425,12 +443,11 @@ def _setup_sbix_table(fb, font, glyphs):
     for name, glyph in glyphs.items():
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=font.rgb_table)
         bytesio = BytesIO()
-        img.save(bytesio, format='png')
+        img.save(bytesio, format=strike_format.strip())
         sbix_glyph = fonttools.sbixGlyph(
             glyphName=name,
             # keep originOffsets as 0, use hmtx/vmtx instead
-            # png - this could become an arg, tiff and jpeg are also possible
-            graphicType='png ',
+            graphicType=strike_format,
             imageData=bytesio.getvalue()
         )
         strike.glyphs[name] = sbix_glyph
@@ -492,7 +509,7 @@ def _create_sfnt(font, funits_per_em, strike_format, flavour, glyph_names):
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
     ebdt_name, eblc_name = _determine_table_types(font, flavour)
     if font.rgb_table and flavour == 'apple':
-        _setup_sbix_table(fb, font, glyphs)
+        _setup_sbix_table(fb, font, glyphs, strike_format)
     else:
         _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name)
         _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name)
