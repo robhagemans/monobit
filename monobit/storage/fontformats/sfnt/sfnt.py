@@ -446,10 +446,11 @@ def _convert_bdat_glyphs(
                 # note the lowercase a for pre-multiplied RGBA (as per CBDT spec)
                 image = Image.new('RGBa', (width, height))
                 image.putdata(rgba_list)
-                image.save(bytesio, format='png')
+                image.convert('RGBA').save(bytesio, format='png')
                 glyphbytes = bytesio.getvalue()
             updated_glyphdata.append((name, glyphbytes, width, height, props))
         png = True
+        glyphdata = updated_glyphdata
     if png:
         try:
             glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)

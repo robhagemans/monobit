@@ -317,10 +317,6 @@ _BITMAP_DATA_FORMATS = {
 
 def convert_to_glyph(glyph, fb, strike_format, rgb_table):
     """Create fontTools bitmap glyph."""
-    if rgb_table: # or font.levels > 256
-        # store as PNG data
-        # alternatively we could store RGB in format 1/2, 6/7
-        strike_format = 'png'
     if glyph.has_vertical_metrics():
         metrics = 'big'
     else:
@@ -346,12 +342,17 @@ def convert_to_glyph(glyph, fb, strike_format, rgb_table):
         bmga.metrics.vertBearingX = glyph.shift_left + glyph.width//2
         bmga.metrics.vertBearingY = glyph.top_bearing
         bmga.metrics.vertAdvance = glyph.advance_height
-    if strike_format == 'png':
+    if rgb_table:  # or font.levels > 256
         # could use P for <=256-colour
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=rgb_table)
-        bytesio = BytesIO()
-        img.save(bytesio, format='png')
-        bmga.imageData = bytesio.getvalue()
+        if strike_format == 'png':
+            bytesio = BytesIO()
+            img.save(bytesio, format='png')
+            bmga.imageData = bytesio.getvalue()
+        else:
+            # no difference between bit or byte alignment for 32-bit strikes
+            # per the spec, these are premultiplied RGBA so PIL's 'RGBa'
+            bmga.imageData = img.convert('RGBa').tobytes()
     else:
         bmga.setRows(glyph.as_byterows(), bitDepth=(glyph.levels-1).bit_length())
     return bmga
@@ -398,7 +399,7 @@ def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name):
             vert = fonttools._create_sbit_line_metrics()
         strike.bitmapSizeTable = fonttools._create_bitmap_size_table(
             font.pixel_size, hori, vert,
-            depth=(font.levels-1).bit_length(),
+            depth=32 if font.rgb_table else (font.levels-1).bit_length(),
         )
         strike.indexSubTables = fonttools._create_index_subtables(fb, sdata)
         # eblc strike locations are filled out by ebdt compiler
