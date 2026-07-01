@@ -362,8 +362,10 @@ def convert_to_glyph(glyph, fb, strike_format, rgb_table):
             bmga.imageData = bytesio.getvalue()
         else:
             # no difference between bit or byte alignment for 32-bit strikes
-            # per the spec, these are premultiplied RGBA so PIL's 'RGBa'
-            bmga.imageData = img.convert('RGBa').tobytes()
+            # per the spec, these are premultiplied alpha use so PIL's 'RGBa'
+            img = img.convert('RGBa')
+            bgra_data = ((_b, _g, _r, _a) for _r, _g, _b, _a in img.getdata())
+            bmga.imageData = bytes(_b for _bgra in bgra_data for _b in _bgra)
     else:
         bmga.setRows(glyph.as_byterows(), bitDepth=(glyph.levels-1).bit_length())
     return bmga
