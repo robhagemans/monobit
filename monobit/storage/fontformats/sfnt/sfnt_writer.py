@@ -357,9 +357,9 @@ def convert_to_glyph(glyph, fb, strike_format, rgb_table):
         # could use P for <=256-colour
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=rgb_table)
         if strike_format == 'png':
-            bytesio = BytesIO()
-            img.save(bytesio, format='png')
-            bmga.imageData = bytesio.getvalue()
+            with BytesIO() as bytesio:
+                img.save(bytesio, format='png')
+                bmga.imageData = bytesio.getvalue()
         else:
             # no difference between bit or byte alignment for 32-bit strikes
             # per the spec, these are premultiplied alpha use so PIL's 'RGBa'
@@ -444,14 +444,14 @@ def _setup_sbix_table(fb, font, glyphs, strike_format):
     strike.glyphs = {}
     for name, glyph in glyphs.items():
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=font.rgb_table)
-        bytesio = BytesIO()
-        img.save(bytesio, format=strike_format.strip())
-        sbix_glyph = fonttools.sbixGlyph(
-            glyphName=name,
-            # keep originOffsets as 0, use hmtx/vmtx instead
-            graphicType=strike_format,
-            imageData=bytesio.getvalue()
-        )
+        with BytesIO() as bytesio:
+            img.save(bytesio, format=strike_format.strip())
+            sbix_glyph = fonttools.sbixGlyph(
+                glyphName=name,
+                # keep originOffsets as 0, use hmtx/vmtx instead
+                graphicType=strike_format,
+                imageData=bytesio.getvalue()
+            )
         strike.glyphs[name] = sbix_glyph
     sbix.strikes = {0: strike}
     fb.font['sbix'] = sbix

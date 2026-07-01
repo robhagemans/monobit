@@ -559,22 +559,22 @@ def _convert_hppcl_glyph(code, chardef, glyphbytes):
         logging.error('Unsupported character data format.')
     elif chardef.class_ == 2:
         # decompress RLE data
-        reader = BytesIO(glyphbytes)
-        outbits = []
-        outrow = []
-        while True:
-            repeats = reader.read(1)
-            if not repeats:
-                break
-            length = 0
-            bit = False
-            while length < chardef.character_width:
-                n = reader.read(1)
-                if not n:
+        with BytesIO(glyphbytes) as reader:
+            outbits = []
+            outrow = []
+            while True:
+                repeats = reader.read(1)
+                if not repeats:
                     break
-                outrow.extend([bit] * ord(n))
-                bit = not bit
-            outbits.extend(outrow * ord(repeats))
+                length = 0
+                bit = False
+                while length < chardef.character_width:
+                    n = reader.read(1)
+                    if not n:
+                        break
+                    outrow.extend([bit] * ord(n))
+                    bit = not bit
+                outbits.extend(outrow * ord(repeats))
         raster = Raster.from_matrix(outbits, inklevels=(False, True))
     else:
         raster = Raster.from_bytes(

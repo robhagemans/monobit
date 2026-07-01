@@ -299,10 +299,10 @@ def convert_to_wsfont(font, byte_order, bit_order):
         bitorder=2 if bit_order.startswith('r') else 1,
         byteorder=2 if byte_order.startswith('r') else 1,
     )
-    stream = BytesIO()
-    save_bitmap(
-        stream, font,
-        align=bit_order, msb=bit_order,
-        byte_swap=(header.stride if byte_order != bit_order else 0),
-    )
-    return header, stream.getvalue()
+    with BytesIO() as stream:
+        save_bitmap(
+            stream, font,
+            align=bit_order, msb=bit_order,
+            byte_swap=(header.stride if byte_order != bit_order else 0),
+        )
+        return header, stream.getvalue()

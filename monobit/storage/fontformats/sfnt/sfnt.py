@@ -610,7 +610,8 @@ def _convert_sbix(sfnt):
 def _data_to_crop(data):
     """Convert RGBA data (may be empty) to RGB image with black background."""
     if data:
-        mask = Image.open(BytesIO(data)).convert('RGBA')
+        with BytesIO(data) as bytesio:
+            mask = Image.open(bytesio).convert('RGBA')
         size = mask.size
     else:
         size = (0, 0)

@@ -252,8 +252,8 @@ def _extract_resources(data, resources):
                 "TrueType font resource #%d: type `%s` name '%s'",
                 rsrc_id, rsrc_type.decode('mac-roman'), name
             )
-            bytesio = Stream.from_data(data[offset:], mode='r')
-            fonts = load_sfnt(bytesio)
+            with Stream.from_data(data[offset:], mode='r') as bytesio:
+                fonts = load_sfnt(bytesio)
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, dict(fonts=fonts)
             ))
@@ -394,13 +394,13 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
         )
     resources = []
     if resource_type == 'sfnt':
-        sfnt_io = BytesIO()
-        result = save_sfnt(fonts, sfnt_io)
-        font, *_ = fonts
-        family_id = _get_family_id(font.family, font.encoding)
-        resources.append(
-            Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
-        )
+        with BytesIO() as sfnt_io:
+            result = save_sfnt(fonts, sfnt_io)
+            font, *_ = fonts
+            family_id = _get_family_id(font.family, font.encoding)
+            resources.append(
+                Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
+            )
     # reduce fonts to what's storable in (stub) FOND/NFNT
     # we need a Pack for _group_families
     fonts = Pack(subset_for_nfnt(_f, resample_encoding) for _f in fonts)
