@@ -430,7 +430,7 @@ def _convert_bdat_glyphs(
     # bitDepth==32 stands for BGRA data in CBDT
     # convert, then treat as PNG data below. this is a bit of a hack
     # we can clean this up once we support RGBA glyphs directly
-    if blocstrike.bitmapSizeTable.bitDepth == 32:
+    if not png and blocstrike.bitmapSizeTable.bitDepth == 32:
         if not Image:
             raise StrikeFormatError(
                 "32-bit bitmaps require module `PIL`, which was not found."
