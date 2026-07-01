@@ -251,10 +251,7 @@ def _sfnt_props(ttf, tags):
             tables[tag] = _load_table(ttf, tag)
         else:
             tables[tag] = None
-    return Props(
-        name_to_id=ttf.getReverseGlyphMap(),
-        **_to_props(tables)
-    )
+    return Props(**_to_props(tables))
 
 
 def _load_table(ttf, tag):
@@ -524,10 +521,7 @@ def _convert_sbix(sfnt):
     for strike in sfnt.sbix.strikes.values():
         sfnt_glyphs = strike.glyphs.values()
         # lookup table to deal with dupes
-        glyph_dict = {
-            sfnt.name_to_id.get(_g.glyphName, None): _g
-            for _g in sfnt_glyphs
-        }
+        glyph_dict = {_g.glyphName: _g for _g in sfnt_glyphs}
         glyphdata = tuple(
             (
                 glyph.glyphName,
@@ -536,8 +530,9 @@ def _convert_sbix(sfnt):
                     # > data field contains a uint16, big-endian glyph ID. The
                     # > bitmap data for the indicated glyph must be used for
                     # > the current glyph.
-                    glyph_dict[int.from_bytes(glyph.imageData, 'big')]
-                    if glyph.graphicType == 'dupe' else glyph.imageData
+                    # 'flip' is new, https://github.com/fonttools/fonttools/pull/3433
+                    glyph_dict[glyph.referenceGlyphName]
+                    if glyph.graphicType in ('dupe', 'flip') else glyph.imageData
                 ),
                 # width, height not known and not used by imagedata_to_glyphs
                 None, None,
