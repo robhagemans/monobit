@@ -57,8 +57,20 @@ class TestColour(BaseTester):
     def test_mac_colour(self):
         self._render_colour('mac')
 
-    # def test_sfnt_colour(self):
-    #     self._render_colour('sfnt', char=True)
+    def test_sfnt_cbdt_bit_colour(self):
+        self._render_colour('sfnt', char=True, save_kwargs=dict(strike_format='bit'))
+
+    def test_sfnt_cbdt_byte_colour(self):
+        self._render_colour('sfnt', char=True, save_kwargs=dict(strike_format='byte'))
+
+    def test_sfnt_cbdt_png_colour(self):
+        self._render_colour('sfnt', char=True, save_kwargs=dict(strike_format='png'))
+
+    def test_sfnt_sbix_png_colour(self):
+        self._render_colour('sfnt', char=True, save_kwargs=dict(flavour='apple', strike_format='png'))
+
+    def test_sfnt_sbix_tiff_colour(self):
+        self._render_colour('sfnt', char=True, save_kwargs=dict(flavour='apple', strike_format='tiff'))
 
     def test_bmfont_colour(self):
         self._render_colour('bmfont', save_kwargs={'packed': False})
