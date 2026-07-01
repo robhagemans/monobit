@@ -28,14 +28,14 @@ if fonttools_loaded:
     @savers.register(linked=load_sfnt)
     def save_sfnt(
             fonts, outfile,
-            funits_per_em:int=1024, strike_format:str='bit', flavour:str='otb',
+            funits_per_em:int=1024, strike_format:str=None, flavour:str='otb',
             glyph_names:str=None,
         ):
         """
         Save bitmap font to an sfnt resource (TrueType/OpenType file).
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
-        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png' or 'tiff' (sbix only)
+        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png' (default for sbix) or 'tiff' (sbix only)
         flavour: type of sfnt resource: 'otb' (EBDT or CBDT-based; default) or 'apple' (bdat or sbix-based)
         glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
@@ -53,14 +53,14 @@ if fonttools_loaded:
     @savers.register(linked=load_collection)
     def save_collection(
             fonts, outfile,
-            funits_per_em:int=1024, strike_format:str='bit', flavour:str='otb',
+            funits_per_em:int=1024, strike_format:str=None, flavour:str='otb',
             glyph_names:str=None,
         ):
         """
         Save bitmap fonts to a TrueType/OpenType Collection file.
 
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
-        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png' or 'tiff' (sbix only)
+        strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png' (default for sbix) or 'tiff' (sbix only)
         flavour: type of sfnt resource: 'otb' (EBDT- or CBDT-based; default) or 'apple' (bdat- or sbix-based)
         glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
@@ -511,8 +511,10 @@ def _create_sfnt(font, funits_per_em, strike_format, flavour, glyph_names):
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
     ebdt_name, eblc_name = _determine_table_types(font, flavour)
     if font.rgb_table and flavour == 'apple':
+        strike_format = strike_format or 'png'
         _setup_sbix_table(fb, font, glyphs, strike_format)
     else:
+        strike_format = strike_format or 'bit'
         _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name)
         _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name)
     if flavour == 'ms':
