@@ -356,7 +356,9 @@ def convert_to_glyph(glyph, fb, strike_format, rgb_table):
     if rgb_table:  # or font.levels > 256
         # could use P for <=256-colour
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=rgb_table)
-        if strike_format == 'png':
+        if img.size == (0, 0):
+            bmga.imageData = b''
+        elif strike_format == 'png':
             with BytesIO() as bytesio:
                 img.save(bytesio, format='png')
                 bmga.imageData = bytesio.getvalue()
@@ -444,14 +446,17 @@ def _setup_sbix_table(fb, font, glyphs, strike_format):
     strike.glyphs = {}
     for name, glyph in glyphs.items():
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=font.rgb_table)
-        with BytesIO() as bytesio:
-            img.save(bytesio, format=strike_format.strip())
-            sbix_glyph = fonttools.sbixGlyph(
-                glyphName=name,
-                # keep originOffsets as 0, use hmtx/vmtx instead
-                graphicType=strike_format,
-                imageData=bytesio.getvalue()
-            )
+        if img.size == (0, 0):
+            sbix_glyph = fonttools.sbixGlyph(glyphName=name)
+        else:
+            with BytesIO() as bytesio:
+                img.save(bytesio, format=strike_format.strip())
+                sbix_glyph = fonttools.sbixGlyph(
+                    glyphName=name,
+                    # keep originOffsets as 0, use hmtx/vmtx instead
+                    graphicType=strike_format,
+                    imageData=bytesio.getvalue()
+                )
         strike.glyphs[name] = sbix_glyph
     sbix.strikes = {0: strike}
     fb.font['sbix'] = sbix
