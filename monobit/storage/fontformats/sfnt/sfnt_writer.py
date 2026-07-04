@@ -550,13 +550,17 @@ def _create_sfnt(font, funits_per_em, strike_format, flavour, glyph_names):
     # bitmap-only formats
     if flavour == 'otb':
         # OTB output
-        fb.font.recalcBBoxes = False
+        # we need recalcBBoxes == True to avoid fontlint, FontForge errors
+        # fb.font.recalcBBoxes = False
+        # below two lines are needed to make the bitmap visible in FontForge
+        # HarfBuzz & FreeType don't seem to care either way
         # ensure we get an empty glyf table
         fb.font['glyf'].compile = lambda self: b''
         # loca table with null for every glyph
         fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
         # del `loca` in ms file? fontforge does.
     elif flavour == 'apple':
+        # recalcboxes fails without hmtx table - include above and remove?
         fb.font.recalcBBoxes = False
         # glyf, loca tables are usually omitted in apple sbit fonts,
         # but must be present in sbix fonts for hmtx/vmtx to be used
