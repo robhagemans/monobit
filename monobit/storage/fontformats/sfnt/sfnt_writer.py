@@ -306,10 +306,12 @@ def _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name):
             f"{allowed_formats}; not '{strike_format}'."
         )
     # create one strike - multiple strikes of different size are possible
-    ebdt.strikeData = [{
+    strike_data = {
         _name: convert_to_glyph(_g, fb, strike_format, font.rgb_table)
         for _name, _g in glyphs.items()
-    }]
+    }
+    # drop empty glyphs in PNG-based tables
+    ebdt.strikeData = [{_name: _g for _name, _g in strike_data.items() if _g is not None}]
     fb.font[ebdt_name] = ebdt
 
 
@@ -359,7 +361,7 @@ def convert_to_glyph(glyph, fb, strike_format, rgb_table):
         # could use P for <=256-colour
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=rgb_table)
         if img.size == (0, 0):
-            bmga.imageData = b''
+            return None
         elif strike_format == 'png':
             with BytesIO() as bytesio:
                 img.save(bytesio, format='png')
