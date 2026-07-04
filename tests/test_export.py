@@ -433,7 +433,10 @@ class TestExport(BaseTester):
     def test_export_sfnt_ms(self):
         """Test exporting FontForge-style "fake-Microsoft" sfnt files."""
         # 920 as .notdef is added
-        self._export_4x6(format='sfnt', count=920, save_kwargs=dict(bitmap_table='EBDT', include_ebsc=True))
+        self._export_4x6(
+            format='sfnt', count=920,
+            save_kwargs=dict(bitmap_table='EBDT', ebsc_mapped_sizes='8-26,30,32,33,40')
+        )
 
     def test_export_sfnt_ttc(self):
         """Test exporting ttc files."""

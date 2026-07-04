@@ -15,6 +15,7 @@ from monobit.storage import loaders, savers
 from monobit.storage.utils.limitations import ensure_single
 from monobit.base import reverse_dict, to_number, safe_import
 from monobit.renderer import glyph_to_image
+from monobit.core.labels import to_range
 
 from .sfnt import WEIGHT_MAP, SETWIDTH_MAP, NOTDEF_NAME, fonttools_loaded
 from .sfnt import load_sfnt, load_collection
@@ -29,7 +30,7 @@ if fonttools_loaded:
     def save_sfnt(
             fonts, outfile,
             funits_per_em:int=1024,
-            strike_format:str=None, bitmap_table:str=None, include_ebsc:bool=False,
+            strike_format:str=None, bitmap_table:str=None, ebsc_mapped_sizes:to_range=(),
             glyph_names:str=None,
         ):
         """
@@ -38,14 +39,14 @@ if fonttools_loaded:
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
         strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png' (default for sbix) or 'tiff' (sbix only)
         bitmap_table: type of bitmap resource: 'bdat' (Apple monochrome/greyscale sbit fonts) 'EBDT' (OpenType Bitmap; default for monochrome/greyscale) 'CBDT' (Google colour bitmap; default for colour fonts) 'sbix' (Apple colour bitmap)
-        include_ebsc: include an EBSC table (may be needed for Windows; default: False)
+        ebsc_mapped_sizes: sizes to include in an EBSC table (may be needed for Windows; default: no EBSC table)
         glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
         # some sfnt flavours *can* store multiple fonts, e.g. different dpi in sbix
         # we don't currently support that.
         font = ensure_single(fonts)
         tt_font = _create_sfnt(
-            font, funits_per_em, strike_format, bitmap_table, include_ebsc,
+            font, funits_per_em, strike_format, bitmap_table, ebsc_mapped_sizes,
             glyph_names=glyph_names,
         )
         tt_font.save(outfile)
@@ -55,7 +56,7 @@ if fonttools_loaded:
     def save_collection(
             fonts, outfile,
             funits_per_em:int=1024,
-            strike_format:str=None, bitmap_table:str=None, include_ebsc:bool=False,
+            strike_format:str=None, bitmap_table:str=None, ebsc_mapped_sizes:to_range=(),
             glyph_names:str=None,
         ):
         """
@@ -64,13 +65,13 @@ if fonttools_loaded:
         funits_per_em: number of design units (FUnits) per em-width (default 1024)
         strike_format: store as bitmaps aligned by 'byte', 'bit' (default) or as 'png' (default for sbix) or 'tiff' (sbix only)
         bitmap_table: type of bitmap resource: 'bdat' (Apple monochrome/greyscale sbit fonts) 'EBDT' (OpenType Bitmap; default for monochrome/greyscale) 'CBDT' (Google colour bitmap; default for colour fonts) 'sbix' (Apple colour bitmap)
-        include_ebsc: include an EBSC table (may be needed for Windows; default: False)
+        ebsc_mapped_sizes: sizes to include in an EBSC table (may be needed for Windows; default: no EBSC table)
         glyph_names: tagger to set glyph names with. Default is no glyph names. Use 'tags' to use existing tags as glyph names.
         """
         ttc = fonttools.TTCollection()
         ttc.fonts = tuple(
             _create_sfnt(
-                _font, funits_per_em, strike_format, bitmap_table, include_ebsc,
+                _font, funits_per_em, strike_format, bitmap_table, ebsc_mapped_sizes,
                 glyph_names=glyph_names,
             )
             for _font in fonts
@@ -89,8 +90,14 @@ else:
     save_sfnt = check_fonttools
     save_collection = check_fonttools
 
+# FontForge defines a "fake-ms" font including an EBSC table with these sizes
+# https://fontforge.org/docs/techref/bitmaponlysfnt.html
+# however, later Windows versions no longer support non-CJK bitmap strikes at all
+# https://int10h.org/blog/2016/01/windows-cleartype-truetype-fonts-embedded-bitmaps/
 # sizes defined in EBSC table (following fontforge)
-EBSC_SIZES = (*range(8, 26), 30, 32, 33, 40)
+# see https://github.com/fontforge/fontforge/blob/master/fontforge/parsettfbmf.c
+# static int expected_sizes[] = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+#         19, 20, 21, 22, 23, 24, 25, 30, 32, 33, 40, 0 };
 
 
 def _label_to_utf16(font, label, default):
@@ -497,7 +504,7 @@ def _prepare_for_sfnt(font, glyph_names):
     return font, default
 
 
-def _create_sfnt(font, funits_per_em, strike_format, bitmap_table, include_ebsc, glyph_names):
+def _create_sfnt(font, funits_per_em, strike_format, bitmap_table, ebsc_mapped_sizes, glyph_names):
     """Convert to a fontTools TTFont object."""
     # converter from pixels to design units
     # note that x and y ppem are equal - if not, fontforge rejects the bitmap
@@ -541,8 +548,9 @@ def _create_sfnt(font, funits_per_em, strike_format, bitmap_table, include_ebsc,
         strike_format = (strike_format or 'bit').lower()
         _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name)
         _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name)
-    if include_ebsc:
-        fonttools._setup_ebsc_table(fb, {font.pixel_size: EBSC_SIZES})
+    ebsc_mapped_sizes = tuple(ebsc_mapped_sizes)
+    if ebsc_mapped_sizes:
+        fonttools._setup_ebsc_table(fb, {font.pixel_size: ebsc_mapped_sizes})
     fb.setupHorizontalMetrics(_convert_to_hmtx_props(glyphs, _to_funits))
     fb.setupHorizontalHeader(**_convert_to_hhea_props(font, _to_funits))
     # check for vertical metrics, include `vhea` and `vmtx` if present
@@ -562,7 +570,7 @@ def _create_sfnt(font, funits_per_em, strike_format, bitmap_table, include_ebsc,
         underlineThickness=_to_funits(font.underline_thickness),
     )
     fonttools._setup_kern_table(fb, **_convert_to_kern_props(font, glyphs, _to_funits))
-    if not include_ebsc:
+    if not ebsc_mapped_sizes:
         # OTB output
         # we need recalcBBoxes == True to avoid fontlint, FontForge errors
         # below two lines are needed to make the bitmap visible in FontForge
@@ -571,7 +579,6 @@ def _create_sfnt(font, funits_per_em, strike_format, bitmap_table, include_ebsc,
         fb.font['glyf'].compile = lambda self: b''
         # loca table with null for every glyph
         fb.font['loca'].compile = lambda self: bytes(len(glyphnames)*2+2)
-        # del `loca` in ms file? fontforge does.
     if bitmap_table.lower() == 'bdat':
         # Apple sbit fonts. bhed is used to indicate glyf is not present
         fb.font['bhed'] = fb.font['head']
