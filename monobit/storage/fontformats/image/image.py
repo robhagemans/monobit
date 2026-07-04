@@ -242,7 +242,7 @@ if Image:
         enumerated_crops = tuple(enumerated_crops)
         # get pixels
         _, crops = tuple(zip(*enumerated_crops))
-        inklevels = identify_colours(crops, background)
+        inklevels = identify_inklevels_for_images(crops, background)
         # convert to glyphs, set codepoints
         glyphs = tuple(
             Glyph.from_vector(
@@ -273,7 +273,7 @@ if Image:
         # can't determine border colour without padding or margin
         return None
 
-    def identify_colours(crops, background):
+    def identify_inklevels_for_images(crops, background):
         """Identify ink levels from cells."""
         crops = (set(_crop.getdata()) for _crop in crops)
         colours = set.union(*crops)

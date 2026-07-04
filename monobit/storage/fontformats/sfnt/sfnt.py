@@ -23,7 +23,7 @@ fonttools_loaded = ttLib is not None
 Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
-from ..image.image import identify_colours
+from ..image.image import identify_inklevels_for_images
 
 
 # specs
@@ -625,14 +625,14 @@ def _imagedata_to_glyphs(glyphdata, unitable, enctable):
     """Convert glyph image data to glyphs."""
     if not Image:
         raise StrikeFormatError(
-            "Bitmaps are encoded as PNG; decoding require module `PIL`, which was not found."
+            "Decoding colour bitmaps requires module `PIL`, which was not found."
         )
         return ()
     cropdata = tuple(
         (_data_to_crop(_glyphbytes), _name, _props)
         for _name, _glyphbytes, _, _, _props in glyphdata
     )
-    inklevels = identify_colours(
+    inklevels = identify_inklevels_for_images(
         (_item[0] for _item in cropdata),
         background='darkest'
     )
