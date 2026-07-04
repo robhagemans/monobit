@@ -137,6 +137,8 @@ def _convert_to_os_2_props(font, _to_funits):
         usBreakChar=_label_to_utf16(font, font.word_boundary, 0x20),
         # vendor ID - can be left blank (four spaces)
         achVendID=b'    ',
+        # usage permissions - no restrictions
+        fsType=0,
     )
     return props
 
