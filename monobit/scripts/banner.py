@@ -250,6 +250,9 @@ def main():
         glyph_map.turn(clockwise=args.rotate)
         #######################################################################
         # output
+        # don't override foreground in colour font, but do override background
+        if font.rgb_table and not args.ink:
+            args.ink = font.rgb_table[-1]
         if args.image or args.output and not args.output.endswith('.txt'):
             ink = RGB.create(args.ink or (0, 0, 0))
             paper = RGB.create(args.paper or (255, 255, 255))

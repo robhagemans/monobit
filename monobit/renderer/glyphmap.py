@@ -39,9 +39,11 @@ def glyph_to_image(glyph, image_mode, inklevels):
         )
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
     # if using RGBA, inklevels must have 4 numbers per entry too
-    # rgb_table only has 3. set alpha to fully opaque
+    # rgb_table only has 3. set alpha to fully opaque, except background
     if image_mode == 'RGBA' and len(inklevels[0]) == 3:
-        inklevels = tuple(tuple(_c) + (255,) for _c in inklevels)
+        inklevels = (tuple(inklevels[0]) + (0,),) + tuple(
+            tuple(_c) + (255,) for _c in inklevels[1:]
+        )
     data = glyph.as_vector(inklevels=inklevels)
     charimg.putdata(data)
     return charimg
