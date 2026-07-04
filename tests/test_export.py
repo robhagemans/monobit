@@ -428,12 +428,12 @@ class TestExport(BaseTester):
     def test_export_sfnt_apple_sbit(self):
         """Test exporting Apple-style sbit files (bare, not in dfont container)."""
         # 920 as .notdef is added
-        self._export_4x6(format='sfnt', count=920, save_kwargs=dict(flavour='apple'))
+        self._export_4x6(format='sfnt', count=920, save_kwargs=dict(bitmap_table='bdat'))
 
     def test_export_sfnt_ms(self):
         """Test exporting FontForge-style "fake-Microsoft" sfnt files."""
         # 920 as .notdef is added
-        self._export_4x6(format='sfnt', count=920, save_kwargs=dict(flavour='ms'))
+        self._export_4x6(format='sfnt', count=920, save_kwargs=dict(bitmap_table='EBDT', include_ebsc=True))
 
     def test_export_sfnt_ttc(self):
         """Test exporting ttc files."""

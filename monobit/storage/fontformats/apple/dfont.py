@@ -395,7 +395,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
     resources = []
     if resource_type == 'sfnt':
         with BytesIO() as sfnt_io:
-            result = save_sfnt(fonts, sfnt_io)
+            result = save_sfnt(fonts, sfnt_io, bitmap_table='bdat')
             font, *_ = fonts
             family_id = _get_family_id(font.family, font.encoding)
             resources.append(
