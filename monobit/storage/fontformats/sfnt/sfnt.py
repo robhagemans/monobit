@@ -13,7 +13,7 @@ import re
 from unicodedata import bidirectional
 from io import BytesIO
 
-from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
+from monobit.base import Props, FileFormatError, UnsupportedError, safe_import, RGBTable
 from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint
 from monobit.storage import loaders, savers
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, RGB, FileFormatError, UnsupportedError
+from monobit.base import Coord, RGB, RGBTable, FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
@@ -110,7 +110,9 @@ def _identify_background(colours, background):
             _, paper = brightness[-1]
     elif background == 'alpha':
         # fully transparent assumed to be background
-        transparent = ((_r, _g, _b, _a) for _r, _g, _b, _a in colours if _a == 0)
+        transparent = tuple(
+            (_r, _g, _b, _a) for _r, _g, _b, _a in colours if _a == 0
+        )
         if transparent:
             # if more than one, pick darkest
             transparent = sorted((sum(_c), _c) for _c in transparent)
@@ -257,7 +259,7 @@ if Image:
 
 
     def convert_crops_to_font(enumerated_crops, background, keep_empty):
-        """Convert list of glyph images to font."""
+        """Convert list of RGB glyph images to font."""
         enumerated_crops = tuple(enumerated_crops)
         # get pixels
         _, crops = tuple(zip(*enumerated_crops))
@@ -275,6 +277,7 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
+        inklevels = RGBTable(inklevels)
         font = Font(
             glyphs,
             rgb_table=inklevels if not inklevels.is_greyscale() else None,
