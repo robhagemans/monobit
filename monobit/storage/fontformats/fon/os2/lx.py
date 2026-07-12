@@ -111,6 +111,10 @@ def read_lx(instream, all_type_ids):
             continue
         # This is either our target font, or else a font directory
         pBuf = _lx_extract_resource(instream, lx_hd, lx_rte, ulAddr)
+        # "It is up to the caller to
+        # locate the actual resource data within this buffer (this should be
+        # lx_rte.offset bytes from the start of the buffer)"
+        pBuf = pBuf[lx_rte.offset:]
         if lx_rte.type == OS2RES_FONTDIR:
             font_dir = parse_os2_font_directory(pBuf)
             # Set ulResID to the ID of the requested font number, then
