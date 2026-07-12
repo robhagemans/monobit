@@ -111,6 +111,9 @@ class RGB(_VectorMixin, namedtuple('RGB', 'r g b')):
         coord = to_tuple(coord, length=3)
         return cls(*coord)
 
+    def __bool__(self):
+        return True
+
 
 class RGBTable(list):
 
