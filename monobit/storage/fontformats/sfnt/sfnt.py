@@ -611,14 +611,8 @@ def _data_to_crop(data):
     """Convert RGBA data (may be empty) to RGB image with black background."""
     if data:
         with BytesIO(data) as bytesio:
-            mask = Image.open(bytesio).convert('RGBA')
-        size = mask.size
-    else:
-        size = (0, 0)
-    img = Image.new(mode='RGBA', size=size, color=(0, 0, 0, 255))
-    if data:
-        img.alpha_composite(mask)
-    return img.convert('RGB')
+            return Image.open(bytesio).convert('RGBA')
+    return Image.new(mode='RGBA', size=(0, 0), color=(0, 0, 0, 0))
 
 
 def _imagedata_to_glyphs(glyphdata, unitable, enctable):
@@ -634,7 +628,7 @@ def _imagedata_to_glyphs(glyphdata, unitable, enctable):
     )
     inklevels = identify_inklevels_for_images(
         (_item[0] for _item in cropdata),
-        background='darkest'
+        background='alpha'
     )
     glyphs = tuple(
         Glyph.from_vector(
@@ -647,6 +641,10 @@ def _imagedata_to_glyphs(glyphdata, unitable, enctable):
             **_props
         )
         for _crop, _name, _props in cropdata
+    )
+    # inklevels RGBA -> RGB, premultiply alphas
+    inklevels = RGBTable(
+        (_r*_a//255, _g*_a//255, _b*_a//255) for _r, _g, _b, _a in inklevels
     )
     return glyphs, inklevels
 

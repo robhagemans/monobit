@@ -364,7 +364,7 @@ def convert_to_glyph(glyph, fb, strike_format, rgb_table):
         bmga.metrics.vertBearingY = glyph.top_bearing
         bmga.metrics.vertAdvance = glyph.advance_height
     if rgb_table:  # or font.levels > 256
-        # could use P for <=256-colour
+        # could use P for <=256-colour, to preserve palette order and unused entries
         img = glyph_to_image(glyph, image_mode='RGBA', inklevels=rgb_table)
         if img.size == (0, 0):
             return None

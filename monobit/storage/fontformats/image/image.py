@@ -38,6 +38,7 @@ from monobit.storage.utils.perglyph import loop_load, loop_save
 # darkest           use darkest colour, by sum of RGB values
 # top-left          use colour of top-left pixel in first cell
 # RGB value         use this specific colour as background
+# alpha             use fully transparent as background
 
 def identify_inklevels(colours, background):
     """Identify ink levels from colour set."""
@@ -53,23 +54,31 @@ def identify_inklevels(colours, background):
         # any grey-only set in 24-bit RGB is a subset of 256-colour greyscale
         for levels, greyset in GREYSETS.items():
             if colourset < set(greyset):
-                return RGBTable(greyset)
+                return greyset
         paper = _identify_background(colours, background)
         # if paper is darker than average colour, sort dark to bright
         # else sort bright to dark
-        reverse = sum(paper) > sum(sum(_c) for _c in colours) / len(colours)
-        rgbtable = sorted(colourset, key=lambda _t: sum(_t), reverse=reverse)
+        def _brightness(colour):
+            try:
+                if len(colour) == 4:
+                    r, g, b, a = colour
+                    return (r + g + b) * a // 255
+            except TypeError:
+                pass
+            return sum(colour)
+        reverse = _brightness(paper) > sum(_brightness(_c) for _c in colours) / len(colours)
+        rgbtable = sorted(colourset, key=lambda _t: _brightness(_t), reverse=reverse)
         # ensure paper is first colour in table
         try:
             rgbtable.remove(paper)
         except ValueError:
             pass
-        return RGBTable([paper] + rgbtable)
+        return (paper, *rgbtable)
     else:
         paper = _identify_background(colours, background)
         # 2 colour image - not-paper means ink
         ink = (colourset - {paper}).pop()
-        return RGBTable((paper, ink))
+        return (paper, ink)
 
 
 GREYSETS = {
@@ -99,6 +108,16 @@ def _identify_background(colours, background):
         else:
             # brightest colour assumed to be background
             _, paper = brightness[-1]
+    elif background == 'alpha':
+        # fully transparent assumed to be background
+        transparent = ((_r, _g, _b, _a) for _r, _g, _b, _a in colours if _a == 0)
+        if transparent:
+            # if more than one, pick darkest
+            transparent = sorted((sum(_c), _c) for _c in transparent)
+            _, paper = transparent[0]
+        else:
+            # if no transparent colours, create one
+            paper = (0, 0, 0, 0)
     elif background == 'top-left':
         # top-left pixel of first char assumed to be background colour
         paper = colours[0]
