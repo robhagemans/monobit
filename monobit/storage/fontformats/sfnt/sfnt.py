@@ -11,16 +11,19 @@ import json
 import math
 import re
 from unicodedata import bidirectional
+from io import BytesIO
 
-from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
+from monobit.base import Props, FileFormatError, UnsupportedError, safe_import, RGBTable
 from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint
 from monobit.storage import loaders, savers
 
 fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
 ttLib = safe_import('fontTools.ttLib')
 fonttools_loaded = ttLib is not None
+Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
+from ..image.image import identify_inklevels_for_images
 
 
 # specs
@@ -173,8 +176,8 @@ _TAGS = (
     'EBLC', 'bloc',
     'EBDT', 'bdat',
     'EBSC',
-    # sbix: currently just warn we don't parse it
-    'sbix',
+    # colour bitmap tables
+    'sbix', 'CBLC', 'CBDT',
     # metrics
     'hmtx', 'hhea',
     'vmtx', 'vhea',
@@ -191,8 +194,8 @@ _TAGS = (
 )
 
 def _get_tags(hmtx, vmtx, hhea, vhea, os_2, post):
-    """Get list of tables to extract."""
-    tags = list(_TAGS)
+    """Get set of tables to extract."""
+    tags = set(_TAGS)
     if not hmtx:
         tags.remove('hmtx')
     if not vmtx:
@@ -238,18 +241,28 @@ def _read_collection(instream, tags):
 def _sfnt_props(ttf, tags):
     """Decompile tables and convert from fontTools objects to data structure."""
     tables = {}
+    # sbix relies on hmtx, vmtx, which are off by default
+    if 'sbix' in tags:
+        # ttFont caches om decompilation so no need to keep.
+        if _load_table(ttf, 'sbix'):
+            tags = set(tags) | {'hmtx', 'vmtx'}
     for tag in _TAGS:
-        if tag not in tags:
+        if tag in tags:
+            tables[tag] = _load_table(ttf, tag)
+        else:
             tables[tag] = None
-            continue
-        try:
-            # __getitem__ forces a decompilation of the table
-            tables[tag] = ttf.get(tag, None)
-        except (fonttools.TTLibError, AssertionError) as e:
-            if not str(e):
-                e = f'{type(e).__name__} in fontTools library.'
-            logging.debug('Could not read `%s` table in sfnt: %s', tag, e)
     return Props(**_to_props(tables))
+
+
+def _load_table(ttf, tag):
+    try:
+        # __getitem__ forces a decompilation of the table
+        return ttf.get(tag, None)
+    except (fonttools.TTLibError, AssertionError) as e:
+        if not str(e):
+            e = f'{type(e).__name__} in fontTools library.'
+        logging.debug('Could not read `%s` table in sfnt: %s', tag, e)
+    return None
 
 
 def _to_props(obj):
@@ -290,35 +303,48 @@ def _to_props(obj):
 
 def _convert_sfnt(sfnt):
     """Convert sfnt data structure to Font."""
-    if sfnt.bdat:
-        source_format = 'sfnt (bdat)'
-    else:
-        source_format = 'sfnt (EBDT)'
     # synonymous tables
-    sfnt.bdat = sfnt.bdat or sfnt.EBDT
-    sfnt.bloc = sfnt.bloc or sfnt.EBLC
     sfnt.head = sfnt.bhed or sfnt.head
-    if sfnt.sbix:
-        logging.warning(
-            'Bitmap strikes in `sbix` format not supported.'
-        )
-    if not sfnt.bdat or not sfnt.bloc:
+    if not sfnt.sbix and not sfnt.bdat and not sfnt.EBDT and not sfnt.CBDT:
         raise ResourceFormatError(
-            'No `EBDT` or `bdat` bitmap strikes found in sfnt resource.'
+            'No `bdat`, `EBDT`, `CBDT` or `sbix` bitmap strikes found in sfnt resource.'
         )
+    fonts = []
+    if sfnt.sbix:
+        fonts.extend(_convert_sbix(sfnt))
+    if sfnt.bdat:
+        fonts.extend(_convert_bdat(sfnt, 'bdat', 'bloc'))
+    if sfnt.EBDT:
+        fonts.extend(_convert_bdat(sfnt, 'EBDT', 'EBLC'))
+    if sfnt.CBDT:
+        fonts.extend(_convert_bdat(sfnt, 'CBDT', 'CBLC'))
+    return fonts
+
+
+def _convert_bdat(sfnt, bdatname, blocname):
+    """Convert a bdat/bloc, EBDT/EBLC, or CBDT/CBLC bitmap sfnt."""
+    bdat = getattr(sfnt, bdatname)
+    bloc = getattr(sfnt, blocname)
+    source_format = f'sfnt ({bdatname})'
+    if not bloc:
+        raise ResourceFormatError(f'No `{blocname}` table found in sfnt resource.')
     fonts = []
     unitable = _get_unicode_table(sfnt)
     enctable, encoding = _get_encoding_table(sfnt)
-    for i_strike in range(sfnt.bloc.numSizes):
+    for i_strike in range(bloc.numSizes):
         try:
-            props = _convert_props(sfnt, i_strike)
-            glyphs = _convert_glyphs(
-                sfnt, i_strike, props._hfupp, props._vfupp, unitable, enctable
+            bmst = bloc.strikes[i_strike].bitmapSizeTable
+            bloc_props = _convert_bloc_props(bloc, i_strike)
+            props, hfupp, vfupp = _convert_props(sfnt, bmst.ppemX, bmst.ppemY)
+            props = bloc_props | props
+            glyphs, rgbtable = _convert_bdat_glyphs(
+                sfnt, bdat, bloc, i_strike, hfupp, vfupp, unitable, enctable
             )
-            del props._hfupp
-            del props._vfupp
             font = Font(
-                glyphs, source_format=source_format, encoding=encoding or None,
+                glyphs,
+                source_format=source_format,
+                encoding=encoding or None,
+                rgb_table=rgbtable,
                 **vars(props)
             )
             # remove temporary names created by fontTools
@@ -331,36 +357,42 @@ def _convert_sfnt(sfnt):
     return fonts
 
 
-def _convert_props(sfnt, i_strike):
+def _convert_props(sfnt, ppemX, ppemY):
     """Build font properties from sfnt data."""
     # determine the size of a pixel in FUnits
-    bmst = sfnt.bloc.strikes[i_strike].bitmapSizeTable
-    vert_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemY
-    hori_fu_p_pix = sfnt.head.unitsPerEm / bmst.ppemX
     # we also had pixels per em in the EBLC table, so now we know units per pixel
-    props = _convert_bloc_props(sfnt.bloc, i_strike)
-    props |= _convert_head_props(sfnt.head)
+    vert_fu_p_pix = sfnt.head.unitsPerEm / ppemY
+    hori_fu_p_pix = sfnt.head.unitsPerEm / ppemX
+    props = _convert_head_props(sfnt.head)
     props |= _convert_name_props(sfnt.name)
     props |= _convert_os_2_props(getattr(sfnt, 'OS/2'), vert_fu_p_pix, hori_fu_p_pix)
     props |= _convert_hhea_props(sfnt.hhea, vert_fu_p_pix)
     props |= _convert_vhea_props(sfnt.vhea, hori_fu_p_pix)
     props |= _convert_post_props(sfnt.post, vert_fu_p_pix)
-    props._hfupp = hori_fu_p_pix
-    props._vfupp = vert_fu_p_pix
-    return props
+    return props, hori_fu_p_pix, vert_fu_p_pix
 
 
-def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enctable):
-    """Build glyphs and glyph properties from sfnt data."""
-    glyphs = []
-    strike = sfnt.bdat.strikeData[i_strike]
-    blocstrike = sfnt.bloc.strikes[i_strike]
+###############################################################################
+# 'bdat'/'EBDT'/'CBDT' and 'bloc'/'EBLC'/'CBLC'
+
+def _convert_bdat_glyphs(
+        sfnt, bdat, bloc, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enctable
+    ):
+    """Build glyphs and glyph properties from bdat/EBDT/CBDT and bloc/EBLC/CBLC data."""
+    strike = bdat.strikeData[i_strike]
+    blocstrike = bloc.strikes[i_strike]
+    glyphdata = []
     for subtable in blocstrike.indexSubTables:
         # some formats are byte aligned, others bit-aligned
         if subtable.imageFormat in (1, 6):
+            png = False
             align = 'left'
         elif subtable.imageFormat in (2, 5, 7):
+            png = False
             align = 'bit'
+        elif subtable.imageFormat in (17, 18, 19):
+            # raw PNG data
+            png = True
         else:
             # format 8, 9: component bitmaps
             # format 3: obsolete, not used
@@ -389,6 +421,40 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enct
             props = _convert_glyph_metrics(metrics, small_is_vert)
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
+            glyphdata.append((name, glyphbytes, width, height, props))
+    glyphs = []
+    rgbtable = None
+    # bitDepth==32 stands for BGRA data in CBDT
+    # convert, then treat as PNG data below. this is a bit of a hack
+    # we can clean this up once we support RGBA glyphs directly
+    if not png and blocstrike.bitmapSizeTable.bitDepth == 32:
+        if not Image:
+            raise StrikeFormatError(
+                "32-bit bitmaps require module `PIL`, which was not found."
+            )
+        updated_glyphdata = []
+        for (name, glyphbytes, width, height, props) in glyphdata:
+            # split into 4-byte chunks
+            iterators = [iter(glyphbytes)] * 4
+            bgra_list = zip(*iterators)
+            rgba_list = tuple((_r, _g, _b, _a) for _b, _g, _r, _a in bgra_list)
+            # convert to PNG image
+            with BytesIO() as bytesio:
+                # note the lowercase a for pre-multiplied RGBA (as per CBDT spec)
+                image = Image.new('RGBa', (width, height))
+                image.putdata(rgba_list)
+                image.convert('RGBA').save(bytesio, format='png')
+                glyphbytes = bytesio.getvalue()
+            updated_glyphdata.append((name, glyphbytes, width, height, props))
+        png = True
+        glyphdata = updated_glyphdata
+    if png:
+        try:
+            glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+        except StrikeFormatError as err:
+            logging.warning(e)
+    else:
+        for (name, glyphbytes, width, height, props) in glyphdata:
             raster = Raster.from_bytes(
                 glyphbytes, width=width, align=align,
                 bits_per_pixel=blocstrike.bitmapSizeTable.bitDepth,
@@ -402,7 +468,7 @@ def _convert_glyphs(sfnt, i_strike, hori_fu_p_pix, vert_fu_p_pix, unitable, enct
             glyphs.append(glyph)
     glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
     glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
-    return glyphs
+    return glyphs, rgbtable
 
 
 def _convert_glyph_metrics(metrics, small_is_vert):
@@ -440,6 +506,147 @@ def _convert_glyph_metrics(metrics, small_is_vert):
                 metrics.Advance - metrics.height - metrics.BearingY
             ),
         )
+
+
+###############################################################################
+# 'sbix' table
+# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6sbix.html
+# https://learn.microsoft.com/en-us/typography/opentype/spec/sbix
+
+def _convert_sbix(sfnt):
+    """Build glyphs and glyph properties from sfnt data."""
+    unitable = _get_unicode_table(sfnt)
+    enctable, encoding = _get_encoding_table(sfnt)
+    fonts = []
+    for strike in sfnt.sbix.strikes.values():
+        sfnt_glyphs = strike.glyphs.values()
+        # lookup table to deal with dupes
+        glyph_dict = {_g.glyphName: _g for _g in sfnt_glyphs}
+        glyphdata = tuple(
+            (
+                glyph.glyphName,
+                (
+                    # > The special graphicType of 'dupe' indicates that the
+                    # > data field contains a uint16, big-endian glyph ID. The
+                    # > bitmap data for the indicated glyph must be used for
+                    # > the current glyph.
+                    # 'flip' is new, https://github.com/fonttools/fonttools/pull/3433
+                    glyph_dict[glyph.referenceGlyphName]
+                    if glyph.graphicType in ('dupe', 'flip') else glyph.imageData
+                ),
+                # width, height not known and not used by imagedata_to_glyphs
+                None, None,
+                # > The originOffsetX and originOffsetY values give the placement
+                # > of the bitmap graphic in relation to the standard coordinate
+                # > system of the glyph design space. For example,
+                # > if originOffsetX equals 20, the left edge of the bitmap is
+                # > place 20 units to the right of the origin;
+                # > if originOffsetY equals -30, then the bottom edge of the
+                # > graphic is 30 FUnits below the origin.
+                #
+                # > When placing the graphic within the line of text, the
+                # > placement depends upon whether there are contours in the
+                # > 'glyf' table for the current glyph ID:
+                #
+                # > If there is no glyph contour, the glyph design space origin
+                # > for the graphic is placed at the starting drawing position
+                # > for this glyph. The lsb value for the current glyph ID from
+                # > the 'hmtx' table has no effect.
+                #
+                # > If there is a glyph contour, the glyph design space origin
+                # > for the graphic is placed at the lower left corner of the
+                # > glyph bounding box (xMin, yMin).
+                #
+                # so if no glyf contour, offsets map to bearings directly
+                # if there is a glyf contour, offsets should be added to hmtx/vmtx based bearings
+                dict(
+                    left_bearing=glyph.originOffsetX,
+                    shift_up=glyph.originOffsetY,
+                )
+            )
+            for glyph in sfnt_glyphs
+        )
+        try:
+            # does sbix have a concept of background?
+            # presumably it's just using alpha transparency
+            glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+        except StrikeFormatError as err:
+            logging.warning(e)
+            glyphs = ()
+            rgbtable = None
+        # update glyph props with hmtx/vmtx metrics
+        fu_p_pix = sfnt.head.unitsPerEm / strike.ppem
+        updated_glyphs = []
+        for glyph in glyphs:
+            # per the spec, this should only be done if the glyph occurs in the `glyf` table
+            # NOTE: for now, we do it always when hmtx/vmtx have been loaded
+            name = glyph.tags[0].value
+            hmtx_props = _convert_hmtx_metrics(sfnt.hmtx, name, fu_p_pix, glyph.width)
+            vmtx_props = _convert_vmtx_metrics(sfnt.vmtx, name, fu_p_pix, glyph.height)
+            glyph = glyph.modify(
+                left_bearing=glyph.left_bearing + (
+                    hmtx_props['left_bearing']
+                    if hmtx_props else 0
+                ),
+                right_bearing=(
+                    hmtx_props['right_bearing'] - glyph.left_bearing
+                    if hmtx_props else 0
+                ),
+                **vmtx_props,
+            )
+            updated_glyphs.append(glyph)
+        props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
+        fonts.append(Font(
+            glyphs=updated_glyphs,
+            rgb_table=rgbtable,
+            dpi=strike.resolution,
+            encoding=encoding or None,
+            source_format='sfnt (sbix)',
+            **vars(props)
+        ))
+    return fonts
+
+
+def _data_to_crop(data):
+    """Convert RGBA data (may be empty) to RGB image with black background."""
+    if data:
+        with BytesIO(data) as bytesio:
+            return Image.open(bytesio).convert('RGBA')
+    return Image.new(mode='RGBA', size=(0, 0), color=(0, 0, 0, 0))
+
+
+def _imagedata_to_glyphs(glyphdata, unitable, enctable):
+    """Convert glyph image data to glyphs."""
+    if not Image:
+        raise StrikeFormatError(
+            "Decoding colour bitmaps requires module `PIL`, which was not found."
+        )
+        return ()
+    cropdata = tuple(
+        (_data_to_crop(_glyphbytes), _name, _props)
+        for _name, _glyphbytes, _, _, _props in glyphdata
+    )
+    inklevels = identify_inklevels_for_images(
+        (_item[0] for _item in cropdata),
+        background='alpha'
+    )
+    glyphs = tuple(
+        Glyph.from_vector(
+            tuple(_crop.getdata()),
+            stride=_crop.width,
+            inklevels=inklevels,
+            tag=_name,
+            char=unitable.get(_name, ''),
+            codepoint=enctable.get(_name, b''),
+            **_props
+        )
+        for _crop, _name, _props in cropdata
+    )
+    # inklevels RGBA -> RGB, premultiply alphas
+    inklevels = RGBTable(
+        (_r*_a//255, _g*_a//255, _b*_a//255) for _r, _g, _b, _a in inklevels
+    )
+    return glyphs, inklevels
 
 
 ###############################################################################
@@ -748,6 +955,8 @@ def _decode_name(namerecs, nameid):
 
 def _convert_version_string(version_string):
     """Convert standard sfnt version string to something more like ours."""
+    if not version_string:
+        return None
     # version is encoded as 'Version x.y', optionally followed by non-numeric info
     # split by non-(digit or dot)
     groups = re.split(r'([\d\.]+)', version_string)

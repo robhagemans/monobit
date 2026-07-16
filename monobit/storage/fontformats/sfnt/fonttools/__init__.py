@@ -162,9 +162,10 @@ else:
     from fontTools.ttLib.tables._g_l_y_f import Glyph
 
 
-    # `EBDT`
+    # `EBDT`, 'CBDT'
 
     from fontTools.ttLib.tables.E_B_D_T_ import ebdt_bitmap_classes
+    from fontTools.ttLib.tables.C_B_D_T_ import cbdt_bitmap_classes
     from fontTools.ttLib.tables.BitmapGlyphMetrics import (
         SmallGlyphMetrics, BigGlyphMetrics
     )
@@ -197,3 +198,8 @@ else:
                 for size in from_sizes
             ]
         ebsc.numSizes = len(ebsc.bitmapScaleTables)
+
+    # `sbix`
+
+    from fontTools.ttLib.tables._s_b_i_x import Strike as sbixStrike
+    from fontTools.ttLib.tables.sbixGlyph import Glyph as sbixGlyph

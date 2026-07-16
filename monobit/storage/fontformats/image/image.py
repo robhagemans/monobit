@@ -12,7 +12,7 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, RGB, FileFormatError, UnsupportedError
+from monobit.base import Coord, RGB, RGBTable, FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
@@ -38,6 +38,7 @@ from monobit.storage.utils.perglyph import loop_load, loop_save
 # darkest           use darkest colour, by sum of RGB values
 # top-left          use colour of top-left pixel in first cell
 # RGB value         use this specific colour as background
+# alpha             use fully transparent as background
 
 def identify_inklevels(colours, background):
     """Identify ink levels from colour set."""
@@ -45,29 +46,39 @@ def identify_inklevels(colours, background):
     if len(colourset) < 2:
         raise FileFormatError('No glyphs or only blank glyphs found.')
     elif len(colourset) > 256:
-        raise UnsupportedError('More than 256 shades not supported.')
+        raise UnsupportedError(
+            f'More than 256 shades not supported (found {len(colourset)}).'
+        )
     elif len(colourset) > 2:
         # check for greyscales
         # any grey-only set in 24-bit RGB is a subset of 256-colour greyscale
         for levels, greyset in GREYSETS.items():
             if colourset < set(greyset):
-                return RGBTable(greyset)
+                return greyset
         paper = _identify_background(colours, background)
         # if paper is darker than average colour, sort dark to bright
         # else sort bright to dark
-        reverse = sum(paper) > sum(sum(_c) for _c in colours) / len(colours)
-        rgbtable = sorted(colourset, key=lambda _t: sum(_t), reverse=reverse)
+        def _brightness(colour):
+            try:
+                if len(colour) == 4:
+                    r, g, b, a = colour
+                    return (r + g + b) * a // 255
+            except TypeError:
+                pass
+            return sum(colour)
+        reverse = _brightness(paper) > sum(_brightness(_c) for _c in colours) / len(colours)
+        rgbtable = sorted(colourset, key=lambda _t: _brightness(_t), reverse=reverse)
         # ensure paper is first colour in table
         try:
             rgbtable.remove(paper)
         except ValueError:
             pass
-        return RGBTable([paper] + rgbtable)
+        return (paper, *rgbtable)
     else:
         paper = _identify_background(colours, background)
         # 2 colour image - not-paper means ink
         ink = (colourset - {paper}).pop()
-        return RGBTable((paper, ink))
+        return (paper, ink)
 
 
 GREYSETS = {
@@ -97,6 +108,18 @@ def _identify_background(colours, background):
         else:
             # brightest colour assumed to be background
             _, paper = brightness[-1]
+    elif background == 'alpha':
+        # fully transparent assumed to be background
+        transparent = tuple(
+            (_r, _g, _b, _a) for _r, _g, _b, _a in colours if _a == 0
+        )
+        if transparent:
+            # if more than one, pick darkest
+            transparent = sorted((sum(_c), _c) for _c in transparent)
+            _, paper = transparent[0]
+        else:
+            # if no transparent colours, create one
+            paper = (0, 0, 0, 0)
     elif background == 'top-left':
         # top-left pixel of first char assumed to be background colour
         paper = colours[0]
@@ -236,11 +259,11 @@ if Image:
 
 
     def convert_crops_to_font(enumerated_crops, background, keep_empty):
-        """Convert list of glyph images to font."""
+        """Convert list of RGB glyph images to font."""
         enumerated_crops = tuple(enumerated_crops)
         # get pixels
         _, crops = tuple(zip(*enumerated_crops))
-        inklevels = _identify_colours(crops, background)
+        inklevels = identify_inklevels_for_images(crops, background)
         # convert to glyphs, set codepoints
         glyphs = tuple(
             Glyph.from_vector(
@@ -254,6 +277,7 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
+        inklevels = RGBTable(inklevels)
         font = Font(
             glyphs,
             rgb_table=inklevels if not inklevels.is_greyscale() else None,
@@ -271,10 +295,10 @@ if Image:
         # can't determine border colour without padding or margin
         return None
 
-    def _identify_colours(crops, background):
+    def identify_inklevels_for_images(crops, background):
         """Identify ink levels from cells."""
-        crops = (tuple(_crop.getdata()) for _crop in crops)
-        colours = sum(crops, ())
+        crops = (set(_crop.getdata()) for _crop in crops)
+        colours = set.union(*crops)
         return identify_inklevels(colours, background)
 
     def _crop_border(image, border):
