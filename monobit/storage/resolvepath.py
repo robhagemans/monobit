@@ -251,7 +251,7 @@ class _PathResolver:
             # innermost path element *to be created*
             # check if we're asked to create an file or a subdirectory
             # it's a subdirectory if (1) explicitly asked or (2) no suffix
-            if self.make_dir or not to_be_created.suffixes:
+            if self.make_dir or format == 'dir' or (not format and not to_be_created.suffixes):
                 # innermost creatable should be a subdirectory
                 self._unresolved_path = unmatched
                 return True
