@@ -143,9 +143,9 @@ class _PathResolver:
 
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
-        current_part = len(self._unresolved_path.parts)
-        if self._formats and len(self._formats) > current_part+1:
-            container_format = self._formats[-current_part-1]
+        current_part = len(self._unresolved_path.parts) + 1
+        if self._formats and len(self._formats) >= current_part:
+            container_format = self._formats[-current_part]
             container_format = container_format.split('.')
         else:
             container_format = []
@@ -240,12 +240,12 @@ class _PathResolver:
                 )
         else:
             # step forward until a container pattern is encountered, or we run out of path
-            current_part = len(unmatched.parts)
-            if self._formats and len(self._formats) > current_part and current_part:
+            path_to_container, unmatched = _split_path_containername(unmatched, self._formats)
+            current_part = len(unmatched.parts) + 1
+            if self._formats and len(self._formats) >= current_part and current_part:
                 format = self._formats[-current_part]
             else:
                 format = ''
-            path_to_container, unmatched = _split_path_containername(unmatched, format)
             to_be_created = existing / path_to_container
             self.elements[-1].subpath = to_be_created
             # innermost path element *to be created*
@@ -275,15 +275,23 @@ class _PathResolver:
         self._unresolved_path = unmatched
 
 
-def _split_path_containername(path, format):
+def _split_path_containername(path, formats):
     """Pare forward path until a recognised container name pattern is encountered."""
     for headpath in reversed((path, *path.parents)):
         if headpath == Path():
             continue
         subpath = path.relative_to(headpath)
+
+        current_part = len(headpath.parts) + 1
+        if formats and len(formats) >= current_part and current_part:
+            format = formats[-current_part]
+        else:
+            format = ''
         if containers.identify_filename(headpath.name, format):
             return headpath, subpath
-        elif format and format.lower() != 'dir' and subpath != Path():
+        elif not format or format.lower() == 'dir':
+            continue
+        elif subpath != Path():
             raise ValueError(f'Container format `{format}` not recognised.')
     # no match
     return path, Path('.')

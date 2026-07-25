@@ -202,6 +202,8 @@ class MagicRegistry:
 
     def identify_filename(self, name, format=''):
         """Identify a type from a file name."""
+        if format.lower == 'dir':
+            return ()
         if format:
             return self.get_for(format=format)
         matches = []
