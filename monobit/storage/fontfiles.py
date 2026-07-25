@@ -35,20 +35,19 @@ def load_plugins():
 # loading
 
 @scriptable(passthrough=loaders)
-def load(infile:Any='', *, format:str='', container_format:str='', match_case:bool=False, **kwargs):
+def load(infile:Any='', *, format:str='', match_case:bool=False, **kwargs):
     """
     Read font(s) from file.
 
     infile: input file or path (default: stdin)
     format: input format (default: infer from magic number or filename)
-    container_format: container/wrapper formats separated by . (default: infer from magic number or filename)
     match_case: interpret path as case-sensitive (if file system supports it; default: False)
     """
     load_plugins()
     infile = infile or sys.stdin
     with open_location(
             infile, mode='r', match_case=match_case,
-            container_format=container_format, argdict=kwargs,
+            argdict=kwargs,
         ) as location:
         if location.is_dir():
             return _load_container(
@@ -190,7 +189,6 @@ def save(
         pack_or_font,
         outfile:Any='', *,
         format:str='', overwrite:bool=False,
-        container_format:str='',
         **kwargs
     ):
     """
@@ -198,14 +196,13 @@ def save(
 
     outfile: output file or path (default: stdout)
     format: font file format (default: infer from filename)
-    container_format: container/wrapper formats separated by . (default: infer from filename)
     overwrite: if outfile is a path, allow overwriting existing file
     """
     load_plugins()
     return output_pack_or_font(
         pack_or_font, outfile,
         format=format, overwrite=overwrite,
-        container_format=container_format, registry=savers,
+        registry=savers,
         **kwargs
     )
 
@@ -214,7 +211,6 @@ def output_pack_or_font(
         pack_or_font,
         outfile, *,
         format, overwrite,
-        container_format,
         registry,
         **kwargs
     ):
@@ -229,7 +225,6 @@ def output_pack_or_font(
     make_dir = format in container_savers.get_formats()
     with open_location(
             outfile, mode='w', overwrite=overwrite,
-            container_format=container_format,
             argdict=kwargs,
             make_dir=make_dir,
         ) as location:

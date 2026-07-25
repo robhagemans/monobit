@@ -19,11 +19,12 @@ class TestCompressed(BaseTester):
 
     def _test_compressed(self, format):
         """Test importing/exporting compressed files."""
-        compressed_file = self.temp_path / f'4x6.yaff.{format}'
-        monobit.save(self.fixed4x6, compressed_file, container_format=format)
+        compressed_file_spec = self.temp_path / f'4x6.yaff.{format}@{format}'
+        compressed_file, _ = str(compressed_file_spec).rsplit('@', 1)
+        monobit.save(self.fixed4x6, compressed_file_spec)
         self.assertTrue(Path(compressed_file).is_file())
         self.assertTrue(os.path.getsize(compressed_file) > 0)
-        font, *_ = monobit.load(compressed_file, container_format=format)
+        font, *_ = monobit.load(compressed_file_spec)
         self.assertEqual(len(font.glyphs), 919)
 
     def test_gzip(self):
@@ -73,11 +74,14 @@ class TestContainers(BaseTester):
         """Test importing/exporting container files."""
         if suffix is None:
             suffix = format
-        container_path = self.temp_path / f'test.{suffix}' / '4x6.yaff'
-        monobit.save(self.fixed4x6, container_path, container_format=format, format='yaff')
-        self.assertTrue(Path(container_path.parent).is_file())
-        self.assertTrue(os.path.getsize(container_path.parent) > 0)
-        font, *_ = monobit.load(container_path, container_format=format, format='yaff')
+        # this is how we declare it, with format annotation
+        container_path_spec = self.temp_path / f'test.{suffix}@{format}' / '4x6.yaff'
+        # actual directory path of container should be this
+        parent_path = self.temp_path / f'test.{suffix}'
+        monobit.save(self.fixed4x6, container_path_spec, format='yaff')
+        self.assertTrue(Path(parent_path).is_file())
+        self.assertTrue(os.path.getsize(parent_path) > 0)
+        font, *_ = monobit.load(container_path_spec, format='yaff')
         self.assertEqual(len(font.glyphs), 919)
 
     def test_zip(self):
@@ -242,7 +246,6 @@ class TestContainers(BaseTester):
         file = self.font_path / 'fontdir' / 'SUBDIR' / '6x13.FON.bz2'
         with self.assertRaises(FileNotFoundError):
             fonts = monobit.load(str(file).upper(), match_case=True)
-            print(fonts)
 
     def test_nested_zip(self):
         """Test zipfile in zipfile."""
@@ -316,25 +319,26 @@ class TestContainers(BaseTester):
 
     def test_format_dir(self):
         """Test overriding with format='dir'."""
-        file = self.temp_path / 'testfontdir.zip' / 'test.yaff'
-        fonts = monobit.save(self.fixed8x16, file, container_format='dir')
+        file = self.temp_path / 'testfontdir.zip@dir' / 'test.yaff'
+        fonts = monobit.save(self.fixed8x16, file)
         assert (self.temp_path / 'testfontdir.zip').is_dir()
 
     def _test_update_container(self, suffix, format='', preserve_names=True):
         """Test adding file to existing zip."""
-        path = self.temp_path / f'fontdir.{suffix}'
-        file0 = path / '4x6.yaff'
-        monobit.save(self.fixed4x6, file0, container_format=format)
-        self.assertTrue(path.is_file())
-        file1 = path / 'subdir' / '4x6.yaff'
-        monobit.save(self.fixed4x6, file1, container_format=format)
+        pathspec = self.temp_path / f'fontdir.{suffix}@{format}'
+        file0 = pathspec / '4x6.yaff'
+        monobit.save(self.fixed4x6, file0)
+        path, _ = str(pathspec).rsplit('@', 1)
+        self.assertTrue(Path(path).is_file())
+        file1 = pathspec / 'subdir' / '4x6.yaff'
+        monobit.save(self.fixed4x6, file1)
         if preserve_names:
-            font, *_ = monobit.load(file0, container_format=format)
+            font, *_ = monobit.load(file0)
             self.assertEqual(len(font.glyphs), 919)
-            font, *_ = monobit.load(file1, container_format=format)
+            font, *_ = monobit.load(file1)
             self.assertEqual(len(font.glyphs), 919)
         else:
-            pack = monobit.load(path, container_format=format)
+            pack = monobit.load(pathspec)
             self.assertEqual(len(pack), 2)
             self.assertEqual(len(pack[0].glyphs), 919)
             self.assertEqual(len(pack[1].glyphs), 919)
@@ -376,7 +380,7 @@ class TestForks(BaseTester):
 
     def test_import_macbinary(self):
         """Test importing macbinary files."""
-        font, *_ = monobit.load(self.font_path / '4x6.bin', container_format='macbin')
+        font, *_ = monobit.load(self.font_path / '4x6.bin@macbin')
         self.assertEqual(len(font.glyphs), 195)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
@@ -407,8 +411,7 @@ class TestWrappers(BaseTester):
     def test_import_offset(self):
         """Test offset wrapper."""
         font, *_ = monobit.load(
-            self.font_path / '4x6.yaff.offset', format='yaff',
-            container_format='offset', offset=100,
+            self.font_path / '4x6.yaff.offset@offset', format='yaff', offset=100,
         )
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
@@ -418,9 +421,8 @@ class TestWrappers(BaseTester):
     def test_import_c(self):
         """Test importing c source files."""
         font, *_ = monobit.load(
-            self.font_path / '4x6.c' / 'font_Fixed_Medium_6',
+            self.font_path / '4x6.c@c' / 'font_Fixed_Medium_6',
             cell=(4, 6),
-            container_format='c',
         )
         self.assertEqual(len(font.glyphs), 919)
 
@@ -447,13 +449,10 @@ class TestWrappers(BaseTester):
         self.assertEqual(len(font.glyphs), 224)
 
     def _test_export_textbin(self, suffix, container_format=''):
-        file = self.temp_path / f'4x6.{suffix}'
-        monobit.save(
-            self.fixed4x6, file, format='raw', container_format=container_format
-        )
+        file = self.temp_path / f'4x6.{suffix}@{container_format}'
+        monobit.save(self.fixed4x6, file, format='raw')
         font, *_ = monobit.load(
             file, format='raw', cell=(4, 6), first_codepoint=31,
-            container_format=container_format
         )
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)

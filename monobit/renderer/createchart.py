@@ -32,7 +32,6 @@ def chart(
         pack_or_font,
         outfile:Any='', *,
         format:str='', overwrite:bool=False,
-        container_format:str='',
         **kwargs
     ):
     """
@@ -40,13 +39,12 @@ def chart(
 
     outfile: output file or path (default: stdout)
     format: font file format (default: infer from filename)
-    container_format: container/wrapper formats separated by . (default: infer from filename)
     overwrite: if outfile is a path, allow overwriting existing file
     """
     return output_pack_or_font(
         pack_or_font, outfile,
         format=format, overwrite=overwrite,
-        container_format=container_format, registry=charters,
+        registry=charters,
         **kwargs
     )
 
