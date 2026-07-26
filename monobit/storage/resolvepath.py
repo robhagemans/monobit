@@ -160,6 +160,9 @@ class _PathResolver:
                     stream, mode=self.mode, format=format, argdict=self.argdict,
                 )
             except FileFormatError as e:
+                # not a known wrapper, but we need another format inside
+                if any(container_format[:-1]):
+                    raise e
                 # not a wrapper, maybe a container
                 logging.debug(e)
                 break

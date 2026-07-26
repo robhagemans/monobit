@@ -205,6 +205,9 @@ class MagicRegistry:
         if format.lower == 'dir':
             return ()
         if format:
+            # remove all but first format for type determination
+            # removes e.g. gzip wrappers in format='tar.gzip'
+            format = format.split('.')[0]
             return self.get_for(format=format)
         matches = []
         # remove all but first suffix for pattern matching
