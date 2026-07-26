@@ -58,7 +58,7 @@ class TestCharCell(BaseTester):
             save_kwargs=None, **load_kwargs
         ):
         """Test exporting a reduced-raster character-cell font."""
-        file = self.temp_path / 'testfont.fnt@{container_format}'
+        file = self.temp_path / f'testfont.fnt@{container_format}'
         save_kwargs = save_kwargs or {}
         font = self.fixed8x8r
         if codepage:

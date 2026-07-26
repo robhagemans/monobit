@@ -474,9 +474,13 @@ class TestWrappers(BaseTester):
         font, *_ = monobit.load(file, format='iigs')
         self.assertEqual(len(font.glyphs), 224)
 
-    def _test_export_textbin(self, suffix, container_format=''):
-        file = self.temp_path / f'4x6.{suffix}@{container_format}'
-        monobit.save(self.fixed4x6, file / 'fixed4x6@raw')
+    def _test_export_textbin(self, suffix, container_format='', wrapper=False):
+        if wrapper:
+            file = self.temp_path / f'4x6.{suffix}@raw.{container_format}'
+            monobit.save(self.fixed4x6, file)
+        else:
+            file = self.temp_path / f'4x6.{suffix}@{container_format}'
+            monobit.save(self.fixed4x6, file / 'fixed4x6@raw')
         font, *_ = monobit.load(
             file, format='raw', cell=(4, 6), first_codepoint=31,
         )
@@ -505,19 +509,19 @@ class TestWrappers(BaseTester):
 
     def test_export_basic(self):
         """Test exporting BASIC source files."""
-        self._test_export_textbin(suffix='bas', container_format='basic')
+        self._test_export_textbin(suffix='bas', container_format='basic', wrapper=True)
 
     def test_export_intel(self):
         """Test exporting Intel Hex files."""
-        self._test_export_textbin(suffix='ihex', container_format='intel')
+        self._test_export_textbin(suffix='ihex', container_format='intel', wrapper=True)
 
     def test_export_base64(self):
         """Test exporting base64 files."""
-        self._test_export_textbin(suffix='b64', container_format='base64')
+        self._test_export_textbin(suffix='b64', container_format='base64', wrapper=True)
 
     def test_export_quopri(self):
         """Test exporting quoted-printable files."""
-        self._test_export_textbin(suffix='qp', container_format='quopri')
+        self._test_export_textbin(suffix='qp', container_format='quopri', wrapper=True)
 
     def test_export_uuencode(self):
         """Test exporting uuencoded files."""

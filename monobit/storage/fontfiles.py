@@ -236,18 +236,18 @@ def output_pack_or_font(
             argdict=kwargs,
             make_dir=make_dir,
         ) as location:
-        if format and location.format and format != location.format:
-            raise ValueError(
-                "Conflicting format parameters: "
-                f"`{format}` != `{location.format}`"
-            )
-        format = format or location.format
         if location.is_dir():
             _output_to_container(
                 pack, location, format=format, registry=registry,
                 **location.argdict
             )
         else:
+            if format and location.format and format != location.format:
+                raise ValueError(
+                    "Conflicting format parameters: "
+                    f"`{format}` != `{location.format}`"
+                )
+            format = format or location.format
             _output_to_stream(
                 pack, location.get_stream(), format=format, registry=registry,
                 **location.argdict
