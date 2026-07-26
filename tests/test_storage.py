@@ -19,7 +19,7 @@ class TestCompressed(BaseTester):
 
     def _test_compressed(self, format):
         """Test importing/exporting compressed files."""
-        compressed_file_spec = self.temp_path / f'4x6.yaff.{format}@{format}'
+        compressed_file_spec = self.temp_path / f'4x6.yaff.{format}@yaff.{format}'
         compressed_file, _ = str(compressed_file_spec).rsplit('@', 1)
         monobit.save(self.fixed4x6, compressed_file_spec)
         self.assertTrue(Path(compressed_file).is_file())
@@ -437,7 +437,7 @@ class TestWrappers(BaseTester):
     def test_import_offset(self):
         """Test offset wrapper."""
         font, *_ = monobit.load(
-            self.font_path / '4x6.yaff.offset@offset', format='yaff', offset=100,
+            self.font_path / '4x6.yaff.offset@yaff.offset', offset=100,
         )
         self.assertEqual(len(font.glyphs), 919)
         self.assertEqual(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
@@ -476,7 +476,7 @@ class TestWrappers(BaseTester):
 
     def _test_export_textbin(self, suffix, container_format=''):
         file = self.temp_path / f'4x6.{suffix}@{container_format}'
-        monobit.save(self.fixed4x6, file, format='raw')
+        monobit.save(self.fixed4x6, file / 'fixed4x6@raw')
         font, *_ = monobit.load(
             file, format='raw', cell=(4, 6), first_codepoint=31,
         )
