@@ -329,6 +329,12 @@ class TestContainers(BaseTester):
         fonts = monobit.save(self.fixed8x16, file)
         assert (self.temp_path / 'testfontdir').is_file()
 
+    def test_format_tar_gzip_override(self):
+        """Test overriding with format='tar.gzip'."""
+        file = self.temp_path / 'testfontdir.t@tar.gzip' / 'test.yaff'
+        fonts = monobit.save(self.fixed8x16, file)
+        assert (self.temp_path / 'testfontdir.t').is_file()
+
     def _test_update_container(self, suffix, format='', preserve_names=True):
         """Test adding file to existing zip."""
         pathspec = self.temp_path / f'fontdir.{suffix}@{format}'
