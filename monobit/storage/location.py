@@ -25,13 +25,14 @@ class Location:
             self, *,
             elements,
             mode, overwrite, match_case,
-            argdict,
+            argdict, format='',
         ):
         self.mode = mode
         self.overwrite = overwrite
         self.match_case = match_case
         self.argdict = argdict
         self._elements = elements
+        self.format = format
 
     def __repr__(self):
         if self._elements:
@@ -42,6 +43,7 @@ class Location:
             f"<{type(self).__name__} "
             f"path='{self.path}' mode='{self.mode}' "
             f"overwrite={self.overwrite} match_case={self.match_case} "
+            f"format='{self.format}'"
             f"elements=[{elementlist}]"
             f">"
         )

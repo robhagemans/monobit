@@ -45,6 +45,7 @@ def load(infile:Any='', *, format:str='', match_case:bool=False, **kwargs):
     """
     load_plugins()
     infile = infile or sys.stdin
+    format = format.strip().lower()
     with open_location(
             infile, mode='r', match_case=match_case,
             argdict=kwargs,
@@ -54,6 +55,12 @@ def load(infile:Any='', *, format:str='', match_case:bool=False, **kwargs):
                 location, format=format, **location.argdict
             )
         else:
+            if format and location.format and format != location.format:
+                raise ValueError(
+                    "Conflicting format parameters: "
+                    f"`{format}` != `{location.format}`"
+                )
+            format = format or location.format
             return _load_stream(
                 location.get_stream(), format=format, **location.argdict
             )
@@ -222,12 +229,19 @@ def output_pack_or_font(
         sys.stdout.reconfigure(errors='replace')
     if not pack:
         raise ValueError('No fonts to output')
+    format = format.strip().lower()
     make_dir = format in container_savers.get_formats()
     with open_location(
             outfile, mode='w', overwrite=overwrite,
             argdict=kwargs,
             make_dir=make_dir,
         ) as location:
+        if format and location.format and format != location.format:
+            raise ValueError(
+                "Conflicting format parameters: "
+                f"`{format}` != `{location.format}`"
+            )
+        format = format or location.format
         if location.is_dir():
             _output_to_container(
                 pack, location, format=format, registry=registry,

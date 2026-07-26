@@ -101,7 +101,7 @@ class _PathResolver:
             else:
                 format = ''
             self._unresolved_path /= name
-            self._formats.append(format)
+            self._formats.append(format.strip().lower())
         self.make_dir = make_dir
         self.argdict = argdict
 
@@ -120,6 +120,7 @@ class _PathResolver:
             match_case=self.match_case,
             argdict=self.argdict,
             elements=self.elements,
+            format=self._formats[-1].split('.')[0] if self._formats else '',
         )
         if error:
             # close all resources created by _resolve()
@@ -292,7 +293,7 @@ def _split_path_containername(path, formats):
             format = ''
         if containers.identify_filename(headpath.name, format):
             return headpath, subpath
-        elif not format or format.lower() == 'dir':
+        elif not format or format == 'dir':
             continue
         elif subpath != Path():
             raise ValueError(f'Container format `{format}` not recognised.')
