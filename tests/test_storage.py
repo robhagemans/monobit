@@ -335,6 +335,20 @@ class TestContainers(BaseTester):
         fonts = monobit.save(self.fixed8x16, file)
         assert (self.temp_path / 'testfontdir.t').is_file()
 
+    def test_font_format_override(self):
+        """Test overriding font format with annotation."""
+        file = self.temp_path / 'test.txt@hexdraw'
+        monobit.save(self.fixed8x16, file)
+        font, *_ = monobit.load(self.temp_path / 'test.txt', format='hexdraw')
+        self.assertEqual(len(font.glyphs), 919)
+
+    def test_name_with_at_sign(self):
+        """Test file name with at sign."""
+        file = self.temp_path / 'test@.yaff@'
+        monobit.save(self.fixed8x16, file)
+        font, *_ = monobit.load(file)
+        self.assertEqual(len(font.glyphs), 919)
+
     def _test_update_container(self, suffix, format='', preserve_names=True):
         """Test adding file to existing zip."""
         pathspec = self.temp_path / f'fontdir.{suffix}@{format}'
