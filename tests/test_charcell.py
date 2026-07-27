@@ -58,14 +58,14 @@ class TestCharCell(BaseTester):
             save_kwargs=None, **load_kwargs
         ):
         """Test exporting a reduced-raster character-cell font."""
-        file = self.temp_path / 'testfont.fnt'
+        file = self.temp_path / f'testfont.fnt@{container_format}'
         save_kwargs = save_kwargs or {}
         font = self.fixed8x8r
         if codepage:
             font = font.modify(encoding=codepage)
             font = font.label(codepoint_from=codepage, overwrite=True)
-        monobit.save(font, file, format=format, container_format=container_format, **save_kwargs)
-        font, *_ = monobit.load(file, format=format, container_format=container_format, **load_kwargs)
+        monobit.save(font, file, format=format, **save_kwargs)
+        font, *_ = monobit.load(file, format=format, **load_kwargs)
         self.assertEqual(len(font.glyphs), count)
         assert_text_eq(font.get_glyph(label).as_text(), self.fixed8x8_A)
 

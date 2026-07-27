@@ -35,6 +35,13 @@ class _CodedBinaryContainer(SerialTextContainer):
         """
         return super().encode(name, bytes_per_line=bytes_per_line)
 
+    @property
+    def root(self):
+        """
+        Override: don't use a 'root directory' in source-coded binary container
+        as it does not support directories
+        """
+        return ''
 
     ###########################################################################
     # reader
