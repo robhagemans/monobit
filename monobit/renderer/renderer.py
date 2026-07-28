@@ -54,7 +54,7 @@ renderers = MagicRegistry(default_text='text')
 @scriptable(passthrough=renderers, output=True, pack_operation=True)
 def render(
         fonts, outfile:Any='', *,
-        format:str='', container_format:str='', overwrite:bool=False,
+        format:str='', overwrite:bool=False,
         **kwargs
     ):
     """
@@ -62,13 +62,12 @@ def render(
 
     outfile: output file or path (default: stdout)
     format: rendering style (text, blocks, shades, sixel; default: text)
-    container_format: container/wrapper formats separated by . (default: infer from filename)
     overwrite: if outfile is a path, allow overwriting existing file
     """
     return output_pack_or_font(
         fonts, outfile,
         format=format, overwrite=overwrite,
-        container_format=container_format, registry=renderers,
+        registry=renderers,
         **kwargs
     )
 

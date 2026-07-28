@@ -13,6 +13,9 @@ from monobit.base import Props
 from monobit.core import Raster
 
 
+ALPHA_PREFIX = 'fontdata_'
+
+
 class CodeReader:
 
     @classmethod
@@ -72,10 +75,12 @@ class CodeReader:
         """Clean up identifier found in source code."""
         # take last element separated by whitespace e.g. char foo[123] -> foo[123]
         *_, identifier = identifier.strip().split()
-        # strip non-alnum at either end (e.g. "abc" -> abc)s
+        # strip non-alnum at either end (e.g. "abc" -> abc)
         identifier = re.sub(r"^\W+|\W+$", "", identifier)
         # take first alphanum part (e.g. name[123 -> name)
         identifier, *_ = re.split(r"\W+", identifier)
+        # we prepended the underscore for names starting with digits
+        identifier = identifier.removeprefix(ALPHA_PREFIX)
         return identifier
 
 
@@ -88,8 +93,8 @@ class CodeWriter:
     def to_identifier(cls, identifier):
         """Convert name to C identifier."""
         identifier = ''.join(_c.lower() if _c.isalnum() else '_' for _c in identifier)
-        if not identifier[:1].isalpha():
-            identifier = 'data_' + identifier
+        if identifier.startswith(ALPHA_PREFIX) or not identifier[:1].isalpha():
+            identifier = ALPHA_PREFIX + identifier
         return identifier
 
     @classmethod

@@ -75,6 +75,8 @@ def load_gfxfont(
         # clip off cast
         _, _, bitmap_name = metrics.bitmap.partition(')')
         _, _, glyph_name = metrics.glyph.partition(')')
+        bitmap_name = CCodeReader.clean_identifier(bitmap_name.strip())
+        glyph_name = CCodeReader.clean_identifier(glyph_name.strip())
         first = CCodeReader.decode_int(metrics.first)
         try:
             glyph_table = glyph_metrics[glyph_name.strip()]

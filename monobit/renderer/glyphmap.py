@@ -38,12 +38,13 @@ def glyph_to_image(glyph, image_mode, inklevels):
             f'got {image_mode} instead.'
         )
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
-    data = glyph.as_pixels(inklevels=inklevels)
-    if image_mode in ('RGB', 'RGBA'):
-        # itertools grouper idiom, split in groups of 3 or 4 bytes
-        iterators = [iter(data)] * len(image_mode)
-        # strict=True requires python 3.10 or above
-        data = tuple(zip(*iterators)) #, strict=True))
+    # if using RGBA, inklevels must have 4 numbers per entry too
+    # rgb_table only has 3. set alpha to fully opaque, except background
+    if image_mode == 'RGBA' and len(inklevels[0]) == 3:
+        inklevels = (tuple(inklevels[0]) + (0,),) + tuple(
+            tuple(_c) + (255,) for _c in inklevels[1:]
+        )
+    data = glyph.as_vector(inklevels=inklevels)
     charimg.putdata(data)
     return charimg
 

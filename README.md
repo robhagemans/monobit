@@ -135,9 +135,9 @@ Proportional-spacing formats
 | RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
-| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G (C) |
+| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G C |
 | SymbOS font           | `symbos`   | `.fnt`                      |&check;|&check;| binary | -        |
-| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G (C) |
+| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G C |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
 | Bare GEOS font record | `vlir`     |                             |&check;|&check;| binary | O        |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
@@ -339,8 +339,13 @@ This is true even for fonts with a pixelised look.
 To convert these you first need to _rasterise_ them, which `monobit` does not do.
 Some of the other font tools linked below do have rasterising features.
 
-`monobit` can experimentally output OpenType Bitmap (`.otb`) files, a bitmap-only
-file format supported by Linux desktops.
+`monobit` can output TrueType/OpenType files with the following types of bitmap tables:
+- `EBDT`: Microsoft monochrome bitmap, as used in Linux OpenType bitmap fonts (`.otb` fonts)
+- `bdat`: Apple monochrome bitmap, as used in MacOS TrueType bitmap fonts (a.k.a. "sbit" fonts)
+- `CBDT`: Google colour bitmap fonts
+- `sbix`: Apple colour bitmap fonts
+
+Note that modern versions of Microsoft Windows no longer recognise OpenType / TrueType bitmap fonts.
 
 
 Dependencies
