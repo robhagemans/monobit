@@ -339,10 +339,13 @@ This is true even for fonts with a pixelised look.
 To convert these you first need to _rasterise_ them, which `monobit` does not do.
 Some of the other font tools linked below do have rasterising features.
 
-`monobit` can output TrueType/OpenType files of the following types:
-- OpenType Bitmap (`.otb`) files, a bitmap-only file format supported by Linux desktops
-- Apple's bitmap-only TrueType fonts (a.k.a. `sbit` fonts)
-- colour bitmap fonts in either Google's `CBDT` or Apple's `sbix` format
+`monobit` can output TrueType/OpenType files with the following types of bitmap tables:
+- `EBDT`: Microsoft monochrome bitmap, as used in Linux OpenType bitmap fonts (`.otb` fonts)
+- `bdat`: Apple monochrome bitmap, as used in MacOS TrueType bitmap fonts (a.k.a. "sbit" fonts)
+- `CBDT`: Google colour bitmap fonts
+- `sbix`: Apple colour bitmap fonts
+
+Note that modern versions of Microsoft Windows no longer recognise OpenType / TrueType bitmap fonts.
 
 
 Dependencies
