@@ -44,8 +44,13 @@ class LazyModule:
 
     @cached_property
     def _available(self):
-        # check for availability without triggering an import
-        available = find_spec(self._name) is not None
+        try:
+            # check for availability without triggering an import
+            available = find_spec(self._name) is not None
+        except ModuleNotFoundError:
+            # if the import has multiple parts and a parent is not found,
+            # find_spec seems to raise this rather than return None
+            available = False
         if not available:
             logging.debug('Could not find module `%s`.', self._name)
         return available
