@@ -1,5 +1,5 @@
 """
-monobit.base.imports - supporting functionds for dynamic imports
+monobit.base.imports - supporting functions for dynamic imports
 
 (c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
