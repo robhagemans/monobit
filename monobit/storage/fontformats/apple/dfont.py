@@ -26,6 +26,7 @@ from .nfnt import (
 )
 from .fctb import extract_fctb, convert_to_fctb, fctb_data_to_bytes
 from .fond import extract_fond, convert_fond, create_fond
+from .fbit import extract_fbit
 
 
 @loaders.register(
@@ -265,6 +266,14 @@ def _extract_resources(data, resources):
             parsed_rsrc.append((
                 rsrc_type, rsrc_id, extract_fctb(data, offset)
             ))
+        elif rsrc_type == b'fbit':
+            logging.debug(
+                "Bitmapped font resource #%d: type `%s` name '%s'",
+                rsrc_id, rsrc_type.decode('mac-roman'), name
+            )
+            parsed_rsrc.append((
+                rsrc_type, rsrc_id, extract_fbit(data, offset)
+            ))
         else:
             logging.debug(
                 "Skipped resource #%d: type `%s` name '%s'",
@@ -359,6 +368,8 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
             if font.glyphs:
                 font = font.label()
                 fonts.append(font)
+        elif rsrc_type == b'fbit':
+            fonts.append(kwargs['font'])
     return fonts
 
 
