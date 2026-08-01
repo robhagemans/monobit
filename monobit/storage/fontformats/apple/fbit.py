@@ -86,6 +86,7 @@ def extract_fbit(data, offset):
             logging.debug('first codepoint in run: %x', first_codepoint)
             temp_font = load_bitmap(
                 stream, header.width, header.height, run.count,
+                align='bit',
                 first_codepoint=first_codepoint
             )
             logging.debug('%s', temp_font)
