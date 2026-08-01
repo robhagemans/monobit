@@ -441,7 +441,7 @@ def _get_direction(font, text, direction, align):
                 f'`{_k}`==`{_v}`'
                 for _k, _v in DIRECTIONS.items()
             )
-            + f'; not `{direction}`.'
+            + f'; not `{line_direction}`.'
         )
     # detect monodirectional text
     if direction == 'normal':

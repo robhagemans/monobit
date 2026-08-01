@@ -14,14 +14,14 @@
     -@@------------------------------------------------------------------@@-
 
 
-Tools for working with monochrome bitmap fonts
-==============================================
+Tools for working with bitmap fonts
+===================================
 
 The `monobit` tools let you modify bitmap fonts and convert between several formats.
 
 `monobit`'s native format is `yaff`, a human-friendly, text-based visual format similar to the ones used by
 Roman Czyborra's `hexdraw`, Simon Tatham's `mkwinfont` and John Elliott's `psftools`. Details are
-given in [the `yaff` font file format specification](YAFF.md).
+given in [the `yaff` font file format specification](https://github.com/robhagemans/monobit/blob/master/YAFF.md).
 
 Monobit requires Python 3.9 or above. Install through `pip install monobit`. Some formats or features require additional packages; see _Dependencies_ below for a list. These
 will be installed automatically if you use `pip`.
@@ -227,7 +227,7 @@ Use the `chart` command to output an annotated table of glyphs.
 Greyscale and colour fonts
 --------------------------
 
-Greyscale and colour support is experimental. An extension of the YAFF format allows storing
+Greyscale and colour support is experimental. An extension of the `yaff` format allows storing
 glyphs with up to 8 bits per pixel (256 colours or grey levels).
 
 
