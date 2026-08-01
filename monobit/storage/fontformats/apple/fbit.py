@@ -8,9 +8,9 @@ licence: https://opensource.org/licenses/MIT
 from io import BytesIO
 import logging
 
-from monobit.core import Font
+from monobit.core import Font, Glyph
+from monobit.base.binary import ceildiv
 from monobit.base.struct import big_endian as be
-from monobit.storage.fontformats.raw import load_bitmap
 
 # Apple Japan Technote 100004 "リゾルバブルフォント フォントフォーマット" ("Resolvable Font Format")
 # http://mirror.informatimago.com/next/developer.apple.com/ja/technotes/tn10004.html
@@ -66,6 +66,16 @@ _LENGTHS_TABLE = be.Struct(
     count='uint16',
 )
 
+
+def _ordinal_to_shiftjis(ordinal):
+    """Find shift-JIS codepoint based on ordinal."""
+    # each page runs from 0x40 to 0x7e inclusive, 0x80 to 0xfc inclusive, 188 bytes
+    page, position = divmod(ordinal, 188)
+    # we skip low byte 7f
+    codepoint = (page + 0x81) * 0x100 + position + 0x40 + (position >= 0x3f)
+    return codepoint
+
+
 def extract_fbit(data, offset):
     """Extract fbit resource."""
     with BytesIO(data[offset:]) as stream:
@@ -75,22 +85,16 @@ def extract_fbit(data, offset):
         table_size = be.uint16.read_from(stream)
         runs = (_LENGTHS_TABLE * table_size).read_from(stream)
         logging.debug('runs: %s', runs)
-        glyphs = []
-        logging.debug('first codepoint: %x', header.first_codepoint)
-        for run in runs:
-            # find shift-JIS codepoint based on ordinal
-            # each page runs from 0x40 to 0xfc inclusive, 188 bytes
-            page, position = divmod(run.first, 188)
-            # 0x8140 is not counted
-            first_codepoint = (page + 0x81) * 0x100 + position + 0x41
-            logging.debug('first codepoint in run: %x', first_codepoint)
-            temp_font = load_bitmap(
-                stream, header.width, header.height, run.count,
-                align='bit',
-                first_codepoint=first_codepoint
+        glyphs = [
+            Glyph.from_bytes(
+                stream.read(ceildiv(header.width * header.height, 8)),
+                header.width, header.height,
+                align='bit', bit_order='row-major',
+                codepoint=_ordinal_to_shiftjis(_run.first + _i)
             )
-            logging.debug('%s', temp_font)
-            glyphs.extend(temp_font.glyphs)
+            for _run in runs
+            for _i in range(_run.count)
+        ]
     return dict(
         font=Font(glyphs, encoding='mac-japanese')
     )
