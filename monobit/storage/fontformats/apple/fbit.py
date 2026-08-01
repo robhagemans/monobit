@@ -96,5 +96,5 @@ def extract_fbit(data, offset):
             for _i in range(_run.count)
         ]
     return dict(
-        font=Font(glyphs, encoding='mac-japanese')
+        font=Font(glyphs, encoding='mac-japanese', source_format='[Mac] fbit')
     )

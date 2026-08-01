@@ -369,7 +369,8 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 font = font.label()
                 fonts.append(font)
         elif rsrc_type == b'fbit':
-            fonts.append(kwargs['font'])
+            font = kwargs['font'].label()
+            fonts.append(font)
     return fonts
 
 
