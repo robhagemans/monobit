@@ -57,7 +57,7 @@ _FBIT_HEADER = be.Struct(
     last_codepoint='uint16',
 )
 
-_LENGTHS_TABLE = be.Struct(
+_RUNS_TABLE = be.Struct(
     # first character in the run, by ordinal position in shift-JIS table
     first='uint16',
     # last character in the run, by ordinal position in shift-JIS table
@@ -83,7 +83,7 @@ def extract_fbit(data, offset):
         logging.debug('fbit header: %s', header)
         # table of run lengths
         table_size = be.uint16.read_from(stream)
-        runs = (_LENGTHS_TABLE * table_size).read_from(stream)
+        runs = (_RUNS_TABLE * table_size).read_from(stream)
         logging.debug('runs: %s', runs)
         glyphs = [
             Glyph.from_bytes(
