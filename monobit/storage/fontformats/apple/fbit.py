@@ -11,6 +11,30 @@ import logging
 from monobit.core import Font, Glyph
 from monobit.base.binary import ceildiv
 from monobit.base.struct import big_endian as be
+from monobit.storage import loaders
+from monobit.storage.magic import Magic
+
+
+@loaders.register(
+    name='fbit',
+    magic=(Magic.offset(2) + b'fbit',),
+)
+def load_fbit(instream, offset:int=0, data_fork:str=''):
+    """
+    Load font from a bare fbit resource.
+
+    offset: starting offset in bytes of the fbit record in the file (default 0)
+    data_fork: file that holds the data fork (used for fbit files only)
+    """
+    instream.seek(offset)
+    data = instream.read()
+    if data_fork:
+        with instream.where.open(data_fork, 'r') as data_fork_stream:
+            result = extract_fbit(instream, data_fork_stream)
+    else:
+        result = extract_fbit(instream, None)
+    return result['font']
+
 
 # Apple Japan Technote 100004 "リゾルバブルフォント フォントフォーマット" ("Resolvable Font Format")
 # http://mirror.informatimago.com/next/developer.apple.com/ja/technotes/tn10004.html
