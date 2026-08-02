@@ -15,7 +15,7 @@ from monobit.storage import Stream
 from monobit.storage.location import open_location
 from monobit.storage import loaders, savers
 from monobit.base import Props, reverse_dict
-from monobit.base import NOT_SET
+from monobit.base import NOT_SET, FileFormatError
 from monobit.encoding import EncodingName
 from monobit.core import Pack
 
@@ -225,72 +225,75 @@ def _extract_resources(data, resources, data_fork_stream):
     """Extract resources."""
     parsed_rsrc = []
     for rsrc_type, rsrc_id, offset, name in resources:
-        if rsrc_type == b'FOND':
-            logging.debug(
-                "Font family resource #%d: type `FOND` name `%s`", rsrc_id, name
-            )
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, dict(
-                    name=name, **extract_fond(data, offset)
+        try:
+            if rsrc_type == b'FOND':
+                logging.debug(
+                    "Font family resource #%d: type `FOND` name `%s`", rsrc_id, name
                 )
-            ))
-        elif rsrc_type == b'FONT' and name and not (rsrc_id % 128):
-            # rsrc_id % 128 is the point size
-            logging.debug(
-                "Name entry #%d: type `FONT` name '%s'",
-                rsrc_id, name
-            )
-            # inside macintosh:
-            # > Since 0 is not a valid font size, the resource ID having
-            # > 0 in the size field is used to provide only the name of
-            # > the font: The name of the resource is the font name. For
-            # > example, for a font named Griffin and numbered 200, the
-            # > resource naming the font would have a resource ID of 25600
-            # > and the resource name 'Griffin'. Size 10 of that font would
-            # > be stored in a resource numbered 25610.
-            # keep the name in the directory table
-            parsed_rsrc.append((
-                b'', rsrc_id, dict(name=name),
-            ))
-        elif rsrc_type in (b'NFNT', b'FONT'):
-            logging.debug(
-                "Bitmapped font resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, extract_nfnt(data, offset)
-            ))
-        elif rsrc_type == b'sfnt':
-            logging.debug(
-                "TrueType font resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
-            with Stream.from_data(data[offset:], mode='r') as bytesio:
-                fonts = load_sfnt(bytesio)
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, dict(fonts=fonts)
-            ))
-        elif rsrc_type == b'fctb':
-            logging.debug(
-                "Colour table resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, extract_fctb(data, offset)
-            ))
-        elif rsrc_type == b'fbit':
-            logging.debug(
-                "Bitmapped font resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, extract_fbit(data, offset, data_fork_stream)
-            ))
-        else:
-            logging.debug(
-                "Skipped resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
+                parsed_rsrc.append((
+                    rsrc_type, rsrc_id, dict(
+                        name=name, **extract_fond(data, offset)
+                    )
+                ))
+            elif rsrc_type == b'FONT' and name and not (rsrc_id % 128):
+                # rsrc_id % 128 is the point size
+                logging.debug(
+                    "Name entry #%d: type `FONT` name '%s'",
+                    rsrc_id, name
+                )
+                # inside macintosh:
+                # > Since 0 is not a valid font size, the resource ID having
+                # > 0 in the size field is used to provide only the name of
+                # > the font: The name of the resource is the font name. For
+                # > example, for a font named Griffin and numbered 200, the
+                # > resource naming the font would have a resource ID of 25600
+                # > and the resource name 'Griffin'. Size 10 of that font would
+                # > be stored in a resource numbered 25610.
+                # keep the name in the directory table
+                parsed_rsrc.append((
+                    b'', rsrc_id, dict(name=name),
+                ))
+            elif rsrc_type in (b'NFNT', b'FONT'):
+                logging.debug(
+                    "Bitmapped font resource #%d: type `%s` name '%s'",
+                    rsrc_id, rsrc_type.decode('mac-roman'), name
+                )
+                parsed_rsrc.append((
+                    rsrc_type, rsrc_id, extract_nfnt(data, offset)
+                ))
+            elif rsrc_type == b'sfnt':
+                logging.debug(
+                    "TrueType font resource #%d: type `%s` name '%s'",
+                    rsrc_id, rsrc_type.decode('mac-roman'), name
+                )
+                with Stream.from_data(data[offset:], mode='r') as bytesio:
+                    fonts = load_sfnt(bytesio)
+                parsed_rsrc.append((
+                    rsrc_type, rsrc_id, dict(fonts=fonts)
+                ))
+            elif rsrc_type == b'fctb':
+                logging.debug(
+                    "Colour table resource #%d: type `%s` name '%s'",
+                    rsrc_id, rsrc_type.decode('mac-roman'), name
+                )
+                parsed_rsrc.append((
+                    rsrc_type, rsrc_id, extract_fctb(data, offset)
+                ))
+            elif rsrc_type == b'fbit':
+                logging.debug(
+                    "Bitmapped font resource #%d: type `%s` name '%s'",
+                    rsrc_id, rsrc_type.decode('mac-roman'), name
+                )
+                parsed_rsrc.append((
+                    rsrc_type, rsrc_id, extract_fbit(data, offset, data_fork_stream)
+                ))
+            else:
+                logging.debug(
+                    "Skipped resource #%d: type `%s` name '%s'",
+                    rsrc_id, rsrc_type.decode('mac-roman'), name
+                )
+        except FileFormatError as err:
+            logging.warning("Reading `%s` resource #%d failed: %s", rsrc_type.decode('mac-roman'), rsrc_id, err)
     return parsed_rsrc
 
 
