@@ -88,7 +88,7 @@ def extract_fbit(data, offset, data_fork_stream):
             stream.read(78)
             glyphstream = data_fork_stream
         elif header.fdef_id == 7:
-            stream.read(66)
+            stream.read(64)
             glyphstream = data_fork_stream
         elif header.fdef_id != 0:
             logging.warning(
