@@ -176,7 +176,7 @@ Character-cell formats
 | Dashen                | `dashen`   | `.pft`                      |&check;|       | binary | any  | -        |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;| esc    | >4xN | -        |
 | Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       | binary | any  | -        |
-| Bare fbit resource    | `fbit`     |                             |&check;|       | binary | any  | M MB     |
+| Bare fbit resource    | `fbit`     |                             |&check;|       | binary | any  | MB       |
 | FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;| binary | any  | MB       |
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       | binary | 8xN  | -        |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       | binary | 8xN  | -        |
