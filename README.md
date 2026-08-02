@@ -114,7 +114,7 @@ Proportional-spacing formats
 | Grid bitmap image [P] | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | G C      |
 | Set of bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | G C      |
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | M; see `nfnt` |
-| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K C; see `nfnt`, `sfnt` |
+| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K C; see `nfnt`, `sfnt`, `fbit` |
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi`, `sfnt` |
@@ -176,6 +176,7 @@ Character-cell formats
 | Dashen                | `dashen`   | `.pft`                      |&check;|       | binary | any  | -        |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;| esc    | >4xN | -        |
 | Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       | binary | any  | -        |
+| Bare fbit resource    | `fbit`     |                             |&check;|       | binary | any  | M MB     |
 | FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;| binary | any  | MB       |
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       | binary | 8xN  | -        |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       | binary | 8xN  | -        |
