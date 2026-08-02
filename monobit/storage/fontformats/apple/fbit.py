@@ -71,9 +71,11 @@ def _ordinal_to_shiftjis(ordinal):
     """Find shift-JIS codepoint based on ordinal."""
     # each page runs from 0x40 to 0x7e inclusive, 0x80 to 0xfc inclusive, 188 bytes
     page, position = divmod(ordinal, 188)
-    # we skip low byte 7f
-    codepoint = (page + 0x81) * 0x100 + position + 0x40 + (position >= 0x3f)
-    return codepoint
+    # high byte in 0x81-0x9F or 0xE0-0xFC
+    hi = (page + 0x81) + 64 * (page >= 0x1f)
+    # low byte in 0x40-0x7E or 0x80-0xFC
+    lo = position + 0x40 + (position >= 0x3f)
+    return hi * 0x100 + lo
 
 
 def extract_fbit(data, offset, data_fork_stream):
