@@ -285,7 +285,8 @@ def _extract_resources(data, resources, data_fork_stream):
                     rsrc_id, rsrc_type.decode('mac-roman'), name
                 )
                 parsed_rsrc.append((
-                    rsrc_type, rsrc_id, extract_fbit(data, offset, data_fork_stream)
+                    rsrc_type, rsrc_id,
+                    dict(name=name, **extract_fbit(data, offset, data_fork_stream)),
                 ))
             else:
                 logging.debug(
@@ -384,7 +385,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 font = font.label()
                 fonts.append(font)
         elif rsrc_type == b'fbit':
-            font = kwargs['font'].label()
+            font = kwargs['font'].label().set(subfamily=kwargs['name'] or None)
             fonts.append(font)
     return fonts
 
