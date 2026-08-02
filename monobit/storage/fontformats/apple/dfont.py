@@ -181,7 +181,6 @@ def parse_resource_fork(data, formatstr='', *, data_fork_stream=None):
     """Parse a bare resource and convert to fonts."""
     resource_table = _extract_resource_fork_header(data)
     rsrc = _extract_resources(data, resource_table, data_fork_stream)
-    logging.debug(rsrc)
     directory = _construct_directory(rsrc)
     rsrc = _pair_fctb_nfnt(rsrc)
     fonts = _convert_mac_font(rsrc, directory, formatstr)
@@ -191,17 +190,21 @@ def parse_resource_fork(data, formatstr='', *, data_fork_stream=None):
 def _extract_resource_fork_header(data):
     """Read a Classic MacOS resource fork header."""
     rsrc_header = _RSRC_HEADER.from_bytes(data)
+    logging.debug('rsrc header: %s', rsrc_header)
     map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
+    logging.debug('rsrc map header: %s', map_header)
     type_array = _TYPE_ENTRY.array(map_header.last_type + 1)
     # +2 because the length field is considered part of the type list
     type_list_offset = rsrc_header.map_offset + map_header.type_list_offset + 2
     type_list = type_array.from_bytes(data, type_list_offset)
+    logging.debug('rsrc type list: %s', type_list)
     resources = []
     for type_entry in type_list:
         ref_array = _REF_ENTRY.array(type_entry.last_rsrc + 1)
         ref_list = ref_array.from_bytes(
             data, type_list_offset -2 + type_entry.ref_list_offset
         )
+        logging.debug('rsrc ref list: %s', ref_list)
         for ref_entry in ref_list:
             # get name from name list
             if ref_entry.name_offset == 0xffff:

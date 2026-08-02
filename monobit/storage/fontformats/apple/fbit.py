@@ -125,8 +125,9 @@ def extract_fbit(data, offset, data_fork_stream):
             )
         # table of run lengths
         table_size = be.uint16.read_from(stream)
+        logging.debug('fbit encoding table size: %d', table_size)
         runs = (_RUNS_TABLE * table_size).read_from(stream)
-        logging.debug('runs: %s', runs)
+        logging.debug('fbit encoding runs: %s', runs)
         if glyphstream is None:
             logging.warning(
                 'Glyphs for this font are stored in the data fork, which was not found. '
@@ -144,6 +145,7 @@ def extract_fbit(data, offset, data_fork_stream):
                 for _run in runs
                 for _i in range(_run.count)
             )
-    return dict(
-        font=Font(glyphs, encoding='mac-japanese', source_format='[Mac] fbit')
-    )
+    return dict(font=Font(
+        glyphs, encoding='mac-japanese',
+        source_format=f'[Mac] fbit [fdef_id={header.fdef_id}]',
+    ))
