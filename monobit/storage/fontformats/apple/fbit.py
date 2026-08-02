@@ -88,8 +88,12 @@ def extract_fbit(data, offset, data_fork_stream):
             stream.read(78)
             glyphstream = data_fork_stream
         elif header.fdef_id == 7:
-            stream.read(64)
+            # stream.read(64)
+            stream.read(16)
+            bitmap_pos = be.uint32.read_from(stream)
+            stream.read(44)
             glyphstream = data_fork_stream
+            glyphstream.seek(bitmap_pos, 0)
         elif header.fdef_id != 0:
             logging.warning(
                 'Unknown fdef id %d, trying format for fdef_id 0', fdef_id
