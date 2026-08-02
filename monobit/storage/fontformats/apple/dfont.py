@@ -35,10 +35,19 @@ from .fbit import extract_fbit
     magic=(b'\0\0\1\0\0',),
     patterns=('*.dfont', '*.suit', '*.rsrc',),
 )
-def load_mac_dfont(instream):
-    """Load font from MacOS resource fork or data-fork resource."""
+def load_mac_dfont(instream, data_fork:str=''):
+    """
+    Load font from MacOS resource fork or data-fork resource.
+
+    data_fork: file that holds the data fork (used for fbit files only)
+    """
     data = instream.read()
-    return parse_resource_fork(data)
+    if data_fork:
+        with instream.where.open(data_fork, 'r') as data_fork_stream:
+            return parse_resource_fork(data, data_fork_stream=data_fork_stream)
+    else:
+        return parse_resource_fork(data)
+
 
 
 @savers.register(linked=load_mac_dfont)
@@ -165,10 +174,10 @@ _REF_ENTRY = be.Struct(
 # 1-byte length followed by bytes
 
 
-def parse_resource_fork(data, formatstr=''):
+def parse_resource_fork(data, formatstr='', *, data_fork_stream=None):
     """Parse a bare resource and convert to fonts."""
     resource_table = _extract_resource_fork_header(data)
-    rsrc = _extract_resources(data, resource_table)
+    rsrc = _extract_resources(data, resource_table, data_fork_stream)
     logging.debug(rsrc)
     directory = _construct_directory(rsrc)
     rsrc = _pair_fctb_nfnt(rsrc)
@@ -209,7 +218,7 @@ def _extract_resource_fork_header(data):
     return resources
 
 
-def _extract_resources(data, resources):
+def _extract_resources(data, resources, data_fork_stream):
     """Extract resources."""
     parsed_rsrc = []
     for rsrc_type, rsrc_id, offset, name in resources:
@@ -272,7 +281,7 @@ def _extract_resources(data, resources):
                 rsrc_id, rsrc_type.decode('mac-roman'), name
             )
             parsed_rsrc.append((
-                rsrc_type, rsrc_id, extract_fbit(data, offset)
+                rsrc_type, rsrc_id, extract_fbit(data, offset, data_fork_stream)
             ))
         else:
             logging.debug(

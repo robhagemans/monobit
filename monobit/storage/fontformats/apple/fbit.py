@@ -76,25 +76,43 @@ def _ordinal_to_shiftjis(ordinal):
     return codepoint
 
 
-def extract_fbit(data, offset):
+def extract_fbit(data, offset, data_fork_stream):
     """Extract fbit resource."""
     with BytesIO(data[offset:]) as stream:
         header = _FBIT_HEADER.read_from(stream)
         logging.debug('fbit header: %s', header)
+        glyphstream = stream
+        if header.fdef_id == 5:
+            stream.read(78)
+            glyphstream = data_fork_stream
+        elif header.fdef_id == 7:
+            stream.read(66)
+            glyphstream = data_fork_stream
+        elif header.fdef_id != 0:
+            logging.warning(
+                'Unknown fdef id %d, trying format for fdef_id 0', fdef_id
+            )
         # table of run lengths
         table_size = be.uint16.read_from(stream)
         runs = (_RUNS_TABLE * table_size).read_from(stream)
         logging.debug('runs: %s', runs)
-        glyphs = [
-            Glyph.from_bytes(
-                stream.read(ceildiv(header.width * header.height, 8)),
-                header.width, header.height,
-                align='bit', bit_order='row-major',
-                codepoint=_ordinal_to_shiftjis(_run.first + _i)
+        if glyphstream is None:
+            logging.warning(
+                'Glyphs for this font are stored in the data fork, which was not found. '
+                'Use -data-fork=<filename> to indicate its location.'
             )
-            for _run in runs
-            for _i in range(_run.count)
-        ]
+            glyphs = ()
+        else:
+            glyphs = tuple(
+                Glyph.from_bytes(
+                    glyphstream.read(ceildiv(header.width * header.height, 8)),
+                    header.width, header.height,
+                    align='bit', bit_order='row-major',
+                    codepoint=_ordinal_to_shiftjis(_run.first + _i)
+                )
+                for _run in runs
+                for _i in range(_run.count)
+            )
     return dict(
         font=Font(glyphs, encoding='mac-japanese', source_format='[Mac] fbit')
     )
