@@ -12,6 +12,7 @@ from io import BytesIO
 
 from monobit.base.struct import big_endian as be
 from monobit.storage import Stream
+from monobit.storage.location import open_location
 from monobit.storage import loaders, savers
 from monobit.base import Props, reverse_dict
 from monobit.base import NOT_SET
@@ -43,8 +44,10 @@ def load_mac_dfont(instream, data_fork:str=''):
     """
     data = instream.read()
     if data_fork:
-        with instream.where.open(data_fork, 'r') as data_fork_stream:
-            return parse_resource_fork(data, data_fork_stream=data_fork_stream)
+        with open_location(data_fork) as data_fork_loc:
+            return parse_resource_fork(
+                data, data_fork_stream=data_fork_loc.get_stream()
+            )
     else:
         return parse_resource_fork(data)
 

@@ -12,6 +12,7 @@ from monobit.core import Font, Glyph
 from monobit.base.binary import ceildiv
 from monobit.base.struct import big_endian as be
 from monobit.storage import loaders
+from monobit.storage.location import open_location
 from monobit.storage.magic import Magic
 
 
@@ -29,8 +30,8 @@ def load_fbit(instream, offset:int=0, data_fork:str=''):
     instream.seek(offset)
     data = instream.read()
     if data_fork:
-        with instream.where.open(data_fork, 'r') as data_fork_stream:
-            result = extract_fbit(instream, data_fork_stream)
+        with open_location(data_fork) as data_fork_loc:
+            result = extract_fbit(instream, data_fork_loc.get_stream())
     else:
         result = extract_fbit(instream, None)
     return result['font']
