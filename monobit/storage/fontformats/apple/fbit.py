@@ -5,7 +5,6 @@ monobit.storage.fontformats.apple.fbit - Mac `fbit` bitmap fonts
 licence: https://opensource.org/licenses/MIT
 """
 
-from io import BytesIO
 import logging
 
 from monobit.core import Font, Glyph
@@ -13,6 +12,7 @@ from monobit.base.binary import ceildiv
 from monobit.base.struct import big_endian as be
 from monobit.storage import loaders
 from monobit.storage.location import open_location
+from monobit.storage.streams import Stream
 from monobit.storage.magic import Magic
 
 
@@ -105,7 +105,7 @@ def _ordinal_to_shiftjis(ordinal):
 
 def extract_fbit(data, offset, data_fork_stream):
     """Extract fbit resource."""
-    with BytesIO(data[offset:]) as stream:
+    with Stream.from_data(data[offset:], mode='r') as stream:
         header = _FBIT_HEADER.read_from(stream)
         logging.debug('fbit header: %s', header)
         glyphstream = stream
