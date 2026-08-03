@@ -366,7 +366,7 @@ def _uncompress_nfnt(data, offset):
     return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
 
 
-def convert_nfnt(properties, glyphs, fontrec, fctb=None):
+def convert_nfnt(properties, glyphs, fontrec, fctb=None, **kwargs):
     """Convert mac glyph metrics to monobit glyph metrics."""
     # the 'width' in the width/offset table is the pen advance
     # while the 'offset' is the (positive) offset after applying the
