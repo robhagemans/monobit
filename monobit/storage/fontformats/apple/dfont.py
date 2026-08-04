@@ -400,7 +400,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
             font, *_ = fonts
             family_id = _get_family_id(font.family, font.encoding)
             resources.append(
-                Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
+                Props(type='sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
             )
     # reduce fonts to what's storable in (stub) FOND/NFNT
     # we need a Pack for _group_families
@@ -419,7 +419,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
                     )
                 resources.append(
                     Props(
-                        type=b'NFNT',
+                        type='NFNT',
                         # note that we calculate this *separately* in the FOND builder
                         id=family_id + i,
                         # are there any specifications for the name?
@@ -431,7 +431,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
                     fctb_data = convert_to_fctb(font.rgb_table)
                     resources.append(
                         Props(
-                            type=b'fctb',
+                            type='fctb',
                             # id must match the NFNT
                             id=family_id + i,
                             # do we need a name?
@@ -443,7 +443,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
         fond_data = create_fond(style_group, family_id)
         resources.append(
             Props(
-                type=b'FOND', id=family_id,
+                type='FOND', id=family_id,
                 name=font.family, data=fond_data,
             ),
         )
@@ -486,7 +486,7 @@ def _write_resource_fork(outstream, resources):
     # construct the type list
     type_list = [
         _TYPE_ENTRY(
-            rsrc_type=_type,
+            rsrc_type=_type.encode('mac-roman'),
             last_rsrc=_count - 1,
             # ref_list_offset='uint16',
         )
