@@ -32,9 +32,22 @@ def load_fbit(instream, offset:int=0, data_fork:str=''):
     data = instream.read()
     if data_fork:
         with open_location(data_fork) as data_fork_loc:
-            result = extract_fbit(instream, data_fork_loc.get_stream())
+            result = extract_fbit(data, 0, data_fork_loc.get_stream())
     else:
-        result = extract_fbit(instream, None)
+        result = extract_fbit(data, 0, None)
+    return result['font']
+
+
+@loaders.register(name='hfnt')
+def load_hfnt(instream, offset:int=0):
+    """
+    Load font from a bare HFNT resource.
+
+    offset: starting offset in bytes of the HFNT record in the file (default 0)
+    """
+    instream.seek(offset)
+    data = instream.read()
+    result = extract_hfnt(data, 0)
     return result['font']
 
 
