@@ -114,7 +114,7 @@ Proportional-spacing formats
 | Grid bitmap image [P] | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | G C      |
 | Set of bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | G C      |
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | M; see `nfnt` |
-| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K C; see `nfnt`, `sfnt`, `fbit` |
+| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K C; see `nfnt`, `sfnt`, `fbit`, `hfnt` |
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi`, `sfnt` |
@@ -183,6 +183,7 @@ Character-cell formats
 | Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       | binary | 8xN  | -        |
 | PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;| binary | any  | -        |
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;| binary | any  | SB MB    |
+| Bare HFNT resource    | `hfnt`     |                             |&check;|       | binary | 8N*8N | MB      |
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| coded  | 8x16 (strict) 8xN<=32 (ext) | MC U (strict) MC US (ext) |
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
