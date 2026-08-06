@@ -1,11 +1,12 @@
 """
-monobit.storage.fontformats.apple.fbit - Mac `fbit` bitmap fonts
+monobit.storage.fontformats.apple.fbit - Mac `fbit` and `HFNT` bitmap fonts
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from math import sqrt
 
 from monobit.core import Font, Glyph
 from monobit.base.binary import ceildiv
@@ -149,4 +150,36 @@ def extract_fbit(data, offset, data_fork_stream):
     return dict(font=Font(
         glyphs, encoding='mac-japanese',
         source_format=f'[Mac] fbit [fdef_id={header.fdef_id}]',
+    ))
+
+
+###############################################################################
+
+_HFNT_HEADER = be.Struct(
+    unknown0='uint16',
+    unknown1='uint16',
+    unknown2='uint16',
+    word_size='uint16',
+    count='uint16',
+)
+
+def extract_hfnt(data, offset):
+    """Extract HFNT resource."""
+    with Stream.from_data(data[offset:], mode='r') as stream:
+        # 4 unknown words
+        header = _HFNT_HEADER.read_from(stream)
+        logging.debug('HFNT header: %s', header)
+        encodings = (be.uint16 * (header.count //2)).read_from(stream)
+        sentinel = be.uint16.read_from(stream)
+        logging.debug('sentinel: %x, %d', sentinel, stream.tell())
+        width = int(sqrt(header.word_size * 16))
+        glyphs = tuple(
+            Glyph.from_bytes(
+                stream.read(header.word_size*2), width=width, codepoint=_cp
+            )
+            for _cp in encodings
+        )
+    return dict(font=Font(
+        glyphs, encoding='mac-japanese',
+        source_format=f'[Mac] HFNT',
     ))

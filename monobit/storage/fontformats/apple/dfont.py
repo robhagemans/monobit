@@ -27,7 +27,7 @@ from .nfnt import (
 )
 from .fctb import extract_fctb, convert_to_fctb, fctb_data_to_bytes
 from .fond import extract_fond, convert_fond, create_fond
-from .fbit import extract_fbit
+from .fbit import extract_fbit, extract_hfnt
 
 
 @loaders.register(
@@ -266,6 +266,9 @@ def _extract_resources(data, resources, data_fork_stream):
             elif rsrc.type == 'fbit':
                 logging.debug('reading: %s (bitmap font)', description)
                 parsed = extract_fbit(data, rsrc.offset, data_fork_stream)
+            elif rsrc.type == 'HFNT':
+                logging.debug('reading: %s (bitmap font)', description)
+                parsed = extract_hfnt(data, rsrc.offset)
             else:
                 logging.debug('skipping: %s', description)
         except FileFormatError as err:
@@ -357,7 +360,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
             if font.glyphs:
                 font = font.label()
                 fonts.append(font)
-        elif rsrc.type == 'fbit':
+        elif rsrc.type in ('fbit', 'HFNT'):
             font = rsrc.font.label().set(subfamily=rsrc.name or None)
             fonts.append(font)
     return fonts
