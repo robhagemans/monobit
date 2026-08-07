@@ -301,6 +301,10 @@ def extract_fond(data, offset):
             stab_offset = offset + fond_header.ffStylOff
             stab = _STYLE_TABLE.from_bytes(data, stab_offset)
             # font name suffix subtable
+            # > The font name suffix subtable contains the base font name and
+            # > the suffixes that can be added to the font family's name to
+            # > produce a real PostScript name (one that is recognized by the
+            # > PostScript LaserWriter printer driver)
             ntab_offset = stab_offset + _STYLE_TABLE.size
             ntab = _NAME_TABLE.from_bytes(data, ntab_offset)
             names = []

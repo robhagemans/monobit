@@ -36,20 +36,27 @@ from .fbit import extract_fbit, extract_hfnt
     magic=(b'\0\0\1\0\0',),
     patterns=('*.dfont', '*.suit', '*.rsrc',),
 )
-def load_mac_dfont(instream, data_fork:str=''):
+def load_mac_dfont(
+        instream,
+        data_fork:str='',
+        name_encoding:EncodingName='mac-roman',
+    ):
     """
     Load font from MacOS resource fork or data-fork resource.
 
     data_fork: file that holds the data fork (used for fbit files only)
+    name-encoding: encoding used for resource names (default: mac-roman)
     """
     data = instream.read()
     if data_fork:
         with open_location(data_fork) as data_fork_loc:
             return parse_resource_fork(
-                data, data_fork_stream=data_fork_loc.get_stream()
+                data, data_fork_stream=data_fork_loc.get_stream(),
+                name_encoding=name_encoding,
             )
     else:
-        return parse_resource_fork(data)
+        return parse_resource_fork(data, name_encoding=name_encoding)
+
 
 
 
@@ -57,13 +64,14 @@ def load_mac_dfont(instream, data_fork:str=''):
 def save_mac_dfont(
         fonts, outstream, resource_type:str='NFNT', family_id:int=None,
         resample_encoding:EncodingName=NOT_SET,
+        name_encoding:EncodingName='mac-roman',
     ):
     """Save font to MacOS resource fork or data-fork resource.
 
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
     resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
     """
-    save_dfont(fonts, outstream, resource_type, resample_encoding)
+    save_dfont(fonts, outstream, resource_type, resample_encoding, name_encoding)
 
 
 ##############################################################################
@@ -177,9 +185,9 @@ _REF_ENTRY = be.Struct(
 # 1-byte length followed by bytes
 
 
-def parse_resource_fork(data, formatstr='', *, data_fork_stream=None):
+def parse_resource_fork(data, formatstr='', *, data_fork_stream=None, name_encoding):
     """Parse a bare resource and convert to fonts."""
-    resource_table = _extract_resource_fork_header(data)
+    resource_table = _extract_resource_fork_header(data, name_encoding)
     rsrc = _extract_resources(data, resource_table, data_fork_stream)
     directory = _construct_directory(rsrc)
     rsrc = _pair_fctb_nfnt(rsrc)
@@ -187,7 +195,7 @@ def parse_resource_fork(data, formatstr='', *, data_fork_stream=None):
     return fonts
 
 
-def _extract_resource_fork_header(data):
+def _extract_resource_fork_header(data, name_encoding):
     """Read a Classic MacOS resource fork header."""
     rsrc_header = _RSRC_HEADER.from_bytes(data)
     logging.debug('rsrc header: %s', rsrc_header)
@@ -215,8 +223,8 @@ def _extract_resource_fork_header(data):
                     + ref_entry.name_offset
                 )
                 name_length = data[name_offset]
-                # should be ascii, but use mac-roman just in case
-                name = data[name_offset+1:name_offset+name_length+1].decode('mac-roman')
+                # usually mac-roman; Japanese fonts use mac-japanese here
+                name = data[name_offset+1:name_offset+name_length+1].decode(name_encoding)
             # construct the 3-byte integer
             data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
             offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
@@ -384,12 +392,13 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
 # > determined this empirically, I have seen no documentation on the subject)
 
 
-def save_dfont(fonts, outstream, resource_type, resample_encoding):
+def save_dfont(fonts, outstream, resource_type, resample_encoding, name_encoding):
     """
     Save font to MacOS resource fork or data-fork resource.
 
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
     resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
+    name_encoding: encoding to use for resource names. Default: mac-roman
     """
     resource_type = resource_type.lower()
     if resource_type not in ('sfnt', 'nfnt'):
@@ -450,7 +459,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
                 name=font.family, data=fond_data,
             ),
         )
-    _write_resource_fork(outstream, resources)
+    _write_resource_fork(outstream, resources, name_encoding)
 
 
 def _get_family_id(name, encoding):
@@ -459,11 +468,12 @@ def _get_family_id(name, encoding):
     return _hash_to_id(name, script=script_code)
 
 
-def _write_resource_fork(outstream, resources):
+def _write_resource_fork(outstream, resources, name_encoding):
     """
     Write a Mac dfont/resource fork.
 
     resources: list of ns(type, id, name, data)
+    name_encoding: what encoding to use for resource names
     """
     # order resources by type (so all resources of the same type are consecutive
     resources.sort(key=lambda _res: _res.type)
@@ -502,7 +512,7 @@ def _write_resource_fork(outstream, resources):
     type_list = (_TYPE_ENTRY * len(types))(*type_list)
     # construct the name list
     name_list = tuple(
-        bytes((len(_res.name),)) + _res.name.encode('mac-roman')
+        bytes((len(_res.name),)) + _res.name.encode(name_encoding)
         for _res in resources
     )
     name_offsets = accumulate((len(_n) for _n in name_list), initial=0)
