@@ -16,6 +16,10 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
+def anyint(str_val):
+    return int(str_val, 0)
+
+
 # parse command line
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -27,23 +31,23 @@ parser.add_argument(
     type=str, default=''
 )
 parser.add_argument(
-    '-s', '--stride-from', default=1, type=int,
+    '-s', '--stride-from', default=1, type=anyint,
     help='lowest number of bytes per scanline'
 )
 parser.add_argument(
-    '-t', '--stride-to', default=None, type=int,
+    '-t', '--stride-to', default=None, type=anyint,
     help='highest number of bytes per scanline'
 )
 parser.add_argument(
-    '-b', '--stride-bits', default=None, type=int,
+    '-b', '--stride-bits', default=None, type=anyint,
     help='bits per scanline. cannot be used with -s or -t'
 )
 parser.add_argument(
-    '-o', '--offset', default=0, type=int,
+    '-o', '--offset', default=0, type=anyint,
     help='byte offset into binary'
 )
 parser.add_argument(
-    '-n', '--bytes', default=-1, type=int,
+    '-n', '--bytes', default=-1, type=anyint,
     help='total number of bytes to extract'
 )
 parser.add_argument(
@@ -65,15 +69,15 @@ parser.add_argument(
 # only apply to images
 
 parser.add_argument(
-    '--padding', default=8, type=int,
+    '--padding', default=8, type=anyint,
     help='number of vertical pixels between output bitmaps'
 )
 parser.add_argument(
-    '--margin', default=10, type=int,
+    '--margin', default=10, type=anyint,
     help='number of horizontal pixels left of first bitmap'
 )
 parser.add_argument(
-    '--scale', default=1, type=int,
+    '--scale', default=1, type=anyint,
     help='number of horizontal and vertical pixels used to represent a single bit'
 )
 
