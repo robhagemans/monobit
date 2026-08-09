@@ -232,11 +232,13 @@ class EncoderLoader(EncoderBuilder):
             name = Path(filename).stem
         filename = str(filename)
         # inputs that look like explicit paths used directly
-        # otherwise it's relative to the tables package
+        # otherwise first try relative to the tables package
         if filename.startswith('/') or filename.startswith('.'):
             path = Path(filename)
         else:
             path = files(tables) / filename
+        if not path.exists():
+            path = Path(filename)
         if not path.exists():
             raise NotFoundError(f'Charmap file `{filename}` does not exist')
         format = format or path.suffix[1:].lower()
