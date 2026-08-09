@@ -23,13 +23,17 @@ from monobit.storage.utils.limitations import ensure_single, ensure_levels
     # maybe - this is the usual value for 'lighten' and 'skew'
     magic=(Magic.offset(62) + b'UUUU',),
 )
-def load_gdos(instream, endianness:str=''):
+def load_gdos(instream, endianness:str='', header_offset:int=0, base_address:int=0):
     """
-    Load font from Atari GDOS/GEM .FNT file.
+    Load font from Atari GDOS/GEM .FNT file or Atari ROM image.
 
     endianness: (b)ig or (l)ittle-endian. default: guess from data
+    header_offset: (for Atari ROM images) offset in file where GDOS font header starts (default 0)
+    base_address: (for Atari ROM images) ROM starting address of the image (e.g. 0xe00000, 0xfc0000; default 0)
     """
-    gdos_props, gdos_glyphs = _read_gdos(instream, endianness)
+    gdos_props, gdos_glyphs = _read_gdos(
+        instream, endianness, header_offset, base_address
+    )
     logging.info(
         'GDOS properties:\n    ' +
         '\n    '.join(str(gdos_props).splitlines())
@@ -323,7 +327,7 @@ _CHAR_OFFS_ENTRY = {
 ################################################################################
 # GDOS reader
 
-def _read_gdos(instream, endian):
+def _read_gdos(instream, endian, header_offset, base_address):
     """Read GDOS binary file and return as properties and glyphs."""
     data = instream.read()
     # loop over linked list of character ranges
@@ -334,7 +338,7 @@ def _read_gdos(instream, endian):
         if not data:
             break
         header, ext_header, off_table, hor_table, endian = _read_gdos_header(
-            data, endian
+            data, endian, header_offset, base_address
         )
         glyphs = _read_gdos_glyphs(
             data, header, ext_header, off_table, hor_table, endian
@@ -359,15 +363,15 @@ def _read_gdos(instream, endian):
     # to the whole font - e.g. codepage range is just for first section
     return Props(**vars(headers[0]), **vars(ext_header)), glyphs
 
-def _read_gdos_header(data, endian):
+def _read_gdos_header(data, endian, header_offset, base_address):
     """Parse GDOS binary file and return as properties and glyphs."""
     endian = endian[:1].lower()
-    header = _FNT_HEADER[endian or 'l'].from_bytes(data)
+    header = _FNT_HEADER[endian or 'l'].from_bytes(data, header_offset)
     if not endian:
         if header.point >= 256:
             # probably a big-endian font
             endian = 'b'
-            header = _FNT_HEADER[endian].from_bytes(data)
+            header = _FNT_HEADER[endian].from_bytes(data, header_offset)
             logging.info('Treating as big-endian based on point-size field')
         else:
             endian = 'l'
@@ -376,17 +380,20 @@ def _read_gdos_header(data, endian):
     logging.debug(header)
     if header.flags.compressed:
         ext_header = _EXTENDED_HEADER[endian].from_bytes(
-            data, _FNT_HEADER[endian].size
+            data, header_offset + _FNT_HEADER[endian].size
         )
         logging.debug(ext_header)
     else:
         ext_header = _EXTENDED_HEADER[endian]()
     if header.flags.horz_off:
+        header.hor_table -= base_address
         hor_table = _HORIZ_OFFS_ENTRY[endian].array(n_chars).from_bytes(
             data, header.hor_table
         )
     else:
         hor_table = [_HORIZ_OFFS_ENTRY[endian]()] * n_chars
+    header.off_table -= base_address
+    header.dat_table -= base_address
     off_table = _CHAR_OFFS_ENTRY[endian].array(n_chars+1).from_bytes(
         data, header.off_table
     )
