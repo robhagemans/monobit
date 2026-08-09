@@ -5,6 +5,7 @@ monobit.encoding - encoding classes
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 from pathlib import Path
 from string import digits as ascii_digits
 
@@ -44,4 +45,5 @@ def encoder(initialiser):
             return Indexer.load(filename)
         return EncoderLoader(filename, format=format)()
     except (EnvironmentError, NotFoundError):
+        logging.warning('Encoder `%s` not found', filename)
         return None
