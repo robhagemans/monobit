@@ -1567,3 +1567,10 @@ class Font(HasProps):
             Glyph.outline,
             thickness = thickness
         )
+
+    @scriptable
+    def invert(self):
+        """
+        Reverse-video by raster.
+        """
+        return self.for_all(Glyph.invert)
