@@ -1149,6 +1149,14 @@
     "apple-ii-chr": {
         "filename": "kreativekorp/APL2ICHG.TXT"
     },
+    "ascii-lowercase": {
+        "filename": "iso-8859/8859-1.TXT",
+        "range": "0x60-0x7f"
+    },
+    "apple-iie": {
+        "filename": "kreativekorp/APL2PRIM.TXT",
+        "overlays": ["ascii-lowercase"]
+    },
     "atascii": {
         "filename": "kreativekorp/ATARI8VG.TXT"
     },
