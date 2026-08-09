@@ -42,7 +42,7 @@ def extract_fctb(data, offset):
     return dict(color_table=ct_header, color_specs=cspecs)
 
 
-def convert_fctb(color_table, color_specs, levels):
+def convert_fctb(color_table, color_specs, levels, **kwargs):
     """Convert fctb color spec to RGBTable."""
     if not color_specs:
         return None
