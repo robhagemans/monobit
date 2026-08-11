@@ -189,7 +189,7 @@ class Raster:
     def from_vector(
             cls, bitseq, *,
             stride, width=NOT_SET, height=NOT_SET, align='left',
-            inklevels=NOT_SET
+            inklevels
         ):
         """Create raster from flat immutable sequence representing bits."""
         if not bitseq or width == 0 or stride == 0:
