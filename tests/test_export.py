@@ -7,7 +7,7 @@ import os
 import unittest
 
 import monobit
-from .base import BaseTester, ensure_asset, assert_text_eq
+from .base import BaseTester, ensure_asset, assert_text_eq, get_stringio
 
 
 class TestExport(BaseTester):
@@ -548,6 +548,40 @@ class TestExport(BaseTester):
     def test_export_tasprint_pcw(self):
         """Test exporting TasPrint PCW files."""
         self._export_8x16_expand(format='tasprint', save_kwargs=dict(version='pcw'), count=128, width=16)
+
+    # HRCG
+
+    def test_export_hrcg(self):
+        """Test exporting AppleSoft Tooolkit HRCG files."""
+        A = """\
+.......@......
+......@.@.....
+.....@...@....
+....@.....@...
+....@.@.@.@...
+....@.....@...
+....@.....@...
+..............
+"""
+        yaffstr = '\n\n0x41:' + '\n    ' + '\n    '.join(A.splitlines())
+        test_font, *_ = monobit.load(get_stringio(yaffstr))
+        file = self.temp_path / f'hrcg.set'
+        monobit.save(test_font, file, format='hrcg')
+        with open(file, 'rb') as f:
+            data = f.read()
+        assert data[0x108:0x110] == bytes((
+            0b10001000,
+            0b00011000,
+            0b10010100,
+            0b00100100,
+            0b00111100,
+            0b00100100,
+            0b00100100,
+            0b00000000,
+        ))
+        font, *_ = monobit.load(file, format='hrcg')
+        self.assertEqual(len(font.glyphs), 96)
+        assert_text_eq(font.get_glyph(b'A').as_text(), A)
 
 
 if __name__ == '__main__':
