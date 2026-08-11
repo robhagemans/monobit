@@ -824,20 +824,21 @@ class Glyph(HasProps):
 
 
     def shrink(
-            self, factor:Coord=Coord(1, 1),
-            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
+            self, factor:Coord=Coord(1, 1), *, modulo:Coord=Coord(0, 0),
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Shrink by removing rows and/or columns.
 
         factor: factor to shrink (horizontally, vertically) (default: 1,1)
+        modulo: first column, row to keep (default: 0,0)
         adjust_metrics: also stretch metrics (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         factor_x, factor_y = factor
         if factor_x == factor_y == 1:
             return self
-        pixels = self._pixels.shrink(factor)
+        pixels = self._pixels.shrink(factor, modulo=modulo)
         new_metrics = {}
         if adjust_metrics:
             new_metrics |= dict(

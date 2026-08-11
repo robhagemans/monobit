@@ -746,17 +746,19 @@ class Raster:
                 )
         return type(self)(pixels, inklevels=self._inklevels)
 
-    def shrink(self, factor:Coord=Coord(1, 1)):
+    def shrink(self, factor:Coord=Coord(1, 1), modulo:Coord=Coord(0, 0)):
         """
         Remove rows and/or columns.
 
-        factor: factor to shrink (horizontally, vertically)
+        factor: factor to shrink (horizontally, vertically; default: 1,1)
+        modulo: first column, row to keep (default: 0,0)
         """
         factor_x, factor_y = factor
+        modulo_x, modulo_y = modulo
         # vertical shrink
-        shrunk = self._pixels[::factor_y]
+        shrunk = self._pixels[modulo_y::factor_y]
         # horizontal shrink
-        shrunk = tuple(_row[::factor_x] for _row in shrunk)
+        shrunk = tuple(_row[modulo_x::factor_x] for _row in shrunk)
         return type(self)(shrunk, inklevels=self._inklevels)
 
     # effects

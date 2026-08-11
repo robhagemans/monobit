@@ -1498,19 +1498,22 @@ class Font(HasProps):
 
     @scriptable
     def shrink(
-            self, factor:Coord=Coord(1, 1), *, adjust_metrics:bool=True
+            self, factor:Coord=Coord(1, 1), modulo:Coord=Coord(0, 0),
+            *, adjust_metrics:bool=True,
         ):
         """
         Shrink by removing rows and/or columns.
 
         factor: factor to shrink (horizontally, vertically) (default: 1,1)
+        modulo: first column, row to keep (default: 0,0)
         adjust_metrics: also stretch metrics (default: True)
         """
         factor_x, factor_y = factor
         if (factor_x, factor_y) == (1, 1):
             return self
         font = self.for_all(
-            Glyph.shrink, factor=factor, adjust_metrics=adjust_metrics,
+            Glyph.shrink, factor=factor, modulo=modulo,
+            adjust_metrics=adjust_metrics,
         )
         if not adjust_metrics:
             return font
