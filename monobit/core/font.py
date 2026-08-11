@@ -167,9 +167,12 @@ class FontProperties:
     underline_thickness: int = 1
     # number of pixels in strikethrough
     strikethrough_thickness: int = 1
-    # position of underline below baseline. 0 means underline rests on baseline itself, 1 is one line below
+    # position of underline below baseline. this is the descent below baseline of the bottom of the underline.
+    # - 0 means underline rests on baseline itself, 1 is one line below
+    # - a 2-pixel underline fully under the baseline has descent 2
     underline_descent: int
-    # position of strikethorugh above baseline. 1 means strikethrough rests on baseline
+    # position of strikethrough above baseline. this is the ascent above baseline of the top of the strikethrough
+    # - i.e. for a 2-pixel strikethrough, 2 means strikethrough rests on baseline
     strikethrough_ascent: int
     # recommended superscript size in pixels.
     superscript_size: int
