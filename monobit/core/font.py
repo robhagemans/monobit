@@ -1469,6 +1469,34 @@ class Font(HasProps):
         )
 
     @scriptable
+    def interlace(
+            self, factor:Coord=Coord(1, 1),
+            *, shift_mask_column:int=None, adjust_metrics:bool=True
+        ):
+        """
+        Stretch by inserting empty rows and/or columns.
+
+        factor: resulting stretch factor (horizontal, vertical) (default: 1,1)
+        shift_mask_column: number of the column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: no shift)
+        adjust_metrics: also stretch metrics (default: True)
+        """
+        factor_x, factor_y = factor
+        if (factor_x, factor_y) == (1, 1):
+            return self
+        font = self.for_all(
+            Glyph.interlace, factor=factor,
+            shift_mask_column=shift_mask_column,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height * factor_y,
+            line_width=self.line_width * factor_x,
+        )
+
+    @scriptable
     def shrink(
             self, factor:Coord=Coord(1, 1), *, adjust_metrics:bool=True
         ):

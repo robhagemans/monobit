@@ -700,6 +700,52 @@ class Raster:
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
+    def interlace(self, factor:Coord=Coord(1, 1), *, shift_mask_column:int=None):
+        """
+        Insert empty rows and/or columns.
+
+        factor: resulting stretch factor (horizontal, vertical)
+        shift_mask_column: column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: None)
+        """
+        factor_x, factor_y = factor
+        # vertical interlace
+        pixels = self._pixels
+        if factor_y != 1:
+            empty = (self._paper,) * self.width
+            pixels = tuple(
+                _row if not _rep else empty
+                for _row in pixels
+                for _rep in range(factor_y)
+            )
+            # remove "interlace" at the end
+            pixels = pixels[:-(factor-y-1)]
+        if factor_x != 1:
+            # horizontal interlace
+            pixels = tuple(
+                ''.join(
+                    _col if not _rep else self._paper
+                    for _col in _row
+                    for _rep in range(factor_x)
+                )
+                for _row in pixels
+            )
+            pixels = tuple(_row[:-(factor_x-1)] for _row in pixels)
+            if shift_mask_column is not None:
+                def _exclude_mask(row):
+                    # TODO: use 'left' or 'right' here
+                    if shift_mask_column == -1:
+                        # remove the interlace too
+                        return row[:-2]
+                    else:
+                        return row[1:]
+                # half-pixel shift logic for hp-264x, Apple II HRCG
+                pixels = tuple(
+                    self._paper + _exclude_mask(_row) if _row[shift_mask_column] != self._paper
+                    else _exclude_mask(_row) + self._paper
+                    for _row in pixels
+                )
+        return type(self)(pixels, inklevels=self._inklevels)
+
     def shrink(self, factor:Coord=Coord(1, 1)):
         """
         Remove rows and/or columns.
