@@ -738,10 +738,10 @@ class Raster:
                 def _exclude_mask(row):
                     # TODO: use 'left' or 'right' here
                     if shift_mask_column == -1:
-                        # remove the interlace too
-                        return row[:-2]
+                        # remove the interlace of the mask column too
+                        return row[:-factor_x]
                     else:
-                        return row[1:]
+                        return row[factor_x:]
                 # half-pixel shift logic for hp-264x, Apple II HRCG
                 pixels = tuple(
                     self._paper + _exclude_mask(_row) if _row[shift_mask_column] != self._paper
