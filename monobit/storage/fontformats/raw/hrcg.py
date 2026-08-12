@@ -26,7 +26,7 @@ def load_hrcg(instream):
     font = load_bitmap(instream, width=8, height=8, count=96, msb='r', first_codepoint=0x20)
     more_data = instream.read()
     if more_data:
-        raise FileFormatError(f'Not a HRCG font: size {768+more_data} != 768')
+        raise FileFormatError(f'Not a HRCG font: size {768+len(more_data)} != 768')
     font = font.interlace(factor=(2, 1), shift_mask_column=-1, adjust_metrics=False)
     font = font.modify(source_format='hrcg')
     return font
