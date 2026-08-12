@@ -691,6 +691,8 @@ class Raster:
         factor: number of times to repeat (horizontally, vertically)
         """
         factor_x, factor_y = factor
+        if factor_x < 1 or factor_y < 1:
+            raise ValueError('`factor` values must be greater than zero')
         # vertical stretch
         pixels = (_row for _row in self._pixels for _ in range(factor_y))
         # horizontal stretch
@@ -708,6 +710,8 @@ class Raster:
         shift_mask_column: column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: None)
         """
         factor_x, factor_y = factor
+        if factor_x < 1 or factor_y < 1:
+            raise ValueError('`factor` values must be greater than zero')
         # vertical interlace
         pixels = self._pixels
         if factor_y != 1:
@@ -754,7 +758,11 @@ class Raster:
         modulo: first column, row to keep (default: 0,0)
         """
         factor_x, factor_y = factor
+        if factor_x < 1 or factor_y < 1:
+            raise ValueError('`factor` values must be greater than zero')
         modulo_x, modulo_y = modulo
+        modulo_x = modulo_x % self.width
+        modulo_y = modulo_y % self.height
         # vertical shrink
         shrunk = self._pixels[modulo_y::factor_y]
         # horizontal shrink
