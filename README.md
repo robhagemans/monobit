@@ -96,6 +96,7 @@ Proportional-spacing formats
 | BeOS Bitmap Font      | `beos`     |                             |&check;|&check;| binary | U O G    |
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | O        |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | M U SB MB O K G C |
+| Quark Catalyst        | `catalyst` |                             |&check;|       | binary | -        |
 | FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.[specx]ft` |&check;| | binary | -   |
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;| visual | -        |
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       | binary | -        |
