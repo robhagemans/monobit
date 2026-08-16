@@ -14,7 +14,7 @@ from monobit.core import Font
 from monobit.storage import Magic
 
 from .nfnt import extract_nfnt, convert_nfnt
-
+from .nfnt2 import extract_nfnt2
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
 @loaders.register(
@@ -170,7 +170,7 @@ def _read_palm(instream):
         except ValueError as e:
             logging.warning('Could not read record: %s', e)
             continue
-        nfnts.append(nfnt)
+        nfnts.append({'properties': {}, **nfnt})
     return props | Props(entries=tuple(entries), records=nfnts)
 
 
@@ -188,24 +188,29 @@ def _read_palm_prc(instream):
         )
         if entry.type not in (b'NFNT', b'nfnt'):
             continue
-        if entry.type == b'nfnt':
-            logging.warning('Palm v2 (nfnt) format not implemented.')
         instream.seek(entry.localChunkID)
-        data = instream.read()
-        # currently we're just assuming NFNT
-        try:
-            nfnt = extract_nfnt(data, offset=0)
-        except ValueError as e:
-            logging.warning('Could not read record: %s', e)
-            continue
-        nfnts.append(nfnt)
+        if entry.type == b'NFNT':
+            data = instream.read()
+            try:
+                fontdata = extract_nfnt(data, offset=0)
+            except ValueError as e:
+                logging.warning('Could not read record: %s', e)
+                continue
+            nfnts.append({'properties': {}, **fontdata})
+        elif entry.type == b'nfnt':
+            try:
+                fontdata_dicts = extract_nfnt2(instream)
+            except ValueError as e:
+                logging.warning('Could not read record: %s', e)
+                continue
+            nfnts.extend(fontdata_dicts)
     return props | Props(entries=tuple(entries), records=nfnts)
 
 
 def _convert_palm(palm_data):
     """Convert a Palm OS font data structure to Font."""
     fonts = (
-        convert_nfnt({}, **_nfnt)
+        convert_nfnt(**_nfnt)
         for _nfnt in palm_data.records
     )
     fonts = tuple(
