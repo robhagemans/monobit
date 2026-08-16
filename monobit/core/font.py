@@ -1370,7 +1370,7 @@ class Font(HasProps):
     @scriptable
     def expand(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
-            *, adjust_metrics:bool=True
+            *, repeat:bool=False, adjust_metrics:bool=True
         ):
         """
         Add blank space to raster.
@@ -1379,12 +1379,13 @@ class Font(HasProps):
         bottom: number of rows to add on bottom
         right: number of columns to add on right
         top: number of rows to add on top
+        repeat: repeat pixels on boundary in new rows or columns (default: False, use empty space)
         adjust_metrics: make the operation render-invariant (default: True)
         """
         font = self.for_all(
             Glyph.expand,
             left=left, bottom=bottom, right=right, top=top,
-            adjust_metrics=adjust_metrics
+            repeat=repeat, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
             return font

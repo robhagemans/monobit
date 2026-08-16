@@ -659,28 +659,41 @@ class Raster:
             inklevels=self._inklevels,
         )
 
-    def expand(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
+    def expand(
+            self, left:int=0, bottom:int=0, right:int=0, top:int=0,
+            *, repeat:bool=False,
+        ):
         """
-        Add blank space.
+        Expand raster along the borders with blank space or repeated pixels.
 
         left: number of columns to add on left
         bottom: number of rows to add on bottom
         right: number of columns to add on right
         top: number of rows to add on top
+        repeat: repeat pixels on boundary in new rows or columns (default: False, use empty space)
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only expand raster by a positive amount.')
         if not top+self.height+bottom:
             return type(self).blank(width=right+self.width+left)
         new_width = left + self.width + right
-        empty_row = self._paper * new_width
+        if repeat:
+            top_row = self._pixels[0]
+            bot_row = self._pixels[-1]
+            top_row = top_row[0] * left + top_row + top_row[-1] * right
+            bot_row = bot_row[0] * left + bot_row + bot_row[-1] * right
+            left_col = tuple(_row[0] for _row in self._pixels)
+            right_col = tuple(_row[-1] for _row in self._pixels)
+        else:
+            top_row = bot_row = self._paper * new_width
+            left_col = right_col = tuple(self._paper * self.height)
         pixels = (
-            (empty_row,) * top
+            (top_row,) * top
             + tuple(
-                self._paper * left + _row + self._paper * right
-                for _row in self._pixels
+                _lpix * left + _row + _rpix * right
+                for _lpix, _row, _rpix in zip(left_col, self._pixels, right_col)
             )
-            + (empty_row,) * bottom
+            + (bot_row,) * bottom
         )
         return type(self)(pixels, inklevels=self._inklevels)
 

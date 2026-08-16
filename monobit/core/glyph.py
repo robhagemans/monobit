@@ -706,7 +706,8 @@ class Glyph(HasProps):
 
     def expand(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
-            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
+            *, repeat:bool=False,
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Add blank space to raster.
@@ -715,13 +716,14 @@ class Glyph(HasProps):
         bottom: number of rows to add on bottom
         right: number of columns to add on right
         top: number of rows to add on top
+        repeat: repeat pixels on boundary in new rows or columns (default: False, use empty space)
         adjust_metrics: make the operation render-invariant (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         if not any((left, bottom, right, top)):
             return self
         # expand raster
-        pixels = self._pixels.expand(left, bottom, right, top)
+        pixels = self._pixels.expand(left, bottom, right, top, repeat=repeat)
         new_metrics = {}
         if adjust_metrics:
             # horizontal metrics
