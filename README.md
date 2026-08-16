@@ -184,6 +184,7 @@ Character-cell formats
 | PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;| binary | any  | -        |
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;| binary | any  | SB MB    |
 | Bare HFNT resource    | `hfnt`     |                             |&check;|       | binary | 8N*8N | MB      |
+| AppleSoft Toolkit Hi-Res Character Generator | `hrcg` | `.set`   |&check;|&check;| binary | 8*7 (4) |       |
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| coded  | 8x16 (strict) 8xN<=32 (ext) | MC U (strict) MC US (ext) |
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
@@ -206,6 +207,8 @@ Character-cell formats
 
 
 MC multi-cell glyphs
+
+(4) Glyphs are extracted interlaced to double-width (8x14) in order to represent half-dot shifts
 
 
 Charts

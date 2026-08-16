@@ -706,7 +706,8 @@ class Glyph(HasProps):
 
     def expand(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
-            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
+            *, repeat:bool=False,
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Add blank space to raster.
@@ -715,13 +716,14 @@ class Glyph(HasProps):
         bottom: number of rows to add on bottom
         right: number of columns to add on right
         top: number of rows to add on top
+        repeat: repeat pixels on boundary in new rows or columns (default: False, use empty space)
         adjust_metrics: make the operation render-invariant (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         if not any((left, bottom, right, top)):
             return self
         # expand raster
-        pixels = self._pixels.expand(left, bottom, right, top)
+        pixels = self._pixels.expand(left, bottom, right, top, repeat=repeat)
         new_metrics = {}
         if adjust_metrics:
             # horizontal metrics
@@ -791,21 +793,54 @@ class Glyph(HasProps):
                 )
         return self.modify(pixels, **new_metrics)
 
-    def shrink(
-            self, factor:Coord=Coord(1, 1),
-            *, adjust_metrics:bool=True, create_vertical_metrics:bool=False,
+    def interlace(
+            self, factor:Coord=Coord(1, 1), *, shift_mask_column:int=None,
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
-        Shrink by removing rows and/or columns.
+        Stretch glyph by inserting empty rows and/or columns.
 
-        factor: factor to shrink (horizontally, vertically) (default: 1,1)
+        factor: resulting stretch factor (horizontal, vertical) (default: 1,1)
+        shift_mask_column: number of the column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: no shift)
         adjust_metrics: also stretch metrics (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """
         factor_x, factor_y = factor
         if factor_x == factor_y == 1:
             return self
-        pixels = self._pixels.shrink(factor)
+        pixels = self._pixels.interlace(factor, shift_mask_column=shift_mask_column)
+        new_metrics = {}
+        if adjust_metrics:
+            new_metrics |= dict(
+                left_bearing=factor_x*self.left_bearing,
+                right_bearing=factor_x*self.right_bearing,
+                shift_up=factor_y*self.shift_up,
+            )
+            if create_vertical_metrics or self.has_vertical_metrics():
+                new_metrics |= dict(
+                    top_bearing=factor_y*self.top_bearing,
+                    bottom_bearing=factor_y*self.bottom_bearing,
+                    shift_left=factor_x*self.shift_left,
+                )
+        return self.modify(pixels, **new_metrics)
+
+
+    def shrink(
+            self, factor:Coord=Coord(1, 1), *, modulo:Coord=Coord(0, 0),
+            adjust_metrics:bool=True, create_vertical_metrics:bool=False,
+        ):
+        """
+        Shrink by removing rows and/or columns.
+
+        factor: factor to shrink (horizontally, vertically) (default: 1,1)
+        modulo: first column, row to keep (default: 0,0)
+        adjust_metrics: also stretch metrics (default: True)
+        create_vertical_metrics: create vertical metrics if they don't exist (default: False)
+        """
+        factor_x, factor_y = factor
+        if factor_x == factor_y == 1:
+            return self
+        pixels = self._pixels.shrink(factor, modulo=modulo)
         new_metrics = {}
         if adjust_metrics:
             new_metrics |= dict(
