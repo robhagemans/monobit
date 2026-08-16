@@ -1,7 +1,7 @@
 """
 monobit.storage.fontformats.printshop - Broderbund's The Print Shop font files
 
-(c) 2023 Rob Hagemans
+(c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
