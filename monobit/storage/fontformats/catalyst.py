@@ -18,7 +18,10 @@ from monobit.base.binary import ceildiv
 # so it may not work on other files, should they exist
 
 
-@loaders.register(name='catalyst')
+@loaders.register(
+    name='catalyst',
+    patterns=('SYSTEM.FONTS',),
+)
 def load_catalyst(instream):
     """Load Quark Catalyst fonts."""
     n_resources = int(le.uint8.read_from(instream))
