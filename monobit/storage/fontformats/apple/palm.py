@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.base.struct import big_endian as be
-from monobit.base import Props, UnsupportedError
+from monobit.base import Props, UnsupportedError, FileFormatError
 from monobit.storage import loaders, savers
 from monobit.core import Font
 from monobit.storage import Magic
@@ -24,7 +24,7 @@ from .nfnt2 import extract_nfnt2
 )
 def load_palm(instream):
     """Load fonts from a Palm OS PDB file."""
-    palm_data = _read_palm(instream)
+    palm_data = _read_palm_pdb(instream)
     fonts = _convert_palm(palm_data)
     return fonts
 
@@ -139,46 +139,48 @@ _PRC_ENTRY = be.Struct(
 # AppInfo Block (optional)
 # SortInfo Block (optional)
 
+# magic numbers for resource format
+# resource name is not dependable for Palm
+# - font resources may have ad-hoc names in some programs: 'FONT', 'tFnt'
+# - 'NFNT' and 'nfnt' named resources may be GrayFont headers
+_NFNT_MAGIC = b'\x90\0'
+_NFNT2_MAGIC = b'\x92\0'
+_MAGIC_TO_TYPE = {
+    _NFNT_MAGIC: 'NFNT',
+    _NFNT2_MAGIC: 'nfnt',
+}
 
-def _read_header(instream):
-    """Read a PDB /PRC header."""
-    header = _PDB_HEADER.read_from(instream)
-    recordlist = _RECORD_LIST.read_from(instream)
-    return Props(
-        header=header,
-        recordlist=recordlist,
-    )
 
-def _read_palm(instream):
+def _read_palm_pdb(instream):
     """Read a PDB file."""
-    props = _read_header(instream)
-    if (props.header.type, props.header.creator) != (b'Font', b'Font'):
-        raise UnsupportedError(
-            'Not a Font PDB: type `%s` creator `%s`',
-            props.header.type, props.header.creator
+    header = _PDB_HEADER.read_from(instream)
+    logging.debug('header: %s', header)
+    if (header.type, header.creator) != (b'Font', b'Font'):
+        logging.warning(
+            'May not be a Font PDB: type `%s`, creator `%s`',
+            header.type.decode('latin-1'), header.creator.decode('latin-1')
         )
-    entries = _PDB_ENTRY.array(props.recordlist.numRecords).read_from(instream)
-    nfnts = []
+    recordlist = _RECORD_LIST.read_from(instream)
+    entries = _PDB_ENTRY.array(recordlist.numRecords).read_from(instream)
+    logging.debug('PDB record list: %s', entries)
+    resources = []
     for entry in entries:
         instream.seek(entry.localChunkID)
-        data = instream.read()
-        # can be `NFNT` (0x9000) or `nfnt` (0x9200)
-        # or `afnx` format (?)
-        # currently we're just assuming NFNT
-        try:
-            nfnt = extract_nfnt(data, offset=0)
-        except ValueError as e:
-            logging.warning('Could not read record: %s', e)
-            continue
-        nfnts.append({'properties': {}, **nfnt})
-    return props | Props(entries=tuple(entries), records=nfnts)
+        resources.extend(_read_resource(instream))
+    return Props(
+        header=header, recordlist=recordlist,
+        entries=tuple(entries), records=resources,
+    )
 
 
 def _read_palm_prc(instream):
     """Read a PRC file."""
-    props = _read_header(instream)
-    entries = _PRC_ENTRY.array(props.recordlist.numRecords).read_from(instream)
-    nfnts = []
+    header = _PDB_HEADER.read_from(instream)
+    logging.debug('header: %s', header)
+    recordlist = _RECORD_LIST.read_from(instream)
+    entries = _PRC_ENTRY.array(recordlist.numRecords).read_from(instream)
+    logging.debug('PRC record list: %s', entries)
+    resources = []
     for entry in entries:
         logging.debug(
             'Found record of type `%s` id %d at offset 0x%X',
@@ -186,25 +188,39 @@ def _read_palm_prc(instream):
             entry.id,
             entry.localChunkID
         )
-        if entry.type not in (b'NFNT', b'nfnt'):
-            continue
         instream.seek(entry.localChunkID)
-        if entry.type == b'NFNT':
+        resources.extend(_read_resource(instream))
+    # FIXME - we can't map records to entries anymore, multiple records for nfnt
+    return Props(
+        header=header, recordlist=recordlist,
+        entries=tuple(entries), records=resources,
+    )
+
+
+def _read_resource(instream):
+    """Read a Palm font resource (NFNT or nfnt)."""
+    magic = instream.peek(2)[:2]
+    magic_type = _MAGIC_TO_TYPE.get(magic, '')
+    try:
+        if magic_type:
+            act, format = 'Reading', magic_type
+        else:
+            act, format = 'Skipping', 'unknown'
+        logging.debug(
+            '%s resource: format %s, magic %04x',
+            act, format, int.from_bytes(magic, 'big'),
+        )
+        if magic_type == 'NFNT':
             data = instream.read()
-            try:
-                fontdata = extract_nfnt(data, offset=0)
-            except ValueError as e:
-                logging.warning('Could not read record: %s', e)
-                continue
-            nfnts.append({'properties': {}, **fontdata})
-        elif entry.type == b'nfnt':
-            try:
-                fontdata_dicts = extract_nfnt2(instream)
-            except ValueError as e:
-                logging.warning('Could not read record: %s', e)
-                continue
-            nfnts.extend(fontdata_dicts)
-    return props | Props(entries=tuple(entries), records=nfnts)
+            fontdata = extract_nfnt(data, offset=0)
+            return ({'properties': {}, **fontdata},)
+        elif magic_type == 'nfnt':
+            return extract_nfnt2(instream)
+    except (ValueError, FileFormatError) as e:
+        # negative array length throws valueerror, not enough data throws structerror <= fileformaterror
+        logging.warning('Could not read resource: %s', e)
+    return ()
+
 
 
 def _convert_palm(palm_data):
