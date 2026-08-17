@@ -1146,12 +1146,7 @@ class TestImport(BaseTester):
 
     treo = 'https://palmarchive.com/files/?file=xandros9%20Archive/Device%20ROM%20Files/Treo%20755p/'
 
-    def test_import_palm_prc(self):
-        """Test importing Palm OS fonts from a PRC file."""
-        file = ensure_asset(self.treo, 'Security.prc')
-        font, nfnt2 = monobit.load(file)
-        self.assertEqual(len(font.glyphs), 2)
-        assert_text_eq(font.glyphs[0].as_text(), """\
+    star = """\
 .......
 .@..@..
 ..@@...
@@ -1160,9 +1155,8 @@ class TestImport(BaseTester):
 .@..@..
 .......
 .......
-""")
-        self.assertEqual(len(nfnt2.glyphs), 2)
-        assert_text_eq(nfnt2.glyphs[0].as_text(), """\
+"""
+    big_star = """\
 ..............
 ..............
 ..@@....@@....
@@ -1179,7 +1173,25 @@ class TestImport(BaseTester):
 ..............
 ..............
 ..............
-""")
+"""
+
+    def test_import_palm_prc(self):
+        """Test importing Palm OS fonts from a PRC file."""
+        file = ensure_asset(self.treo, 'Security.prc')
+        lores, hires = monobit.load(file)
+        self.assertEqual(len(lores.glyphs), 2)
+        assert_text_eq(lores.glyphs[0].as_text(), self.star)
+        self.assertEqual(len(hires.glyphs), 2)
+        assert_text_eq(hires.glyphs[0].as_text(), self.big_star)
+
+    def test_import_palm_nfnt2(self):
+        """Test importing bare NFNT2 resource."""
+        file = ensure_asset(self.treo, 'Security.prc')
+        lores, hires = monobit.load(file, format='nfnt2', offset=0x4242)
+        self.assertEqual(len(lores.glyphs), 2)
+        assert_text_eq(lores.glyphs[0].as_text(), self.star)
+        self.assertEqual(len(hires.glyphs), 2)
+        assert_text_eq(hires.glyphs[0].as_text(), self.big_star)
 
 
     # OS/2
