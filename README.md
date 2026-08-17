@@ -115,9 +115,10 @@ Proportional-spacing formats
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi`, `sfnt` |
 | Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB O G   |
+| Bare Palm nfnt resource | `nfnt2`  |                             |&check;|       | binary | M SB O   |
 | Project Oberon        | `oberon`   | `.Scn.Fnt` `.Pr?.Fnt`       |&check;|&check;| binary | O        |
-| Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt` |
-| Palm OS PRC (v1/NFNT) | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt` |
+| Palm OS font          | `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt`, `nfnt2` |
+| Palm OS PRC           | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt`, `nfnt2` |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
 | PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
