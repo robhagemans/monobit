@@ -84,6 +84,7 @@ Proportional-spacing formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write | Type   | Features |
 |-----------------------|------------|-----------------------------|-------|-------|--------|----------|
+| Palm afnx resource    | `afnx`     |                             |&check;|       | binary | M O      |
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       | binary | -        |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|&check;| binary | M; see `amiga` |
 | Amiga font            | `amiga`    |                             |&check;|&check;| binary | O C G  |
@@ -110,15 +111,15 @@ Proportional-spacing formats
 | Grid bitmap image [P] | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | G C      |
 | Set of bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | G C      |
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | M; see `nfnt` |
-| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K C; see `nfnt`, `sfnt`, `fbit`, `hfnt` |
+| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M SB K C; see `nfnt`, `sfnt`, `fbit`, `hfnt` |
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi`, `sfnt` |
-| Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB O G   |
-| Bare Palm nfnt resource | `nfnt2`  |                             |&check;|       | binary | M SB O   |
+| Apple NFNT resource   | `nfnt`     | `.f`                        |&check;|&check;| binary | O G      |
+| Palm nfnt resource    | `nfnt2`    |                             |&check;|       | binary | M O      |
 | Project Oberon        | `oberon`   | `.Scn.Fnt` `.Pr?.Fnt`       |&check;|&check;| binary | O        |
-| Palm OS font          | `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt`, `nfnt2` |
-| Palm OS PRC           | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt`, `nfnt2` |
+| Palm OS font          | `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt`, `nfnt2`, `afnx` |
+| Palm OS PRC           | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt`, `nfnt2`, `afnx` |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
 | PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
@@ -132,11 +133,11 @@ Proportional-spacing formats
 | RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
-| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G C |
+| TrueType/OpenType embedded bitmap | `sfnt` | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G C |
 | SymbOS font           | `symbos`   | `.fnt`                      |&check;|&check;| binary | -        |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G C |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
-| Bare GEOS font record | `vlir`     |                             |&check;|&check;| binary | O        |
+| GEOS font resource    | `vlir`     |                             |&check;|&check;| binary | O        |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
 | monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | M US SB MB O K V G C |
 
@@ -173,14 +174,14 @@ Character-cell formats
 | Dashen                | `dashen`   | `.pft`                      |&check;|       | binary | any  | -        |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;| esc    | >4xN | -        |
 | Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       | binary | any  | -        |
-| Bare fbit resource    | `fbit`     |                             |&check;|       | binary | any  | MB       |
+| Apple fbit resource   | `fbit`     |                             |&check;|       | binary | any  | MB       |
 | FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;| binary | any  | MB       |
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       | binary | 8xN  | -        |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       | binary | 8xN  | -        |
 | Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       | binary | 8xN  | -        |
 | PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;| binary | any  | -        |
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;| binary | any  | SB MB    |
-| Bare HFNT resource    | `hfnt`     |                             |&check;|       | binary | 8N*8N | MB      |
+| Apple HFNT resource   | `hfnt`     |                             |&check;|       | binary | 8N*8N | MB      |
 | AppleSoft Toolkit Hi-Res Character Generator | `hrcg` | `.set`   |&check;|&check;| binary | 8*7 (4) |       |
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| coded  | 8x16 (strict) 8xN<=32 (ext) | MC U (strict) MC US (ext) |
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
