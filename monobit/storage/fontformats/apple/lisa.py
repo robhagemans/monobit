@@ -67,7 +67,7 @@ def load_lisa(instream):
         except (FileFormatError, UnsupportedError, ValueError) as e:
             logging.warning("Could not load resource '%s': %s", name, e)
             continue
-        font = convert_nfnt({}, **fontdata)
+        font = convert_nfnt(**fontdata)
         font = font.modify(
             name=name, source_format=f'[Lisa] {font.source_format}',
         )

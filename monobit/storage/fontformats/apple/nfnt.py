@@ -40,7 +40,7 @@ def load_nfnt(instream, offset:int=0):
     """
     instream.seek(offset)
     fontdata = extract_nfnt(instream)
-    return convert_nfnt({}, **fontdata)
+    return convert_nfnt(**fontdata)
 
 
 @savers.register(linked=load_nfnt)
@@ -329,6 +329,7 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
         for _glyph, _wo in zip(glyphs, wo_table)
     )
     return dict(
+        properties={},
         glyphs=glyphs,
         fontrec=fontrec,
     )

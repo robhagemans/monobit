@@ -217,8 +217,7 @@ def _read_resource(instream):
             act, format, int.from_bytes(magic, 'big'),
         )
         if magic_type == 'NFNT':
-            fontdata = extract_nfnt(instream)
-            return ({'properties': {}, **fontdata},)
+            return (extract_nfnt(instream),)
         elif magic_type == 'nfnt':
             return extract_nfnt2(instream, format='nfnt2')
         elif magic_type == 'afnx':

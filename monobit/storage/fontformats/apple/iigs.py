@@ -109,10 +109,15 @@ def _load_iigs(instream):
     return _convert_iigs(**fontdata, header=header, name=name)
 
 
-def _convert_iigs(glyphs, fontrec, header, name):
+def _convert_iigs(properties, glyphs, fontrec, header, name):
     """Convert IIgs font data to monobit font."""
-    font = convert_nfnt({}, glyphs, fontrec)
-    # properties from IIgs header
+    font = convert_nfnt(properties=properties, glyphs=glyphs, fontrec=fontrec)
+    iigs_props = _convert_iigs_properties(header, name)
+    return font.modify(**iigs_props).label()
+
+
+def _convert_iigs_properties(header, name):
+    """Extract properties from IIgs header."""
     properties = {
         'family': name,
         'point_size': header.pointSize,
@@ -134,7 +139,7 @@ def _convert_iigs(glyphs, fontrec, header, name):
     if header.style.shadow:
         decoration.append('shadow')
     properties['decoration'] = ' '.join(decoration);
-    return font.modify(**properties).label()
+    return properties
 
 
 def _save_iigs(outstream, font, version, resample_encoding):

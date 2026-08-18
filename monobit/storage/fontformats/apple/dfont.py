@@ -364,7 +364,8 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 props.update(info.get(rsrc.id, {}))
             if 'encoding' not in props or props.get('family', '') in NON_ROMAN_NAMES:
                 props['encoding'] = NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
-            font = convert_nfnt(props, **vars(rsrc))
+            nfnt_params = vars(rsrc) | dict(properties=props)
+            font = convert_nfnt(**nfnt_params)
             if font.glyphs:
                 font = font.label()
                 fonts.append(font)
