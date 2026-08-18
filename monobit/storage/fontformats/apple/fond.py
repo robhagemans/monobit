@@ -204,6 +204,13 @@ def string_from_pascal(data, offset):
     string = string.decode('mac-roman', 'replace')
     return string, offset+1+length
 
+def read_pascal_string(instream):
+    """Read Mac-encoded Pascal string and convert to Python string."""
+    length = int(be.uint8.read_from(instream))
+    string = instream.read(length)
+    string = string.decode('mac-roman', 'replace')
+    return string
+
 def string_to_pascal(str):
     """Convert Python string to Mac-encoded Pascal string."""
     return bytes((len(str),)) + str.encode('mac-roman', 'replace')
@@ -234,14 +241,14 @@ _KERN_PAIR = be.Struct(
     kernWidth=_FIXED_TYPE,
 )
 
-def extract_fond(data, offset):
+def extract_fond(instream):
     """Read a MacOS FOND resource."""
-    fond_header = _FOND_HEADER.from_bytes(data, offset)
+    anchor = instream.tell()
+    fond_header = _FOND_HEADER.read_from(instream)
     # Font Family Tables:
     # Font Association table (mandatory)
-    fa_offset = offset + _FOND_HEADER.size
-    fa_header = _FA_HEADER.from_bytes(data, fa_offset)
-    fa_list = _FA_ENTRY.array(fa_header.numAssoc+1).from_bytes(data, fa_offset + _FA_HEADER.size)
+    fa_header = _FA_HEADER.read_from(instream)
+    fa_list = _FA_ENTRY.array(fa_header.numAssoc+1).read_from(instream)
     kerning_table = {}
     encoding_table = {}
     offs_header = None
@@ -260,86 +267,66 @@ def extract_fond(data, offset):
         # > Whenever any table, including the glyph-width, kerning, and
         # > style-mapping tables, is included in the resource data, an offset table is included.
         # > The offset table contains a long integer offset value for each table that follows it
-        offs_offset = fa_offset + _FA_HEADER.size + _FA_ENTRY.size * (fa_header.numAssoc+1)
-        offs_header = _OFFS_HEADER.from_bytes(data, offs_offset)
+        offs_header = _OFFS_HEADER.read_from(instream)
         # max_entry==-1 if the table is absent?
-        offs_list = _OFFS_ENTRY.array(offs_header.max_entry+1).from_bytes(
-            data, offs_offset + _OFFS_HEADER.size
-        )
+        offs_list = _OFFS_ENTRY.array(offs_header.max_entry+1).read_from(instream)
         # Bounding-box table (optional, not used by us)
         # no offset given in font record. should use the Offset Table to find it?
         # here we just assume it is the first table after the offset table
         # is BBX table effectively mandatory if more tables follow?
-        bbx_offset = offs_offset + _OFFS_HEADER.size + _OFFS_ENTRY.size * (offs_header.max_entry+1)
-        bbx_header = _BBX_HEADER.from_bytes(data, bbx_offset)
-        bbx_list = _BBX_ENTRY.array(bbx_header.max_entry+1).from_bytes(
-            data, bbx_offset + _BBX_HEADER.size
-        )
+        bbx_header = _BBX_HEADER.read_from(instream)
+        bbx_list = _BBX_ENTRY.array(bbx_header.max_entry+1).read_from(instream)
         # Family glyph-width table (optional, not used by us)
         # use offset given in FOND header
         if fond_header.ffWTabOff:
-            wtab_offset = offset + fond_header.ffWTabOff
-            wtab = _WIDTH_TABLE.from_bytes(data, wtab_offset)
+            instream.seek(anchor + fond_header.ffWTabOff)
+            wtab = _WIDTH_TABLE.read_from(instream)
             # number of characters in each width table - one more than in NFNT.
             # poorly documented, but consistent with Classic Mac system resource
             # and FONDU/FontForge
             num_chars = fond_header.ffLastChar - fond_header.ffFirstChar + 3
             wtables = []
-            wtab_offset += _WIDTH_TABLE.size
             # numWidths is the number of width tables, i.e. the number of styles.- 1
             for style in range(wtab.numWidths+1):
-                wentry = _WIDTH_ENTRY.from_bytes(data, wtab_offset)
-                widths = _FIXED_TYPE.array(num_chars).from_bytes(
-                    data, wtab_offset + _WIDTH_ENTRY.size
-                )
-                wtab_offset += (
-                    _WIDTH_ENTRY.size + _FIXED_TYPE.size * num_chars
-                )
+                wentry = _WIDTH_ENTRY.read_from(instream)
+                widths = _FIXED_TYPE.array(num_chars).read_from(instream)
                 wtables.append((wentry, widths))
         # Style-mapping table (optional)
         if fond_header.ffStylOff:
-            stab_offset = offset + fond_header.ffStylOff
-            stab = _STYLE_TABLE.from_bytes(data, stab_offset)
+            instream.seek(anchor + fond_header.ffStylOff)
+            stab = _STYLE_TABLE.read_from(instream)
             # font name suffix subtable
             # > The font name suffix subtable contains the base font name and
             # > the suffixes that can be added to the font family's name to
             # > produce a real PostScript name (one that is recognized by the
             # > PostScript LaserWriter printer driver)
-            ntab_offset = stab_offset + _STYLE_TABLE.size
-            ntab = _NAME_TABLE.from_bytes(data, ntab_offset)
-            names = []
-            offs = ntab_offset + _NAME_TABLE.size
+            ntab = _NAME_TABLE.read_from(instream)
             # count + 1 as we take the base font name as well?
             # but using that leads to incorrect encoding table
-            for i in range(ntab.stringCount):
-                string, offs = string_from_pascal(data, offs)
-                names.append(string)
+            names = tuple(
+                read_pascal_string(instream)
+                for i in range(ntab.stringCount)
+            )
             # glyph-name encoding subtable
-            etab_offset = offs
-            etab = _ENC_TABLE.from_bytes(data, etab_offset)
-            offs += _ENC_TABLE.size
+            etab = _ENC_TABLE.read_from(instream)
             # encoding table - this is based on description in the docs
             # but does not appear to work correctly for built in mac Palatino font
             # which has a table that's just three nulls but stringCount=3
             for i in range(etab.stringCount):
-                codepoint = be.uint8.from_bytes(data, offs)
-                string, offs = string_from_pascal(data, offs+1)
-                encoding_table[codepoint] = string
+                codepoint = be.uint8.read_from(instream)
+                encoding_table[codepoint] = read_pascal_string(instream)
         # Kerning table (optional)
         if fond_header.ffKernOff:
-            ktab_offset = offset + fond_header.ffKernOff
-            ktab = _KERN_TABLE.from_bytes(data, ktab_offset)
-            offs = ktab_offset + _KERN_TABLE.size
+            instream.seek(anchor + fond_header.ffKernOff)
+            ktab = _KERN_TABLE.read_from(instream)
             kerning_table = {}
             for entry in range(ktab.numKerns+1):
-                ke = _KERN_ENTRY.from_bytes(data, offs)
+                ke = _KERN_ENTRY.read_from(instream)
                 # This is an integer value that specifies
                 # the number of bytes in this kerning subtable
-                pair_array = _KERN_PAIR.array(ke.kernLength)
                 kerning_table[ke.kernStyle] = tuple(
-                    pair_array.from_bytes(data, offs + _KERN_ENTRY.size)
+                    _KERN_PAIR.array(ke.kernLength).read_from(instream)
                 )
-                offs += _KERN_ENTRY.size + pair_array.size
     return dict(
         fond_header=fond_header,
         fa_header=fa_header, fa_list=fa_list,

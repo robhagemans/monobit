@@ -247,7 +247,7 @@ def _extract_resources(data, resources, data_fork_stream):
             try:
                 if rsrc.type == 'FOND':
                     logging.debug('reading: %s (font family record)', description)
-                    parsed = extract_fond(data, rsrc.offset)
+                    parsed = extract_fond(instream)
                 elif rsrc.type == 'FONT' and not (rsrc.id % 128):
                     logging.debug('storing: %s (name entry)', description)
                     # rsrc_id % 128 is the point size
