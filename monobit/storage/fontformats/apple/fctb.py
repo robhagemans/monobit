@@ -34,11 +34,10 @@ _COLOR_SPEC = be.Struct(
 )
 
 
-def extract_fctb(data, offset):
+def extract_fctb(instream):
     """Extract colour table from an fctb resource."""
-    ct_header = _COLOR_TABLE.from_bytes(data, offset)
-    offset += _COLOR_TABLE.size
-    cspecs = (_COLOR_SPEC * (ct_header.ctSize+1)).from_bytes(data, offset)
+    ct_header = _COLOR_TABLE.read_from(instream)
+    cspecs = (_COLOR_SPEC * (ct_header.ctSize+1)).read_from(instream)
     return dict(color_table=ct_header, color_specs=cspecs)
 
 

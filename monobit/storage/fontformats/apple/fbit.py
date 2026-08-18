@@ -29,12 +29,11 @@ def load_fbit(instream, offset:int=0, data_fork:str=''):
     data_fork: file that holds the data fork (used for fbit files only)
     """
     instream.seek(offset)
-    data = instream.read()
     if data_fork:
         with open_location(data_fork) as data_fork_loc:
-            result = extract_fbit(data, 0, data_fork_loc.get_stream())
+            result = extract_fbit(instream, data_fork_loc.get_stream())
     else:
-        result = extract_fbit(data, 0, None)
+        result = extract_fbit(instream, None)
     return result['font']
 
 
@@ -46,8 +45,7 @@ def load_hfnt(instream, offset:int=0):
     offset: starting offset in bytes of the HFNT record in the file (default 0)
     """
     instream.seek(offset)
-    data = instream.read()
-    result = extract_hfnt(data, 0)
+    result = extract_hfnt(instream)
     return result['font']
 
 
@@ -117,49 +115,48 @@ def _ordinal_to_shiftjis(ordinal):
     return hi * 0x100 + lo
 
 
-def extract_fbit(data, offset, data_fork_stream):
+def extract_fbit(instream, data_fork_stream):
     """Extract fbit resource."""
-    with Stream.from_data(data[offset:], mode='r') as stream:
-        header = _FBIT_HEADER.read_from(stream)
-        logging.debug('fbit header: %s', header)
-        glyphstream = stream
-        if header.fdef_id == 5:
-            stream.read(78)
-            glyphstream = data_fork_stream
-        elif header.fdef_id == 7:
-            # stream.read(64)
-            stream.read(16)
-            bitmap_pos = be.uint32.read_from(stream)
-            stream.read(44)
-            glyphstream = data_fork_stream
-            if glyphstream is not None:
-                glyphstream.seek(bitmap_pos, 0)
-        elif header.fdef_id != 0:
-            logging.warning(
-                'Unknown fdef id %d, trying format for fdef_id 0', fdef_id
+    header = _FBIT_HEADER.read_from(instream)
+    logging.debug('fbit header: %s', header)
+    glyphstream = instream
+    if header.fdef_id == 5:
+        instream.read(78)
+        glyphstream = data_fork_stream
+    elif header.fdef_id == 7:
+        # instream.read(64)
+        instream.read(16)
+        bitmap_pos = be.uint32.read_from(instream)
+        instream.read(44)
+        glyphstream = data_fork_stream
+        if glyphstream is not None:
+            glyphstream.seek(bitmap_pos, 0)
+    elif header.fdef_id != 0:
+        logging.warning(
+            'Unknown fdef id %d, trying format for fdef_id 0', fdef_id
+        )
+    # table of run lengths
+    table_size = be.uint16.read_from(instream)
+    logging.debug('fbit encoding table size: %d', table_size)
+    runs = (_RUNS_TABLE * table_size).read_from(instream)
+    logging.debug('fbit encoding runs: %s', runs)
+    if glyphstream is None:
+        logging.warning(
+            'Glyphs for this font are stored in the data fork, which was not found. '
+            'Use -data-fork=<filename> to indicate its location.'
+        )
+        glyphs = ()
+    else:
+        glyphs = tuple(
+            Glyph.from_bytes(
+                glyphstream.read(ceildiv(header.width * header.height, 8)),
+                header.width, header.height,
+                align='bit', bit_order='row-major',
+                codepoint=_ordinal_to_shiftjis(_run.first + _i)
             )
-        # table of run lengths
-        table_size = be.uint16.read_from(stream)
-        logging.debug('fbit encoding table size: %d', table_size)
-        runs = (_RUNS_TABLE * table_size).read_from(stream)
-        logging.debug('fbit encoding runs: %s', runs)
-        if glyphstream is None:
-            logging.warning(
-                'Glyphs for this font are stored in the data fork, which was not found. '
-                'Use -data-fork=<filename> to indicate its location.'
-            )
-            glyphs = ()
-        else:
-            glyphs = tuple(
-                Glyph.from_bytes(
-                    glyphstream.read(ceildiv(header.width * header.height, 8)),
-                    header.width, header.height,
-                    align='bit', bit_order='row-major',
-                    codepoint=_ordinal_to_shiftjis(_run.first + _i)
-                )
-                for _run in runs
-                for _i in range(_run.count)
-            )
+            for _run in runs
+            for _i in range(_run.count)
+        )
     return dict(font=Font(
         glyphs, encoding='mac-japanese',
         source_format=f'[Mac] fbit [fdef_id={header.fdef_id}]',
@@ -176,22 +173,21 @@ _HFNT_HEADER = be.Struct(
     count='uint16',
 )
 
-def extract_hfnt(data, offset):
+def extract_hfnt(instream):
     """Extract HFNT resource."""
-    with Stream.from_data(data[offset:], mode='r') as stream:
-        # 4 unknown words
-        header = _HFNT_HEADER.read_from(stream)
-        logging.debug('HFNT header: %s', header)
-        encodings = (be.uint16 * (header.count //2)).read_from(stream)
-        sentinel = be.uint16.read_from(stream)
-        logging.debug('sentinel: %x, %d', sentinel, stream.tell())
-        width = int(sqrt(header.word_size * 16))
-        glyphs = tuple(
-            Glyph.from_bytes(
-                stream.read(header.word_size*2), width=width, codepoint=_cp
-            )
-            for _cp in encodings
+    # 4 unknown words
+    header = _HFNT_HEADER.read_from(instream)
+    logging.debug('HFNT header: %s', header)
+    encodings = (be.uint16 * (header.count //2)).read_from(instream)
+    sentinel = be.uint16.read_from(instream)
+    logging.debug('sentinel: %x, %d', sentinel, instream.tell())
+    width = int(sqrt(header.word_size * 16))
+    glyphs = tuple(
+        Glyph.from_bytes(
+            instream.read(header.word_size*2), width=width, codepoint=_cp
         )
+        for _cp in encodings
+    )
     return dict(font=Font(
         glyphs, encoding='mac-japanese',
         source_format=f'[Mac] HFNT',
