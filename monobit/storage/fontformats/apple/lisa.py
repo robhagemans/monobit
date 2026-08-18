@@ -44,16 +44,12 @@ def load_lisa(instream):
         rcd1 = _LISA_RSRC_RCD1.read_from(instream)
         names.append(bytes(fontRsrcName))
         rsrc_rcds.append(rcd1)
-    resources = []
-    for rcd in rsrc_rcds:
-        instream.seek(4 + 2*(rcd.fontResourceStart + header.headerLength))
-        resources.append(
-            instream.read(2*(rcd.fontResourceEnd - rcd.fontResourceStart))
-        )
     fonts = []
-    for name, data in zip(names, resources):
+    for name, rcd in zip(names, rsrc_rcds):
+        instream.seek(4 + 2*(rcd.fontResourceStart + header.headerLength))
         try:
-            fontdata = extract_nfnt(data, 0)
+            # data size is 2*(rcd.fontResourceEnd - rcd.fontResourceStart)
+            fontdata = extract_nfnt(instream)
             font = convert_nfnt({}, **fontdata)
             font = font.modify(
                 name=name.decode('mac-roman'),

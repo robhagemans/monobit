@@ -263,7 +263,7 @@ def _extract_resources(data, resources, data_fork_stream):
                     parsed = dict(type='name')
                 elif rsrc.type in ('NFNT', 'FONT'):
                     logging.debug('reading: %s (bitmap font)', description)
-                    parsed = extract_nfnt(data, rsrc.offset)
+                    parsed = extract_nfnt(instream)
                 elif rsrc.type == 'sfnt':
                     logging.debug('reading: %s (TrueType font)', description)
                     fonts = load_sfnt(instream)

@@ -15,7 +15,7 @@ from itertools import chain, accumulate
 from monobit.base.binary import bytes_to_bits
 from monobit.base.struct import bitfield, big_endian as be, little_endian as le
 from monobit.core import Font, Glyph, KernTable, Char, Raster
-from monobit.storage import loaders, savers
+from monobit.storage import loaders, savers, Stream
 from monobit.storage.utils.limitations import ensure_single
 from monobit.encoding import EncodingName
 from monobit.base import Props, NOT_SET, UnsupportedError
@@ -39,8 +39,7 @@ def load_nfnt(instream, offset:int=0):
     offset: starting offset in bytes of the NFNT record in the file (default 0)
     """
     instream.seek(offset)
-    data = instream.read()
-    fontdata = extract_nfnt(data, 0)
+    fontdata = extract_nfnt(instream)
     return convert_nfnt({}, **fontdata)
 
 
@@ -229,7 +228,7 @@ def height_entry_struct(base):
     )
 
 
-def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
+def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
     """Read a MacOS NFNT or FONT resource."""
     # create struct types; IIgs NFNTs are little-endian
     base = {'b': be, 'l': le}[endian[:1].lower()]
@@ -238,33 +237,31 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     WOEntry = wo_entry_struct(base)
     WidthEntry = width_entry_struct(base)
     HeightEntry = height_entry_struct(base)
-    # font type override (for IIgs)
-    if font_type is not None:
-        data = font_type + data[offset+2:]
-        offset = 0
     # this is not in the header documentation but is is mentioned here:
     # https://www.kreativekorp.com/swdownload/lisa/AppleLisaFontFormat.pdf
-    compressed = endian == 'big' and data[offset+1] & 0x80
+    compressed = endian == 'big' and instream.peek(2)[1] & 0x80
     if compressed:
         logging.debug('Uncompressing NFNT resource')
-        data = _uncompress_nfnt(data, offset)
-        offset = 0
-    fontrec = NFNTHeader.from_bytes(data, offset)
+        data = _uncompress_nfnt(instream.read(), 0)
+        instream = Stream.from_data(data, mode='r')
+    anchor = instream.tell()
+    headerbytes = instream.read(NFNTHeader.size)
+    # font type override (for IIgs)
+    if font_type is not None:
+        headerbytes = font_type + headerbytes[2:]
+    fontrec = NFNTHeader.from_bytes(headerbytes)
     logging.debug('FONT/NFNT header: %s', fontrec)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
         logging.debug('Empty FONT/NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)
     # read char tables & bitmaps
-    # table offsets
-    strike_offset = offset + NFNTHeader.size
-    loc_offset = offset + NFNTHeader.size + fontrec.fRectHeight * fontrec.rowWords * 2
     # bitmap strike
-    strike = data[strike_offset:loc_offset]
+    strike = instream.read(fontrec.fRectHeight * fontrec.rowWords * 2)
     # location table
     # number of chars: coded chars plus missing symbol
     n_chars = fontrec.lastChar - fontrec.firstChar + 2
     # loc table should have one extra entry to be able to determine widths
-    loc_table = LocEntry.array(n_chars+1).from_bytes(data, loc_offset)
+    loc_table = LocEntry.array(n_chars+1).read_from(instream)
     # width offset table
     # the high word of the table's offset (in words) is either:
     # - stored in a separate header (for IIgs)
@@ -273,21 +270,19 @@ def extract_nfnt(data, offset, endian='big', owt_loc_high=0, font_type=None):
     if fontrec.nDescent > 0:
         owt_loc_high = fontrec.nDescent
     # owtTLoc is offset "from itself" to table
-    wo_offset = offset + 16 + (fontrec.owTLoc + (owt_loc_high << 16)) * 2
-    wo_table = WOEntry.array(n_chars).from_bytes(data, wo_offset)
+    instream.seek(anchor + 16 + (fontrec.owTLoc + (owt_loc_high << 16)) * 2)
+    wo_table = WOEntry.array(n_chars).read_from(instream)
     # the width-offset table has an extra word:
     # > The last word of this table is also -1, representing the end.
-    width_offset = wo_offset + WOEntry.size * (n_chars+1)
-    height_offset = width_offset
+    WOEntry.read_from(instream)
     # scalable width table
     if fontrec.fontType.has_width_table:
-        width_table = WidthEntry.array(n_chars).from_bytes(data, width_offset)
-        height_offset += WidthEntry.size * n_chars
+        width_table = WidthEntry.array(n_chars).read_from(instream)
     # image height table: this can be deduced from the bitmaps
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html#MARKER-9-414
     # > The Font Manager creates this table.
     if fontrec.fontType.has_height_table:
-        height_table = HeightEntry.array(n_chars).from_bytes(data, height_offset)
+        height_table = HeightEntry.array(n_chars).read_from(instream)
     # parse bitmap strike
     bits_per_pixel = 2**fontrec.fontType.depth
     bitmap_strike = Raster.from_bytes(

@@ -197,13 +197,6 @@ _NAME_TABLE = be.Struct(
     #baseFontName=_STR255,
 )
 
-def string_from_pascal(data, offset):
-    """Convert Mac-encoded Pascal string to Python string."""
-    length = int(be.uint8.from_bytes(data, offset))
-    string = data[offset+1:offset+1+length]
-    string = string.decode('mac-roman', 'replace')
-    return string, offset+1+length
-
 def read_pascal_string(instream):
     """Read Mac-encoded Pascal string and convert to Python string."""
     length = int(be.uint8.read_from(instream))
