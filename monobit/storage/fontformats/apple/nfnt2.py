@@ -163,10 +163,17 @@ def extract_nfnt2(instream, format='nfnt2'):
             )
             for _glyph, _wo in zip(glyphs, wo_table)
         )
+        # scale metrics with factor
+        fontrec_dict = vars(fontrec)
+        for metric in (
+                'widMax', 'kernMax', 'nDescent',
+                'fRectWidth', 'fRectHeight',
+                'ascent', 'descent', 'leading'
+            ):
+            fontrec_dict[metric] *= factor
         fontdata.append(dict(
             glyphs=glyphs,
-            # FIXME - we need to scale characterictics such as ascent, descent, leading, ...
-            fontrec=fontrec,
+            fontrec=Props(**fontrec_dict),
             properties={
                 'source_format': format,
                 'dpi': density_rec.density,
