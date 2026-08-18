@@ -14,7 +14,7 @@ from monobit.core import Font
 from monobit.storage import Magic
 
 from .nfnt import extract_nfnt, convert_nfnt
-from .nfnt2 import extract_nfnt2
+from .nfnt2 import extract_nfnt2, extract_afnx
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
 @loaders.register(
@@ -143,11 +143,10 @@ _PRC_ENTRY = be.Struct(
 # resource name is not dependable for Palm
 # - font resources may have ad-hoc names in some programs: 'FONT', 'tFnt'
 # - 'NFNT' and 'nfnt' named resources may be GrayFont headers
-_NFNT_MAGIC = b'\x90\0'
-_NFNT2_MAGIC = b'\x92\0'
 _MAGIC_TO_TYPE = {
-    _NFNT_MAGIC: 'NFNT',
-    _NFNT2_MAGIC: 'nfnt',
+    b'\x90\0': 'NFNT',
+    b'\x92\0': 'nfnt',
+    b'\0\x92': 'afnx',
 }
 
 
@@ -182,15 +181,22 @@ def _read_palm_prc(instream):
     logging.debug('PRC record list: %s', entries)
     resources = []
     for entry in entries:
+        entry_type = entry.type.decode('latin-1')
         logging.debug(
             'Found record of type `%s` id %d at offset 0x%X',
-            entry.type.decode('latin-1'),
+            entry_type,
             entry.id,
             entry.localChunkID
         )
         instream.seek(entry.localChunkID)
+        # TODO - need an option to enforce resource types.
+        # e.g. we see NFNT resources under different names,
+        # and NFNT, nfnt, afnx names that hold different types of resources (grayfont headers)
+        # but also GrFf and GrFn resources with afnx magic 00 92 that really aren't afnx
+        # so this may need to be user-specified, do we follow magic or resource type?
+        # if entry_type in ('NFNT', 'nfnt', 'afnx'):
         resources.extend(_read_resource(instream))
-    # FIXME - we can't map records to entries anymore, multiple records for nfnt
+    # TODO - we can't map records to entries, multiple records for nfnt
     return Props(
         header=header, recordlist=recordlist,
         entries=tuple(entries), records=resources,
@@ -216,6 +222,8 @@ def _read_resource(instream):
             return ({'properties': {}, **fontdata},)
         elif magic_type == 'nfnt':
             return extract_nfnt2(instream)
+        elif magic_type == 'afnx':
+            return extract_afnx(instream)
     except (ValueError, FileFormatError) as e:
         # negative array length throws valueerror, not enough data throws structerror <= fileformaterror
         logging.warning('Could not read resource: %s', e)
