@@ -242,7 +242,7 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
     compressed = endian == 'big' and instream.peek(2)[1] & 0x80
     if compressed:
         logging.debug('Uncompressing NFNT resource')
-        data = _uncompress_nfnt(instream.read(), 0)
+        data = _uncompress_nfnt(instream)
         instream = Stream.from_data(data, mode='r')
     anchor = instream.tell()
     headerbytes = instream.read(NFNTHeader.size)
@@ -250,9 +250,9 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
     if font_type is not None:
         headerbytes = font_type + headerbytes[2:]
     fontrec = NFNTHeader.from_bytes(headerbytes)
-    logging.debug('FONT/NFNT header: %s', fontrec)
+    logging.debug('NFNT header: %s', fontrec)
     if not (fontrec.rowWords and fontrec.widMax and fontrec.fRectWidth and fontrec.fRectHeight):
-        logging.debug('Empty FONT/NFNT resource.')
+        logging.debug('Empty NFNT resource.')
         return dict(glyphs=(), fontrec=fontrec)
     # read char tables & bitmaps
     # bitmap strike
@@ -341,11 +341,10 @@ _COMPRESSED_HEADER = be.Struct(
     decompressedLength='uint32',
 )
 
-def _uncompress_nfnt(data, offset):
+def _uncompress_nfnt(instream):
     """Decompress a compressed FONT/NFNT resource."""
-    header = _COMPRESSED_HEADER.from_bytes(data, offset)
-    offset += _COMPRESSED_HEADER.size
-    payload = data[offset:offset+header.compressedLength]
+    header = _COMPRESSED_HEADER.read_from(instream)
+    payload = instream.read(header.compressedLength)
     iter = reversed(payload)
     output = bytearray()
     for byte in iter:
@@ -358,6 +357,7 @@ def _uncompress_nfnt(data, offset):
                 except StopIteration:
                     break
     # bitmap rows still need to be XORed afterwards
+    data = bytes(header)
     return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
 
 
