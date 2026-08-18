@@ -25,12 +25,30 @@ from monobit.storage.fontformats.apple.nfnt import (
 )
 def load_nfnt2(instream, offset:int=0):
     """
-    Load font from a bare nfnt (v2) resource.
+    Load font from a bare Palm nfnt (v2) resource.
 
     offset: starting offset in bytes of the NFNT record in the file (default 0)
     """
     instream.seek(offset)
-    fontdata_dicts = extract_nfnt2(instream)
+    fontdata_dicts = extract_nfnt2(instream, format='nfnt2')
+    return tuple(
+        convert_nfnt(**_fontdata)
+        for _fontdata in fontdata_dicts
+    )
+
+
+@loaders.register(
+    name='afnx',
+    magic=(b'\0\x92',),
+)
+def load_afnx(instream, offset:int=0):
+    """
+    Load font from a bare Palm afnx resource.
+
+    offset: starting offset in bytes of the NFNT record in the file (default 0)
+    """
+    instream.seek(offset)
+    fontdata_dicts = extract_nfnt2(instream, format='afnx')
     return tuple(
         convert_nfnt(**_fontdata)
         for _fontdata in fontdata_dicts
@@ -70,24 +88,47 @@ def font_density_type(base):
         glyphBitsOffset='uint32',
     )
 
-def extract_nfnt2(instream):
-    """Read a Palm OS nfnt (v2) resource."""
+def font_density_type_afnx(base):
+    # afnx has an extra word in the middle of the density struct, purpose unknown.
+    return base.Struct(
+        density='int16',
+        unknown='uint16',
+        glyphBitsOffset='uint32',
+    )
+
+
+def extract_nfnt2(instream, format='nfnt2'):
+    """Read a Palm OS nfnt (v2) or afnx resource."""
+    if format == 'nfnt2':
+        base = be
+        density_type = font_density_type(base)
+    elif format == 'afnx':
+        base = le
+        density_type = font_density_type_afnx(base)
+    else:
+        raise ValueError(
+            f"`format` must be one of 'nfnt2', 'afnx', not '{format}'"
+        )
     # "from the beginning of the font data"
     anchor = instream.tell()
-    fontrec = nfnt_header_struct(be).read_from(instream)
+    fontrec = nfnt_header_struct(base).read_from(instream)
     logging.debug('NFNT header: %s', fontrec)
-    fontrecv2 = nfnt2_header_ext_struct(be).read_from(instream)
+    fontrecv2 = nfnt2_header_ext_struct(base).read_from(instream)
     logging.debug('nfnt2 header extension: %s', fontrecv2)
-    densities = (font_density_type(be) * fontrecv2.densityCount).read_from(instream)
+    # afnx has an additional word here, generally 0; purpose unknown
+    if format == 'afnx':
+        unknown = int(le.uint16.read_from(instream))
+        logging.debug('unknown uint16: %d', unknown)
+    densities = (density_type * fontrecv2.densityCount).read_from(instream)
     logging.debug('density records: %s', densities)
     # read char tables & bitmaps
     # location table
     # number of chars: coded chars plus missing symbol
     n_chars = fontrec.lastChar - fontrec.firstChar + 2
     # loc table should have one extra entry to be able to determine widths
-    loc_table = loc_entry_struct(be).array(n_chars+1).read_from(instream)
+    loc_table = loc_entry_struct(base).array(n_chars+1).read_from(instream)
     # width offset table
-    wo_table = wo_entry_struct(be).array(n_chars).read_from(instream)
+    wo_table = wo_entry_struct(base).array(n_chars).read_from(instream)
     fontdata = []
     # bitmap strikes
     for density_rec in densities:
@@ -121,79 +162,7 @@ def extract_nfnt2(instream):
             # FIXME - we need to scale characterictics such as ascent, descent, leading, ...
             fontrec=fontrec,
             properties={
-                'source_format': 'nfnt2',
-                'dpi': density_rec.density,
-            }
-        ))
-    return fontdata
-
-
-
-_AFNX_DENSITY_REC = le.Struct(
-    density='int16',
-    unknown='uint16',
-    glyphBitsOffset='uint32',
-)
-
-def extract_afnx(instream):
-    """Read a Palm OS afnx resource."""
-    anchor = instream.tell()
-    fontrec = nfnt_header_struct(le).read_from(instream)
-    logging.debug('NFNT header: %s', fontrec)
-    fontrecv2 = nfnt2_header_ext_struct(le).read_from(instream)
-    logging.debug('nfnt2 header extension: %s', fontrecv2)
-
-    unknown = int(le.uint16.read_from(instream))
-    logging.debug('unknown uint16: %d', unknown)
-    densities = (_AFNX_DENSITY_REC * fontrecv2.densityCount).read_from(instream)
-    logging.debug(densities)
-
-    # read char tables & bitmaps
-    # location table
-    # number of chars: coded chars plus missing symbol
-    n_chars = fontrec.lastChar - fontrec.firstChar + 2
-    # offset table should have one extra entry to be able to determine widths
-    loc_table = loc_entry_struct(le).array(n_chars+1).read_from(instream)
-    logging.debug('location table: %s', loc_table)
-    # width offset table
-    wo_table = wo_entry_struct(le).array(n_chars).read_from(instream)
-    logging.debug('width-extent table: %s', wo_table)
-
-
-    fontdata = []
-    # bitmap strikes
-    for density_rec in densities:
-        instream.seek(anchor + density_rec.glyphBitsOffset)
-        # we can have 1.5x density?
-        factor = density_rec.density / 72
-        # parse bitmap strike
-        # TODO: what about 1.5x density? do we need to round? how?
-        n_rows = int(fontrec.fRectHeight * factor)
-        bytes_per_row = int(fontrec.rowWords * 2 * factor)
-        strike_size = n_rows * bytes_per_row
-        strike = instream.read(strike_size)
-        bitmap_strike = Raster.from_bytes(strike, stride=8*bytes_per_row)
-        # extract width from width/offset table
-        # (do we need to consider the width table, if defined?)
-        locs = tuple(int(_loc.offset*factor) for _loc in loc_table)
-        glyphs = tuple(
-            Glyph(bitmap_strike.crop(left=_offs, right=bitmap_strike.width-_next))
-            for _offs, _next in zip(locs[:-1], locs[1:])
-        )
-        # metrics: width & offset
-        glyphs = tuple(
-            _glyph.modify(
-                wo_offset=int(factor*_wo.offset),
-                wo_width=int(factor*_wo.width),
-            )
-            for _glyph, _wo in zip(glyphs, wo_table)
-        )
-        fontdata.append(dict(
-            glyphs=glyphs,
-            # FIXME - we need to scale characterictics such as ascent, descent, leading, ...
-            fontrec=fontrec,
-            properties={
-                'source_format': 'afnx',
+                'source_format': format,
                 'dpi': density_rec.density,
             }
         ))

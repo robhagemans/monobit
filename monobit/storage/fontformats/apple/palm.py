@@ -14,7 +14,7 @@ from monobit.core import Font
 from monobit.storage import Magic
 
 from .nfnt import extract_nfnt, convert_nfnt
-from .nfnt2 import extract_nfnt2, extract_afnx
+from .nfnt2 import extract_nfnt2
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
 @loaders.register(
@@ -221,9 +221,9 @@ def _read_resource(instream):
             fontdata = extract_nfnt(data, offset=0)
             return ({'properties': {}, **fontdata},)
         elif magic_type == 'nfnt':
-            return extract_nfnt2(instream)
+            return extract_nfnt2(instream, format='nfnt2')
         elif magic_type == 'afnx':
-            return extract_afnx(instream)
+            return extract_nfnt2(instream, format='afnx')
     except (ValueError, FileFormatError) as e:
         # negative array length throws valueerror, not enough data throws structerror <= fileformaterror
         logging.warning('Could not read resource: %s', e)
