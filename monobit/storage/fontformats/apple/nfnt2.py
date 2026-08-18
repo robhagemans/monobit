@@ -8,6 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.base.struct import big_endian as be, little_endian as le
+from monobit.base import Props, UnsupportedError
 from monobit.core import Font, Glyph, Raster
 from monobit.storage import loaders, savers
 
@@ -133,18 +134,23 @@ def extract_nfnt2(instream, format='nfnt2'):
     # bitmap strikes
     for density_rec in densities:
         instream.seek(anchor + density_rec.glyphBitsOffset)
-        # we can have 1.5x density?
         factor = density_rec.density / 72
+        # in theory, we can have 1.5x density
+        # but: rounding not defined; no known samples; not supported
+        if factor != int(factor):
+            raise UnsupportedError(
+                f'Non-integer {factor}x density multiple mot supported'
+            )
+        factor = int(factor)
         # parse bitmap strike
-        # TODO: what about 1.5x density? do we need to round? how?
-        n_rows = int(fontrec.fRectHeight * factor)
-        bytes_per_row = int(fontrec.rowWords * 2 * factor)
+        n_rows = fontrec.fRectHeight * factor
+        bytes_per_row = fontrec.rowWords * 2 * factor
         strike_size = n_rows * bytes_per_row
         strike = instream.read(strike_size)
         bitmap_strike = Raster.from_bytes(strike, stride=8*bytes_per_row)
         # extract width from width/offset table
         # (do we need to consider the width table, if defined?)
-        locs = tuple(int(_loc.offset*factor) for _loc in loc_table)
+        locs = tuple(_loc.offset*factor for _loc in loc_table)
         glyphs = tuple(
             Glyph(bitmap_strike.crop(left=_offs, right=bitmap_strike.width-_next))
             for _offs, _next in zip(locs[:-1], locs[1:])
@@ -152,8 +158,8 @@ def extract_nfnt2(instream, format='nfnt2'):
         # metrics: width & offset
         glyphs = tuple(
             _glyph.modify(
-                wo_offset=int(factor*_wo.offset),
-                wo_width=int(factor*_wo.width),
+                wo_offset=factor*_wo.offset,
+                wo_width=factor*_wo.width,
             )
             for _glyph, _wo in zip(glyphs, wo_table)
         )
