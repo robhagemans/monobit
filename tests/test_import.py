@@ -1185,7 +1185,7 @@ class TestImport(BaseTester):
         assert_text_eq(hires.glyphs[0].as_text(), self.big_star)
 
     def test_import_palm_nfnt2(self):
-        """Test importing bare NFNT2 resource."""
+        """Test importing bare nfnt (v2) resource."""
         file = ensure_asset(self.treo, 'Security.prc')
         lores, hires = monobit.load(file, format='nfnt2', offset=0x4242)
         self.assertEqual(len(lores.glyphs), 2)
@@ -1193,6 +1193,52 @@ class TestImport(BaseTester):
         self.assertEqual(len(hires.glyphs), 2)
         assert_text_eq(hires.glyphs[0].as_text(), self.big_star)
 
+    office = 'https://palmarchive.com/files/?file=xandros9%20Archive/Palm%20OS%20Applications%20Archive/Office%2C%20Productivity%2C%20Fonts/'
+
+    key = """\
+@@@...
+@@@.@.
+@@@@..
+.@.@@.
+@@.@..
+@@.@@.
+......
+"""
+
+    big_key = """\
+.@@@@.......
+@@@@@@......
+@....@......
+@@@@@@..@...
+.@@@@..@....
+..@@..@.....
+..@@........
+..@@..@@.@..
+..@@........
+.@@@..@.....
+.@@@...@....
+..@@....@...
+............
+............
+"""
+
+    def test_import_palm_afnx(self):
+        """Test importing bare afnx resource."""
+        file = ensure_asset(self.office, 'Fonts4OS5_3.30.patched.prc')
+        lores, hires = monobit.load(file, format='afnx', offset=0x114AC)
+        self.assertEqual(len(lores.glyphs), 2)
+        assert_text_eq(lores.glyphs[0].as_text(), self.key)
+        self.assertEqual(len(hires.glyphs), 2)
+        assert_text_eq(hires.glyphs[0].as_text(), self.big_key)
+
+    def test_import_palm_prc_afnx(self):
+        """Test importing PRC with afnx resource."""
+        file = ensure_asset(self.office, 'Fonts4OS5_3.30.patched.prc')
+        lores, hires = monobit.load(file, format='palm-prc')
+        self.assertEqual(len(lores.glyphs), 2)
+        assert_text_eq(lores.glyphs[0].as_text(), self.key)
+        self.assertEqual(len(hires.glyphs), 2)
+        assert_text_eq(hires.glyphs[0].as_text(), self.big_key)
 
     # OS/2
 
