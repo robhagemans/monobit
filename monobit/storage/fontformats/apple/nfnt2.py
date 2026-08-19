@@ -17,6 +17,7 @@ from monobit.storage.fontformats.apple.nfnt import (
     loc_entry_struct,
     wo_entry_struct,
     convert_nfnt,
+    extract_nfnt_glyphs,
 )
 
 
@@ -134,34 +135,22 @@ def extract_nfnt2(instream, format='nfnt2'):
     # bitmap strikes
     for density_rec in densities:
         instream.seek(anchor + density_rec.glyphBitsOffset)
-        factor = density_rec.density / 72
-        # in theory, we can have 1.5x density
-        # but: rounding not defined; no known samples; not supported
-        if factor != int(factor):
+        factor, remainder = divmod(density_rec.density, 72)
+        if remainder:
+            # in theory, we can have 1.5x density
+            # but: rounding not defined; no known samples; not supported
             raise UnsupportedError(
-                f'Non-integer {factor}x density multiple mot supported'
+                f'Non-integer {(density_rec.density/72):.1f}x density multiple.'
             )
-        factor = int(factor)
         # parse bitmap strike
         n_rows = fontrec.fRectHeight * factor
         bytes_per_row = fontrec.rowWords * 2 * factor
         strike_size = n_rows * bytes_per_row
         strike = instream.read(strike_size)
-        bitmap_strike = Raster.from_bytes(strike, stride=8*bytes_per_row)
-        # extract width from width/offset table
-        # (do we need to consider the width table, if defined?)
-        locs = tuple(_loc.offset*factor for _loc in loc_table)
-        glyphs = tuple(
-            Glyph(bitmap_strike.crop(left=_offs, right=bitmap_strike.width-_next))
-            for _offs, _next in zip(locs[:-1], locs[1:])
-        )
-        # metrics: width & offset
-        glyphs = tuple(
-            _glyph.modify(
-                wo_offset=factor*_wo.offset,
-                wo_width=factor*_wo.width,
-            )
-            for _glyph, _wo in zip(glyphs, wo_table)
+        glyphs = extract_nfnt_glyphs(
+            strike, bytes_per_row=bytes_per_row, bits_per_pixel=1,
+            loc_table=loc_table, wo_table=wo_table, factor=factor,
+            compressed=False,
         )
         # scale metrics with factor
         fontrec_dict = vars(fontrec)

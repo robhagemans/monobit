@@ -284,26 +284,10 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
     if fontrec.fontType.has_height_table:
         height_table = HeightEntry.array(n_chars).read_from(instream)
     # parse bitmap strike
-    bits_per_pixel = 2**fontrec.fontType.depth
-    bitmap_strike = Raster.from_bytes(
-        strike, stride=fontrec.rowWords*16//bits_per_pixel,
-        bits_per_pixel=bits_per_pixel
-    )
-    # if the font was compressed, we need to XOR the bitmap rows
-    # compressed strikes are LISA-only - no need to support greyscale
-    if compressed:
-        rows = bitmap_strike.as_matrix(inklevels=(False, True))
-        xoredrows = rows
-        rows = [xoredrows[0]]
-        for row in xoredrows[1:]:
-            rows.append(tuple(_r ^ _p for _r, _p in zip(row, rows[-1])))
-        bitmap_strike = Raster.from_matrix(rows, inklevels=(False, True))
-    # extract width from width/offset table
-    # (do we need to consider the width table, if defined?)
-    locs = tuple(_loc.offset for _loc in loc_table)
-    glyphs = tuple(
-        Glyph(bitmap_strike.crop(left=_offs, right=bitmap_strike.width-_next))
-        for _offs, _next in zip(locs[:-1], locs[1:])
+    glyphs = extract_nfnt_glyphs(
+        strike, bytes_per_row=fontrec.rowWords*2,
+        bits_per_pixel=2**fontrec.fontType.depth,
+        loc_table=loc_table, wo_table=wo_table, factor=1, compressed=compressed,
     )
     # add glyph metrics
     # scalable-width table
@@ -323,11 +307,6 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
     #         _glyph.modify(image_height=_he.height, top_offset=_he.offset)
     #         for _glyph, _he in zip(glyphs, height_table)
     #     )
-    # width & offset
-    glyphs = tuple(
-        _glyph.modify(wo_offset=_wo.offset, wo_width=_wo.width)
-        for _glyph, _wo in zip(glyphs, wo_table)
-    )
     return dict(
         properties={},
         glyphs=glyphs,
@@ -360,6 +339,40 @@ def _uncompress_nfnt(instream):
     # bitmap rows still need to be XORed afterwards
     data = bytes(header)
     return bytes((data[0], data[1] ^ 0x80)) + bytes(reversed(output))
+
+
+def extract_nfnt_glyphs(
+        strike, bytes_per_row, bits_per_pixel,
+        loc_table, wo_table, factor,
+        compressed=False
+    ):
+    """Convert nfnt strike to glyphs."""
+    bitmap_strike = Raster.from_bytes(
+        strike, stride=bytes_per_row*8//bits_per_pixel,
+        bits_per_pixel=bits_per_pixel
+    )
+    # if the font was compressed, we need to XOR the bitmap rows
+    # compressed strikes are LISA-only - no need to support greyscale
+    if compressed:
+        rows = bitmap_strike.as_matrix(inklevels=(False, True))
+        xoredrows = rows
+        rows = [xoredrows[0]]
+        for row in xoredrows[1:]:
+            rows.append(tuple(_r ^ _p for _r, _p in zip(row, rows[-1])))
+        bitmap_strike = Raster.from_matrix(rows, inklevels=(False, True))
+    # extract width from width/offset table
+    # (do we need to consider the width table, if defined?)
+    locs = tuple(_loc.offset*factor for _loc in loc_table)
+    glyphs = tuple(
+        Glyph(bitmap_strike.crop(left=_offs, right=bitmap_strike.width-_next))
+        for _offs, _next in zip(locs[:-1], locs[1:])
+    )
+    # metrics: width & offset (sidebearings)
+    glyphs = tuple(
+        _glyph.modify(wo_offset=_wo.offset*factor, wo_width=_wo.width*factor)
+        for _glyph, _wo in zip(glyphs, wo_table)
+    )
+    return glyphs
 
 
 def convert_nfnt(properties, glyphs, fontrec, fctb=None, **kwargs):
