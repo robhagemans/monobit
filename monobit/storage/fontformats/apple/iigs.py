@@ -19,6 +19,7 @@ from monobit.core import Font, Glyph, KernTable
 from monobit.encoding import EncodingName
 
 from .nfnt import convert_nfnt, extract_nfnt, create_nfnt
+from .fond import read_pascal_string
 from .dfont import NON_ROMAN_NAMES
 
 
@@ -87,33 +88,36 @@ _EXTENDED_HEADER = le.Struct(
 
 def _load_iigs(instream):
     """Load a IIgs font."""
-    data = instream.read()
-    # p-string name
-    offset = data[0] + 1
-    name = data[1:offset].decode('mac-roman')
-    header = _IIGS_HEADER.from_bytes(data, offset)
+    name = read_pascal_string(instream)
+    logging.debug('name: %s', name)
+    anchor = instream.tell()
+    header = _IIGS_HEADER.read_from(instream)
     logging.debug('IIgs header: %s', header)
-    # offset given in 16-bit words
-    extra = data[offset+_IIGS_HEADER.size : offset + header.offset*2]
-    offset += header.offset * 2
     # extended header for IIgs
-    if header.version >= 0x0105: #  and len(extra) >= 2:
-        eh = _EXTENDED_HEADER.from_bytes(extra)
+    if header.version >= 0x0105:
+        eh = _EXTENDED_HEADER.read_from(instream)
         logging.debug('extended header: %s', eh)
     else:
         eh = _EXTENDED_HEADER()
+    # offset given in 16-bit words
+    instream.seek(anchor + header.offset*2)
     # read IIgs-style NFNT resource
     fontdata = extract_nfnt(
-        data, offset, endian='little',
+        instream, endian='little',
         owt_loc_high=eh.owTLocHigh, font_type=b'\0\0'
     )
     return _convert_iigs(**fontdata, header=header, name=name)
 
 
-def _convert_iigs(glyphs, fontrec, header, name):
+def _convert_iigs(properties, glyphs, fontrec, header, name):
     """Convert IIgs font data to monobit font."""
-    font = convert_nfnt({}, glyphs, fontrec)
-    # properties from IIgs header
+    font = convert_nfnt(properties=properties, glyphs=glyphs, fontrec=fontrec)
+    iigs_props = _convert_iigs_properties(header, name)
+    return font.modify(**iigs_props).label()
+
+
+def _convert_iigs_properties(header, name):
+    """Extract properties from IIgs header."""
     properties = {
         'family': name,
         'point_size': header.pointSize,
@@ -135,7 +139,7 @@ def _convert_iigs(glyphs, fontrec, header, name):
     if header.style.shadow:
         decoration.append('shadow')
     properties['decoration'] = ' '.join(decoration);
-    return font.modify(**properties).label()
+    return properties
 
 
 def _save_iigs(outstream, font, version, resample_encoding):

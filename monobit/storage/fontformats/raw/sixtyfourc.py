@@ -19,7 +19,7 @@ from monobit.storage.utils.limitations import (
 
 ###############################################################################
 # 64C - two unknown bytes plus 8x8 raw in c64 order (upper- or lowercase)
-# I haven't found a sepcification
+# I haven't found a specification
 # large collection of sample files at https://home-2002.code-cop.org/c64/index.html#char
 
 @loaders.register(
@@ -38,10 +38,7 @@ def load_64c(instream, charset:str='upper'):
     unknown_flags = instream.read(1)
     if null != b'\0':
         logging.warning(f'Non-null first byte %s.', null)
-    font = load_bitmap(
-        instream,
-        width=8, height=8,
-    )
+    font = load_bitmap(instream, width=8, height=8)
     if charset == 'upper':
         font = font.label(char_from='c64')
     elif charset == 'lower':
@@ -59,15 +56,14 @@ def save_64c(fonts, outstream, charset:str='upper'):
     """
     font = ensure_single(fonts)
     font = ensure_charcell(font, cell_size=(8, 8))
-    if charset:
-        if charset.lower() == 'upper':
-            font = reencode(font, 'c64')
-        elif charset.lower() == 'lower':
-            font = reencode(font, 'c64-alternate')
-        else:
-            raise ValueError(
-                f"`charset` must be one of ('upper', 'lower'); got {charset} instead."
-            )
+    if charset.lower() == 'upper':
+        font = reencode(font, 'c64')
+    elif charset.lower() == 'lower':
+        font = reencode(font, 'c64-alternate')
+    elif charset:
+        raise ValueError(
+            f"`charset` must be one of ('upper', 'lower'); got {charset} instead."
+        )
     font = make_contiguous(font, full_range=range(0, 256), missing='space')
     # not an actual magic sequence. we also see \0\x20 \0\x30 \0\x48 \0\xc8
     outstream.write(b'\x00\x38')

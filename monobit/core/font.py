@@ -167,9 +167,12 @@ class FontProperties:
     underline_thickness: int = 1
     # number of pixels in strikethrough
     strikethrough_thickness: int = 1
-    # position of underline below baseline. 0 means underline rests on baseline itself, 1 is one line below
+    # position of underline below baseline. this is the descent below baseline of the bottom of the underline.
+    # - 0 means underline rests on baseline itself, 1 is one line below
+    # - a 2-pixel underline fully under the baseline has descent 2
     underline_descent: int
-    # position of strikethorugh above baseline. 1 means strikethrough rests on baseline
+    # position of strikethrough above baseline. this is the ascent above baseline of the top of the strikethrough
+    # - i.e. for a 2-pixel strikethrough, 2 means strikethrough rests on baseline
     strikethrough_ascent: int
     # recommended superscript size in pixels.
     superscript_size: int
@@ -1367,7 +1370,7 @@ class Font(HasProps):
     @scriptable
     def expand(
             self, left:int=0, bottom:int=0, right:int=0, top:int=0,
-            *, adjust_metrics:bool=True
+            *, repeat:bool=False, adjust_metrics:bool=True
         ):
         """
         Add blank space to raster.
@@ -1376,12 +1379,13 @@ class Font(HasProps):
         bottom: number of rows to add on bottom
         right: number of columns to add on right
         top: number of rows to add on top
+        repeat: repeat pixels on boundary in new rows or columns (default: False, use empty space)
         adjust_metrics: make the operation render-invariant (default: True)
         """
         font = self.for_all(
             Glyph.expand,
             left=left, bottom=bottom, right=right, top=top,
-            adjust_metrics=adjust_metrics
+            repeat=repeat, adjust_metrics=adjust_metrics
         )
         if not adjust_metrics:
             return font
@@ -1466,20 +1470,51 @@ class Font(HasProps):
         )
 
     @scriptable
-    def shrink(
-            self, factor:Coord=Coord(1, 1), *, adjust_metrics:bool=True
+    def interlace(
+            self, factor:Coord=Coord(1, 1),
+            *, shift_mask_column:int=None, adjust_metrics:bool=True
         ):
         """
-        Shrink by removing rows and/or columns.
+        Stretch by inserting empty rows and/or columns.
 
-        factor: factor to shrink (horizontally, vertically) (default: 1,1)
+        factor: resulting stretch factor (horizontal, vertical) (default: 1,1)
+        shift_mask_column: number of the column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: no shift)
         adjust_metrics: also stretch metrics (default: True)
         """
         factor_x, factor_y = factor
         if (factor_x, factor_y) == (1, 1):
             return self
         font = self.for_all(
-            Glyph.shrink, factor=factor, adjust_metrics=adjust_metrics,
+            Glyph.interlace, factor=factor,
+            shift_mask_column=shift_mask_column,
+            adjust_metrics=adjust_metrics,
+        )
+        if not adjust_metrics:
+            return font
+        # fix line-advances to ensure they remain unchanged
+        return font.modify(
+            line_height=self.line_height * factor_y,
+            line_width=self.line_width * factor_x,
+        )
+
+    @scriptable
+    def shrink(
+            self, factor:Coord=Coord(1, 1), modulo:Coord=Coord(0, 0),
+            *, adjust_metrics:bool=True,
+        ):
+        """
+        Shrink by removing rows and/or columns.
+
+        factor: factor to shrink (horizontally, vertically) (default: 1,1)
+        modulo: first column, row to keep (default: 0,0)
+        adjust_metrics: also stretch metrics (default: True)
+        """
+        factor_x, factor_y = factor
+        if (factor_x, factor_y) == (1, 1):
+            return self
+        font = self.for_all(
+            Glyph.shrink, factor=factor, modulo=modulo,
+            adjust_metrics=adjust_metrics,
         )
         if not adjust_metrics:
             return font
@@ -1567,3 +1602,10 @@ class Font(HasProps):
             Glyph.outline,
             thickness = thickness
         )
+
+    @scriptable
+    def invert(self):
+        """
+        Reverse-video by raster.
+        """
+        return self.for_all(Glyph.invert)

@@ -189,7 +189,7 @@ class Raster:
     def from_vector(
             cls, bitseq, *,
             stride, width=NOT_SET, height=NOT_SET, align='left',
-            inklevels=NOT_SET
+            inklevels
         ):
         """Create raster from flat immutable sequence representing bits."""
         if not bitseq or width == 0 or stride == 0:
@@ -659,28 +659,41 @@ class Raster:
             inklevels=self._inklevels,
         )
 
-    def expand(self, left:int=0, bottom:int=0, right:int=0, top:int=0):
+    def expand(
+            self, left:int=0, bottom:int=0, right:int=0, top:int=0,
+            *, repeat:bool=False,
+        ):
         """
-        Add blank space.
+        Expand raster along the borders with blank space or repeated pixels.
 
         left: number of columns to add on left
         bottom: number of rows to add on bottom
         right: number of columns to add on right
         top: number of rows to add on top
+        repeat: repeat pixels on boundary in new rows or columns (default: False, use empty space)
         """
         if min(left, bottom, right, top) < 0:
             raise ValueError('Can only expand raster by a positive amount.')
         if not top+self.height+bottom:
             return type(self).blank(width=right+self.width+left)
         new_width = left + self.width + right
-        empty_row = self._paper * new_width
+        if repeat:
+            top_row = self._pixels[0]
+            bot_row = self._pixels[-1]
+            top_row = top_row[0] * left + top_row + top_row[-1] * right
+            bot_row = bot_row[0] * left + bot_row + bot_row[-1] * right
+            left_col = tuple(_row[0] for _row in self._pixels)
+            right_col = tuple(_row[-1] for _row in self._pixels)
+        else:
+            top_row = bot_row = self._paper * new_width
+            left_col = right_col = tuple(self._paper * self.height)
         pixels = (
-            (empty_row,) * top
+            (top_row,) * top
             + tuple(
-                self._paper * left + _row + self._paper * right
-                for _row in self._pixels
+                _lpix * left + _row + _rpix * right
+                for _lpix, _row, _rpix in zip(left_col, self._pixels, right_col)
             )
-            + (empty_row,) * bottom
+            + (bot_row,) * bottom
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
@@ -691,6 +704,8 @@ class Raster:
         factor: number of times to repeat (horizontally, vertically)
         """
         factor_x, factor_y = factor
+        if factor_x < 1 or factor_y < 1:
+            raise ValueError('`factor` values must be greater than zero')
         # vertical stretch
         pixels = (_row for _row in self._pixels for _ in range(factor_y))
         # horizontal stretch
@@ -700,17 +715,71 @@ class Raster:
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
-    def shrink(self, factor:Coord=Coord(1, 1)):
+    def interlace(self, factor:Coord=Coord(1, 1), *, shift_mask_column:int=None):
+        """
+        Insert empty rows and/or columns.
+
+        factor: resulting stretch factor (horizontal, vertical)
+        shift_mask_column: column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: None)
+        """
+        factor_x, factor_y = factor
+        if factor_x < 1 or factor_y < 1:
+            raise ValueError('`factor` values must be greater than zero')
+        # vertical interlace
+        pixels = self._pixels
+        if factor_y != 1:
+            empty = (self._paper,) * self.width
+            pixels = tuple(
+                _row if not _rep else empty
+                for _row in pixels
+                for _rep in range(factor_y)
+            )
+            # remove "interlace" at the end
+            pixels = pixels[:-(factor-y-1)]
+        if factor_x != 1:
+            # horizontal interlace
+            pixels = tuple(
+                ''.join(
+                    _col if not _rep else self._paper
+                    for _col in _row
+                    for _rep in range(factor_x)
+                )
+                for _row in pixels
+            )
+            pixels = tuple(_row[:-(factor_x-1)] for _row in pixels)
+            if shift_mask_column is not None:
+                def _exclude_mask(row):
+                    # TODO: use 'left' or 'right' here
+                    if shift_mask_column == -1:
+                        # remove the interlace of the mask column too
+                        return row[:-factor_x]
+                    else:
+                        return row[factor_x:]
+                # half-pixel shift logic for hp-264x, Apple II HRCG
+                pixels = tuple(
+                    self._paper + _exclude_mask(_row) if _row[shift_mask_column] != self._paper
+                    else _exclude_mask(_row) + self._paper
+                    for _row in pixels
+                )
+        return type(self)(pixels, inklevels=self._inklevels)
+
+    def shrink(self, factor:Coord=Coord(1, 1), modulo:Coord=Coord(0, 0)):
         """
         Remove rows and/or columns.
 
-        factor: factor to shrink (horizontally, vertically)
+        factor: factor to shrink (horizontally, vertically; default: 1,1)
+        modulo: first column, row to keep (default: 0,0)
         """
         factor_x, factor_y = factor
+        if factor_x < 1 or factor_y < 1:
+            raise ValueError('`factor` values must be greater than zero')
+        modulo_x, modulo_y = modulo
+        modulo_x = modulo_x % self.width
+        modulo_y = modulo_y % self.height
         # vertical shrink
-        shrunk = self._pixels[::factor_y]
+        shrunk = self._pixels[modulo_y::factor_y]
         # horizontal shrink
-        shrunk = tuple(_row[::factor_x] for _row in shrunk)
+        shrunk = tuple(_row[modulo_x::factor_x] for _row in shrunk)
         return type(self)(shrunk, inklevels=self._inklevels)
 
     # effects

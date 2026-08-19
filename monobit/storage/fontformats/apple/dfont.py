@@ -12,9 +12,10 @@ from io import BytesIO
 
 from monobit.base.struct import big_endian as be
 from monobit.storage import Stream
+from monobit.storage.location import open_location
 from monobit.storage import loaders, savers
 from monobit.base import Props, reverse_dict
-from monobit.base import NOT_SET
+from monobit.base import NOT_SET, FileFormatError
 from monobit.encoding import EncodingName
 from monobit.core import Pack
 
@@ -26,6 +27,7 @@ from .nfnt import (
 )
 from .fctb import extract_fctb, convert_to_fctb, fctb_data_to_bytes
 from .fond import extract_fond, convert_fond, create_fond
+from .fbit import extract_fbit, extract_hfnt
 
 
 @loaders.register(
@@ -34,23 +36,42 @@ from .fond import extract_fond, convert_fond, create_fond
     magic=(b'\0\0\1\0\0',),
     patterns=('*.dfont', '*.suit', '*.rsrc',),
 )
-def load_mac_dfont(instream):
-    """Load font from MacOS resource fork or data-fork resource."""
+def load_mac_dfont(
+        instream,
+        data_fork:str='',
+        name_encoding:EncodingName='mac-roman',
+    ):
+    """
+    Load font from MacOS resource fork or data-fork resource.
+
+    data_fork: file that holds the data fork (used for fbit files only)
+    name-encoding: encoding used for resource names (default: mac-roman)
+    """
     data = instream.read()
-    return parse_resource_fork(data)
+    if data_fork:
+        with open_location(data_fork) as data_fork_loc:
+            return parse_resource_fork(
+                data, data_fork_stream=data_fork_loc.get_stream(),
+                name_encoding=name_encoding,
+            )
+    else:
+        return parse_resource_fork(data, name_encoding=name_encoding)
+
+
 
 
 @savers.register(linked=load_mac_dfont)
 def save_mac_dfont(
         fonts, outstream, resource_type:str='NFNT', family_id:int=None,
         resample_encoding:EncodingName=NOT_SET,
+        name_encoding:EncodingName='mac-roman',
     ):
     """Save font to MacOS resource fork or data-fork resource.
 
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
     resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
     """
-    save_dfont(fonts, outstream, resource_type, resample_encoding)
+    save_dfont(fonts, outstream, resource_type, resample_encoding, name_encoding)
 
 
 ##############################################################################
@@ -164,31 +185,34 @@ _REF_ENTRY = be.Struct(
 # 1-byte length followed by bytes
 
 
-def parse_resource_fork(data, formatstr=''):
+def parse_resource_fork(data, formatstr='', *, data_fork_stream=None, name_encoding):
     """Parse a bare resource and convert to fonts."""
-    resource_table = _extract_resource_fork_header(data)
-    rsrc = _extract_resources(data, resource_table)
-    logging.debug(rsrc)
+    resource_table = _extract_resource_fork_header(data, name_encoding)
+    rsrc = _extract_resources(data, resource_table, data_fork_stream)
     directory = _construct_directory(rsrc)
     rsrc = _pair_fctb_nfnt(rsrc)
     fonts = _convert_mac_font(rsrc, directory, formatstr)
     return fonts
 
 
-def _extract_resource_fork_header(data):
+def _extract_resource_fork_header(data, name_encoding):
     """Read a Classic MacOS resource fork header."""
     rsrc_header = _RSRC_HEADER.from_bytes(data)
+    logging.debug('rsrc header: %s', rsrc_header)
     map_header = _MAP_HEADER.from_bytes(data, rsrc_header.map_offset)
+    logging.debug('rsrc map header: %s', map_header)
     type_array = _TYPE_ENTRY.array(map_header.last_type + 1)
     # +2 because the length field is considered part of the type list
     type_list_offset = rsrc_header.map_offset + map_header.type_list_offset + 2
     type_list = type_array.from_bytes(data, type_list_offset)
+    logging.debug('rsrc type list: %s', type_list)
     resources = []
     for type_entry in type_list:
         ref_array = _REF_ENTRY.array(type_entry.last_rsrc + 1)
         ref_list = ref_array.from_bytes(
             data, type_list_offset -2 + type_entry.ref_list_offset
         )
+        logging.debug('rsrc ref list: %s', ref_list)
         for ref_entry in ref_list:
             # get name from name list
             if ref_entry.name_offset == 0xffff:
@@ -199,140 +223,125 @@ def _extract_resource_fork_header(data):
                     + ref_entry.name_offset
                 )
                 name_length = data[name_offset]
-                # should be ascii, but use mac-roman just in case
-                name = data[name_offset+1:name_offset+name_length+1].decode('mac-roman')
+                # usually mac-roman; Japanese fonts use mac-japanese here
+                name = data[name_offset+1:name_offset+name_length+1].decode(name_encoding)
             # construct the 3-byte integer
             data_offset = ref_entry.data_offset_hi * 0x10000 + ref_entry.data_offset
             offset = rsrc_header.data_offset + _DATA_HEADER.size + data_offset
-            resources.append((type_entry.rsrc_type, ref_entry.rsrc_id, offset, name))
+            resources.append(Props(
+                type=type_entry.rsrc_type.decode('mac-roman'),
+                id=ref_entry.rsrc_id,
+                offset=offset,
+                name=name,
+            ))
     return resources
 
 
-def _extract_resources(data, resources):
+def _extract_resources(data, resources, data_fork_stream):
     """Extract resources."""
     parsed_rsrc = []
-    for rsrc_type, rsrc_id, offset, name in resources:
-        if rsrc_type == b'FOND':
-            logging.debug(
-                "Font family resource #%d: type `FOND` name `%s`", rsrc_id, name
-            )
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, dict(
-                    name=name, **extract_fond(data, offset)
-                )
-            ))
-        elif rsrc_type == b'FONT' and name and not (rsrc_id % 128):
-            # rsrc_id % 128 is the point size
-            logging.debug(
-                "Name entry #%d: type `FONT` name '%s'",
-                rsrc_id, name
-            )
-            # inside macintosh:
-            # > Since 0 is not a valid font size, the resource ID having
-            # > 0 in the size field is used to provide only the name of
-            # > the font: The name of the resource is the font name. For
-            # > example, for a font named Griffin and numbered 200, the
-            # > resource naming the font would have a resource ID of 25600
-            # > and the resource name 'Griffin'. Size 10 of that font would
-            # > be stored in a resource numbered 25610.
-            # keep the name in the directory table
-            parsed_rsrc.append((
-                b'', rsrc_id, dict(name=name),
-            ))
-        elif rsrc_type in (b'NFNT', b'FONT'):
-            logging.debug(
-                "Bitmapped font resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, extract_nfnt(data, offset)
-            ))
-        elif rsrc_type == b'sfnt':
-            logging.debug(
-                "TrueType font resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
-            with Stream.from_data(data[offset:], mode='r') as bytesio:
-                fonts = load_sfnt(bytesio)
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, dict(fonts=fonts)
-            ))
-        elif rsrc_type == b'fctb':
-            logging.debug(
-                "Colour table resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
-            parsed_rsrc.append((
-                rsrc_type, rsrc_id, extract_fctb(data, offset)
-            ))
-        else:
-            logging.debug(
-                "Skipped resource #%d: type `%s` name '%s'",
-                rsrc_id, rsrc_type.decode('mac-roman'), name
-            )
+    for rsrc in resources:
+        description = f'`{rsrc.type}` resource #{rsrc.id} {rsrc.name}'
+        parsed = None
+        with Stream.from_data(data[rsrc.offset:], mode='r') as instream:
+            try:
+                if rsrc.type == 'FOND':
+                    logging.debug('reading: %s (font family record)', description)
+                    parsed = extract_fond(instream)
+                elif rsrc.type == 'FONT' and not (rsrc.id % 128):
+                    logging.debug('storing: %s (name entry)', description)
+                    # rsrc_id % 128 is the point size
+                    # inside macintosh:
+                    # > Since 0 is not a valid font size, the resource ID having
+                    # > 0 in the size field is used to provide only the name of
+                    # > the font: The name of the resource is the font name. For
+                    # > example, for a font named Griffin and numbered 200, the
+                    # > resource naming the font would have a resource ID of 25600
+                    # > and the resource name 'Griffin'. Size 10 of that font would
+                    # > be stored in a resource numbered 25610.
+                    # keep the name in the directory table
+                    parsed = dict(type='name')
+                elif rsrc.type in ('NFNT', 'FONT'):
+                    logging.debug('reading: %s (bitmap font)', description)
+                    parsed = extract_nfnt(instream)
+                elif rsrc.type == 'sfnt':
+                    logging.debug('reading: %s (TrueType font)', description)
+                    fonts = load_sfnt(instream)
+                    parsed = dict(fonts=fonts)
+                elif rsrc.type == 'fctb':
+                    logging.debug('reading: %s (colour table)', description)
+                    parsed = extract_fctb(instream)
+                elif rsrc.type == 'fbit':
+                    logging.debug('reading: %s (bitmap font)', description)
+                    parsed = extract_fbit(instream, data_fork_stream)
+                elif rsrc.type == 'HFNT':
+                    logging.debug('reading: %s (bitmap font)', description)
+                    parsed = extract_hfnt(instream)
+                else:
+                    logging.debug('skipping: %s', description)
+            except FileFormatError as err:
+                logging.warning('Unable to read %s: %s', description, err)
+        if parsed is not None:
+            parsed_rsrc.append(rsrc | Props(**parsed))
     return parsed_rsrc
 
 
 def _construct_directory(parsed_rsrc):
     """Construct font family directory."""
     info = {}
-    for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
+    for rsrc in parsed_rsrc:
         # new-style directory entries
-        if rsrc_type == b'FOND':
-            props = convert_fond(**kwargs)
+        if rsrc.type == 'FOND':
+            props = convert_fond(**vars(rsrc))
             info.update(props)
         # old-style name-only FONT resources (font_size 0)
-        elif rsrc_type == b'':
-            font_number = rsrc_id // 128
-            info[font_number] = {'family': kwargs['name']}
+        elif rsrc.type == 'name':
+            font_number = rsrc.id // 128
+            info[font_number] = {'family': rsrc.name}
     return info
 
 
 def _pair_fctb_nfnt(parsed_rsrc):
     """Attach fctb to corresponding NFNT resources and drop from list."""
     fctbs_by_id = {
-        _id: _kwargs
-        for _type, _id, _kwargs in parsed_rsrc
-        if _type == b'fctb'
+        _rsrc.id: _rsrc
+        for _rsrc in parsed_rsrc
+        if _rsrc.type == 'fctb'
     }
     updated_rsrc = []
-    for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
-        if rsrc_type == b'fctb':
+    for rsrc in parsed_rsrc:
+        if rsrc.type == 'fctb':
             continue
-        if rsrc_type == b'NFNT':
+        if rsrc.type == 'NFNT':
             try:
-                fctb_kwargs = fctbs_by_id.pop(rsrc_id)
+                fctb_props = fctbs_by_id.pop(rsrc.id)
             except KeyError:
                 pass
             else:
-                kwargs['fctb'] = fctb_kwargs
-        updated_rsrc.append((rsrc_type, rsrc_id, kwargs))
+                rsrc.fctb = vars(fctb_props)
+        updated_rsrc.append(rsrc)
     return updated_rsrc
 
 
 def _convert_mac_font(parsed_rsrc, info, formatstr):
     """convert properties and glyphs."""
     fonts = []
-    for rsrc_type, rsrc_id, kwargs in parsed_rsrc:
-        if rsrc_type == b'sfnt':
-            rsrc_fonts = kwargs['fonts']
+    for rsrc in parsed_rsrc:
+        if rsrc.type == 'sfnt':
             rsrc_fonts = (
-                _font.modify(
-                    source_format = f'[Mac] {_font.source_format}',
-                )
-                for _font in rsrc_fonts
+                _font.modify(source_format = f'[Mac] {_font.source_format}')
+                for _font in rsrc.fonts
             )
             fonts.extend(rsrc_fonts)
-        elif rsrc_type in (b'FONT', b'NFNT'):
+        elif rsrc.type in ('FONT', 'NFNT'):
             format = ''.join((
-                rsrc_type.decode('mac-roman'),
-                f' in {formatstr}' if formatstr else ''
+                rsrc.type, f' in {formatstr}' if formatstr else ''
             ))
             props = {
-                'family': kwargs.get('name', '') or f'{rsrc_id}',
+                'family': rsrc.name or f'{rsrc.id}',
                 'source_format': f'[Mac] {format}',
             }
-            if rsrc_type == b'FONT':
+            if rsrc.type == 'FONT':
                 # get name and size info from resource ID
                 # https://developer.apple.com/library/archive/documentation/mac/Text/Text-191.html#HEADING191-0
                 # > The resource ID of the font must equal the number produced by
@@ -341,7 +350,7 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 # > to a point size of less than 128 and to a font ID in the range
                 # > 0 to 255. The resource ID is computed by the following formula:
                 # >     resourceID := (font ID * 128) + font size;
-                font_number, font_size = divmod(rsrc_id, 128)
+                font_number, font_size = divmod(rsrc.id, 128)
                 # we've already filtered out the case font_size == 0
                 props.update({
                     'point_size': font_size,
@@ -349,16 +358,20 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 })
                 # prefer directory info to info inferred from resource ID
                 # (in so far provided by FOND or directory FONT)
-                props.update(info.get(rsrc_id, info.get(font_number, {})))
+                props.update(info.get(rsrc.id, info.get(font_number, {})))
             else:
                 # update properties with directory info
-                props.update(info.get(rsrc_id, {}))
+                props.update(info.get(rsrc.id, {}))
             if 'encoding' not in props or props.get('family', '') in NON_ROMAN_NAMES:
                 props['encoding'] = NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
-            font = convert_nfnt(props, **kwargs)
+            nfnt_params = vars(rsrc) | dict(properties=props)
+            font = convert_nfnt(**nfnt_params)
             if font.glyphs:
                 font = font.label()
                 fonts.append(font)
+        elif rsrc.type in ('fbit', 'HFNT'):
+            font = rsrc.font.label().set(subfamily=rsrc.name or None)
+            fonts.append(font)
     return fonts
 
 
@@ -380,12 +393,13 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
 # > determined this empirically, I have seen no documentation on the subject)
 
 
-def save_dfont(fonts, outstream, resource_type, resample_encoding):
+def save_dfont(fonts, outstream, resource_type, resample_encoding, name_encoding):
     """
     Save font to MacOS resource fork or data-fork resource.
 
     resource_type: type of resource to store font in. One of `sfnt`, `NFNT`.
     resample_encoding: encoding to use for NFNT resources. Must be one of the `mac-` encodings. Default: use font's encoding.
+    name_encoding: encoding to use for resource names. Default: mac-roman
     """
     resource_type = resource_type.lower()
     if resource_type not in ('sfnt', 'nfnt'):
@@ -399,7 +413,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
             font, *_ = fonts
             family_id = _get_family_id(font.family, font.encoding)
             resources.append(
-                Props(type=b'sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
+                Props(type='sfnt', id=family_id, name='', data=sfnt_io.getvalue()),
             )
     # reduce fonts to what's storable in (stub) FOND/NFNT
     # we need a Pack for _group_families
@@ -418,7 +432,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
                     )
                 resources.append(
                     Props(
-                        type=b'NFNT',
+                        type='NFNT',
                         # note that we calculate this *separately* in the FOND builder
                         id=family_id + i,
                         # are there any specifications for the name?
@@ -430,7 +444,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
                     fctb_data = convert_to_fctb(font.rgb_table)
                     resources.append(
                         Props(
-                            type=b'fctb',
+                            type='fctb',
                             # id must match the NFNT
                             id=family_id + i,
                             # do we need a name?
@@ -442,11 +456,11 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding):
         fond_data = create_fond(style_group, family_id)
         resources.append(
             Props(
-                type=b'FOND', id=family_id,
+                type='FOND', id=family_id,
                 name=font.family, data=fond_data,
             ),
         )
-    _write_resource_fork(outstream, resources)
+    _write_resource_fork(outstream, resources, name_encoding)
 
 
 def _get_family_id(name, encoding):
@@ -455,11 +469,12 @@ def _get_family_id(name, encoding):
     return _hash_to_id(name, script=script_code)
 
 
-def _write_resource_fork(outstream, resources):
+def _write_resource_fork(outstream, resources, name_encoding):
     """
     Write a Mac dfont/resource fork.
 
     resources: list of ns(type, id, name, data)
+    name_encoding: what encoding to use for resource names
     """
     # order resources by type (so all resources of the same type are consecutive
     resources.sort(key=lambda _res: _res.type)
@@ -485,7 +500,7 @@ def _write_resource_fork(outstream, resources):
     # construct the type list
     type_list = [
         _TYPE_ENTRY(
-            rsrc_type=_type,
+            rsrc_type=_type.encode('mac-roman'),
             last_rsrc=_count - 1,
             # ref_list_offset='uint16',
         )
@@ -498,7 +513,7 @@ def _write_resource_fork(outstream, resources):
     type_list = (_TYPE_ENTRY * len(types))(*type_list)
     # construct the name list
     name_list = tuple(
-        bytes((len(_res.name),)) + _res.name.encode('mac-roman')
+        bytes((len(_res.name),)) + _res.name.encode(name_encoding)
         for _res in resources
     )
     name_offsets = accumulate((len(_n) for _n in name_list), initial=0)

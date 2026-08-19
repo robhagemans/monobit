@@ -83,8 +83,8 @@ def load_mzfon(instream, all_type_ids:bool=False):
             # PE files may have bitmap SFNTs embedded in them
             # be restrictive as FNT_MAGIC_1 and SFNT_MAGIC clash
             if magic == SFNT_MAGIC and format == b'PE':
-                bytesio = Stream.from_data(resource, mode='r')
-                fonts = load_sfnt(bytesio)
+                with Stream.from_data(resource, mode='r') as bytesio:
+                    fonts = load_sfnt(bytesio)
                 fonts.extend(fonts)
             elif magic == GPI_MAGIC:
                 font = convert_os2_font_resource(resource)

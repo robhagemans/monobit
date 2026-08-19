@@ -254,17 +254,20 @@ class _PathResolver:
             self.elements[-1].subpath = to_be_created
             # innermost path element *to be created*
             # check if we're asked to create an file or a subdirectory
-            # it's a subdirectory if (1) explicitly asked or (2) no suffix
-            if self.make_dir or format == 'dir' or (not format and not to_be_created.suffixes):
+            # it's a subdirectory if (1) explicitly asked or (2) no suffix or (3) it already exists as a dir
+            already_existing = path_exists(container, to_be_created, self.match_case)
+            if (
+                    self.make_dir
+                    or format == 'dir'
+                    or (not format and not to_be_created.suffixes)
+                    or (already_existing and already_existing.is_dir())
+                ):
                 # innermost creatable should be a subdirectory
                 self._unresolved_path = unmatched
                 return True
             else:
                 # innermost creatable should be a file -> create it
-                if (
-                        path_exists(container, to_be_created, self.match_case)
-                        and not self.overwrite
-                    ):
+                if (already_existing and not self.overwrite):
                     raise FileExistsError(
                         f"{join_path(container, to_be_created)} already exists. "
                         "Use option -overwrite if you wish to overwrite it."

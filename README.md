@@ -1,21 +1,16 @@
+                                         ██      ██         
+                                         ██      ██  ██     
+                                         ██          ██     
+     █████████    ████   █████    ████   █████   ██ ████    
+     ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██     
+     ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██     
+     ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██     
+     ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██     
+     ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██  ██ 
+     ██  ██  ██   ████   ██  ██   ████   █████   ██   ██ ██ 
 
-    -@@------------------------------------------@@------@@--------------@@-
-    -@@------------------------------------------@@------@@--@@----------@@-
-    -@@------------------------------------------@@----------@@----------@@-
-    -@@------@@@@@@@@@----@@@@---@@@@@----@@@@---@@@@@---@@-@@@@---------@@-
-    -@@------@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@----------@@-
-    -@@------@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@----------@@-
-    -@@------@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@----------@@-
-    -@@------@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@----------@@-
-    -@@------@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@--@@------@@-
-    -@@------@@--@@--@@---@@@@---@@--@@---@@@@---@@@@@---@@---@@-@@------@@-
-    -@@------------------------------------------------------------------@@-
-    -@@------------------------------------------------------------------@@-
-    -@@------------------------------------------------------------------@@-
-
-
-Tools for working with bitmap fonts
-===================================
+the bitmap font multitool
+=========================
 
 The `monobit` tools let you modify bitmap fonts and convert between several formats.
 
@@ -77,7 +72,7 @@ The banner utility renders text to standard output in a given font. This is simi
 
 For example, the banner at the top of this `README` was made with
 
-    me@bandit:~$ monobit-banner '| monobit. |' --font=VGASYS.FON
+    me@bandit:~$ monobit-banner monobit. --font=VGASYS.FON --blocks=1x1
 
 `monobit-banner` has a number of rendering options - you can choose fonts, change the "ink" and "paper"
 characters, set a margin, scale text, and rotate by quarter turns.
@@ -89,6 +84,7 @@ Proportional-spacing formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write | Type   | Features |
 |-----------------------|------------|-----------------------------|-------|-------|--------|----------|
+| Palm afnx resource    | `afnx`     |                             |&check;|       | binary | M O      |
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       | binary | -        |
 | Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|&check;| binary | M; see `amiga` |
 | Amiga font            | `amiga`    |                             |&check;|&check;| binary | O C G  |
@@ -96,6 +92,7 @@ Proportional-spacing formats
 | BeOS Bitmap Font      | `beos`     |                             |&check;|&check;| binary | U O G    |
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | O        |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | M U SB MB O K G C |
+| Quark Catalyst        | `catalyst` |                             |&check;|       | binary | -        |
 | FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.[specx]ft` |&check;| | binary | -   |
 | Consoleet / vfontas   | `consoleet`| `.txt`                      |&check;|&check;| visual | -        |
 | Daisy-Dot             | `daisy`    | `.nlq` `.nl2` `.nl3` `.nl4` |&check;|       | binary | -        |
@@ -114,14 +111,15 @@ Proportional-spacing formats
 | Grid bitmap image [P] | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | G C      |
 | Set of bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | G C      |
 | LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | M; see `nfnt` |
-| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M K C; see `nfnt`, `sfnt` |
+| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M SB K C; see `nfnt`, `sfnt`, `fbit`, `hfnt` |
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
 | Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi`, `sfnt` |
-| Bare NFNT resource    | `nfnt`     | `.f`                        |&check;|&check;| binary | SB O G   |
+| Apple NFNT resource   | `nfnt`     | `.f`                        |&check;|&check;| binary | O G      |
+| Palm nfnt resource    | `nfnt2`    |                             |&check;|       | binary | M O      |
 | Project Oberon        | `oberon`   | `.Scn.Fnt` `.Pr?.Fnt`       |&check;|&check;| binary | O        |
-| Palm OS font (v1/NFNT)| `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt` |
-| Palm OS PRC (v1/NFNT) | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt` |
+| Palm OS font          | `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt`, `nfnt2`, `afnx` |
+| Palm OS PRC           | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt`, `nfnt2`, `afnx` |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
 | PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
@@ -135,11 +133,11 @@ Proportional-spacing formats
 | RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
-| SFNT embedded bitmap  | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G C |
+| TrueType/OpenType embedded bitmap | `sfnt` | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G C |
 | SymbOS font           | `symbos`   | `.fnt`                      |&check;|&check;| binary | -        |
 | SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G C |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
-| Bare GEOS font record | `vlir`     |                             |&check;|&check;| binary | O        |
+| GEOS font resource    | `vlir`     |                             |&check;|&check;| binary | O        |
 | Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
 | monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | M US SB MB O K V G C |
 
@@ -176,12 +174,15 @@ Character-cell formats
 | Dashen                | `dashen`   | `.pft`                      |&check;|       | binary | any  | -        |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;| esc    | >4xN | -        |
 | Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       | binary | any  | -        |
+| Apple fbit resource   | `fbit`     |                             |&check;|       | binary | any  | MB       |
 | FONTX2                | `fontx`    | `.fnt`                      |&check;|&check;| binary | any  | MB       |
 | FONTEDIT              | `fontedit` | `.com`                      |&check;|       | binary | 8xN  | -        |
 | Fontraption           | `frapt`    | `.com`                      |&check;|       | binary | 8xN  | -        |
 | Fontraption TSR       | `frapt-tsr`| `.com`                      |&check;|       | binary | 8xN  | -        |
 | PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;| binary | any  | -        |
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;| binary | any  | SB MB    |
+| Apple HFNT resource   | `hfnt`     |                             |&check;|       | binary | 8N*8N | MB      |
+| AppleSoft Toolkit Hi-Res Character Generator | `hrcg` | `.set`   |&check;|&check;| binary | 8*7 (4) |       |
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| coded  | 8x16 (strict) 8xN<=32 (ext) | MC U (strict) MC US (ext) |
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
@@ -198,12 +199,14 @@ Character-cell formats
 | Hercules Write On!    | `writeon`  | `.wof`                      |&check;|&check;| binary | 8x14 multiples | - |
 | NetBSD wsfont binary  | `wsfont`   | `.wsf`                      |&check;|&check;| binary | any  | SB       |
 | Wyse-60 soft font     | `wyse`     |                             |&check;|&check;| esc    | 8x16 | -        |
-| XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;| binary | 8X<=32 | -        |
+| XBIN font section     | `xbin`     | `.xb`                       |&check;|&check;| binary | 8x<=32 | -      |
 | ZapFont (old format)  | `zapfont`  | `,1bd`                      |&check;|&check;| binary | any  | -        |
 | ZapRedraw UCS         | `zapredraw`| `,1bd`                      |&check;|&check;| binary | any  | U        |
 
 
 MC multi-cell glyphs
+
+(4) Glyphs are extracted interlaced to double-width (8x14) in order to represent half-dot shifts
 
 
 Charts
