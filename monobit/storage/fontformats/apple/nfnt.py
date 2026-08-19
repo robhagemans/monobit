@@ -232,11 +232,6 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
     """Read a MacOS NFNT or FONT resource."""
     # create struct types; IIgs NFNTs are little-endian
     base = {'b': be, 'l': le}[endian[:1].lower()]
-    NFNTHeader = nfnt_header_struct(base)
-    LocEntry = loc_entry_struct(base)
-    WOEntry = wo_entry_struct(base)
-    WidthEntry = width_entry_struct(base)
-    HeightEntry = height_entry_struct(base)
     # this is not in the header documentation but is is mentioned here:
     # https://www.kreativekorp.com/swdownload/lisa/AppleLisaFontFormat.pdf
     compressed = endian == 'big' and instream.peek(2)[1] & 0x80
@@ -245,6 +240,7 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
         data = _uncompress_nfnt(instream)
         instream = Stream.from_data(data, mode='r')
     anchor = instream.tell()
+    NFNTHeader = nfnt_header_struct(base)
     headerbytes = instream.read(NFNTHeader.size)
     # font type override (for IIgs)
     if font_type is not None:
@@ -261,7 +257,7 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
     # number of chars: coded chars plus missing symbol
     n_chars = fontrec.lastChar - fontrec.firstChar + 2
     # loc table should have one extra entry to be able to determine widths
-    loc_table = LocEntry.array(n_chars+1).read_from(instream)
+    loc_table = loc_entry_struct(base).array(n_chars+1).read_from(instream)
     # width offset table
     # the high word of the table's offset (in words) is either:
     # - stored in a separate header (for IIgs)
@@ -271,18 +267,19 @@ def extract_nfnt(instream, endian='big', owt_loc_high=0, font_type=None):
         owt_loc_high = fontrec.nDescent
     # owtTLoc is offset "from itself" to table
     instream.seek(anchor + 16 + (fontrec.owTLoc + (owt_loc_high << 16)) * 2)
+    WOEntry = wo_entry_struct(base)
     wo_table = WOEntry.array(n_chars).read_from(instream)
     # the width-offset table has an extra word:
     # > The last word of this table is also -1, representing the end.
     WOEntry.read_from(instream)
     # scalable width table
     if fontrec.fontType.has_width_table:
-        width_table = WidthEntry.array(n_chars).read_from(instream)
+        width_table = (width_entry_struct(base) * n_chars).read_from(instream)
     # image height table: this can be deduced from the bitmaps
     # https://developer.apple.com/library/archive/documentation/mac/Text/Text-250.html#MARKER-9-414
     # > The Font Manager creates this table.
     if fontrec.fontType.has_height_table:
-        height_table = HeightEntry.array(n_chars).read_from(instream)
+        height_table = (height_entry_struct(base) * n_chars).read_from(instream)
     # parse bitmap strike
     glyphs = extract_nfnt_glyphs(
         strike, bytes_per_row=fontrec.rowWords*2,
