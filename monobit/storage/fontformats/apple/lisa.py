@@ -44,23 +44,32 @@ def load_lisa(instream):
         rcd1 = _LISA_RSRC_RCD1.read_from(instream)
         names.append(bytes(fontRsrcName))
         rsrc_rcds.append(rcd1)
-    resources = []
-    for rcd in rsrc_rcds:
-        instream.seek(4 + 2*(rcd.fontResourceStart + header.headerLength))
-        resources.append(
-            instream.read(2*(rcd.fontResourceEnd - rcd.fontResourceStart))
-        )
     fonts = []
-    for name, data in zip(names, resources):
+    for num, (name, rcd) in enumerate(zip(names, rsrc_rcds)):
+        name = name.decode('mac-roman')
+        loc = 4 + 2*(rcd.fontResourceStart + header.headerLength)
+        size = 2*(rcd.fontResourceEnd - rcd.fontResourceStart)
+        instream.seek(loc)
+        magic = instream.peek(2)[:2]
+        is_bitfont = magic[0] & 0x80
+        if is_bitfont:
+            act = "Reading"
+        else:
+            act = "Skipping"
+        logging.debug(
+            "%s resource #%d at offset 0x%x: name '%s' font-type %s size 0x%x",
+            act, num, loc, name, magic.hex(), size
+        )
+        if not is_bitfont:
+            continue
         try:
-            fontdata = extract_nfnt(data, 0)
-            font = convert_nfnt({}, **fontdata)
-            font = font.modify(
-                name=name.decode('mac-roman'),
-                source_format=f'[Lisa] {font.source_format}',
-            )
-            fonts.append(font)
-        except (FileFormatError, UnsupportedError) as e:
+            fontdata = extract_nfnt(instream)
+        except (FileFormatError, UnsupportedError, ValueError) as e:
             logging.warning("Could not load resource '%s': %s", name, e)
-            pass
+            continue
+        font = convert_nfnt(**fontdata)
+        font = font.modify(
+            name=name, source_format=f'[Lisa] {font.source_format}',
+        )
+        fonts.append(font)
     return fonts

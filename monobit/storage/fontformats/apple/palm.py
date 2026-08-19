@@ -8,13 +8,13 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.base.struct import big_endian as be
-from monobit.base import Props, UnsupportedError
+from monobit.base import Props, UnsupportedError, FileFormatError
 from monobit.storage import loaders, savers
 from monobit.core import Font
 from monobit.storage import Magic
 
 from .nfnt import extract_nfnt, convert_nfnt
-
+from .nfnt2 import extract_nfnt2
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
 @loaders.register(
@@ -24,7 +24,7 @@ from .nfnt import extract_nfnt, convert_nfnt
 )
 def load_palm(instream):
     """Load fonts from a Palm OS PDB file."""
-    palm_data = _read_palm(instream)
+    palm_data = _read_palm_pdb(instream)
     fonts = _convert_palm(palm_data)
     return fonts
 
@@ -139,73 +139,99 @@ _PRC_ENTRY = be.Struct(
 # AppInfo Block (optional)
 # SortInfo Block (optional)
 
+# magic numbers for resource format
+# resource name is not dependable for Palm
+# - font resources may have ad-hoc names in some programs: 'FONT', 'tFnt'
+# - 'NFNT' and 'nfnt' named resources may be GrayFont headers
+_MAGIC_TO_TYPE = {
+    b'\x90\0': 'NFNT',
+    b'\x92\0': 'nfnt',
+    b'\0\x92': 'afnx',
+}
 
-def _read_header(instream):
-    """Read a PDB /PRC header."""
-    header = _PDB_HEADER.read_from(instream)
-    recordlist = _RECORD_LIST.read_from(instream)
-    return Props(
-        header=header,
-        recordlist=recordlist,
-    )
 
-def _read_palm(instream):
+def _read_palm_pdb(instream):
     """Read a PDB file."""
-    props = _read_header(instream)
-    if (props.header.type, props.header.creator) != (b'Font', b'Font'):
-        raise UnsupportedError(
-            'Not a Font PDB: type `%s` creator `%s`',
-            props.header.type, props.header.creator
+    header = _PDB_HEADER.read_from(instream)
+    logging.debug('header: %s', header)
+    if (header.type, header.creator) != (b'Font', b'Font'):
+        logging.warning(
+            'May not be a Font PDB: type `%s`, creator `%s`',
+            header.type.decode('latin-1'), header.creator.decode('latin-1')
         )
-    entries = _PDB_ENTRY.array(props.recordlist.numRecords).read_from(instream)
-    nfnts = []
+    recordlist = _RECORD_LIST.read_from(instream)
+    entries = _PDB_ENTRY.array(recordlist.numRecords).read_from(instream)
+    logging.debug('PDB record list: %s', entries)
+    resources = []
     for entry in entries:
         instream.seek(entry.localChunkID)
-        data = instream.read()
-        # can be `NFNT` (0x9000) or `nfnt` (0x9200)
-        # or `afnx` format (?)
-        # currently we're just assuming NFNT
-        try:
-            nfnt = extract_nfnt(data, offset=0)
-        except ValueError as e:
-            logging.warning('Could not read record: %s', e)
-            continue
-        nfnts.append(nfnt)
-    return props | Props(entries=tuple(entries), records=nfnts)
+        resources.extend(_read_resource(instream))
+    return Props(
+        header=header, recordlist=recordlist,
+        entries=tuple(entries), records=resources,
+    )
 
 
 def _read_palm_prc(instream):
     """Read a PRC file."""
-    props = _read_header(instream)
-    entries = _PRC_ENTRY.array(props.recordlist.numRecords).read_from(instream)
-    nfnts = []
+    header = _PDB_HEADER.read_from(instream)
+    logging.debug('header: %s', header)
+    recordlist = _RECORD_LIST.read_from(instream)
+    entries = _PRC_ENTRY.array(recordlist.numRecords).read_from(instream)
+    logging.debug('PRC record list: %s', entries)
+    resources = []
     for entry in entries:
+        entry_type = entry.type.decode('latin-1')
         logging.debug(
             'Found record of type `%s` id %d at offset 0x%X',
-            entry.type.decode('latin-1'),
+            entry_type,
             entry.id,
             entry.localChunkID
         )
-        if entry.type not in (b'NFNT', b'nfnt'):
-            continue
-        if entry.type == b'nfnt':
-            logging.warning('Palm v2 (nfnt) format not implemented.')
         instream.seek(entry.localChunkID)
-        data = instream.read()
-        # currently we're just assuming NFNT
-        try:
-            nfnt = extract_nfnt(data, offset=0)
-        except ValueError as e:
-            logging.warning('Could not read record: %s', e)
-            continue
-        nfnts.append(nfnt)
-    return props | Props(entries=tuple(entries), records=nfnts)
+        # TODO - need an option to enforce resource types.
+        # e.g. we see NFNT resources under different names,
+        # and NFNT, nfnt, afnx names that hold different types of resources (grayfont headers)
+        # but also GrFf and GrFn resources with afnx magic 00 92 that really aren't afnx
+        # so this may need to be user-specified, do we follow magic or resource type?
+        # if entry_type in ('NFNT', 'nfnt', 'afnx'):
+        resources.extend(_read_resource(instream))
+    # TODO - we can't map records to entries, multiple records for nfnt
+    return Props(
+        header=header, recordlist=recordlist,
+        entries=tuple(entries), records=resources,
+    )
+
+
+def _read_resource(instream):
+    """Read a Palm font resource (NFNT or nfnt)."""
+    magic = instream.peek(2)[:2]
+    magic_type = _MAGIC_TO_TYPE.get(magic, '')
+    try:
+        if magic_type:
+            act, format = 'Reading', magic_type
+        else:
+            act, format = 'Skipping', 'unknown'
+        logging.debug(
+            '%s resource: format %s, magic %04x',
+            act, format, int.from_bytes(magic, 'big'),
+        )
+        if magic_type == 'NFNT':
+            return (extract_nfnt(instream),)
+        elif magic_type == 'nfnt':
+            return extract_nfnt2(instream, format='nfnt2')
+        elif magic_type == 'afnx':
+            return extract_nfnt2(instream, format='afnx')
+    except (ValueError, FileFormatError) as e:
+        # negative array length throws valueerror, not enough data throws structerror <= fileformaterror
+        logging.warning('Could not read resource: %s', e)
+    return ()
 
 
 def _convert_palm(palm_data):
     """Convert a Palm OS font data structure to Font."""
     fonts = (
-        convert_nfnt({}, **_nfnt)
+        convert_nfnt(**_nfnt)
         for _nfnt in palm_data.records
     )
     fonts = tuple(

@@ -243,44 +243,44 @@ def _extract_resources(data, resources, data_fork_stream):
     for rsrc in resources:
         description = f'`{rsrc.type}` resource #{rsrc.id} {rsrc.name}'
         parsed = None
-        try:
-            if rsrc.type == 'FOND':
-                logging.debug('reading: %s (font family record)', description)
-                parsed = extract_fond(data, rsrc.offset)
-            elif rsrc.type == 'FONT' and not (rsrc.id % 128):
-                logging.debug('storing: %s (name entry)', description)
-                # rsrc_id % 128 is the point size
-                # inside macintosh:
-                # > Since 0 is not a valid font size, the resource ID having
-                # > 0 in the size field is used to provide only the name of
-                # > the font: The name of the resource is the font name. For
-                # > example, for a font named Griffin and numbered 200, the
-                # > resource naming the font would have a resource ID of 25600
-                # > and the resource name 'Griffin'. Size 10 of that font would
-                # > be stored in a resource numbered 25610.
-                # keep the name in the directory table
-                parsed = dict(type='name')
-            elif rsrc.type in ('NFNT', 'FONT'):
-                logging.debug('reading: %s (bitmap font)', description)
-                parsed = extract_nfnt(data, rsrc.offset)
-            elif rsrc.type == 'sfnt':
-                logging.debug('reading: %s (TrueType font)', description)
-                with Stream.from_data(data[rsrc.offset:], mode='r') as bytesio:
-                    fonts = load_sfnt(bytesio)
-                parsed = dict(fonts=fonts)
-            elif rsrc.type == 'fctb':
-                logging.debug('reading: %s (colour table)', description)
-                parsed = extract_fctb(data, rsrc.offset)
-            elif rsrc.type == 'fbit':
-                logging.debug('reading: %s (bitmap font)', description)
-                parsed = extract_fbit(data, rsrc.offset, data_fork_stream)
-            elif rsrc.type == 'HFNT':
-                logging.debug('reading: %s (bitmap font)', description)
-                parsed = extract_hfnt(data, rsrc.offset)
-            else:
-                logging.debug('skipping: %s', description)
-        except FileFormatError as err:
-            logging.warning('Unable to read %s: %s', description, err)
+        with Stream.from_data(data[rsrc.offset:], mode='r') as instream:
+            try:
+                if rsrc.type == 'FOND':
+                    logging.debug('reading: %s (font family record)', description)
+                    parsed = extract_fond(instream)
+                elif rsrc.type == 'FONT' and not (rsrc.id % 128):
+                    logging.debug('storing: %s (name entry)', description)
+                    # rsrc_id % 128 is the point size
+                    # inside macintosh:
+                    # > Since 0 is not a valid font size, the resource ID having
+                    # > 0 in the size field is used to provide only the name of
+                    # > the font: The name of the resource is the font name. For
+                    # > example, for a font named Griffin and numbered 200, the
+                    # > resource naming the font would have a resource ID of 25600
+                    # > and the resource name 'Griffin'. Size 10 of that font would
+                    # > be stored in a resource numbered 25610.
+                    # keep the name in the directory table
+                    parsed = dict(type='name')
+                elif rsrc.type in ('NFNT', 'FONT'):
+                    logging.debug('reading: %s (bitmap font)', description)
+                    parsed = extract_nfnt(instream)
+                elif rsrc.type == 'sfnt':
+                    logging.debug('reading: %s (TrueType font)', description)
+                    fonts = load_sfnt(instream)
+                    parsed = dict(fonts=fonts)
+                elif rsrc.type == 'fctb':
+                    logging.debug('reading: %s (colour table)', description)
+                    parsed = extract_fctb(instream)
+                elif rsrc.type == 'fbit':
+                    logging.debug('reading: %s (bitmap font)', description)
+                    parsed = extract_fbit(instream, data_fork_stream)
+                elif rsrc.type == 'HFNT':
+                    logging.debug('reading: %s (bitmap font)', description)
+                    parsed = extract_hfnt(instream)
+                else:
+                    logging.debug('skipping: %s', description)
+            except FileFormatError as err:
+                logging.warning('Unable to read %s: %s', description, err)
         if parsed is not None:
             parsed_rsrc.append(rsrc | Props(**parsed))
     return parsed_rsrc
@@ -364,7 +364,8 @@ def _convert_mac_font(parsed_rsrc, info, formatstr):
                 props.update(info.get(rsrc.id, {}))
             if 'encoding' not in props or props.get('family', '') in NON_ROMAN_NAMES:
                 props['encoding'] = NON_ROMAN_NAMES.get(props.get('family', ''), 'mac-roman')
-            font = convert_nfnt(props, **vars(rsrc))
+            nfnt_params = vars(rsrc) | dict(properties=props)
+            font = convert_nfnt(**nfnt_params)
             if font.glyphs:
                 font = font.label()
                 fonts.append(font)
