@@ -13,8 +13,8 @@ the bitmap font multitool
 =========================
 
 `monobit` lets you modify and convert bitmap fonts. It supports dozens of bitmap font formats
-and a few vector font formats, including formats with little or no support elsewhere -- 
-including Apple KanjiTalk fbit fonts, Amiga colorfonts, Windows vector fonts, BeOS, GEOS, RiscOS and many others.
+and a few vector font formats, including some with little or no support elsewhere --
+Apple fbit fonts, Amiga colorfonts, Windows vector fonts, BeOS, GEOS, RiscOS and many others.
 
 `monobit`'s native format is `yaff`, a human-friendly, text-based format focused on the preservation of glyphs, metrics and metadata. Details are given in [the `yaff` font file format specification](https://github.com/robhagemans/monobit/blob/master/YAFF.md).
 
