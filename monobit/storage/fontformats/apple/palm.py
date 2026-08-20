@@ -230,6 +230,7 @@ def _convert_palm(palm_data):
     """Convert a Palm OS font data structure to Font."""
     fonts = []
     for record in palm_data.records:
+        logging.debug(record)
         if record.format == 'NFNT':
             fonts.append(convert_nfnt(**record.data))
         elif record.format == 'nfnt2':

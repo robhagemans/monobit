@@ -108,17 +108,14 @@ def extract_grayfont(instream, endian):
     base = {'b': be, 'l': le}[endian[:1].lower()]
     anchor = instream.tell()
     header = gray_font_type_struct(base).read_from(instream)
-    logging.debug('GrFn header: %s', header)
     instream.seek(anchor + header.bitmapResourceTableOffset)
     bitmap_res_table = gray_font_bitmaps_info_struct(base).array(
         header.numberOfBitmapResources
     ).read_from(instream)
-    logging.debug('bitmap res table: %s', bitmap_res_table)
     instream.seek(anchor + header.glyphInfoTableOffset)
     glyph_info_table = gray_font_glyph_info_struct(base).array(
         header.lastChar - header.firstChar + 1
     ).read_from(instream)
-    logging.debug('glyph info table: %s', glyph_info_table)
     return Props(
         header=header,
         bitmaps_info=bitmap_res_table,
@@ -241,12 +238,10 @@ def extract_gxyz(instream, endian):
     first_bitmap = int(base.uint16.from_bytes(instream.peek(2)[:2]))
     n_entries = first_bitmap // GrayFontResourceIndexEntry.size
     entries = (GrayFontResourceIndexEntry * n_entries).read_from(instream)
-    logging.debug('GXYZ entries: %s', entries)
     rasters = []
     for i, entry in enumerate(entries):
         instream.seek(anchor + entry.offset)
         header = bitmap_type_common_struct(base).read_from(instream)
-        logging.debug('bitmap #%i: %s', i, header)
         if header.version == 1:
             ext = bitmap_type_v1_ext_struct(base).read_from(instream)
         elif header.version == 3:
@@ -256,7 +251,6 @@ def extract_gxyz(instream, endian):
                 'Only Palm OS bitmap versions 1 and 3 are supported'
                 f', not {header.version}'
             )
-        logging.debug(ext)
         if header.flags.compressed:
             # only scanline compression is allowed
             strike = read_decompress_scanline(instream, header, base)
@@ -268,5 +262,4 @@ def extract_gxyz(instream, endian):
             strike, height=header.height, bits_per_pixel=header.pixelSize
         )
         rasters.append(raster)
-        logging.debug(raster)
     return rasters
