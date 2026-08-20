@@ -119,7 +119,11 @@ def extract_grayfont(instream, endian):
         header.lastChar - header.firstChar + 1
     ).read_from(instream)
     logging.debug('glyph info table: %s', glyph_info_table)
-    return ()
+    return Props(
+        header=header,
+        bitmaps_info=bitmap_res_table,
+        glyph_info=glyph_info_table,
+    )
 
 
 ###############################################################################
@@ -265,4 +269,4 @@ def extract_gxyz(instream, endian):
         )
         rasters.append(raster)
         logging.debug(raster)
-    return ()
+    return rasters
