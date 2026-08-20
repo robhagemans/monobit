@@ -15,6 +15,8 @@ from monobit.storage import Magic
 
 from .nfnt import extract_nfnt, convert_nfnt
 from .nfnt2 import extract_nfnt2
+from .grayfont import extract_grayfont, extract_gxyz
+
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
 @loaders.register(
@@ -147,6 +149,11 @@ _MAGIC_TO_TYPE = {
     b'\x90\0': 'NFNT',
     b'\x92\0': 'nfnt',
     b'\0\x92': 'afnx',
+    b'\0\1': 'grayfont.be',
+    b'\0\2': 'grayfont.be',
+    b'\0\3': 'grayfont.be',
+    b'\0\4': 'grayfont.be',
+    b'\3\0': 'grayfont.be',
 }
 
 
@@ -195,7 +202,7 @@ def _read_palm_prc(instream):
         # but also GrFf and GrFn resources with afnx magic 00 92 that really aren't afnx
         # so this may need to be user-specified, do we follow magic or resource type?
         # if entry_type in ('NFNT', 'nfnt', 'afnx'):
-        resources.extend(_read_resource(instream))
+        resources.extend(_read_resource(instream, entry_type))
     # TODO - we can't map records to entries, multiple records for nfnt
     return Props(
         header=header, recordlist=recordlist,
@@ -203,8 +210,8 @@ def _read_palm_prc(instream):
     )
 
 
-def _read_resource(instream):
-    """Read a Palm font resource (NFNT or nfnt)."""
+def _read_resource(instream, entry_type):
+    """Read a Palm font resource."""
     magic = instream.peek(2)[:2]
     magic_type = _MAGIC_TO_TYPE.get(magic, '')
     try:
@@ -220,8 +227,15 @@ def _read_resource(instream):
             return (extract_nfnt(instream),)
         elif magic_type == 'nfnt':
             return extract_nfnt2(instream, format='nfnt2')
-        elif magic_type == 'afnx':
+        elif magic_type == 'afnx': # and entry_type == 'afnx'; 'xFnt' ??
             return extract_nfnt2(instream, format='afnx')
+        elif magic_type == 'grayfont.be': # and entry_type in 'GrFn', 'NFNT', 'nfnt'; 'GrFf' ??
+            return extract_grayfont(instream, endian='big')
+        elif magic_type == 'grayfont.le': # and entry_type in 'GrFn', 'NFNT', 'nfnt'; 'GrFf' ??
+            return extract_grayfont(instream, endian='little')
+        elif entry_type[:2] in ('GU', 'GL', 'GR') and entry_type[2:] in ('14', '34'):
+            # FIXME "skipping" message as no magic
+            return extract_gxyz(instream, endian='big')
     except (ValueError, FileFormatError) as e:
         # negative array length throws valueerror, not enough data throws structerror <= fileformaterror
         logging.warning('Could not read resource: %s', e)
