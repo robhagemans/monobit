@@ -108,10 +108,8 @@ def extract_grayfont(instream, endian):
     base = {'b': be, 'l': le}[endian[:1].lower()]
     anchor = instream.tell()
     header = gray_font_type_struct(base).read_from(instream)
-    logging.debug('\n\nGrFn header: %s', header)
-    logging.debug(instream.tell())
+    logging.debug('GrFn header: %s', header)
     instream.seek(anchor + header.bitmapResourceTableOffset)
-    logging.debug(instream.tell())
     bitmap_res_table = gray_font_bitmaps_info_struct(base).array(
         header.numberOfBitmapResources
     ).read_from(instream)
@@ -237,10 +235,9 @@ def extract_gxyz(instream, endian):
     # until we hit the first bitmap offset
     GrayFontResourceIndexEntry = gray_font_resource_index_entry(base)
     first_bitmap = int(base.uint16.from_bytes(instream.peek(2)[:2]))
-    logging.debug('first bitmap %x %x', first_bitmap, anchor)
     n_entries = first_bitmap // GrayFontResourceIndexEntry.size
     entries = (GrayFontResourceIndexEntry * n_entries).read_from(instream)
-    logging.debug('\n\nGXYZ entries: %s', entries)
+    logging.debug('GXYZ entries: %s', entries)
     rasters = []
     for i, entry in enumerate(entries):
         instream.seek(anchor + entry.offset)
