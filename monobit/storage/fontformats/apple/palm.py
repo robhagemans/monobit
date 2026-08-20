@@ -154,10 +154,10 @@ def _read_palm_pdb(instream):
     recordlist = _RECORD_LIST.read_from(instream)
     entries = _PDB_ENTRY.array(recordlist.numRecords).read_from(instream)
     logging.debug('PDB record list: %s', entries)
-    resources = []
+    resources = {}
     for entry in entries:
         instream.seek(entry.localChunkID)
-        resources.extend(_read_resource(instream, entry.uniqueID))
+        resources[entry.uiqueID] = _read_resource(instream, entry.uniqueID)
     return Props(
         header=header, recordlist=recordlist,
         entries=tuple(entries), records=resources,
@@ -171,7 +171,7 @@ def _read_palm_prc(instream):
     recordlist = _RECORD_LIST.read_from(instream)
     entries = _PRC_ENTRY.array(recordlist.numRecords).read_from(instream)
     logging.debug('PRC record list: %s', entries)
-    resources = []
+    resources = {}
     for entry in entries:
         entry_type = entry.type.decode('latin-1')
         logging.debug(
@@ -181,7 +181,7 @@ def _read_palm_prc(instream):
             entry.localChunkID
         )
         instream.seek(entry.localChunkID)
-        resources.append(_read_resource(instream, entry.id, entry_type))
+        resources[entry.id] = _read_resource(instream, entry.id, entry_type)
     # TODO - we can't map records to entries, multiple records for nfnt
     return Props(
         header=header, recordlist=recordlist,
@@ -194,7 +194,7 @@ def _read_resource(instream, entry_id, entry_type=''):
     magic = instream.peek(2)[:2]
     entryprops = Props(id=entry_id, type=entry_type)
     description = f'id `{entry_id}` type `{entry_type}` magic {magic.hex()}'
-    resource = Props()
+    resource = Props(format='')
     try:
         # resource name is not dependable for Palm
         # - font resources may have ad-hoc names in some programs: 'FONT', 'tFnt'
@@ -217,7 +217,7 @@ def _read_resource(instream, entry_id, entry_type=''):
                 resource = Props(format='GrFn', data=extract_grayfont(instream, endian='little'))
         elif entry_type[:2] in ('GU', 'GL', 'GR') and entry_type[2:] in ('14', '34'):
             logging.debug('Reading GrayFont bitmap resource: %s', description)
-            resource = Props(format='GXYZ', data=extract_gxyz(instream, endian='big'))
+            resource = Props(format='GXYZ', data=extract_gxyz(instream))
         else:
             logging.debug('Skipping unknown resource: %s', description)
     except (ValueError, FileFormatError) as e:
@@ -226,17 +226,37 @@ def _read_resource(instream, entry_id, entry_type=''):
     return entryprops | resource
 
 
+def _combine_resources(records):
+    """Combine resources holding data for the same font."""
+    fontdata = []
+    for record in records.values():
+        if record.format in ('NFNT', 'nfnt2'):
+            fontdata.append(record)
+        elif record.format == 'GrFn':
+            combined_record = record
+            combined_record.data.glyphs = []
+            for cp, glyph_info in enumerate(record.data.glyph_info):
+                bm_info = record.data.bitmaps_info[glyph_info.resourceNumber-1]
+                combined_record.data.glyphs.append(
+                    Glyph(
+                        records[bm_info.resourceID].data[glyph_info.positionInResourceIndex],
+                        codepoint=cp
+                    )
+                )
+            fontdata.append(combined_record)
+    return fontdata
+
 def _convert_palm(palm_data):
     """Convert a Palm OS font data structure to Font."""
+    fontdata = _combine_resources(palm_data.records)
     fonts = []
-    for record in palm_data.records:
-        logging.debug(record)
+    for record in fontdata:
         if record.format == 'NFNT':
             fonts.append(convert_nfnt(**record.data))
         elif record.format == 'nfnt2':
             fonts.extend(convert_nfnt(**_data) for _data in record.data)
-        elif record.format == 'GXYZ':
-            fonts.append(Font(glyphs=(Glyph(_bm) for _bm in record.data), source_format='grayfont'))
+        elif record.format == 'GrFn':
+            fonts.append(Font(record.data.glyphs, source_format='grayfont'))
     fonts = tuple(
         _font.modify(
             family=palm_data.header.name.decode('latin-1'),

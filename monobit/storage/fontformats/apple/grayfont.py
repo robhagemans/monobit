@@ -228,29 +228,37 @@ def read_decompress_scanline(instream, header, base):
     return b''.join(strike)
 
 
-def extract_gxyz(instream, endian):
+def extract_gxyz(instream):
     """Read a Palm OS GXYZ resource."""
-    base = {'b': be, 'l': le}[endian[:1].lower()]
     anchor = instream.tell()
+    magic = instream.peek(2)[:2]
+    # determine endianness - this is a poor heuristic as the "magic" is an offset
+    if magic[0] > 3:
+        base = le
+    else:
+        base = be
     # there's no number of glyphs given, so keep reading
     # until we hit the first bitmap offset
+    first_bitmap = int(base.uint16.from_bytes(magic))
     GrayFontResourceIndexEntry = gray_font_resource_index_entry(base)
-    first_bitmap = int(base.uint16.from_bytes(instream.peek(2)[:2]))
     n_entries = first_bitmap // GrayFontResourceIndexEntry.size
     entries = (GrayFontResourceIndexEntry * n_entries).read_from(instream)
     rasters = []
     for i, entry in enumerate(entries):
         instream.seek(anchor + entry.offset)
         header = bitmap_type_common_struct(base).read_from(instream)
-        if header.version == 1:
+        logging.debug(header)
+        if header.version in (0, 1):
             ext = bitmap_type_v1_ext_struct(base).read_from(instream)
         elif header.version == 3:
             ext = bitmap_type_v3_ext_struct(base).read_from(instream)
         else:
-            raise UnsupportedError(
+            logging.error(
                 'Only Palm OS bitmap versions 1 and 3 are supported'
                 f', not {header.version}'
             )
+            continue
+        logging.debug(ext)
         if header.flags.compressed:
             # only scanline compression is allowed
             strike = read_decompress_scanline(instream, header, base)
@@ -259,7 +267,7 @@ def extract_gxyz(instream, endian):
         raster = Raster.from_bytes(
             # we can't rely on width as the stride isn't width * bitsperpixel (and rowbytes includes the mask ?)
             # so rely on height instead
-            strike, height=header.height, bits_per_pixel=header.pixelSize
+            strike, height=header.height, bits_per_pixel=header.pixelSize or 1
         )
         rasters.append(raster)
     return rasters
