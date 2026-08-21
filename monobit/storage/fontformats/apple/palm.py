@@ -146,7 +146,7 @@ def _read_palm_pdb(instream):
     """Read a PDB file."""
     header = _PDB_HEADER.read_from(instream)
     logging.debug('header: %s', header)
-    if (header.type, header.creator) != (b'Font', b'Font'):
+    if header.type != b'Font':
         logging.warning(
             'May not be a Font PDB: type `%s`, creator `%s`',
             header.type.decode('latin-1'), header.creator.decode('latin-1')
@@ -157,7 +157,7 @@ def _read_palm_pdb(instream):
     resources = {}
     for entry in entries:
         instream.seek(entry.localChunkID)
-        resources[entry.uiqueID] = _read_resource(instream, entry.uniqueID)
+        resources[entry.uniqueID] = _read_resource(instream, entry.uniqueID)
     return Props(
         header=header, recordlist=recordlist,
         entries=tuple(entries), records=resources,
