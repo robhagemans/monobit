@@ -248,7 +248,7 @@ def extract_gxyz(instream):
         instream.seek(anchor + entry.offset)
         header = bitmap_type_common_struct(base).read_from(instream)
         logging.debug(header)
-        if header.version in (0, 1):
+        if header.version == 1:
             ext = bitmap_type_v1_ext_struct(base).read_from(instream)
         elif header.version == 3:
             ext = bitmap_type_v3_ext_struct(base).read_from(instream)
