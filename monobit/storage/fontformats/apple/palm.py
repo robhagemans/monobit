@@ -226,52 +226,44 @@ def _read_resource(instream, entry_id, entry_type=''):
     return entryprops | resource
 
 
-def _combine_resources(records):
-    """Combine resources holding data for the same font."""
-    fontdata = []
-    for record in records.values():
-        if record.format in ('NFNT', 'nfnt2'):
-            fontdata.append(record)
-        elif record.format == 'GrFn':
-            gxyz_types = set(
-                _type for _type, _id in records.keys()
-                if _type[:2] in ('GU', 'GL', 'GR') and _type[2:] in ('14', '34')
-            )
-            logging.debug('%s %s', gxyz_types, records.keys())
-            for gxyz in gxyz_types:
-                combined_record = record
-                combined_record.bitmap_format = gxyz
-                combined_record.data.glyphs = []
-                logging.debug('Appending glyphs from `%s` bitmap resource %s', gxyz, id(combined_record.data.glyphs))
-                for cp, glyph_info in enumerate(record.data.glyph_info):
-                    bm_info = record.data.bitmaps_info[glyph_info.resourceNumber-1]
-                    # logging.debug(records[(gxyz, bm_info.resourceID)].data[glyph_info.positionInResourceIndex])
-                    combined_record.data.glyphs.append(
-                        Glyph(
-                            records[(gxyz, bm_info.resourceID)].data[glyph_info.positionInResourceIndex],
-                            # TODO metrics
-                            codepoint=cp,
-                        )
+def convert_grayfont(grfn, records):
+    """Combine resources for Grayfonts referenced in one GrFn resource."""
+    types = (_rec.type for _rec in records.values())
+    gxyz_types = set(
+        _type for _type in types
+        if _type[:2] in ('GU', 'GL', 'GR') and _type[2:] in ('14', '34')
+    )
+    fonts = []
+    # extract the given glyphs from each type of strike available
+    for gxyz_type in gxyz_types:
+        glyphs = []
+        for cp, glyph_info in enumerate(grfn.data.glyph_info):
+            try:
+                bm_info = grfn.data.bitmaps_info[glyph_info.resourceNumber-1]
+                gxyz = records[(gxyz_type, bm_info.resourceID)]
+                glyphs.append(
+                    Glyph(
+                        gxyz.data[glyph_info.positionInResourceIndex],
+                        # TODO metrics
+                        codepoint=cp,
                     )
-
-                fontdata.append(combined_record)
-    for fd in fontdata:
-        logging.debug(fd.bitmap_format, id(fd.data.glyphs))
-    return fontdata
+                )
+            except (KeyError, IndexError):
+                logging.warning('Could not find %s-strike for glyph %d', gxyz_type, cp)
+        # TODO font metrics & metadata
+        fonts.append(Font(glyphs, source_format=f'grayfont ({gxyz_type})'))
+    return fonts
 
 def _convert_palm(palm_data):
     """Convert a Palm OS font data structure to Font."""
-    fontdata = _combine_resources(palm_data.records)
     fonts = []
-    for record in fontdata:
-        logging.debug('Converting %s-format resource', record.format)
+    for record in palm_data.records.values():
         if record.format == 'NFNT':
             fonts.append(convert_nfnt(**record.data))
         elif record.format == 'nfnt2':
             fonts.extend(convert_nfnt(**_data) for _data in record.data)
         elif record.format == 'GrFn':
-            # TODO convert metrics, metadata
-            fonts.append(Font(record.data.glyphs, source_format=f'grayfont+{record.bitmap_format}'))
+            fonts.extend(convert_grayfont(record, palm_data.records))
     fonts = tuple(
         _font.modify(
             family=palm_data.header.name.decode('latin-1'),
