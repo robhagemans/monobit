@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from copy import deepcopy
 
 from monobit.base.struct import big_endian as be
 from monobit.base import Props, UnsupportedError, FileFormatError
@@ -181,8 +182,7 @@ def _read_palm_prc(instream):
             entry.localChunkID
         )
         instream.seek(entry.localChunkID)
-        resources[entry.id] = _read_resource(instream, entry.id, entry_type)
-    # TODO - we can't map records to entries, multiple records for nfnt
+        resources[(entry_type, entry.id)] = _read_resource(instream, entry.id, entry_type)
     return Props(
         header=header, recordlist=recordlist,
         entries=tuple(entries), records=resources,
@@ -233,17 +233,30 @@ def _combine_resources(records):
         if record.format in ('NFNT', 'nfnt2'):
             fontdata.append(record)
         elif record.format == 'GrFn':
-            combined_record = record
-            combined_record.data.glyphs = []
-            for cp, glyph_info in enumerate(record.data.glyph_info):
-                bm_info = record.data.bitmaps_info[glyph_info.resourceNumber-1]
-                combined_record.data.glyphs.append(
-                    Glyph(
-                        records[bm_info.resourceID].data[glyph_info.positionInResourceIndex],
-                        codepoint=cp
+            gxyz_types = set(
+                _type for _type, _id in records.keys()
+                if _type[:2] in ('GU', 'GL', 'GR') and _type[2:] in ('14', '34')
+            )
+            logging.debug('%s %s', gxyz_types, records.keys())
+            for gxyz in gxyz_types:
+                combined_record = record
+                combined_record.bitmap_format = gxyz
+                combined_record.data.glyphs = []
+                logging.debug('Appending glyphs from `%s` bitmap resource %s', gxyz, id(combined_record.data.glyphs))
+                for cp, glyph_info in enumerate(record.data.glyph_info):
+                    bm_info = record.data.bitmaps_info[glyph_info.resourceNumber-1]
+                    # logging.debug(records[(gxyz, bm_info.resourceID)].data[glyph_info.positionInResourceIndex])
+                    combined_record.data.glyphs.append(
+                        Glyph(
+                            records[(gxyz, bm_info.resourceID)].data[glyph_info.positionInResourceIndex],
+                            # TODO metrics
+                            codepoint=cp,
+                        )
                     )
-                )
-            fontdata.append(combined_record)
+
+                fontdata.append(combined_record)
+    for fd in fontdata:
+        logging.debug(fd.bitmap_format, id(fd.data.glyphs))
     return fontdata
 
 def _convert_palm(palm_data):
@@ -251,12 +264,14 @@ def _convert_palm(palm_data):
     fontdata = _combine_resources(palm_data.records)
     fonts = []
     for record in fontdata:
+        logging.debug('Converting %s-format resource', record.format)
         if record.format == 'NFNT':
             fonts.append(convert_nfnt(**record.data))
         elif record.format == 'nfnt2':
             fonts.extend(convert_nfnt(**_data) for _data in record.data)
         elif record.format == 'GrFn':
-            fonts.append(Font(record.data.glyphs, source_format='grayfont'))
+            # TODO convert metrics, metadata
+            fonts.append(Font(record.data.glyphs, source_format=f'grayfont+{record.bitmap_format}'))
     fonts = tuple(
         _font.modify(
             family=palm_data.header.name.decode('latin-1'),
