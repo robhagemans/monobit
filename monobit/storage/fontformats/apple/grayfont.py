@@ -284,7 +284,7 @@ def convert_grayfont(grfn, records):
     )
     fonts = []
     # extract the given glyphs from each type of strike available
-    for gxyz_type in gxyz_types:
+    for gxyz_type in sorted(gxyz_types):
         glyphs = []
         for cp, glyph_info in enumerate(grfn.data.glyph_info):
             try:
