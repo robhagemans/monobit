@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.raw.hrcg - AppleSoft Toolkit Hi-Res Character Generator
+monobit.storage.fontformats.apple.hrcg - AppleSoft Toolkit Hi-Res Character Generator
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -14,7 +14,7 @@ from monobit.storage.utils.limitations import (
     ensure_single, ensure_charcell, make_contiguous
 )
 
-from .raw import load_bitmap, save_bitmap
+from monobit.storage.fontformats.raw import load_bitmap, save_bitmap
 
 
 @loaders.register(
