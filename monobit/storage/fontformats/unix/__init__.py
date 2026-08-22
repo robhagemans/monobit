@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.apple - Apple font formats
+monobit.storage.fontformats.unix - font formats from UNIX systems
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

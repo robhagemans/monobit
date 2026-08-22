@@ -1,7 +1,7 @@
 """
-monobit.storage.fontformats.apple - Apple font formats
+monobit.storage.fontformats.riscos - RiscOS font formats
 
-(c) 2019--2026 Rob Hagemans
+(c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 
