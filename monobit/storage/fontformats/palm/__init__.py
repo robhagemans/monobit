@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.apple - Mac OS and related font formats
+monobit.storage.fontformats.palm - PalmOS font formats
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

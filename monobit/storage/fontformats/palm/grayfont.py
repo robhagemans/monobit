@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.apple.grayfont - Palm GrayFont font resources
+monobit.storage.fontformats.palm.grayfont - Palm GrayFont font resources
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

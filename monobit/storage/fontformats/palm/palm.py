@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.apple.palm - Palm OS databases and NFNT font resources
+monobit.storage.fontformats.palm.palm - Palm OS databases and resource collections
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -14,7 +14,7 @@ from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 from monobit.storage import Magic
 
-from .nfnt import extract_nfnt, convert_nfnt
+from monobit.storage.fontformats.apple.nfnt import extract_nfnt, convert_nfnt
 from .nfnt2 import extract_nfnt2
 from .grayfont import extract_grayfont, extract_gxyz, convert_grayfont
 

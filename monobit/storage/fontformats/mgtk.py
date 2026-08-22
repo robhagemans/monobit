@@ -23,7 +23,7 @@ def load_mgtk_fnt(instream):
 
 
 ###############################################################################
-# MouuseGraphics MGTK format
+# MouseGraphics MGTK format
 # see: https://github.com/a2stuff/a2d/blob/main/mgtk/MGTK.md#font
 
 _HEADER = le.Struct(

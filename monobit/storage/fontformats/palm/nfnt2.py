@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.apple.nfnt2 - Palm `nfnt` (v2) font resources
+monobit.storage.fontformats.palm.nfnt2 - Palm `nfnt` (v2) font resources
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
