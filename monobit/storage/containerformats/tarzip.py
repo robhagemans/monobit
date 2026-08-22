@@ -149,7 +149,7 @@ class ZipContainer(ZipTarBase):
             return self._archive.open(filename, 'r', pwd=password)
         except KeyError:
             # return None for open() on directories (like tarfile does)
-            if filename + '/' in self.list():
+            if not filename or filename == '.' or filename + '/' in self.list():
                 return None
             raise
 

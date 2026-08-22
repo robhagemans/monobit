@@ -13,7 +13,7 @@ from .magic import iter_funcs_from_registry
 
 def join_path(*elements):
     """Join elements of a container path with double slashes."""
-    elements = (str(_elem) for _elem in elements)
+    elements = (str(_elem) for _elem in elements if str(_elem) != '.')
     return '//'.join(_elem for _elem in elements if _elem)
 
 
