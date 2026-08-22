@@ -124,7 +124,6 @@ def extract_grayfont(instream, endian):
 
 
 ###############################################################################
-
 # GXYZ resource
 # =============
 #
@@ -273,6 +272,9 @@ def extract_gxyz(instream):
     return rasters
 
 
+###############################################################################
+# conversion
+
 def convert_grayfont(grfn, records):
     """Combine resources for Grayfonts referenced in one GrFn resource."""
     types = (_rec.type for _rec in records.values())
@@ -288,15 +290,27 @@ def convert_grayfont(grfn, records):
             try:
                 bm_info = grfn.data.bitmaps_info[glyph_info.resourceNumber-1]
                 gxyz = records[(gxyz_type, bm_info.resourceID)]
+                raster = gxyz.data[glyph_info.positionInResourceIndex]
                 glyphs.append(
                     Glyph(
-                        gxyz.data[glyph_info.positionInResourceIndex],
-                        # TODO metrics
+                        raster,
                         codepoint=cp,
+                        left_bearing=glyph_info.leftKerning,
+                        right_bearing=(
+                            glyph_info.advance
+                            - glyph_info.leftKerning
+                            - raster.width
+                        ),
+                        shift_up=-grfn.data.header.descent,
                     )
                 )
             except (KeyError, IndexError):
                 logging.warning('Could not find %s-strike for glyph %d', gxyz_type, cp)
-        # TODO font metrics & metadata
-        fonts.append(Font(glyphs, source_format=f'grayfont ({gxyz_type})'))
+        fonts.append(Font(
+            glyphs,
+            ascent=grfn.data.header.ascent,
+            descent=grfn.data.header.descent,
+            line_height=grfn.data.header.leading,
+            source_format=f'grayfont ({gxyz_type})'
+        ))
     return fonts
