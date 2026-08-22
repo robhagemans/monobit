@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.dashen - Dashen font
+monobit.storage.fontformats.apps.dashen - Dashen font
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -13,7 +13,7 @@ from monobit.base import Props
 from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Raster
 
-from .softfont.pcl import load_hppcl
+from monobit.storage.fontformats.pcl import load_hppcl
 
 
 @loaders.register(

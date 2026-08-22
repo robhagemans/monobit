@@ -1,7 +1,7 @@
 """
-monobit.storage.fontformats.printer - multipass dot matrix printer formats
+monobit.storage.fontformats.unix - font formats from UNIX systems
 
-(c) 2026 Rob Hagemans
+(c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

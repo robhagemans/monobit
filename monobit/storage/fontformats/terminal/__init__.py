@@ -1,7 +1,7 @@
 """
-monobit.storage.fontformats.palm - PalmOS font formats
+monobit.storage.fontformats.terminal - terminal softfonts
 
-(c) 2023--2026 Rob Hagemans
+(c) 2022--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

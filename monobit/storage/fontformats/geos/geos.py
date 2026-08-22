@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.geos - C64 GEOS font files
+monobit.storage.fontformats.geos.geos - C64 GEOS font files
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

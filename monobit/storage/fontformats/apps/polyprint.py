@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.printer.polyprint - PolyPrint fonts
+monobit.storage.fontformats.apps.polyprint - PolyPrint fonts
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

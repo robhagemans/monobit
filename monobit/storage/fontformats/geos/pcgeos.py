@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.pcgeos - PC/GEOS 2.0+ (aka GeoWorks, NewDeal, BreadBox)
+monobit.storage.fontformats.geos.pcgeos - PC/GEOS 2.0+ (aka GeoWorks, NewDeal, BreadBox)
 
 (c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

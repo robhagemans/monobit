@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.vtfont - FreeBSD vt console font file
+monobit.storage.fontformats.unix.vtfont - FreeBSD vt console font file
 
 (c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -13,7 +13,7 @@ from monobit.core import Glyph, Font, Char, Raster
 from monobit.base.struct import big_endian as be
 from monobit.base.binary import ceildiv
 
-from .raw import load_bitmap, save_bitmap
+from monobit.storage.fontformats.raw import load_bitmap, save_bitmap
 from monobit.storage.utils.limitations import (
     ensure_single, make_contiguous, ensure_charcell, ensure_levels
 )

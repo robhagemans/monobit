@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.psf - PC Screen Font format
+monobit.storage.fontformats.unix.psf - PC Screen Font format
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -13,7 +13,7 @@ from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 
-from .raw import load_bitmap
+from monobit.storage.fontformats.raw import load_bitmap
 from monobit.storage.utils.limitations import (
     ensure_single, ensure_charcell, ensure_levels, make_contiguous
 )

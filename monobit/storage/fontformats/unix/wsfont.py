@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.wsfont - NetBSD wsfont binaries and C headers
+monobit.storage.fontformats.unix.wsfont - NetBSD wsfont binaries and C headers
 
 (c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -19,8 +19,7 @@ from monobit.storage.utils.source import CCodeReader, CCodeWriter
 from monobit.storage.utils.limitations import (
     ensure_single, make_contiguous, ensure_charcell, ensure_levels
 )
-
-from .raw import load_bitmap, save_bitmap
+from monobit.storage.fontformats.raw import load_bitmap, save_bitmap
 
 
 # https://ftp.iij.ad.jp/pub/NetBSD/NetBSD-release-10/xsrc/local/programs/bdfload/bdfload.c

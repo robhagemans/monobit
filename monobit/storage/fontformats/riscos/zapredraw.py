@@ -1,5 +1,5 @@
 """
-monobit.storage.formats.zapredraw - RiscOS !ZapRedraw UCS file
+monobit.storage.formats.riscos.zapredraw - RiscOS !ZapRedraw UCS file
 
 (c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -15,7 +15,7 @@ from monobit.encoding import encodings
 from monobit.base.struct import little_endian as le, bitfield
 from monobit.base.binary import ceildiv
 
-from .raw import load_bitmap, save_bitmap
+from monobit.storage.fontformats.raw import load_bitmap, save_bitmap
 from monobit.storage.utils.limitations import (
     ensure_single, ensure_charcell, make_contiguous, ensure_levels, reencode
 )

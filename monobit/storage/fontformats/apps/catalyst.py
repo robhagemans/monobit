@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.catalyst - Quark Catalyst font file
+monobit.storage.fontformats.apps.catalyst - Quark Catalyst font file
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

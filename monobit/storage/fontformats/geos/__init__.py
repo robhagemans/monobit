@@ -1,7 +1,7 @@
 """
-monobit.storage.fontformats.softfonr - terminal softfonts
+monobit.storage.fontformats.geos - GEOS font formats
 
-(c) 2022--2026 Rob Hagemans
+(c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
 

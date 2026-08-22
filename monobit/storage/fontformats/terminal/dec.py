@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.softfont.dec - DEC Dynamically Redefined Character Set
+monobit.storage.fontformats.terminal.dec - DEC Dynamically Redefined Character Set
 
 (c) 2022--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
