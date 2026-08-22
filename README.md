@@ -79,15 +79,35 @@ characters, set a margin, scale text, and rotate by quarter turns.
 Check `monobit-banner --help` for usage.
 
 
-Proportional-spacing formats
-----------------------------
+Conversion
+----------
+
+##### Resource bundle formats
+
+Some of the most common font formats take the form of "resource bundles", where a single file can contain multiple resources.
+The supported feature set will depend on the type of resource included. Some resource formats, Apple `nfnt` and TrueType/OpenType `sfnt` in particular, are supported by bundle formats from different vendors. Many resource formats also occur as standalone files; for some (such as TrueType/OpenType) this is the most common way they are distributed.
+
+| Format                | Short Name    | Typical Extension      | Read  | Write | Type   | Supported resources             |
+|-----------------------|---------------|------------------------|-------|-------|--------|---------------------------------|
+| Amiga Font Contents   | `amiga-fc`    | `.font`                |&check;|&check;| binary | `amiga`                         |
+| GEOS Convert file     | `geos`        | `.cvt`                 |&check;|&check;| binary | `vlir`                          |
+| LISA font library     | `lisa`        | `.bin`                 |&check;|       | binary | `nfnt`                          |
+| MacOS resource fork   | `mac`         | `.dfont` `.suit`       |&check;|&check;| binary | `nfnt`, `sfnt`, `fbit`, `hfnt`  |
+| Windows or OS/2 font  | `mzfon`       | `.fon` `.exe` `.dll`   |&check;| (1)   | binary | `win`, `gpi`, `sfnt`            |
+| PalmOS database       | `palm`        | `.pdb`                 |&check;|       | binary | `nfnt`, `nfnt2`, `afnx`         |
+| PalmOS resource collection | `palm-prc` | `.prc`               |&check;|       | binary | `nfnt`, `nfnt2`, `afnx`, `grfn` |
+| TrueType/OpenType collection | `ttcf` | `.otc` `.ttc` [F] [**] |&check;|&check;| binary | `sfnt`                          |
+
+(1) Writing supports only 16-bit Windows NE container with Windows font resource
+
+
+##### Proportional-spacing formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write | Type   | Features |
 |-----------------------|------------|-----------------------------|-------|-------|--------|----------|
 | Palm afnx resource    | `afnx`     |                             |&check;|       | binary | M O      |
 | Xerox Alto CONVERT    | `alto`     | `.al`                       |&check;|       | binary | -        |
-| Amiga Font Contents   | `amiga-fc` | `.font`                     |&check;|&check;| binary | M; see `amiga` |
-| Amiga font            | `amiga`    |                             |&check;|&check;| binary | O C G  |
+| Amiga font            | `amiga`    |                             |&check;|&check;| binary | O C G    |
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;| coded  | U SB MB V O G |
 | BeOS Bitmap Font      | `beos`     |                             |&check;|&check;| binary | U O G    |
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | O        |
@@ -102,24 +122,19 @@ Proportional-spacing formats
 | FZX font              | `fzx`      | `.fzx`                      |&check;|&check;| binary | O        |
 | OS/2 GPI resource     | `gpi`      | `.fnt`                      |&check;|       | binary | SB O (MB K) |
 | Atari GDOS / GEM      | `gdos`     | `.fnt` `.gft` `.vga`        |&check;|&check;| binary | O        |
-| GEOS font file (CVT)  | `geos`     | `.cvt`                      |&check;|&check;| binary | M; see `vlir` |
 | METAFONT Generic Font | `gf`       | `.*gf`  (+ `.tfm`)          |&check;|       | binary | O K      |
 | Adafruit GFX font     | `gfxfont`  | `.h`                        |&check;|&check;| coded  | O        |
+| Palm GrayFont resource | `grfn`    |                             |(4)    |       | binary | M O G    |
 | hexdraw               | `hexdraw`  | `.draw`                     |&check;|&check;| visual | U        |
 | HP PCL soft font      | `hppcl`    | `.sft` `.sfp` `.sfl`        |&check;|&check;| esc    | SB MB O  |
 | Apple IIgs font       | `iigs`     | `.fon`                      |&check;|&check;| binary | see `nfnt` |
 | Grid bitmap image [P] | `image`    | `.png` `.gif` `.bmp`        |&check;|&check;| image  | G C      |
 | Set of bitmap images [P] | `imageset` | `.png` `.gif` `.bmp`     |&check;|&check;| image  | G C      |
-| LISA font library     | `lisa`     | `.bin`                      |&check;|       | binary | M; see `nfnt` |
-| MacOS font            | `mac`      | `.dfont` `.suit`            |&check;|&check;| binary | M SB K C; see `nfnt`, `sfnt`, `fbit`, `hfnt` |
 | MouseGraphics Toolkit | `mgtk`     |                             |&check;|       | binary | -        |
 | mkwinfont text format | `mkwinfont`| `.fd`                       |&check;|&check;| visual | SB       |
-| Windows or OS/2 font  | `mzfon`    | `.fon` `.exe` `.dll`        |&check;| (1)   | binary | M; see `win`, `gpi`, `sfnt` |
-| Apple NFNT resource   | `nfnt`     | `.f`                        |&check;|&check;| binary | O G      |
+| Apple NFNT resource   | `nfnt`     | `.f`                        |&check;|&check;| binary | O G; SB K C (4) |
 | Palm nfnt resource    | `nfnt2`    |                             |&check;|       | binary | M O      |
 | Project Oberon        | `oberon`   | `.Scn.Fnt` `.Pr?.Fnt`       |&check;|&check;| binary | O        |
-| Palm OS font          | `palm`     | `.pdb`                      |&check;|       | binary | M; see `nfnt`, `nfnt2`, `afnx` |
-| Palm OS PRC           | `palm-prc` | `.prc`                      |&check;|       | binary | M; see `nfnt`, `nfnt2`, `afnx` |
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
 | PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
@@ -133,20 +148,20 @@ Proportional-spacing formats
 | RISCOS new format     | `riscos`   |                             |&check;|       | binary | O G      |
 | Signum! 2             | `signum`   | `.e24` `.p9` `.p24` `.l30`  |&check;|       | binary | -        |
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
-| TrueType/OpenType embedded bitmap | `sfnt` | `.otb` `.ttf` `.otf` [F] [**] |&check;| (2) | binary | M US SB MB O K V G C |
+| TrueType/OpenType     | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;|&check;| binary | M US SB MB O K V G C |
 | SymbOS font           | `symbos`   | `.fnt`                      |&check;|&check;| binary | -        |
-| SFNT collection       | `ttcf`     | `.otc` `.ttc` [F] [**]      |&check;| (2)   | binary | M US SB MB O K V G C |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
 | GEOS font resource    | `vlir`     |                             |&check;|&check;| binary | O        |
-| Windows FNT resource  | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
-| monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | M US SB MB O K V G C |
+| Windows font resource | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
+| monobit yaff          | `yaff`     | `.yaff`                     |&check;|&check;| visual | M US SB MB O K V; G C (5) |
 
 [P] requires **PIL**  
 [F] requires **fontTools**  
 
-(1) 16-bit Windows NE container with FNT resource only  
 (2) Bitmap only (OTB)  
 (3) Limited read functionality: no support for ASCII-art, which is a core feature of Figlet
+(4) Only supported as part of a resource bundle; no standalone support
+(5) Experimental extension; not yet in specification and subject to change
 
 M  multiple-font container  
 U  Unicode  
@@ -162,8 +177,7 @@ C  Colour fonts
 If the abbreviation is bracketed, the format supports this but it is not implemented.
 
 
-Character-cell formats
-----------------------
+##### Character-cell formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write | Type   | Cell | Features |
 |-----------------------|------------|-----------------------------|-------|-------|--------|------|----------|
@@ -182,7 +196,7 @@ Character-cell formats
 | PCPaint, GRASP old format | `grasp`| `.set` `.fnt`               |&check;|&check;| binary | any  | -        |
 | Hanzi Bitmap Font     | `hbf`      | `.hbf` + raw binary         |&check;|&check;| binary | any  | SB MB    |
 | Apple HFNT resource   | `hfnt`     |                             |&check;|       | binary | 8N*8N | MB      |
-| AppleSoft Toolkit Hi-Res Character Generator | `hrcg` | `.set`   |&check;|&check;| binary | 8*7 (4) |       |
+| AppleSoft Toolkit Hi-Res Character Generator | `hrcg` | `.set`   |&check;|&check;| binary | 8*7 (6) |       |
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| coded  | 8x16 (strict) 8xN<=32 (ext) | MC U (strict) MC US (ext) |
 | Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
@@ -206,57 +220,31 @@ Character-cell formats
 
 MC multi-cell glyphs
 
-(4) Glyphs are extracted interlaced to double-width (8x14) in order to represent half-dot shifts
+(6) Glyphs are extracted interlaced to double-width (8x14) in order to represent half-dot shifts
 
 
-Charts
-------
+##### Vector (single-stroke) formats
 
-Use the `chart` command to output an annotated table of glyphs.  
-
-| Format            | Short Name   |
-|-------------------|--------------|
-| Text              | `text`       |
-| Block elements    | `blocks`     |
-| ANSI colours      | `shades`     |
-| Image [P]         | `image`      |
-| Sixel image       | `sixel`      |
-| PDF [R]           | `pdf`        |
-
-[P] requires **PIL**  
-[R] requires **reportlab**  
-
-
-Greyscale and colour fonts
---------------------------
-
-Greyscale and colour support is experimental. An extension of the `yaff` format allows storing
-glyphs with up to 8 bits per pixel (256 colours or grey levels).
-
-
-Stroke (vector) formats
------------------------
-
-Stroke font support is experimental. Stroke fonts are scalable fonts defined as
-line segments. They are fundamentally different from modern fonts in that they
-define single strokes whereas modern fonts define outlines to be filled with ink.
-Additionally, the fonts currently supported consist of straight line segments only.
-
+Vector font support is experimental. Vector fonts, a.k.a. single-stroke fonts,
+are scalable fonts defined as line segments. They are fundamentally different
+from modern fonts in that they define single strokes, whereas modern fonts
+define outlines to be filled with ink. Additionally, the fonts currently
+supported consist of straight line segments only.
+s
 
 | Format                     | Short Name | Typical Extension | Read  | Write |
 |----------------------------|------------|-------------------|-------|-------|
 | monobit yaff               | `yaff`     | `.yaff`           |&check;|&check;|
 | SVG Fonts                  | `svg`      | `.svg`            |&check;|&check;|
 | Windows resource           | `win`      | `.fnt`            |&check;|&check;|
-| Windows font               | `fon`      | `.fon`            |&check;|&check; (NE) |
+| Windows font               | `fon`      | `.fon`            |&check;|&check;|
 | Borland Graphics Interface | `borland`  | `.chr`            |&check;|&check;|
 | Hershey fonts (Jim Hurt)   | `hurt`     | `.jhf`            |&check;|       |
 | DOSStart                   | `dosstart` | `.dsf`            |&check;|       |
 | GIMMS                      | `gimms`    | `.bin`            |&check;|       |
 
 
-Wrapper formats
------------------
+##### Wrapper formats
 
 `monobit` will recurse and extract font files from a number of common container,
 archive, compression and encoding formats:
@@ -306,8 +294,7 @@ _Note that many of these currently require reading the full archive into memory,
 not be practicable with e.g ISO9660 or WARC files which can hold whole filesystems._
 
 
-[*] Identifying raw binary files
---------------------------------
+##### [*] Identifying raw binary files
 
 This is the most common format used on old platforms, often with the unhelpful suffix `.fnt`. As there is no metadata, it's up to you to specify the character-cell size. The most common, and default, size is 8x8 (CGA and many 8-bit platforms), followed by 8x16 (VGA) and 8x14 (EGA).
 
@@ -330,10 +317,9 @@ It is also useful to check the file size. Raw files commonly hold 96 (ASCII excl
 If your unidentified font file has one of these sizes, chances are it is a raw binary file.
 
 
-[**] TrueType / OpenType embedded bitmaps
------------------------------------------
+##### [**] TrueType / OpenType support
 
-`monobit` can extract bitmaps embedded in TrueType and OpenType font files. It
+`monobit` can read and write bitmaps embedded in TrueType and OpenType font files. It
 should be kept in mind that these are primarily intended as scalable formats,
 and only exceptionally embed bitmaps to improve rendering on low-resolution displays.
 
@@ -342,13 +328,34 @@ This is true even for fonts with a pixelised look.
 To convert these you first need to _rasterise_ them, which `monobit` does not do.
 Some of the other font tools linked below do have rasterising features.
 
-`monobit` can output TrueType/OpenType files with the following types of bitmap tables:
+`monobit` can read and write TrueType/OpenType files with the following types of bitmap tables:
 - `EBDT`: Microsoft monochrome bitmap, as used in Linux OpenType bitmap fonts (`.otb` fonts)
 - `bdat`: Apple monochrome bitmap, as used in MacOS TrueType bitmap fonts (a.k.a. "sbit" fonts)
 - `CBDT`: Google colour bitmap fonts
 - `sbix`: Apple colour bitmap fonts
 
 Note that modern versions of Microsoft Windows no longer recognise OpenType / TrueType bitmap fonts.
+
+
+Charts and rendering
+--------------------
+
+`monobit` can output an annotated table of glyphs
+(e.g. `monobit-convert Chicago.dfont chart -format=pdf`) or render a given text
+(e.g. `monobit-convert Chicago.dfont render -text='Hello, World!' -format=sixel`)
+
+
+| Format         | Short Name | Chart   | Render  |
+|----------------|------------|---------|---------|
+| Text           | `text`     | &check; | &check; |
+| Block elements | `blocks`   | &check; | &check; |
+| ANSI colours   | `shades`   | &check; | &check; |
+| Image [P]      | `image`    | &check; | &check; |
+| Sixel image    | `sixel`    | &check; | &check; |
+| PDF [R]        | `pdf`      | &check; |         |
+
+[P] requires **PIL**  
+[R] requires **reportlab**  
 
 
 Dependencies
