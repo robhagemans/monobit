@@ -291,6 +291,10 @@ def convert_grayfont(grfn, records):
                 bm_info = grfn.data.bitmaps_info[glyph_info.resourceNumber-1]
                 gxyz = records[(gxyz_type, bm_info.resourceID)]
                 raster = gxyz.data[glyph_info.positionInResourceIndex]
+                if gxyz_type[1] == 'L':
+                    raster = raster.turn(1)
+                elif gxyz_type[1] == 'R':
+                    raster = raster.turn(-1)
                 glyphs.append(
                     Glyph(
                         raster,
