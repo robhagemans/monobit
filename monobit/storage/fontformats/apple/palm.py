@@ -16,7 +16,7 @@ from monobit.storage import Magic
 
 from .nfnt import extract_nfnt, convert_nfnt
 from .nfnt2 import extract_nfnt2
-from .grayfont import extract_grayfont, extract_gxyz
+from .grayfont import extract_grayfont, extract_gxyz, convert_grayfont
 
 
 # offset magic: b'FontFont' at offset 0x3c (type, creator fields)
@@ -225,34 +225,6 @@ def _read_resource(instream, entry_id, entry_type=''):
         logging.warning('Could not read resource: %s', e)
     return entryprops | resource
 
-
-def convert_grayfont(grfn, records):
-    """Combine resources for Grayfonts referenced in one GrFn resource."""
-    types = (_rec.type for _rec in records.values())
-    gxyz_types = set(
-        _type for _type in types
-        if _type[:2] in ('GU', 'GL', 'GR') and _type[2:] in ('14', '34')
-    )
-    fonts = []
-    # extract the given glyphs from each type of strike available
-    for gxyz_type in gxyz_types:
-        glyphs = []
-        for cp, glyph_info in enumerate(grfn.data.glyph_info):
-            try:
-                bm_info = grfn.data.bitmaps_info[glyph_info.resourceNumber-1]
-                gxyz = records[(gxyz_type, bm_info.resourceID)]
-                glyphs.append(
-                    Glyph(
-                        gxyz.data[glyph_info.positionInResourceIndex],
-                        # TODO metrics
-                        codepoint=cp,
-                    )
-                )
-            except (KeyError, IndexError):
-                logging.warning('Could not find %s-strike for glyph %d', gxyz_type, cp)
-        # TODO font metrics & metadata
-        fonts.append(Font(glyphs, source_format=f'grayfont ({gxyz_type})'))
-    return fonts
 
 def _convert_palm(palm_data):
     """Convert a Palm OS font data structure to Font."""
