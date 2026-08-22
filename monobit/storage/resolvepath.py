@@ -219,8 +219,12 @@ class _PathResolver:
                     return True
                 # innermost existing is a subdirectory
                 # i.e. unmatched subpath does not exist
+                found = '\n    '.join(
+                    join_path(container, _sub)
+                    for _sub in container.iter_sub(existing)
+                )
                 raise FileNotFoundError(
-                    f"{join_path(container, existing, unmatched)} not found."
+                    f"{join_path(container, existing, unmatched)} not found. \nDid find:\n    {found}"
                 )
             else:
                 # see if existing points to a file -> open it
