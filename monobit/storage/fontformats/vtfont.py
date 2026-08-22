@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.vtfont - FreeBSD vt consolve font file
+monobit.storage.fontformats.vtfont - FreeBSD vt console font file
 
 (c) 2024--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
