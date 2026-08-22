@@ -212,11 +212,7 @@ class _PathResolver:
             self._unresolved_path = unmatched
             return True
         if self.mode == 'r':
-            try:
-                # see if existing points to a file -> open it
-                kwargs = take_arguments(container.decode, self.argdict)
-                stream = container.decode(existing, **kwargs)
-            except IsADirectoryError:
+            if container.is_dir(existing):
                 if unmatched == Path():
                     # path has resolved; nothing further to open
                     self._unresolved_path = unmatched
@@ -227,6 +223,9 @@ class _PathResolver:
                     f"{join_path(container, existing, unmatched)} not found."
                 )
             else:
+                # see if existing points to a file -> open it
+                kwargs = take_arguments(container.decode, self.argdict)
+                stream = container.decode(existing, **kwargs)
                 # remove used arguments
                 for kwarg in kwargs:
                     del self.argdict[kwarg]
