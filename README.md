@@ -82,7 +82,7 @@ Check `monobit-banner --help` for usage.
 Conversion
 ----------
 
-##### Resource bundle formats
+### Resource bundle formats
 
 Some of the most common font formats take the form of "resource bundles", where a single file can contain multiple resources.
 The supported feature set will depend on the type of resource included. Some resource formats, Apple `nfnt` and TrueType/OpenType `sfnt` in particular, are supported by bundle formats from different vendors. Many resource formats also occur as standalone files; for some (such as TrueType/OpenType) this is the most common way they are distributed.
@@ -101,7 +101,7 @@ The supported feature set will depend on the type of resource included. Some res
 (1) Writing supports only 16-bit Windows NE container with Windows font resource
 
 
-##### Proportional-spacing formats
+### Proportional-spacing formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write | Type   | Features |
 |-----------------------|------------|-----------------------------|-------|-------|--------|----------|
@@ -177,7 +177,7 @@ C  Colour fonts
 If the abbreviation is bracketed, the format supports this but it is not implemented.
 
 
-##### Character-cell formats
+### Character-cell formats
 
 | Format                | Short Name | Typical Extension           | Read  | Write | Type   | Cell | Features |
 |-----------------------|------------|-----------------------------|-------|-------|--------|------|----------|
@@ -223,7 +223,7 @@ MC multi-cell glyphs
 (6) Glyphs are extracted interlaced to double-width (8x14) in order to represent half-dot shifts
 
 
-##### Vector (single-stroke) formats
+### Vector (single-stroke) formats
 
 Vector font support is experimental. Vector fonts, a.k.a. single-stroke fonts,
 are scalable fonts defined as line segments. They are fundamentally different
@@ -244,7 +244,7 @@ s
 | GIMMS                      | `gimms`    | `.bin`            |&check;|       |
 
 
-##### Wrapper formats
+### Wrapper formats
 
 `monobit` will recurse and extract font files from a number of common container,
 archive, compression and encoding formats:
@@ -294,7 +294,7 @@ _Note that many of these currently require reading the full archive into memory,
 not be practicable with e.g ISO9660 or WARC files which can hold whole filesystems._
 
 
-##### [*] Identifying raw binary files
+### [*] Identifying raw binary files
 
 This is the most common format used on old platforms, often with the unhelpful suffix `.fnt`. As there is no metadata, it's up to you to specify the character-cell size. The most common, and default, size is 8x8 (CGA and many 8-bit platforms), followed by 8x16 (VGA) and 8x14 (EGA).
 
@@ -317,7 +317,7 @@ It is also useful to check the file size. Raw files commonly hold 96 (ASCII excl
 If your unidentified font file has one of these sizes, chances are it is a raw binary file.
 
 
-##### [**] TrueType / OpenType support
+### [**] TrueType / OpenType support
 
 `monobit` can read and write bitmaps embedded in TrueType and OpenType font files. It
 should be kept in mind that these are primarily intended as scalable formats,
