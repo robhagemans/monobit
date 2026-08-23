@@ -1717,6 +1717,33 @@ class TestImport(BaseTester):
         self.assertEqual(len(font.glyphs), 96)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
 
+    # GRUB2 PFF2
+
+    def test_import_pff2(self):
+        """"Test importing PFF2 files."""
+        font, *_ = monobit.load(self.font_path / 'Minecraft24.pf2')
+        self.assertEqual(len(font.glyphs), 156)
+        assert_text_eq(font.get_glyph('A').as_text(), """\
+..@@@@@@@@..
+..@@@@@@@@..
+@@........@@
+@@........@@
+@@........@@
+@@@@@@@@@@@@
+@@@@@@@@@@@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+""")
+
+
 
 if __name__ == '__main__':
     unittest.main()

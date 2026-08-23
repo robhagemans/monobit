@@ -111,6 +111,9 @@ Original sources:
 * `vertical.bdf`
   - Example 1 from the Adobe BDF specification document, p.13
   - https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf
+* `Minecraft24.pf2`
+  - https://github.com/Lxtharia/minegrub-theme
+  - MIT licence
 
 
 ### Derivatives of `4x6`
