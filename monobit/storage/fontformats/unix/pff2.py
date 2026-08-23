@@ -6,12 +6,13 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
-from itertools import cycle
+from itertools import accumulate
 
 from monobit.base.struct import big_endian as be, bitfield
 from monobit.base.binary import ceildiv
-from monobit.storage import loaders, Stream
 from monobit.base import Props, FileFormatError
+from monobit.storage.utils.limitations import ensure_single
+from monobit.storage import loaders, savers, Stream
 from monobit.core import Font, Glyph
 
 
@@ -24,6 +25,13 @@ def load_pff2(instream):
     """Load a GRUB PFF2 font file."""
     sections = _read_pff2(instream)
     return _convert_pff2(sections)
+
+@savers.register(linked=load_pff2)
+def save_pff2(fonts, outstream):
+    """Save to GRUB PFF2 font file."""
+    font = ensure_single(fonts)
+    # TODO ensure no colour
+    _convert_write_pff2(outstream, font)
 
 
 ###############################################################################
@@ -43,17 +51,17 @@ def _read_section(instream):
     header = _SECTION_HEADER.read_from(instream)
     anchor = instream.tell()
     data = instream.read(header.length)
-    return header.name.decode('ascii'), anchor, data
+    return Props(name=header.name.decode('ascii'), anchor=anchor, data=data)
 
 
 def _read_pff2(instream):
-    name, anchor, data = _read_section(instream)
-    if name != 'FILE' or data != b'PFF2':
+    first_section = _read_section(instream)
+    if first_section.name != 'FILE' or first_section.data != b'PFF2':
         raise FileFormatError('Not a PFF2 file: incorrect FILE section.')
     sections = {}
     while instream.peek(1):
-        name, anchor, data = _read_section(instream)
-        sections[name] = Props(name=name, anchor=anchor, data=data)
+        section = _read_section(instream)
+        sections[section.name] = section
     return sections
 
 
@@ -97,10 +105,11 @@ def _convert_pff2(sections):
 
 _CHIX_GLYPH_ENTRY = be.Struct(
     codepoint='uint32',
-    flags=be.Struct(
-        reserved=bitfield('uint8', 5),
-        compressed=bitfield('uint8', 3),
-    ),
+    flags='uint8',
+    # be.Struct(
+    #     reserved=bitfield('uint8', 5),
+    #     compressed=bitfield('uint8', 3),
+    # ),
     offset='uint32',
 )
 
@@ -134,3 +143,65 @@ def _convert_pff2_glyphs(chix, data):
                 char=chr(entry.codepoint),
             ))
     return glyphs
+
+
+###############################################################################
+# PFF2 writer
+
+
+def _write_section(outstream, section, length=None):
+    """Write a PFF2 section."""
+    header = _SECTION_HEADER(
+        name=section.name[:4].encode('ascii').ljust(4, b'\0'),
+        length=len(section.data) if length is None else length
+    )
+    outstream.write(bytes(header))
+    outstream.write(section.data)
+
+
+def _convert_write_pff2(outstream, font):
+    """Convert font to pff2 and write out."""
+    _write_section(outstream, Props(name='FILE', data=b'PFF2'))
+    _write_section(outstream, Props(name='NAME', data=font.name.encode('ascii') + b'\0'))
+    _write_section(outstream, Props(name='FAMI', data=font.family.encode('ascii') + b'\0'))
+    weight = font.weight.lower()
+    if weight in ('regular', 'normal', 'bold'):
+        _write_section(outstream, Props(name='WEIG', data=(
+            'normal' if font.weight == 'regular' else font.weight
+        ).encode('ascii') + b'\0'))
+    slant = font.slant.lower()
+    if slant in ('normal', 'roman', 'oblique', 'italic'):
+        _write_section(outstream, Props(name='SLAN', data=(
+            'normal' if font.slant == 'roman' else
+            'italic' if font.slant == 'oblique' else font.slant
+        ).encode('ascii') + b'\0'))
+    _write_section(outstream, Props(name='PTSZ', data=bytes(be.uint16(font.point_size))))
+    _write_section(outstream, Props(name='MAXW', data=bytes(be.uint16(font.bounding_box.x))))
+    _write_section(outstream, Props(name='MAXH', data=bytes(be.uint16(font.bounding_box.y))))
+    _write_section(outstream, Props(name='ASCE', data=bytes(be.uint16(font.ascent))))
+    _write_section(outstream, Props(name='DESC', data=bytes(be.uint16(font.descent))))
+    anchor = (
+        outstream.tell()
+        + _SECTION_HEADER.size
+        + _CHIX_GLYPH_ENTRY.size * len(font.glyphs)
+        + _SECTION_HEADER.size
+    )
+    glyphbytes = tuple(_g.as_bytes(align='bit') for _g in font.glyphs)
+    cumul_sizes = accumulate((len(_b)+_DATA_GLYPH_ENTRY.size for _b in glyphbytes), initial=0)
+    glyph_entries = (
+        _CHIX_GLYPH_ENTRY(codepoint=ord(_g.char), offset=anchor+_cumsize)
+        for _g, _cumsize in zip(font.glyphs, cumul_sizes)
+    )
+    _write_section(outstream, Props(name='CHIX', data=b''.join(bytes(_ge) for _ge in glyph_entries)))
+    assert outstream.tell() == anchor - _SECTION_HEADER.size
+    data_entries = (
+        _DATA_GLYPH_ENTRY(
+            width=_g.width, height=_g.height,
+            x_offset=_g.left_bearing, y_offset=_g.shift_up,
+            device_width=_g.advance_width,
+        )
+        for _g in font.glyphs
+    )
+    _write_section(outstream, length=-1, section=Props(name='DATA', data=b''.join(
+        bytes(_de) + bytes(_gb) for _de, _gb in zip(data_entries, glyphbytes)
+    )))
