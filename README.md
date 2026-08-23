@@ -138,6 +138,7 @@ The supported feature set will depend on the type of resource included. Some res
 | X11 Portable Compiled Format |  `pcf` | `.pcf`                   |&check;|&check;| binary | U SB MB O |
 | PC/GEOS v2.0+         | `pcgeos`   | `.fnt`                      |&check;|&check;| binary | O (MB K) |
 | PILfont [P]           | `pilfont`  | `.pil` + `.pbm`             |&check;|&check;| image  | O        |
+| GNU GRUB2 PFF2        | `pff2`     | `.pf2`                      |&check;|&check;| binary | U O      |
 | METAFONT/TeX Packed   | `pkfont`   | `.*pk`  (+ `.tfm`)          |&check;|       | binary | O K      |
 | PolyPrint             | `polyprint`|                             |&check;|       | binary | -        |
 | Adobe Prebuilt Format | `prebuilt` | `.bepf` `.lepf`             |&check;|       | binary | G (V)    |

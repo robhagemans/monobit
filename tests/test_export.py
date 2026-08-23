@@ -519,6 +519,12 @@ class TestExport(BaseTester):
         """Test exporting SymbOS files."""
         self._export_4x6(format='symbos', count=96)
 
+    # GRUB PFF2
+
+    def test_export_pff2(self):
+        """Test exporting PFF2 files."""
+        self._export_4x6(format='pff2')
+
     # TasPrint
 
     def _export_8x16_expand(self, *, format, width=8, label='A', count=919, save_kwargs=(), load_kwargs=()):
