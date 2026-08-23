@@ -76,11 +76,11 @@ def parse_subcommands(operations, global_options):
                     expect_value = False
                 else:
                     # record the key as set even if still expecting a value
-                    ns.kwargs[key] = value or SET
+                    ns.kwargs[key] = external_str(value) or SET
                     expect_value = value == ''
             elif expect_value:
                 value = arg
-                ns.kwargs[key] = value
+                ns.kwargs[key] = external_str(value)
                 expect_value = False
             else:
                 # positional argument
