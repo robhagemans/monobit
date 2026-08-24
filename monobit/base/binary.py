@@ -53,17 +53,22 @@ def reverse_by_group(bitseq, fill='0', group_size=8):
 ###############################################################################
 # bytes to pixels
 
+SUPPORTED_BITS_PER_PIXEL = (1, 2, 4, 8)
+
+
 def bytes_to_pixels(byteseq, levels):
     """Convert bytes to pixels in level-specific representation."""
-    if levels not in (2, 4, 16, 256):
+    for bpp in sorted(SUPPORTED_BITS_PER_PIXEL):
+        if levels <= 1<<bpp:
+            break
+    else:
         raise ValueError(f'Unsupported `levels` value: {levels}')
     if not byteseq:
         return ''
-    if levels == 256:
+    if bpp == 8:
         return byteseq.decode('latin-1')
     else:
         to_base = _base_converter(levels)
-        bpp = (levels - 1).bit_length()
         pixels_per_byte = 8 // bpp
         return (
             to_base(int.from_bytes(byteseq, 'big'))

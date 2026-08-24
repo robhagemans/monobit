@@ -13,6 +13,7 @@ from functools import cache
 
 from monobit.base.binary import (
     ceildiv, reverse_by_group, bytes_to_pixels,
+    SUPPORTED_BITS_PER_PIXEL
 )
 from monobit.base import Bounds, Coord, NOT_SET, blockstr
 
@@ -22,7 +23,7 @@ _DEFAULT_INKLEVELS = {
         bytes_to_pixels(bytes(range(1<<_bpp)), levels=1<<_bpp)
         [8//_bpp-1::8//_bpp]
     )
-    for _bpp in (1, 2, 4, 8)
+    for _bpp in SUPPORTED_BITS_PER_PIXEL
 }
 
 @cache
