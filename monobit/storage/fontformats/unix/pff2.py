@@ -11,7 +11,7 @@ from itertools import accumulate
 from monobit.base.struct import big_endian as be, bitfield
 from monobit.base.binary import ceildiv
 from monobit.base import Props, FileFormatError
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage import loaders, savers, Stream
 from monobit.core import Font, Glyph
 
