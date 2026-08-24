@@ -309,7 +309,7 @@ class Raster:
             )
         # convert bytes to pixels
         bitseq = bytes_to_pixels(byteseq, bits_per_pixel)
-        inklevels = get_inklevels(levels)
+        inklevels = get_inklevels(1<<bits_per_pixel)[:levels]
         # per-byte bit swap.
         if bit_order == 'little':
             bitseq = reverse_by_group(bitseq, group_size=pixels_per_byte)
