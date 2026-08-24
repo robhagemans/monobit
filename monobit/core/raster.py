@@ -93,8 +93,10 @@ class Raster:
         self._pixels = pixels
         self._width = width
         self._inklevels = inklevels
-        if set(inklevels) < set(''.join(pixels)):
-            raise ValueError(f"{set(inklevels)} >= {set(''.join(pixels))} fails")
+        if pixels:
+            unmapped = set(''.join(pixels)) - set(inklevels)
+            if unmapped:
+                raise ValueError(f'Unmapped ink levels: {unmapped}')
         self._paper = self._inklevels[0]
         self._levels = len(self._inklevels)
         # check pixel matrix types
@@ -248,7 +250,7 @@ class Raster:
     def from_bytes(
             cls, byteseq, width=NOT_SET, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
-            byte_swap=0, bit_order='big', bits_per_pixel=1,
+            byte_swap=0, bit_order='big', bits_per_pixel=NOT_SET, levels=NOT_SET,
             **kwargs
         ):
         """
@@ -261,14 +263,20 @@ class Raster:
         order: 'row-major' (default) or 'column-major' order of the byte array (no effect if align == 'bit')
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be 1, 2, 4 or 8 (default: 1)
+        bits_per_pixel: bit depth; must be 1, 2, 4 or 8 (default: 1 unless levels is set)
+        levels: number of ink levels (default: 2**bits_per_pixel)
         """
         if all(_arg is NOT_SET for _arg in (width, height, stride)):
             raise ValueError(
                 'At least one of width, height or stride must be specified'
             )
+        if levels is NOT_SET:
+            if bits_per_pixel is NOT_SET:
+                bits_per_pixel = 1
+            levels = 1 << bits_per_pixel
+        elif bits_per_pixel is NOT_SET:
+            bits_per_pixel = int(levels-1).bit_length()
         pixels_per_byte = 8 // bits_per_pixel
-        levels = 2**bits_per_pixel
         if width == 0 or height == 0:
             if height is NOT_SET:
                 height = 0
