@@ -56,33 +56,23 @@ def reverse_by_group(bitseq, fill='0', group_size=8):
 SUPPORTED_BITS_PER_PIXEL = (1, 2, 4, 8)
 
 
-def bytes_to_pixels(byteseq, levels):
+def bytes_to_pixels(byteseq, bits_per_pixel):
     """Convert bytes to pixels in level-specific representation."""
-    for bpp in sorted(SUPPORTED_BITS_PER_PIXEL):
-        if levels <= 1<<bpp:
-            break
-    else:
-        raise ValueError(f'Unsupported `levels` value: {levels}')
-    if not byteseq:
-        pixels = ''
-    if bpp == 8:
-        pixels = byteseq.decode('latin-1')
-    else:
-        to_base = _base_converter(levels)
-        pixels_per_byte = 8 // bpp
-        pixels = (
-            to_base(int.from_bytes(byteseq, 'big'))
-                .zfill(pixels_per_byte * len(byteseq))
+    if bits_per_pixel not in SUPPORTED_BITS_PER_PIXEL:
+        raise ValueError(
+            'Unsupported `bits_per_pixel` value: '
+            f'{levels} not in {SUPPORTED_BITS_PER_PIXEL}'
         )
-    # validate levels values below the maximum
-    if levels not in (1<<_bpp for _bpp in SUPPORTED_BITS_PER_PIXEL):
-        levels_needed = len(set(pixels))
-        if levels_needed > levels:
-            raise ValueError(
-                f'Byte sequence contains {levels_needed} levels'
-                f' at {bpp} bits per pixel.'
-            )
-    return pixels
+    if not byteseq:
+        return ''
+    if bits_per_pixel == 8:
+        return byteseq.decode('latin-1')
+    to_base = _base_converter(1 << bits_per_pixel)
+    pixels_per_byte = 8 // bits_per_pixel
+    return (
+        to_base(int.from_bytes(byteseq, 'big'))
+            .zfill(pixels_per_byte * len(byteseq))
+    )
 
 
 # base-4 conversion

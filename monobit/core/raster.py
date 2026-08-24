@@ -20,7 +20,7 @@ from monobit.base import Bounds, Coord, NOT_SET, blockstr
 
 _DEFAULT_INKLEVELS = {
     _bpp: (
-        bytes_to_pixels(bytes(range(1<<_bpp)), levels=1<<_bpp)
+        bytes_to_pixels(bytes(range(1<<_bpp)), bits_per_pixel=_bpp)
         [8//_bpp-1::8//_bpp]
     )
     for _bpp in SUPPORTED_BITS_PER_PIXEL
@@ -300,7 +300,7 @@ class Raster:
                 for _offs in range(height)
             )
         # convert bytes to pixels
-        bitseq = bytes_to_pixels(byteseq, levels)
+        bitseq = bytes_to_pixels(byteseq, bits_per_pixel)
         inklevels = get_inklevels(levels)
         # per-byte bit swap.
         if bit_order == 'little':
