@@ -64,16 +64,25 @@ def bytes_to_pixels(byteseq, levels):
     else:
         raise ValueError(f'Unsupported `levels` value: {levels}')
     if not byteseq:
-        return ''
+        pixels = ''
     if bpp == 8:
-        return byteseq.decode('latin-1')
+        pixels = byteseq.decode('latin-1')
     else:
         to_base = _base_converter(levels)
         pixels_per_byte = 8 // bpp
-        return (
+        pixels = (
             to_base(int.from_bytes(byteseq, 'big'))
                 .zfill(pixels_per_byte * len(byteseq))
         )
+    # validate levels values below the maximum
+    if levels not in (1<<_bpp for _bpp in SUPPORTED_BITS_PER_PIXEL):
+        levels_needed = len(set(pixels))
+        if levels_needed > levels:
+            raise ValueError(
+                f'Byte sequence contains {levels_needed} levels'
+                f' at {bpp} bits per pixel.'
+            )
+    return pixels
 
 
 # base-4 conversion
