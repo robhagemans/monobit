@@ -86,7 +86,10 @@ def _convert_bmf(bmf):
     # convert glyphs
     glyphs = tuple(
         Glyph.from_bytes(
-            _gp.bitmap, bits_per_pixel=8, width=_gp.tablo.width,
+            _gp.bitmap,
+            bits_per_pixel=8,
+            levels=len(bmf.palette) + 1,
+            width=_gp.tablo.width,
             # ""its ASCII code 0..255"". Assume they mean latin-1
             codepoint=_gp.which,
             char=_gp.which.decode('latin-1'),
