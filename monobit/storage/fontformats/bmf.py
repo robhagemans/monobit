@@ -40,7 +40,9 @@ _BMF_HEADER = le.Struct(
     sizeInner='int8',
     usedColors='uint8',
     highestAttribute='uint8',
+    # 1.2 only, reserved in 1.1
     alphaBits='uint8',
+    # 1.2 only, reserved in 1.1
     extraPalettes='uint8',
     reserved0='uint16',
     numColorsEx0='uint8',
@@ -76,16 +78,43 @@ def _read_bmf(instream):
         gp.bitmap = instream.read(gp.tablo.width*gp.tablo.height)
         bmf.glyphs.append(gp)
     logging.debug(bmf)
+    # TODO v1.2 extensions
     return bmf
 
 def _convert_bmf(bmf):
     """Convert BMF font."""
+    # convert glyphs
     glyphs = tuple(
         Glyph.from_bytes(
             _gp.bitmap, bits_per_pixel=8, width=_gp.tablo.width,
-            char=_gp.which.decode('ascii'),
+            # ""its ASCII code 0..255"". Assume they mean latin-1
+            codepoint=_gp.which,
+            char=_gp.which.decode('latin-1'),
+            left_bearing=_gp.tablo.relX,
+            right_bearing=(
+                _gp.tablo.shift - _gp.tablo.width - _gp.tablo.relX
+                + bmf.header.addSpace
+            ),
+            shift_up=(
+                bmf.header.lineHeight - bmf.header.sizeUnder
+                - _gp.tablo.relY - _gp.tablo.height
+            ),
+            tablo=_gp.tablo
         )
         for _gp in bmf.glyphs
     )
-    # TODO metrics
-    return Font(glyphs)
+    # convert palette
+    rgb_table = ((0, 0, 0),) + tuple(
+        (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
+    )
+    # convert font metrics
+    return Font(
+        glyphs, x_height=-bmf.header.sizeInner,
+        ascent=-bmf.header.sizeOver, descent=bmf.header.sizeUnder,
+        line_height=bmf.header.lineHeight,
+        # assumed latin-1 for 1.1; 1.2 is unicode
+        encoding='latin-1',
+        rgb_table=rgb_table,
+        bmf=bmf.header,
+        bmfpalette=bmf.palette,
+    )
