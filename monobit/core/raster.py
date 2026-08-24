@@ -17,15 +17,20 @@ from monobit.base.binary import (
 from monobit.base import Bounds, Coord, NOT_SET, blockstr
 
 
-_INKLEVELS16 = '0123456789abcdef'
-_INKLEVELS256 = ''.join(chr(_i) for _i in range(256))
+_DEFAULT_INKLEVELS = {
+    _bpp: (
+        bytes_to_pixels(bytes(range(1<<_bpp)), levels=1<<_bpp)
+        [8//_bpp-1::8//_bpp]
+    )
+    for _bpp in (1, 2, 4, 8)
+}
 
 @cache
 def get_inklevels(n_levels):
-    if n_levels <= 16:
-        return _INKLEVELS16[:n_levels]
-    if n_levels <= 256:
-        return _INKLEVELS256[:n_levels]
+    """Get the standard inklevels consistent with bytes_to_pixels."""
+    for bpp in sorted(_DEFAULT_INKLEVELS):
+        if n_levels <= 1<<bpp:
+            return _DEFAULT_INKLEVELS[bpp][:n_levels]
     raise ValueError('More than 256 ink levels not supported.')
 
 
