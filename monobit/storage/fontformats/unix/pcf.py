@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.xlfd.pcf - X11 portable compiled format
+monobit.storage.fontformats.unix.pcf - X11 portable compiled format
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

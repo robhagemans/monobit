@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.xlfd.bdf - Adobe Glyph Bitmap Distribution Format
+monobit.storage.fontformats.unix.bdf - Adobe Glyph Bitmap Distribution Format
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

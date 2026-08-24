@@ -11,7 +11,7 @@ from itertools import accumulate
 from monobit.base.struct import big_endian as be, bitfield
 from monobit.base.binary import ceildiv
 from monobit.base import Props, FileFormatError
-from monobit.storage.utils.limitations import ensure_single
+from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage import loaders, savers, Stream
 from monobit.core import Font, Glyph
 
@@ -30,7 +30,7 @@ def load_pff2(instream):
 def save_pff2(fonts, outstream):
     """Save to GRUB PFF2 font file."""
     font = ensure_single(fonts)
-    # TODO ensure no colour
+    font = ensure_levels(font, 2)
     _convert_write_pff2(outstream, font)
 
 

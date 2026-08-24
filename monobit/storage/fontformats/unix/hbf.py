@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.xlfd.hbf - Hanzi Bitmap File Format
+monobit.storage.fontformats.unix.hbf - Hanzi Bitmap File Format
 
 (c) 2022--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
