@@ -76,6 +76,9 @@ def _read_bmf(instream):
         gp.which = instream.read(1)
         gp.tablo = _TABLO_ENTRY.read_from(instream)
         gp.bitmap = instream.read(gp.tablo.width*gp.tablo.height)
+        # - some bmf files appear to have byte values outside the palette range
+        # - potential conflict higestAttribute vs. numColorsEx0 vs. numColors
+        gp.bitmap = bytes(min(_b, bmf.header.highestAttribute) for _b in gp.bitmap)
         bmf.glyphs.append(gp)
     logging.debug(bmf)
     # TODO v1.2 extensions
