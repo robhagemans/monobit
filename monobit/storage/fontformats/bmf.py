@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.bmf - ByteMap format
+monobit.storage.fontformats.bmf - ByteMap Font format
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -154,17 +154,26 @@ def _convert_bmf(bmf):
     rgb_table = ((0, 0, 0),) + tuple(
         (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
     )
-    # convert font metrics
+    # -- convert font metrics and metadata
+    # encoding of the title is not defined in the spec.
+    # https://github.com/JoeStrout/minimicro-fonts/blob/main/bmfFonts.ms uses UTF-8
+    if bmf.header.version >= 0x12:
+        title = bmf.title.decode('utf-8', errors='replace')
+    else:
+        # assumption, consistent with the font's encoding
+        title = bmf.title.decode('cp437')
     font = Font(
         glyphs, x_height=-bmf.header.sizeInner,
         ascent=-bmf.header.sizeOver, descent=bmf.header.sizeUnder,
         line_height=bmf.header.lineHeight,
         rgb_table=rgb_table,
-        name=bmf.title.decode('cp437'),
+        name=title,
         source_format=f'bmf 1.{bmf.header.version-0x10}',
     )
     if bmf.header.version >= 0x12:
+        # as defined in the spec
         font = font.label(char_from='unicode')
     else:
+        # not defined in the spec. CP 437 is consistent with BMF gallery web site
         font = font.label(char_from='cp437')
     return font
