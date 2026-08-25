@@ -62,6 +62,12 @@ _TABLO_ENTRY = le.Struct(
     shift='uint8'
 )
 
+_KERNING_ENTRY = le.Struct(
+    first='uint32',
+    second='uint32',
+    correction='int16',
+)
+
 def _read_bmf(instream):
     """Read a ByteMap Format font."""
     bmf = Props()
@@ -72,17 +78,33 @@ def _read_bmf(instream):
     bmf.asciiChars = int(le.uint16.read_from(instream))
     bmf.glyphs = []
     for cp in range(bmf.asciiChars):
-        gp = Props()
-        gp.which = instream.read(1)
-        gp.tablo = _TABLO_ENTRY.read_from(instream)
-        gp.bitmap = instream.read(gp.tablo.width*gp.tablo.height)
-        # - some bmf files appear to have byte values outside the palette range
-        # - potential conflict higestAttribute vs. numColorsEx0 vs. numColors
+        which = int(le.uint8.read_from(instream))
+        bmf.glyphs.append(read_bmf_glyph(instream, which))
+    # treat 1.2 tables as optional
+    if bmf.header.version >= 0x12 and len(instream.peek(4)) >= 4:
+        bmf.unicodeChars = int(le.uint32.read_from(instream))
+        for cp in range(bmf.unicodeChars):
+            which = int(le.uint32.read_from(instream))
+            bmf.glyphs.append(read_bmf_glyph(instream, which))
+    if bmf.header.version >= 0x12 and len(instream.peek(4)) >= 4:
+        bmf.kerningPairs = int(le.uint32.read_from(instream))
+        bmf.kerningTable = (_KERNING_ENTRY * bmf.kerningPairs).read_from(instream)
+    # some bmf files appear to have byte values outside the palette range
+    # potential conflict higestAttribute vs. numColorsEx0 vs. numColors
+    for gp in bmf.glyphs:
         gp.bitmap = bytes(min(_b, bmf.header.highestAttribute) for _b in gp.bitmap)
-        bmf.glyphs.append(gp)
     logging.debug(bmf)
-    # TODO v1.2 extensions
     return bmf
+
+
+def read_bmf_glyph(instream, which):
+    """Read tablo and bitmap for one glyph."""
+    gp = Props()
+    gp.which = which
+    gp.tablo = _TABLO_ENTRY.read_from(instream)
+    gp.bitmap = instream.read(gp.tablo.width*gp.tablo.height)
+    return gp
+
 
 def _convert_bmf(bmf):
     """Convert BMF font."""
@@ -93,9 +115,9 @@ def _convert_bmf(bmf):
             bits_per_pixel=8,
             levels=len(bmf.palette) + 1,
             width=_gp.tablo.width,
-            # ""its ASCII code 0..255"". Assume they mean latin-1
+            # ""its ASCII code 0..255"". Assume they mean latin-1? or any codepage?
             codepoint=_gp.which,
-            char=_gp.which.decode('latin-1'),
+            char=chr(_gp.which),
             left_bearing=_gp.tablo.relX,
             right_bearing=(
                 _gp.tablo.shift - _gp.tablo.width - _gp.tablo.relX
@@ -118,8 +140,10 @@ def _convert_bmf(bmf):
         glyphs, x_height=-bmf.header.sizeInner,
         ascent=-bmf.header.sizeOver, descent=bmf.header.sizeUnder,
         line_height=bmf.header.lineHeight,
+        # TODO: check samples, we may have to distinguish
+        # e.g. 1.1 - user specified codepage and 1.2 - unicode
         # assumed latin-1 for 1.1; 1.2 is unicode
-        encoding='latin-1',
+        encoding='unicode',
         rgb_table=rgb_table,
         bmf=bmf.header,
         bmfpalette=bmf.palette,
