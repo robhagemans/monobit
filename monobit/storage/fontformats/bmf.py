@@ -35,6 +35,15 @@ def load_bmf(instream, alpha_only:bool=False):
     return font
 
 
+@savers.register(linked=load_bmf)
+def save_bmf(fonts, outstream):
+    """Save font to bytemap font format file."""
+    font = ensure_single(fonts)
+    bmf = _convert_to_bmf(font)
+    _write_bmf(bmf, outstream)
+    return font
+
+
 ###############################################################################
 # ByteMap Font format
 # http://bmf.wz.cz:8080/index.php?page=format
@@ -209,3 +218,106 @@ def _convert_bmf(bmf, alpha_only):
         # not defined in the spec. CP 437 is consistent with BMF gallery web site
         font = font.label(char_from='cp437')
     return font
+
+
+###############################################################################
+# BMF writer
+
+def _convert_to_bmf(font, version='1.1'):
+    """Convert font to bmf structure."""
+    font = font.label().label(codepoint_from=None, overwrite=True)
+    if version == '1.1':
+        title_encoding = 'ascii'
+        font = font.label(codepoint_from='cp437')
+        ascii_chars = len(font.get_codepoints())
+    elif version == '1.2':
+        title_encoding = 'utf-8'
+        font = font.label(codepoint_from='ascii')
+        ascii_chars = len(font.get_codepoints())
+        unicode_chars = len(font.get_chars()) - ascii_chars
+    else:
+        raise ValueError(
+            f"`version` must be one of ('1.1', '1.2'), not {version}"
+        )
+    bmf = Props()
+    bmf.header = _BMF_HEADER(
+        magic=_BMF_MAGIC,
+        version=0x11 if version == '1.1' else 0x12,
+        lineHeight=font.line_height,
+        sizeOver=-font.ascent,
+        sizeUnder=font.descent,
+        addSpace=0, # TODO use common right bearing
+        sizeInner=-font.x_height,
+        # NOTE - I don't really understand how the next 2 fields are defined
+        usedColors=font.levels,
+        highestAttribute=font.levels-1,
+
+        # NOTE - not clear if alpha bits live on the MSB or LSB side of the byte
+        # alphaBits='uint8',
+        # NOTE - not clear how extra paletes are stored / used
+        # extraPalettes=0,
+    )
+    # TODO generate rgb table for greyscale?
+    # logging.debug(_RGB_ENTRY(**vars(font.rgb_table[0])))
+    bmf.palette = (_RGB_ENTRY * (len(font.rgb_table)-1))(
+        *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
+        for _rgb in font.rgb_table[1:])
+    )
+    bmf.title = font.name.encode(title_encoding, 'replace')
+    bmf.asciiChars = ascii_chars
+    bmf.ascii_glyphs = tuple(
+        _convert_to_bmf_glyph(font.get_glyph(_cp), _cp, font)
+        for _cp in sorted(font.get_codepoints())
+    )
+    if version == '1.2':
+        bmf.unicode_glyphs = tuple(
+            _convert_to_bmf_glyph(font.get_glyph(_c), ord(_c), font)
+            for _c in sorted(font.get_chars())
+            if _c > 127
+        )
+        bmf.kerningTable = () # TODO _KERNING_ENTRY(...)
+        bmf.kerningPairs = len(bmf.kerningTable)
+    return bmf
+
+
+def _convert_to_bmf_glyph(glyph, which, font):
+    """Convert glyph to BMF format."""
+    gp = Props()
+    gp.which = int(which)
+    gp.tablo = _TABLO_ENTRY(
+        width=glyph.width,
+        height=glyph.height,
+        relX=glyph.left_bearing,
+        relY=font.line_height - glyph.height - glyph.shift_up - font.descent,
+        shift=glyph.advance_width,
+    )
+    gp.bitmap = glyph.pixels.as_bytes(bits_per_pixel=8)
+    return gp
+
+
+def _write_bmf(bmf, outstream):
+    """Write bmf to file."""
+    outstream.write(bytes(bmf.header))
+    outstream.write(bytes(le.uint8(len(bmf.palette))))
+    outstream.write(bytes(bmf.palette))
+    outstream.write(bytes(le.uint8(len(bmf.title))))
+    outstream.write(bmf.title)
+    outstream.write(bytes(le.uint16(bmf.asciiChars)))
+    for gp in bmf.ascii_glyphs:
+        _write_bmf_glyph(gp, outstream, unicode=False)
+    if bmf.header.version >= 0x12:
+        outstream.write(bytes(le.uint32(bmf.unicodeChars)))
+        for gp in bmf.unicode_glyphs:
+            _write_bmf_glyph(gp, outstream, unicode=False)
+        outstream.write(bytes(le.uint32(bmf.kerningPairs)))
+        outstream.write(bytes(bmf.kerningTable))
+
+
+def _write_bmf_glyph(gp, outstream, unicode=False):
+    """Write glyph to BMF file."""
+    if unicode:
+        outstream.write(bytes(le.uint32(gp.which)))
+    else:
+        outstream.write(bytes([gp.which]))
+    outstream.write(bytes(gp.tablo))
+    outstream.write(gp.bitmap)
