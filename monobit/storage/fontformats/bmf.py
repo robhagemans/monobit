@@ -160,6 +160,7 @@ def _convert_bmf(bmf):
         ascent=-bmf.header.sizeOver, descent=bmf.header.sizeUnder,
         line_height=bmf.header.lineHeight,
         rgb_table=rgb_table,
+        name=bmf.title.decode('cp437'),
         source_format=f'bmf 1.{bmf.header.version-0x10}',
     )
     if bmf.header.version >= 0x12:
