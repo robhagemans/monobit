@@ -23,10 +23,14 @@ from monobit.storage.utils.limitations import ensure_single, ensure_levels
     magic=(b'\xe1\xe6\xd5\x1a',),
     patterns=('*.bmf',),
 )
-def load_bmf(instream):
-    """Load font from bytemap format file."""
+def load_bmf(instream, alpha_only:bool=False):
+    """
+    Load font from bytemap format file.
+
+    alpha_only: create greyscale font using alpha channel only
+    """
     bmf = _read_bmf(instream)
-    font = _convert_bmf(bmf)
+    font = _convert_bmf(bmf, alpha_only)
     return font
 
 
@@ -43,11 +47,14 @@ _BMF_HEADER = le.Struct(
     sizeUnder='int8',
     addSpace='int8',
     sizeInner='int8',
+    # NOTE - I don't really understand how the next 2 fields are defined
     usedColors='uint8',
     highestAttribute='uint8',
     # 1.2 only, reserved in 1.1
+    # NOTE - not clear if alpha bits live on the MSB or LSB side of the byte
     alphaBits='uint8',
     # 1.2 only, reserved in 1.1
+    # NOTE - not clear how extra paletes are stored / used
     extraPalettes='uint8',
     reserved0='uint16',
     numColorsEx0='uint8',
@@ -102,10 +109,6 @@ def _read_bmf(instream):
         bmf.kerningTable = (_KERNING_ENTRY * bmf.kerningPairs).read_from(instream)
     else:
         bmf.kerningTable = ()
-    # some bmf files appear to have byte values outside the palette range
-    # potential conflict higestAttribute vs. numColorsEx0 vs. numColors
-    for gp in bmf.glyphs:
-        gp.bitmap = bytes(min(_b, bmf.header.highestAttribute) for _b in gp.bitmap)
     logging.debug(bmf)
     return bmf
 
@@ -119,19 +122,48 @@ def read_bmf_glyph(instream, which):
     return gp
 
 
-def _convert_bmf(bmf):
+def _convert_bmf(bmf, alpha_only):
     """Convert BMF font."""
+    # -- convert kerning map
     kerning_map = defaultdict(list)
     if bmf.header.version >= 0x12:
         for kern in bmf.kerningTable:
             kerning_map[kern.first][kern.second] = kern.correction
     kerning_map = dict(kerning_map)
-    # convert glyphs
+    # -- convert palette
+    # NOTE: color 0 is defined as transparent, not black
+    # TODO: update when we support alpha in palettes
+    if bmf.header.extraPalettes:
+        # I don't understand how multiple palettes are meant to be stored
+        logging.warning('Multiple palettes not supported')
+    rgb_table = ((0, 0, 0),) + tuple(
+        (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
+    )
+    # -- mask off alpha bits in bytemap
+    # glyph bytes consist of alpha bits and palette bits
+    # this ASSUMES the alpha bits are the MSB side but this is not specified
+    if bmf.header.alphaBits > 8:
+        logging.warning('capping alphaBits == %d at 8', bmf.header.alphaBits)
+        bmf.header.alphaBits = 8
+    alpha_mask = ((1<<bmf.header.alphaBits) - 1) << (8-bmf.header.alphaBits)
+    palette_mask = ((1<<8) - 1) - alpha_mask
+    if bmf.header.alphaBits == 8 or alpha_only:
+        # if all bits are alphaBits, there's no colour information.
+        # drop palette and use alpha as greyscale value
+        mask = alpha_mask
+        rgb_table = None
+        levels = 1 << bmf.header.alphaBits
+    else:
+        mask = palette_mask
+        levels = len(rgb_table)
+    for gp in bmf.glyphs:
+        gp.bitmap = bytes(_b & mask for _b in gp.bitmap)
+    # -- convert glyphs
     glyphs = tuple(
         Glyph.from_bytes(
             _gp.bitmap,
             bits_per_pixel=8,
-            levels=len(bmf.palette) + 1,
+            levels=levels,
             width=_gp.tablo.width,
             # ""its ASCII code 0..255"". No codepage defined
             codepoint=_gp.which,
@@ -147,12 +179,6 @@ def _convert_bmf(bmf):
             right_kerning=kerning_map.get(_gp.which, None),
         )
         for _gp in bmf.glyphs
-    )
-    # convert palette
-    # NOTE: color 0 is defined as transparent, not black
-    # TODO: update when we support alpha in palettes
-    rgb_table = ((0, 0, 0),) + tuple(
-        (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
     )
     # -- convert font metrics and metadata
     # encoding of the title is not defined in the spec.
