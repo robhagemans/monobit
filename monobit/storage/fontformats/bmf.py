@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from itertools import accumulate
+from collections import defaultdict
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import bitfield, little_endian as le
@@ -108,6 +109,11 @@ def read_bmf_glyph(instream, which):
 
 def _convert_bmf(bmf):
     """Convert BMF font."""
+    kerning_map = defaultdict(list)
+    if bmf.header.version >= 0x12:
+        for kern in bmf.kerningTable:
+            kerning_map[kern.first][kern.second] = kern.correction
+    kerning_map = dict(kerning_map)
     # convert glyphs
     glyphs = tuple(
         Glyph.from_bytes(
@@ -126,18 +132,18 @@ def _convert_bmf(bmf):
                 bmf.header.lineHeight - bmf.header.sizeUnder
                 - _gp.tablo.relY - _gp.tablo.height
             ),
+            right_kerning=kerning_map.get(_gp.which, None),
             # debug
             tablo=_gp.tablo
         )
         for _gp in bmf.glyphs
     )
     # convert palette
+    # NOTE: color 0 is defined as transparent, not black
+    # TODO: update when we support alpha in palettes
     rgb_table = ((0, 0, 0),) + tuple(
         (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
     )
-    if bmf.header.version >= 0x12:
-        # TODO convert kern table
-        ...
     # convert font metrics
     font = Font(
         glyphs, x_height=-bmf.header.sizeInner,
