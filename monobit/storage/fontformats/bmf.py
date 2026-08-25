@@ -115,9 +115,8 @@ def _convert_bmf(bmf):
             bits_per_pixel=8,
             levels=len(bmf.palette) + 1,
             width=_gp.tablo.width,
-            # ""its ASCII code 0..255"". Assume they mean latin-1? or any codepage?
+            # ""its ASCII code 0..255"". No codepage defined
             codepoint=_gp.which,
-            char=chr(_gp.which),
             left_bearing=_gp.tablo.relX,
             right_bearing=(
                 _gp.tablo.shift - _gp.tablo.width - _gp.tablo.relX
@@ -127,6 +126,7 @@ def _convert_bmf(bmf):
                 bmf.header.lineHeight - bmf.header.sizeUnder
                 - _gp.tablo.relY - _gp.tablo.height
             ),
+            # debug
             tablo=_gp.tablo
         )
         for _gp in bmf.glyphs
@@ -135,16 +135,20 @@ def _convert_bmf(bmf):
     rgb_table = ((0, 0, 0),) + tuple(
         (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
     )
+    if bmf.header.version >= 0x12:
+        # TODO convert kern table
+        ...
     # convert font metrics
-    return Font(
+    font = Font(
         glyphs, x_height=-bmf.header.sizeInner,
         ascent=-bmf.header.sizeOver, descent=bmf.header.sizeUnder,
         line_height=bmf.header.lineHeight,
-        # TODO: check samples, we may have to distinguish
-        # e.g. 1.1 - user specified codepage and 1.2 - unicode
-        # assumed latin-1 for 1.1; 1.2 is unicode
-        encoding='unicode',
         rgb_table=rgb_table,
+        source_format=f'bmf 1.{bmf.header.version-0x10}',
+        # debug
         bmf=bmf.header,
         bmfpalette=bmf.palette,
     )
+    if bmf.header.version >= 0x12:
+        font = font.label(char_from='unicode')
+    return font
