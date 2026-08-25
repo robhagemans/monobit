@@ -133,8 +133,6 @@ def _convert_bmf(bmf):
                 - _gp.tablo.relY - _gp.tablo.height
             ),
             right_kerning=kerning_map.get(_gp.which, None),
-            # debug
-            tablo=_gp.tablo
         )
         for _gp in bmf.glyphs
     )
@@ -151,9 +149,6 @@ def _convert_bmf(bmf):
         line_height=bmf.header.lineHeight,
         rgb_table=rgb_table,
         source_format=f'bmf 1.{bmf.header.version-0x10}',
-        # debug
-        bmf=bmf.header,
-        bmfpalette=bmf.palette,
     )
     if bmf.header.version >= 0x12:
         font = font.label(char_from='unicode')
