@@ -333,7 +333,6 @@ class Raster:
             for _row in self.as_matrix(inklevels=inklevels)
         )
         bits_per_pixel = (self._levels - 1).bit_length()
-        base = 2 ** bits_per_pixel
         pixels_per_byte = 8 // bits_per_pixel
         bytewidth = ceildiv(self.width, pixels_per_byte)
         stride = pixels_per_byte * bytewidth
@@ -343,9 +342,10 @@ class Raster:
             rows = (_row.rjust(stride, inklevels[0]) for _row in rows)
         if bit_order == 'little':
             rows = (reverse_by_group(_row) for _row in rows)
-        if base == 256:
+        if bits_per_pixel > 4:
             byterows = tuple(_row.encode('latin-1') for _row in rows)
         else:
+            base = 2 ** bits_per_pixel
             byterows = tuple(
                 int(_row, base).to_bytes(bytewidth, 'big') for _row in rows
             )
