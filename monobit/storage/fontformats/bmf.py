@@ -18,7 +18,6 @@ from monobit.core import Font, Glyph
 from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
 
-
 @loaders.register(
     name='bmf',
     magic=(b'\xe1\xe6\xd5\x1a',),
@@ -30,6 +29,11 @@ def load_bmf(instream):
     font = _convert_bmf(bmf)
     return font
 
+
+###############################################################################
+# ByteMap Font format
+# http://bmf.wz.cz:8080/index.php?page=format
+# https://zdoom.org/w/index.php?title=Byte_Map_Font
 
 _BMF_HEADER = le.Struct(
     magic='4s',
@@ -68,6 +72,10 @@ _KERNING_ENTRY = le.Struct(
     second='uint32',
     correction='int16',
 )
+
+
+###############################################################################
+# BMF reader
 
 def _read_bmf(instream):
     """Read a ByteMap Format font."""
