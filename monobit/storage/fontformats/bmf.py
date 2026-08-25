@@ -17,15 +17,16 @@ from monobit.core import Font, Glyph
 
 from monobit.storage.utils.limitations import ensure_single, ensure_levels
 
+_BMF_MAGIC = b'\xe1\xe6\xd5\x1a'
 
 @loaders.register(
     name='bmf',
-    magic=(b'\xe1\xe6\xd5\x1a',),
+    magic=(_BMF_MAGIC,),
     patterns=('*.bmf',),
 )
 def load_bmf(instream, alpha_only:bool=False):
     """
-    Load font from bytemap format file.
+    Load font from bytemap font format file.
 
     alpha_only: create greyscale font using alpha channel only
     """
@@ -57,7 +58,6 @@ _BMF_HEADER = le.Struct(
     # NOTE - not clear how extra paletes are stored / used
     extraPalettes='uint8',
     reserved0='uint16',
-    numColorsEx0='uint8',
 )
 
 _RGB_ENTRY = le.Struct(
@@ -88,7 +88,14 @@ def _read_bmf(instream):
     """Read a ByteMap Format font."""
     bmf = Props()
     bmf.header = _BMF_HEADER.read_from(instream)
-    bmf.palette = (_RGB_ENTRY * bmf.header.numColorsEx0).read_from(instream)
+    if bmf.header.magic != _BMF_MAGIC:
+        raise FileFormatError(
+            f'Not a BMF file: magic bytes {bmf.header.magic} != {_BMF_MAGIC}'
+        )
+    if bmf.header.version not in (0x11, 0x12):
+        raise UnsupportedError(f'Unknown BMF version {bmf.header.version:02x}')
+    palette_length = int(le.uint8.read_from(instream))
+    bmf.palette = (_RGB_ENTRY * palette_length).read_from(instream)
     title_length = int(le.uint8.read_from(instream))
     bmf.title = instream.read(title_length)
     bmf.asciiChars = int(le.uint16.read_from(instream))
@@ -109,7 +116,6 @@ def _read_bmf(instream):
         bmf.kerningTable = (_KERNING_ENTRY * bmf.kerningPairs).read_from(instream)
     else:
         bmf.kerningTable = ()
-    logging.debug(bmf)
     return bmf
 
 
