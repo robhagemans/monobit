@@ -151,4 +151,6 @@ def _convert_bmf(bmf):
     )
     if bmf.header.version >= 0x12:
         font = font.label(char_from='unicode')
+    else:
+        font = font.label(char_from='cp437')
     return font
