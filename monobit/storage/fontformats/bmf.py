@@ -95,9 +95,13 @@ def _read_bmf(instream):
         for cp in range(bmf.unicodeChars):
             which = int(le.uint32.read_from(instream))
             bmf.glyphs.append(read_bmf_glyph(instream, which))
+    else:
+        bmf.unicodeChars = 0
     if bmf.header.version >= 0x12 and len(instream.peek(4)) >= 4:
         bmf.kerningPairs = int(le.uint32.read_from(instream))
         bmf.kerningTable = (_KERNING_ENTRY * bmf.kerningPairs).read_from(instream)
+    else:
+        bmf.kerningTable = ()
     # some bmf files appear to have byte values outside the palette range
     # potential conflict higestAttribute vs. numColorsEx0 vs. numColors
     for gp in bmf.glyphs:
