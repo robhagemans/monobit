@@ -309,10 +309,15 @@ class Raster:
             )
         # convert bytes to pixels
         bitseq = bytes_to_pixels(byteseq, bits_per_pixel)
-        inklevels = get_inklevels(1<<bits_per_pixel)[:levels]
+        all_inklevels = get_inklevels(1<<bits_per_pixel)
+        inklevels = all_inklevels[:levels]
         # per-byte bit swap.
         if bit_order == 'little':
             bitseq = reverse_by_group(bitseq, group_size=pixels_per_byte)
+        missing = set(bitseq) - set(inklevels)
+        if missing:
+            min_levels = 1 + max(all_inklevels.find(_c) for _c in missing)
+            raise ValueError(f'Insufficient `levels` value {levels}, at least {min_levels} needed.')
         return cls.from_vector(
             bitseq, width=width, height=height, stride=stride, align=align,
             inklevels=inklevels,
