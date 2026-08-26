@@ -180,17 +180,19 @@ def _convert_write_pff2(outstream, font):
     _write_section(outstream, Props(name='MAXH', data=bytes(be.uint16(font.bounding_box.y))))
     _write_section(outstream, Props(name='ASCE', data=bytes(be.uint16(font.ascent))))
     _write_section(outstream, Props(name='DESC', data=bytes(be.uint16(font.descent))))
+    font = font.label()
+    glyphs = tuple(_g for _g in font.glyphs if _g.char)
     anchor = (
         outstream.tell()
         + _SECTION_HEADER.size
-        + _CHIX_GLYPH_ENTRY.size * len(font.glyphs)
+        + _CHIX_GLYPH_ENTRY.size * len(glyphs)
         + _SECTION_HEADER.size
     )
-    glyphbytes = tuple(_g.as_bytes(align='bit') for _g in font.glyphs)
+    glyphbytes = tuple(_g.as_bytes(align='bit') for _g in glyphs)
     cumul_sizes = accumulate((len(_b)+_DATA_GLYPH_ENTRY.size for _b in glyphbytes), initial=0)
     glyph_entries = (
         _CHIX_GLYPH_ENTRY(codepoint=ord(_g.char), offset=anchor+_cumsize)
-        for _g, _cumsize in zip(font.glyphs, cumul_sizes)
+        for _g, _cumsize in zip(glyphs, cumul_sizes)
     )
     _write_section(outstream, Props(name='CHIX', data=b''.join(bytes(_ge) for _ge in glyph_entries)))
     assert outstream.tell() == anchor - _SECTION_HEADER.size
@@ -200,7 +202,7 @@ def _convert_write_pff2(outstream, font):
             x_offset=_g.left_bearing, y_offset=_g.shift_up,
             device_width=_g.advance_width,
         )
-        for _g in font.glyphs
+        for _g in glyphs
     )
     _write_section(outstream, length=-1, section=Props(name='DATA', data=b''.join(
         bytes(_de) + bytes(_gb) for _de, _gb in zip(data_entries, glyphbytes)
