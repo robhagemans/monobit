@@ -529,7 +529,7 @@ class TestExport(BaseTester):
 
     def test_export_bmf1(self):
         """Test exporting ByteMap Font v1.1 files."""
-        self._export_4x6(format='bmf', label='A', save_kwargs=dict(version='1.1'))
+        self._export_4x6(format='bmf', label='A', save_kwargs=dict(version='1.1'), count=240)
 
     def test_export_bmf2(self):
         """Test exporting ByteMap Font v1.2 files."""
