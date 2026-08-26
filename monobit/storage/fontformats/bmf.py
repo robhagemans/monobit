@@ -48,6 +48,16 @@ def save_bmf(fonts, outstream):
 # ByteMap Font format
 # http://bmf.wz.cz:8080/index.php?page=format
 # https://zdoom.org/w/index.php?title=Byte_Map_Font
+#
+# NOTE - open questions on the spec:
+# - how are usedColors, highestAttribute defined and meant to be used?
+#   how/when does this information differ from the palette length field?
+# - do alpha bits live on the high (most-significant) or low side of the byte?
+# - is there alpha information to be stored in the 6 unused palette high bits?
+# - there is a field for the number of extra palettes. How are these stored and used?
+# - what is the assumed encoding for codepoints 128-255 in version 1.1? E.g. cp437
+# - what is the assumed encoding for the title? Does it differ between 1.1 and 1.2?
+
 
 _BMF_HEADER = le.Struct(
     magic='4s',
@@ -57,14 +67,11 @@ _BMF_HEADER = le.Struct(
     sizeUnder='int8',
     addSpace='int8',
     sizeInner='int8',
-    # NOTE - I don't really understand how the next 2 fields are defined
     usedColors='uint8',
     highestAttribute='uint8',
     # 1.2 only, reserved in 1.1
-    # NOTE - not clear if alpha bits live on the MSB or LSB side of the byte
     alphaBits='uint8',
     # 1.2 only, reserved in 1.1
-    # NOTE - not clear how extra paletes are stored / used
     extraPalettes='uint8',
     reserved0='uint16',
 )
@@ -146,8 +153,7 @@ def _convert_bmf(bmf, alpha_only):
             kerning_map[kern.first][kern.second] = kern.correction
     kerning_map = dict(kerning_map)
     # -- convert palette
-    # NOTE: color 0 is defined as transparent, not black
-    # TODO: update when we support alpha in palettes
+    # TODO: color 0 is defined as transparent, not black
     if bmf.header.extraPalettes:
         # I don't understand how multiple palettes are meant to be stored
         logging.warning('Multiple palettes not supported')
@@ -201,8 +207,7 @@ def _convert_bmf(bmf, alpha_only):
     if bmf.header.version >= 0x12:
         title = bmf.title.decode('utf-8', errors='replace')
     else:
-        # assumption, consistent with the font's encoding
-        title = bmf.title.decode('cp437')
+        title = bmf.title.decode('ascii', errors='replace')
     font = Font(
         glyphs, x_height=-bmf.header.sizeInner,
         ascent=-bmf.header.sizeOver, descent=bmf.header.sizeUnder,
@@ -251,10 +256,7 @@ def _convert_to_bmf(font, version='1.1'):
         # NOTE - I don't really understand how the next 2 fields are defined
         usedColors=font.levels,
         highestAttribute=font.levels-1,
-
-        # NOTE - not clear if alpha bits live on the MSB or LSB side of the byte
-        # alphaBits='uint8',
-        # NOTE - not clear how extra paletes are stored / used
+        # alphaBits=0,
         # extraPalettes=0,
     )
     # TODO generate rgb table for greyscale?
