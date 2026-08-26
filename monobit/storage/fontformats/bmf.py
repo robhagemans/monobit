@@ -15,7 +15,9 @@ from monobit.base import Props, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 
-from monobit.storage.utils.limitations import ensure_single, ensure_levels
+from monobit.storage.utils.limitations import (
+    ensure_single, ensure_levels, reencode
+)
 
 _BMF_MAGIC = b'\xe1\xe6\xd5\x1a'
 
@@ -36,10 +38,14 @@ def load_bmf(instream, alpha_only:bool=False):
 
 
 @savers.register(linked=load_bmf)
-def save_bmf(fonts, outstream):
-    """Save font to bytemap font format file."""
+def save_bmf(fonts, outstream, version:str='1.2'):
+    """
+    Save font to bytemap font format file.
+
+    version: BMF version (1.1 or 1.2; default: 1.2)
+    """
     font = ensure_single(fonts)
-    bmf = _convert_to_bmf(font)
+    bmf = _convert_to_bmf(font, version)
     _write_bmf(bmf, outstream)
     return font
 
@@ -230,16 +236,15 @@ def _convert_bmf(bmf, alpha_only):
 
 def _convert_to_bmf(font, version='1.1'):
     """Convert font to bmf structure."""
-    font = font.label().label(codepoint_from=None, overwrite=True)
     if version == '1.1':
         title_encoding = 'ascii'
-        font = font.label(codepoint_from='cp437')
-        ascii_chars = len(font.get_codepoints())
+        font = reencode(font, 'cp437')
+        # ascii_chars = len(font.get_codepoints())
     elif version == '1.2':
         title_encoding = 'utf-8'
-        font = font.label(codepoint_from='ascii')
-        ascii_chars = len(font.get_codepoints())
-        unicode_chars = len(font.get_chars()) - ascii_chars
+        font = reencode(font, 'ascii')
+        # ascii_chars = len(font.get_codepoints())
+        # unicode_chars = len(font.get_chars()) - ascii_chars
     else:
         raise ValueError(
             f"`version` must be one of ('1.1', '1.2'), not {version}"
@@ -259,23 +264,28 @@ def _convert_to_bmf(font, version='1.1'):
         # alphaBits=0,
         # extraPalettes=0,
     )
-    # TODO generate rgb table for greyscale?
-    bmf.palette = (_RGB_ENTRY * (len(font.rgb_table)-1))(
-        *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
-        for _rgb in font.rgb_table[1:])
-    )
+    if font.rgb_table:
+        bmf.palette = (_RGB_ENTRY * (len(font.rgb_table)-1))(
+            *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
+            for _rgb in font.rgb_table[1:])
+        )
+    else:
+        bmf.palette = ()
+        # TODO generate rgb table for greyscale?
+        # TODO set alphaBits to 8 for grayscale?
     bmf.title = font.name.encode(title_encoding, 'replace')
-    bmf.asciiChars = ascii_chars
     bmf.ascii_glyphs = tuple(
         _convert_to_bmf_glyph(font.get_glyph(_cp), _cp, font)
         for _cp in sorted(font.get_codepoints())
     )
+    bmf.asciiChars = len(bmf.ascii_glyphs)
     if version == '1.2':
         bmf.unicode_glyphs = tuple(
             _convert_to_bmf_glyph(font.get_glyph(_c), ord(_c), font)
             for _c in sorted(font.get_chars())
-            if _c > 127
+            if ord(_c) > 127
         )
+        bmf.unicodeChars = len(bmf.unicode_glyphs)
         kerning_table = [
             _KERNING_ENTRY(
                 first=ord(_g.char),
@@ -326,7 +336,7 @@ def _write_bmf(bmf, outstream):
     if bmf.header.version >= 0x12:
         outstream.write(bytes(le.uint32(bmf.unicodeChars)))
         for gp in bmf.unicode_glyphs:
-            _write_bmf_glyph(gp, outstream, unicode=False)
+            _write_bmf_glyph(gp, outstream, unicode=True)
         outstream.write(bytes(le.uint32(bmf.kerningPairs)))
         outstream.write(bytes(bmf.kerningTable))
 
