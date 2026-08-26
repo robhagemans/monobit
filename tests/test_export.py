@@ -190,19 +190,19 @@ class TestExport(BaseTester):
 
     # BMFont
 
-    def test_export_bmf_text(self):
+    def test_export_bmfont_text(self):
         """Test exporting bmfont files with text descriptor."""
         self._export_4x6(format='bmfont')
 
-    def test_export_bmf_json(self):
+    def test_export_bmfont_json(self):
         """Test exporting bmfont files with json descriptor."""
         self._export_4x6(format='bmfont', save_kwargs=dict(descriptor='json'))
 
-    def test_export_bmf_xml(self):
+    def test_export_bmfont_xml(self):
         """Test exporting bmfont files with xml descriptor."""
         self._export_4x6(format='bmfont', save_kwargs=dict(descriptor='xml'))
 
-    def test_export_bmf_binary(self):
+    def test_export_bmfont_binary(self):
         """Test exporting bmfont files with binary descriptor."""
         self._export_4x6(format='bmfont', save_kwargs=dict(descriptor='binary'))
 
@@ -524,6 +524,17 @@ class TestExport(BaseTester):
     def test_export_pff2(self):
         """Test exporting PFF2 files."""
         self._export_4x6(format='pff2')
+
+    # BMF
+
+    def test_export_bmf1(self):
+        """Test exporting ByteMap Font v1.1 files."""
+        self._export_4x6(format='bmf', label='A', save_kwargs=dict(version='1.1'))
+
+    def test_export_bmf2(self):
+        """Test exporting ByteMap Font v1.2 files."""
+        self._export_4x6(format='bmf', label='A', save_kwargs=dict(version='1.2'))
+
 
     # TasPrint
 
