@@ -187,6 +187,9 @@ class TestFeatures(BaseTester):
     def test_beos_proportional(self):
         self._render_proportional('beos', inklevels='.123456789ABCDE@')
 
+    def test_pff2_proportional(self):
+        self._render_proportional('pff2', char=True)
+
     # kerning
 
     kerntext="""\
@@ -357,6 +360,9 @@ class TestFeatures(BaseTester):
 
     def test_beos_negbearings(self):
         self._render_bearings('beos', inklevels='.123456789ABCDE@')
+
+    def test_pff2_negbearings(self):
+        self._render_bearings('pff2', char=True)
 
 
     # vertical negative bearings
