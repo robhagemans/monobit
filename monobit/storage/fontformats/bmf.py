@@ -260,7 +260,6 @@ def _convert_to_bmf(font, version='1.1'):
         # extraPalettes=0,
     )
     # TODO generate rgb table for greyscale?
-    # logging.debug(_RGB_ENTRY(**vars(font.rgb_table[0])))
     bmf.palette = (_RGB_ENTRY * (len(font.rgb_table)-1))(
         *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
         for _rgb in font.rgb_table[1:])
@@ -277,8 +276,25 @@ def _convert_to_bmf(font, version='1.1'):
             for _c in sorted(font.get_chars())
             if _c > 127
         )
-        bmf.kerningTable = () # TODO _KERNING_ENTRY(...)
-        bmf.kerningPairs = len(bmf.kerningTable)
+        kerning_table = [
+            _KERNING_ENTRY(
+                first=ord(_g.char),
+                second=ord(font.get_glyph(_label).char),
+                correction=_value,
+            )
+            for _g in font.glyphs
+            for _label, _value in _g.right_kerning.items()
+        ] + [
+            _KERNING_ENTRY(
+                second=ord(_g.char),
+                first=ord(font.get_glyph(_label).char),
+                correction=_value,
+            )
+            for _g in font.glyphs
+            for _label, _value in _g.left_kerning.items()
+        ]
+        bmf.kerningTable = (_KERNING_ENTRY * len(kerning_table))(*kerning_table)
+        bmf.kerningPairs = len(kerning_table)
     return bmf
 
 
