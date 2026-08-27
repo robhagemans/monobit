@@ -319,7 +319,7 @@ def _convert_to_bmf_glyph(glyph, which, font):
         relY=font.line_height - glyph.height - glyph.shift_up - font.descent,
         shift=glyph.advance_width,
     )
-    gp.bitmap = glyph.pixels.as_bytes(bits_per_pixel=8)
+    gp.bitmap = glyph.pixels.as_bytes(bits_per_pixel=8, resample=False)
     return gp
 
 

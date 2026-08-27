@@ -359,7 +359,7 @@ class Raster:
     def as_bytes(
             self, *,
             align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
-            bits_per_pixel=1,
+            bits_per_pixel=1, resample=True,
         ):
         """
         Convert raster to flat bytes.
@@ -369,6 +369,7 @@ class Raster:
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
+        resample: scale byte values to new bit depth if updating bits_per_pixel
         """
         if not self.height or not self.width:
             return b''
@@ -385,12 +386,17 @@ class Raster:
         elif bits_per_pixel < intr_bpp:
             raise ValueError(f'Requires at least {intr_bpp} bits per pixel.')
         if bits_per_pixel > intr_bpp:
+            # TODO - resample should be a separate opoeration, default should be just to keep values at greater depth
             # must be a multiple - choice of 1, 2, 4, 8
+            # TODO: using stretch and interlace is hacky, use separate operation on pixels
             factor = bits_per_pixel // intr_bpp
-            # widen each pixel to the expected number of bits
-            # e.g 1->2bpp 0 -> 00 1 -> 11
-            #     4->8bpp 5 -> 55 A -> AA
-            raster = raster.stretch(factor=(factor, 1))
+            if resample:
+                # widen each pixel to the expected number of bits
+                # e.g 1->2bpp 0 -> 00 1 -> 11
+                #     4->8bpp 5 -> 55 A -> AA
+                raster = raster.stretch(factor=(factor, 1))
+            else:
+                raster = raster.interlace(factor=(factor, 1)).expand(left=factor-1)
         if align == 'bit':
             inklevels = get_inklevels(self._levels)
             bits = ''.join(

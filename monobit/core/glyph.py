@@ -568,7 +568,7 @@ class Glyph(HasProps):
 
     def as_bytes(
             self, *, align='left', stride=NOT_SET, byte_swap=0,
-            bit_order='big', bits_per_pixel=1,
+            bit_order='big', bits_per_pixel=1, resample=True,
         ):
         """
         Convert raster to flat bytes.
@@ -578,10 +578,11 @@ class Glyph(HasProps):
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
+        resample: scale byte values to new bit depth if updating bits_per_pixel
         """
         return self._pixels.as_bytes(
             align=align, stride=stride, byte_swap=byte_swap,
-            bit_order=bit_order, bits_per_pixel=bits_per_pixel,
+            bit_order=bit_order, bits_per_pixel=bits_per_pixel, resample=resample,
         )
 
     def as_hex(self, **kwargs):
