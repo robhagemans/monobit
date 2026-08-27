@@ -14,6 +14,7 @@ from monobit.base.struct import bitfield, little_endian as le
 from monobit.base import Props, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
+from monobit.renderer import create_gradient
 
 from monobit.storage.utils.limitations import (
     ensure_single, ensure_levels, reencode
@@ -264,15 +265,15 @@ def _convert_to_bmf(font, version='1.1'):
         # alphaBits=0,
         # extraPalettes=0,
     )
-    if font.rgb_table:
-        bmf.palette = (_RGB_ENTRY * (len(font.rgb_table)-1))(
-            *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
-            for _rgb in font.rgb_table[1:])
-        )
-    else:
-        bmf.palette = ()
-        # TODO generate rgb table for greyscale?
-        # TODO set alphaBits to 8 for grayscale?
+    # TODO set alphaBits to 8 for grayscale?
+    rgb_table = font.rgb_table or (
+        # FIXME this should be done by Font.rgb_table
+        create_gradient((0, 0, 0), (255, 255, 255), font.levels)
+    )
+    bmf.palette = (_RGB_ENTRY * (len(rgb_table)-1))(
+        *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
+        for _rgb in rgb_table[1:])
+    )
     bmf.title = font.name.encode(title_encoding, 'replace')
     bmf.ascii_glyphs = tuple(
         _convert_to_bmf_glyph(font.get_glyph(_cp), _cp, font)
