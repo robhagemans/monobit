@@ -154,7 +154,7 @@ def read_bmf_glyph(instream, which):
 def _convert_bmf(bmf, alpha_only):
     """Convert BMF font."""
     # -- convert kerning map
-    kerning_map = defaultdict(list)
+    kerning_map = defaultdict(dict)
     if bmf.header.version >= 0x12:
         for kern in bmf.kerningTable:
             kerning_map[kern.first][kern.second] = kern.correction
