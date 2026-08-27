@@ -111,6 +111,7 @@ The supported feature set will depend on the type of resource included. Some res
 | X11/Adobe BDF         | `bdf`      | `.bdf`                      |&check;|&check;| coded  | U SB MB V O G |
 | BeOS Bitmap Font      | `beos`     |                             |&check;|&check;| binary | U O G    |
 | Xerox Alto BITBLT     | `bitblt`   | `.strike` `.ks`             |&check;|       | binary | O        |
+| ByteMap Font          | `bmf`      | `.bmf`                      |&check;|&check;| binary | O G C (v1.1); U K (v1.2) |
 | AngelCode BMFont [P]  | `bmfont` | `.fnt` `.xml` `.json` + images|&check;|&check;| image  | M U SB MB O K G C |
 | Quark Catalyst        | `catalyst` |                             |&check;|       | binary | -        |
 | FONTRIX (PC), PCPaint, GRASP, ChiWriter | `chiwriter` | `.set` `.[specx]ft` |&check;| | binary | -   |
