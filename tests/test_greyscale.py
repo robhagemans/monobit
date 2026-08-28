@@ -18,6 +18,10 @@ class TestGreyscale(BaseTester):
     sampletext = '"""\\\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;68;68;68m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;17;17;17m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;17;17;17m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;17;17;17m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;17;17;17m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;17;17;17m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;119;119;119m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n"""'
 
 
+    # BMF colour palette is affected by rounding 8bit -> 6bit -> 8bit
+    bmf_sampletext = '"""\\\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;68;68;68m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;16;16;16m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;16;16;16m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;16;16;16m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;16;16;16m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;16;16;16m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;117;117;117m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;0;0;0m\\u2588\x1b[0m\n"""'
+
+
 # """\
 # .4.......
 # .7.......
@@ -30,7 +34,7 @@ class TestGreyscale(BaseTester):
 # .........
 # """
 
-    def _render_greyscale(self, format, *, char=False, load_kwargs=(), save_kwargs=()):
+    def _render_greyscale(self, format, *, char=False, load_kwargs=(), save_kwargs=(), model=sampletext):
         font1, *_ = monobit.load(self.font_path / 'konatu-ascii.yaff')
         monobit.save(
             font1, self.temp_path / f'konatu-ascii.{format}',
@@ -45,7 +49,7 @@ class TestGreyscale(BaseTester):
         else:
             text = b'te'
         rendered_text = monobit.render_text(font2, text).as_shades(border=(0,0,0))
-        assert_text_eq(ascii(rendered_text), self.sampletext)
+        assert_text_eq(ascii(rendered_text), model)
 
     def test_yaff_greyscale(self):
         self._render_greyscale('yaff')
@@ -69,7 +73,7 @@ class TestGreyscale(BaseTester):
         self._render_greyscale('bmfont')
 
     def test_bmf_greyscale(self):
-        self._render_greyscale('bmf')
+        self._render_greyscale('bmf', model=self.bmf_sampletext)
 
     def test_sfont_greyscale(self):
         self._render_greyscale('sfont')
