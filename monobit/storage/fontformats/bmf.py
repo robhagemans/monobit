@@ -11,7 +11,7 @@ from collections import defaultdict
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import bitfield, little_endian as le
-from monobit.base import Props, UnsupportedError
+from monobit.base import Props, UnsupportedError, RGB
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 from monobit.renderer import create_gradient
@@ -31,7 +31,7 @@ def load_bmf(instream, alpha_only:bool=False):
     """
     Load font from bytemap font format file.
 
-    alpha_only: create greyscale font using alpha channel only
+    alpha_only: create greyscale font using alpha channel only (default: False)
     """
     bmf = _read_bmf(instream)
     font = _convert_bmf(bmf, alpha_only)
@@ -39,14 +39,15 @@ def load_bmf(instream, alpha_only:bool=False):
 
 
 @savers.register(linked=load_bmf)
-def save_bmf(fonts, outstream, version:str='1.2'):
+def save_bmf(fonts, outstream, version:str='1.2', alpha_greyscale:bool=False):
     """
     Save font to bytemap font format file.
 
     version: BMF version (1.1 or 1.2; default: 1.2)
+    alpha_greyscale: save greyscale fonts in 8-bit alpha channel instead of 6-bit palette (default: False)
     """
     font = ensure_single(fonts)
-    bmf = _convert_to_bmf(font, version)
+    bmf = _convert_to_bmf(font, version, alpha_greyscale)
     _write_bmf(bmf, outstream)
     return font
 
@@ -235,22 +236,20 @@ def _convert_bmf(bmf, alpha_only):
 ###############################################################################
 # BMF writer
 
-def _convert_to_bmf(font, version='1.1'):
+def _convert_to_bmf(font, version, alpha_greyscale):
     """Convert font to bmf structure."""
     if version == '1.1':
         title_encoding = 'ascii'
         font = reencode(font, 'cp437')
-        # ascii_chars = len(font.get_codepoints())
     elif version == '1.2':
         title_encoding = 'utf-8'
         font = reencode(font, 'ascii')
-        # ascii_chars = len(font.get_codepoints())
-        # unicode_chars = len(font.get_chars()) - ascii_chars
     else:
         raise ValueError(
             f"`version` must be one of ('1.1', '1.2'), not {version}"
         )
     bmf = Props()
+    alpha_only = alpha_greyscale and not font.rgb_table
     bmf.header = _BMF_HEADER(
         magic=_BMF_MAGIC,
         version=0x11 if version == '1.1' else 0x12,
@@ -262,13 +261,12 @@ def _convert_to_bmf(font, version='1.1'):
         # NOTE - I don't really understand how the next 2 fields are defined
         usedColors=font.levels,
         highestAttribute=font.levels-1,
-        # alphaBits=0,
+        alphaBits=8 if alpha_only else 0,
         # extraPalettes=0,
     )
-    # TODO set alphaBits to 8 for grayscale?
     rgb_table = font.rgb_table or (
         # FIXME this should be done by Font.rgb_table
-        create_gradient((0, 0, 0), (255, 255, 255), font.levels)
+        create_gradient(RGB(0, 0, 0), RGB(255, 255, 255), font.levels)
     )
     bmf.palette = (_RGB_ENTRY * (len(rgb_table)-1))(
         *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
@@ -276,13 +274,13 @@ def _convert_to_bmf(font, version='1.1'):
     )
     bmf.title = font.name.encode(title_encoding, 'replace')
     bmf.ascii_glyphs = tuple(
-        _convert_to_bmf_glyph(font.get_glyph(_cp), _cp, font)
+        _convert_to_bmf_glyph(font.get_glyph(_cp), _cp, font, alpha_only)
         for _cp in sorted(font.get_codepoints())
     )
     bmf.asciiChars = len(bmf.ascii_glyphs)
     if version == '1.2':
         bmf.unicode_glyphs = tuple(
-            _convert_to_bmf_glyph(font.get_glyph(_c), ord(_c), font)
+            _convert_to_bmf_glyph(font.get_glyph(_c), ord(_c), font, alpha_only)
             for _c in sorted(font.get_chars())
             if ord(_c) > 127
         )
@@ -309,7 +307,7 @@ def _convert_to_bmf(font, version='1.1'):
     return bmf
 
 
-def _convert_to_bmf_glyph(glyph, which, font):
+def _convert_to_bmf_glyph(glyph, which, font, alpha_only):
     """Convert glyph to BMF format."""
     gp = Props()
     gp.which = int(which)
@@ -320,7 +318,7 @@ def _convert_to_bmf_glyph(glyph, which, font):
         relY=font.line_height - glyph.height - glyph.shift_up - font.descent,
         shift=glyph.advance_width,
     )
-    gp.bitmap = glyph.pixels.as_bytes(bits_per_pixel=8, resample=False)
+    gp.bitmap = glyph.pixels.as_bytes(bits_per_pixel=8, resample=alpha_only)
     return gp
 
 

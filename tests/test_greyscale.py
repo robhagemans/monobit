@@ -75,6 +75,9 @@ class TestGreyscale(BaseTester):
     def test_bmf_greyscale(self):
         self._render_greyscale('bmf', model=self.bmf_sampletext)
 
+    def test_bmf_greyscale_alpha(self):
+        self._render_greyscale('bmf', save_kwargs=dict(alpha_greyscale=True))
+
     def test_sfont_greyscale(self):
         self._render_greyscale('sfont')
 
