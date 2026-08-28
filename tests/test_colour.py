@@ -75,6 +75,9 @@ class TestColour(BaseTester):
     def test_bmfont_colour(self):
         self._render_colour('bmfont', save_kwargs={'packed': False})
 
+    def test_bmf_colour(self):
+        self._render_colour('bmf')
+
     def test_sfont_colour(self):
         self._render_colour('sfont')
 

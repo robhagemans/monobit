@@ -190,6 +190,10 @@ class TestFeatures(BaseTester):
     def test_pff2_proportional(self):
         self._render_proportional('pff2', char=True)
 
+    def test_bmf_proportional(self):
+        self._render_proportional('bmf', char=True)
+
+
     # kerning
 
     kerntext="""\
@@ -224,8 +228,11 @@ class TestFeatures(BaseTester):
     def test_render_yaff_kerning(self):
         self._render_kerning('yaff')
 
-    def test_render_bmf_kerning(self):
+    def test_render_bmfont_kerning(self):
         self._render_kerning('bmfont')
+
+    def test_render_bmf_kerning(self):
+        self._render_kerning('bmf')
 
     def test_render_otb_kerning(self):
         self._render_kerning('sfnt', char=True)
@@ -263,16 +270,16 @@ class TestFeatures(BaseTester):
         rendered_text = monobit.render_text(font, text).as_text(inklevels='.@', border='.')
         assert_text_eq(rendered_text, self.testtext)
 
-    def test_render_bmf_kerning_bearings_binary(self):
+    def test_render_bmfont_kerning_bearings_binary(self):
         self._render_kerning_bearings('bmfont', descriptor='binary')
 
-    def test_render_bmf_kerning_bearings_text(self):
+    def test_render_bmfont_kerning_bearings_text(self):
         self._render_kerning_bearings('bmfont', descriptor='text')
 
-    def test_render_bmf_kerning_bearings_xml(self):
+    def test_render_bmfont_kerning_bearings_xml(self):
         self._render_kerning_bearings('bmfont', descriptor='xml')
 
-    def test_render_bmf_kerning_bearings_json(self):
+    def test_render_bmfont_kerning_bearings_json(self):
         self._render_kerning_bearings('bmfont', descriptor='json')
 
     def test_render_otb_kerning_bearings(self):
@@ -321,6 +328,9 @@ class TestFeatures(BaseTester):
 
     def test_bmfont_negbearings(self):
         self._render_bearings('bmfont')
+
+    def test_bmf_negbearings(self):
+        self._render_bearings('bmf')
 
     def test_fzx_negbearings(self):
         self._render_bearings('fzx')
