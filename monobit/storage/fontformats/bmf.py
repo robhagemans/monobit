@@ -250,13 +250,14 @@ def _convert_to_bmf(font, version, alpha_greyscale):
         )
     bmf = Props()
     alpha_only = alpha_greyscale and not font.rgb_table
+    common_right = min(_g.right_bearing for _g in font.glyphs)
     bmf.header = _BMF_HEADER(
         magic=_BMF_MAGIC,
         version=0x11 if version == '1.1' else 0x12,
         lineHeight=font.line_height,
         sizeOver=-font.ascent,
         sizeUnder=font.descent,
-        addSpace=0, # TODO use common right bearing
+        addSpace=common_right,
         sizeInner=-font.x_height,
         # NOTE - I don't really understand how the next 2 fields are defined
         usedColors=font.levels,
@@ -274,13 +275,17 @@ def _convert_to_bmf(font, version, alpha_greyscale):
     )
     bmf.title = font.name.encode(title_encoding, 'replace')
     bmf.ascii_glyphs = tuple(
-        _convert_to_bmf_glyph(font.get_glyph(_cp), _cp, font, alpha_only)
+        _convert_to_bmf_glyph(
+            font.get_glyph(_cp), _cp, font, alpha_only, common_right
+        )
         for _cp in sorted(font.get_codepoints())
     )
     bmf.asciiChars = len(bmf.ascii_glyphs)
     if version == '1.2':
         bmf.unicode_glyphs = tuple(
-            _convert_to_bmf_glyph(font.get_glyph(_c), ord(_c), font, alpha_only)
+            _convert_to_bmf_glyph(
+                font.get_glyph(_c), ord(_c), font, alpha_only, common_right
+            )
             for _c in sorted(font.get_chars())
             if ord(_c) > 127
         )
@@ -307,7 +312,7 @@ def _convert_to_bmf(font, version, alpha_greyscale):
     return bmf
 
 
-def _convert_to_bmf_glyph(glyph, which, font, alpha_only):
+def _convert_to_bmf_glyph(glyph, which, font, alpha_only, common_right):
     """Convert glyph to BMF format."""
     gp = Props()
     gp.which = int(which)
@@ -316,7 +321,7 @@ def _convert_to_bmf_glyph(glyph, which, font, alpha_only):
         height=glyph.height,
         relX=glyph.left_bearing,
         relY=font.line_height - glyph.height - glyph.shift_up - font.descent,
-        shift=glyph.advance_width,
+        shift=glyph.advance_width-common_right,
     )
     gp.bitmap = glyph.pixels.as_bytes(bits_per_pixel=8, resample=alpha_only)
     return gp
