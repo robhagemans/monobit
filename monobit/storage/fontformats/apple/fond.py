@@ -651,22 +651,12 @@ def _create_kerning_table(style_groups):
         sample_font = group[-1]
         kerning_pairs = [
             _KERN_PAIR(
-                kernFirst=int(_g.codepoint),
-                kernSecond=int(sample_font.get_glyph(_label).codepoint),
+                kernFirst=int(sample_font.get_glyph(_first).codepoint),
+                kernSecond=int(sample_font.get_glyph(_second).codepoint),
                 # kerning value in 1pt fixed format
                 kernWidth=_float_to_fixed(_value / sample_font.bounding_box.y),
             )
-            for _g in sample_font.glyphs
-            for _label, _value in _g.right_kerning.items()
-        ] + [
-            _KERN_PAIR(
-                kernFirst=int(sample_font.get_glyph(_label).codepoint),
-                kernSecond=int(_g.codepoint),
-                # kerning value in 1pt fixed format
-                kernWidth=_float_to_fixed(_value / sample_font.bounding_box.y),
-            )
-            for _g in sample_font.glyphs
-            for _label, _value in _g.left_kerning.items()
+            for (_first, _second), _value in sample_font.get_kerning().items()
         ]
         # number of entries - 1
         ke = _KERN_ENTRY(

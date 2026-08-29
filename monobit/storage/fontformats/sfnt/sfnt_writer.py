@@ -267,20 +267,20 @@ def _convert_to_cmap_props(glyphs):
 
 def _convert_to_kern_props(font, glyphs, _to_funits):
     """Convert kerning values to `kern` table."""
-    kern_table = {}
-    for tag, glyph in glyphs.items():
-        for label, value in glyph.right_kerning.items():
+    def _first_tag(label):
+        if label is not None:
             try:
-                rtag, *_ = font.get_glyph(label).tags
-            except (KeyError, ValueError) as e:
-                continue
-            kern_table[(tag, rtag.value)] = _to_funits(value)
-        for label, value in glyph.left_kerning.items():
-            try:
-                ltag, *_ = font.get_glyph(label).tags
-            except (KeyError, ValueError) as e:
-                continue
-            kern_table[(ltag.value, tag)] = _to_funits(value)
+                return font.get_glyph(label, missing=None).tags[0].value
+            except IndexError as e:
+                pass
+        return None
+    kerns = tuple(
+        (_first_tag(_left), _first_tag(_right), _to_funits(_value))
+        for (_left, _right), _value in font.get_kerning().items()
+    )
+    kern_table = {
+        (_l, _r): _v for _l, _r, _v in kerns if None not in (_l, _r)
+    }
     return dict(
         # version 1.0 means apple==True
         version=0,

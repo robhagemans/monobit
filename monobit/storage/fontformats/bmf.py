@@ -292,20 +292,11 @@ def _convert_to_bmf(font, version, alpha_greyscale):
         bmf.unicodeChars = len(bmf.unicode_glyphs)
         kerning_table = [
             _KERNING_ENTRY(
-                first=ord(_g.char),
-                second=ord(font.get_glyph(_label).char),
+                first=ord(font.get_glyph(_first).char),
+                second=ord(font.get_glyph(_second).char),
                 correction=_value,
             )
-            for _g in font.glyphs
-            for _label, _value in _g.right_kerning.items()
-        ] + [
-            _KERNING_ENTRY(
-                second=ord(_g.char),
-                first=ord(font.get_glyph(_label).char),
-                correction=_value,
-            )
-            for _g in font.glyphs
-            for _label, _value in _g.left_kerning.items()
+            for (_first, _second), _value in font.get_kerning().items()
         ]
         bmf.kerningTable = (_KERNING_ENTRY * len(kerning_table))(*kerning_table)
         bmf.kerningPairs = len(kerning_table)

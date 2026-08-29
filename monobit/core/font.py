@@ -1010,6 +1010,43 @@ class Font(HasProps):
 
 
     ##########################################################################
+    # kerning
+
+    def get_kerning(self, first='left'):
+        """Combine all glyph kerning tables."""
+
+        def _first_label(glyph):
+            if glyph is not None:
+                try:
+                    return glyph.get_labels()[0]
+                except IndexError:
+                    pass
+            return None
+        # we need to get labels indirectly to normalise all to first labels
+        right_kerning = {
+            (_first_label(_g), _first_label(self.get_glyph(_label, missing=None))): _value
+            for _ord, _g in enumerate(self.glyphs)
+            for _label, _value in _g.right_kerning.items()
+        }
+        left_kerning = {
+            (_first_label(self.get_glyph(_label, missing=None)), _first_label(_g)): _value
+            for _ord, _g in enumerate(self.glyphs)
+            for _label, _value in _g.left_kerning.items()
+        }
+        kerning_table = {
+            _pair: left_kerning.get(_pair, 0) + right_kerning.get(_pair, 0)
+            for _pair in set(left_kerning.keys()) | set(right_kerning.keys())
+            if None not in _pair
+        }
+        if first.lower().startswith('r'):
+            kerning_table = {
+                (_r, _l): _v
+                for (_l, _r), _v in kerning_table.items()
+            }
+        return kerning_table
+
+
+    ##########################################################################
     # font operations
 
 
