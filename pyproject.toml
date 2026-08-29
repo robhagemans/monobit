@@ -5,7 +5,7 @@ version = "0.54.0"
 authors = [
     { name = "Rob Hagemans", email = "rob.hagemans@hotmail.com" },
 ]
-description = "Tools for working with monochrome bitmap fonts."
+description = "the bitmap font multitool"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
