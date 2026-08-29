@@ -21,7 +21,7 @@ from monobit.base import HasProps, writable_property, checked_property
 
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .glyph import Glyph, KernTable
-from .raster import turn_method, get_depth_for_levels
+from .raster import Raster, turn_method, get_depth_for_levels
 
 
 ###############################################################################
@@ -1653,3 +1653,22 @@ class Font(HasProps):
         Reverse-video by raster.
         """
         return self.for_all(Glyph.invert)
+
+
+    # palette and levels
+
+    def reduce_levels(self):
+        """Reduce to minimum required levels."""
+        matrices = tuple(_g.as_matrix() for _g in self.glyphs)
+        used_levels = sorted(set.union(*(
+            set(_row) for _m in matrices for _row in _m
+        )))
+        if len(used_levels) == self.levels:
+            return self
+        return self.modify(
+            glyphs=(
+                _g.modify(Raster.from_matrix(_m, inklevels=used_levels))
+                for _g, _m in zip(self.glyphs, matrices)
+            ),
+            rgb_table=(self.rgb_table[_i] for _i in used_levels) if self.rgb_table else None,
+        )
