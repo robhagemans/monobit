@@ -141,7 +141,7 @@ def save_beos(fonts, outstream):
         _HEADER.size + header.ffnSize + 1 + header.fsnSize + 1
         + _LOCATION_ENTRY.size * (header.ltMax+1)
     )
-    glyph_bytes = tuple(_g.as_bytes(bits_per_pixel=4) for _g in glyphs)
+    glyph_bytes = tuple(_g.set_bits_per_pixel(4).as_bytes() for _g in glyphs)
     offsets = accumulate(
         (len(_g) + len(_s) for _g, _s in zip(glyph_data, glyph_bytes)),
         initial=strike_offset,

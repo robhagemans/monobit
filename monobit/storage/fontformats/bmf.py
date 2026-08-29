@@ -314,7 +314,7 @@ def _convert_to_bmf_glyph(glyph, which, font, alpha_only, common_right):
         relY=font.line_height - glyph.height - glyph.shift_up - font.descent,
         shift=glyph.advance_width-common_right,
     )
-    gp.bitmap = glyph.pixels.as_bytes(bits_per_pixel=8, resample=alpha_only)
+    gp.bitmap = glyph.set_bits_per_pixel(8, fill_depth=alpha_only).as_bytes()
     return gp
 
 
