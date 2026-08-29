@@ -12,7 +12,7 @@ from itertools import accumulate
 
 from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
-from monobit.core.palette import Palette, create_gradient
+from monobit.core.palette import Palette
 from monobit.base.struct import flag, bitfield, big_endian as be
 from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, FileFormatError, UnsupportedError
@@ -811,7 +811,7 @@ def save_amiga(fonts, outstream):
         logging.debug('ColorFontColors structure: %s', cfc)
         # create greyscale table if none defined
         if not font.rgb_table:
-            ct = create_gradient((0, 0, 0), (255, 255, 255), font.levels)
+            ct = Palette.default(font.levels)
         else:
             ct = Palette(font.rgb_table)
         colortable = (be.uint16 * cfc.cfc_Count)(*(

@@ -18,7 +18,7 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.core.palette import Palette, create_gradient
+from monobit.core.palette import Palette
 from monobit.renderer.rgb import default_colours, create_image_colours
 from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
@@ -81,10 +81,7 @@ def identify_inklevels(colours, background):
         return (paper, ink)
 
 
-GREYSETS = {
-    _levels: create_gradient(RGB(0, 0, 0), RGB(255, 255, 255), _levels)
-    for _levels in (4, 16, 256)
-}
+GREYSETS = {_levels: Palette.default(_levels) for _levels in (4, 16, 256)}
 
 
 def _identify_background(colours, background):

@@ -11,4 +11,4 @@ from .glyph import Glyph, KernTable
 from .raster import Raster
 from .labels import Label, Char, Codepoint, Tag, strip_matching
 from .vector import StrokePath, StrokeMove
-from .palette import Palette, create_gradient
+from .palette import Palette
