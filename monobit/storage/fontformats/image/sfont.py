@@ -14,7 +14,8 @@ Image = safe_import('PIL.Image')
 from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
-from monobit.renderer import GlyphMap, RGBTable
+from monobit.renderer import GlyphMap
+from monobit.core.palette import RGBTable
 
 from monobit.storage.utils.limitations import ensure_single
 from .image import identify_inklevels

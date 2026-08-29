@@ -12,11 +12,11 @@ from itertools import accumulate
 
 from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
+from monobit.core.palette import RGBTable, create_gradient
 from monobit.base.struct import flag, bitfield, big_endian as be
 from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, FileFormatError, UnsupportedError
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
-from monobit.renderer import RGBTable, create_gradient
 
 
 ###################################################################################################

@@ -14,7 +14,7 @@ from monobit.base.struct import bitfield, little_endian as le
 from monobit.base import Props, UnsupportedError, RGB
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
-from monobit.renderer import create_gradient
+from monobit.core.palette import create_gradient
 
 from monobit.storage.utils.limitations import (
     ensure_single, ensure_levels, reencode
