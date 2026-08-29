@@ -35,7 +35,7 @@ def load_bmf(instream, alpha_only:bool=False):
     """
     bmf = _read_bmf(instream)
     font = _convert_bmf(bmf, alpha_only)
-    return font
+    return font.reduce_levels()
 
 
 @savers.register(linked=load_bmf)
