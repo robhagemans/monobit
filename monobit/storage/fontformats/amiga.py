@@ -710,7 +710,7 @@ def save_amiga(fonts, outstream):
     strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
     # split into planes if colorfont
     is_colorfont = font.levels > 2 or font.rgb_table
-    depth = (font.levels-1).bit_length()
+    depth = font.bits_per_pixel
     if is_colorfont:
         pixels = strike_raster.as_pixels()
         planes = tuple(

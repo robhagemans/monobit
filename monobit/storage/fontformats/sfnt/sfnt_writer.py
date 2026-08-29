@@ -379,7 +379,7 @@ def convert_to_glyph(glyph, fb, strike_format, rgb_table):
             bgra_data = ((_b, _g, _r, _a) for _r, _g, _b, _a in img.getdata())
             bmga.imageData = bytes(_b for _bgra in bgra_data for _b in _bgra)
     else:
-        bmga.setRows(glyph.as_byterows(), bitDepth=(glyph.levels-1).bit_length())
+        bmga.setRows(glyph.as_byterows(), bitDepth=glyph.bits_per_pixel)
     return bmga
 
 
@@ -424,7 +424,7 @@ def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name):
             vert = fonttools._create_sbit_line_metrics()
         strike.bitmapSizeTable = fonttools._create_bitmap_size_table(
             font.pixel_size, hori, vert,
-            depth=32 if font.rgb_table else (font.levels-1).bit_length(),
+            depth=32 if font.rgb_table else font.bits_per_pixel,
         )
         strike.indexSubTables = fonttools._create_index_subtables(fb, sdata)
         # eblc strike locations are filled out by ebdt compiler

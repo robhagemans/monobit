@@ -23,6 +23,7 @@ from monobit.base.struct import little_endian as le
 from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
+from monobit.core.raster import get_depth_for_levels
 from monobit.renderer import GlyphMap, grid_map, RGBTable
 from monobit.storage.location import Location
 
@@ -597,7 +598,7 @@ def _extract(
         # get list of used colours
         colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
         inklevels = identify_inklevels(colours, background=background)
-        pixels_per_byte = 8 // (len(inklevels)-1).bit_length()
+        pixels_per_byte = 8 // get_depth_for_levels(len(inklevels))
         # extract glyphs
         for char, sprite in zip(chars, sprites):
             if not char.width:

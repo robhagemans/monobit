@@ -419,7 +419,7 @@ def _convert_to_bdf_properties(font, xlfd_name, glyphs):
     if font.levels > 2:
         # greyscale font is always 2.3 (microsoft extension of bdf)
         version = '2.3'
-        depth = (font.levels - 1).bit_length()
+        depth = font.bits_per_pixel
         size_str += f' {depth}'
     bdf_props = [
         ('STARTFONT', version),
@@ -527,7 +527,7 @@ def _convert_to_bdf_glyph(glyph, font):
     if not glyph.height:
         glyphdata.append(('BITMAP', ''))
     else:
-        hex = glyph.as_hex(bits_per_pixel=(font.levels-1).bit_length()).upper()
+        hex = glyph.set_bits_per_pixel(font.bits_per_pixel).as_hex().upper()
         width = len(hex) // glyph.height
         split_hex = [
             hex[_offs:_offs+width]
