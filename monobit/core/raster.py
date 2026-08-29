@@ -7,9 +7,9 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 import string
-from itertools import zip_longest
+from itertools import zip_longest, product
 from collections import deque
-from functools import cache
+from functools import cache, cached_property
 
 from monobit.base.binary import (
     ceildiv, reverse_by_group, bytes_to_pixels,
@@ -32,6 +32,15 @@ def get_inklevels(n_levels):
     for bpp in sorted(_DEFAULT_INKLEVELS):
         if n_levels <= 1<<bpp:
             return _DEFAULT_INKLEVELS[bpp][:n_levels]
+    raise ValueError('More than 256 ink levels not supported.')
+
+
+def get_depth_for_levels(levels):
+    """Bit depth used to store a given number of levels."""
+    bit_depth = (levels - 1).bit_length()
+    for bpp in sorted(SUPPORTED_BITS_PER_PIXEL):
+        if bit_depth <= bpp:
+            return bpp
     raise ValueError('More than 256 ink levels not supported.')
 
 
@@ -127,6 +136,11 @@ class Raster:
     def levels(self):
         """Number of shades of ink."""
         return self._levels
+
+    @cached_property
+    def bits_per_pixel(self):
+        """Bit depth."""
+        return get_depth_for_levels(self._levels)
 
     # NOTE - these following are shadowed in GlyphProperties
 
@@ -275,7 +289,7 @@ class Raster:
                 bits_per_pixel = 1
             levels = 1 << bits_per_pixel
         elif bits_per_pixel is NOT_SET:
-            bits_per_pixel = int(levels-1).bit_length()
+            bits_per_pixel = get_depth_for_levels(levels)
         pixels_per_byte = 8 // bits_per_pixel
         if width == 0 or height == 0:
             if height is NOT_SET:
@@ -337,8 +351,7 @@ class Raster:
             ''.join(_row)
             for _row in self.as_matrix(inklevels=inklevels)
         )
-        bits_per_pixel = (self._levels - 1).bit_length()
-        pixels_per_byte = 8 // bits_per_pixel
+        pixels_per_byte = 8 // self.bits_per_pixel
         bytewidth = ceildiv(self.width, pixels_per_byte)
         stride = pixels_per_byte * bytewidth
         if align.startswith('l'):
@@ -347,19 +360,18 @@ class Raster:
             rows = (_row.rjust(stride, inklevels[0]) for _row in rows)
         if bit_order == 'little':
             rows = (reverse_by_group(_row) for _row in rows)
-        if bits_per_pixel > 4:
+        if self.bits_per_pixel > 4:
             byterows = tuple(_row.encode('latin-1') for _row in rows)
         else:
-            base = 2 ** bits_per_pixel
             byterows = tuple(
-                int(_row, base).to_bytes(bytewidth, 'big') for _row in rows
+                int(_row, 1 << self.bits_per_pixel).to_bytes(bytewidth, 'big')
+                for _row in rows
             )
         return byterows
 
     def as_bytes(
             self, *,
             align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
-            bits_per_pixel=1, resample=True,
         ):
         """
         Convert raster to flat bytes.
@@ -368,8 +380,6 @@ class Raster:
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
-        resample: scale byte values to new bit depth if updating bits_per_pixel
         """
         if not self.height or not self.width:
             return b''
@@ -380,33 +390,15 @@ class Raster:
             else:
                 # left or bit-aligned
                 raster = raster.expand(right=stride-self.width)
-        intr_bpp = (self._levels - 1).bit_length()
-        if bits_per_pixel is None:
-            bits_per_pixel = intr_bpp
-        elif bits_per_pixel < intr_bpp:
-            raise ValueError(f'Requires at least {intr_bpp} bits per pixel.')
-        if bits_per_pixel > intr_bpp:
-            # TODO - resample should be a separate opoeration, default should be just to keep values at greater depth
-            # must be a multiple - choice of 1, 2, 4, 8
-            # TODO: using stretch and interlace is hacky, use separate operation on pixels
-            factor = bits_per_pixel // intr_bpp
-            if resample:
-                # widen each pixel to the expected number of bits
-                # e.g 1->2bpp 0 -> 00 1 -> 11
-                #     4->8bpp 5 -> 55 A -> AA
-                raster = raster.stretch(factor=(factor, 1))
-            else:
-                raster = raster.interlace(factor=(factor, 1)).expand(left=factor-1)
-            bits_per_pixel = intr_bpp
         # alignment is meaningless for 8bpp
-        if align == 'bit' and bits_per_pixel <= 4:
+        if align == 'bit' and raster.bits_per_pixel <= 4:
             # NOTE we depend on inklevels being base-n digits
-            inklevels = get_inklevels(self._levels)
+            inklevels = get_inklevels(raster._levels)
             pixels = ''.join(
                 ''.join(_row)
                 for _row in raster.as_matrix(inklevels=inklevels)
             )
-            pixels_per_byte = 8 // bits_per_pixel
+            pixels_per_byte = 8 // raster.bits_per_pixel
             bytesize = ceildiv(len(pixels), pixels_per_byte)
             # left align the pixels to byte boundary
             pixels = pixels.ljust(bytesize * pixels_per_byte, inklevels[0])
@@ -420,7 +412,7 @@ class Raster:
                 pixels = reverse_by_group(
                     pixels, group_size=pixels_per_byte, fill=inklevels[0]
                 )
-            base = 2 ** bits_per_pixel
+            base = 1 << raster.bits_per_pixel
             byterows = (int(pixels, base).to_bytes(bytesize, 'big'),)
         else:
             byterows = raster.as_byterows(align=align, bit_order=bit_order)
@@ -431,6 +423,43 @@ class Raster:
             args = [iter(byteseq)] * byte_swap
             byteseq = b''.join(bytes(_chunk[::-1]) for _chunk in zip(*args))
         return byteseq
+
+    def set_bits_per_pixel(self, bits_per_pixel, *, fill_depth=True):
+        """Change bit depth between allowable values, adjusting greyscale index."""
+        if bits_per_pixel not in SUPPORTED_BITS_PER_PIXEL:
+            raise ValueError(
+                f'`bits_per_pixel`={bits_per_pixel} is not supported: '
+                f'must be in {SUPPORTED_BITS_PER_PIXEL}.'
+            )
+        if bits_per_pixel < self.bits_per_pixel:
+            raise ValueError(
+                f'`bits_per_pixel`={bits_per_pixel} is too low: '
+                f'bitmap requires at least {self.bits_per_pixel} bits per pixel.'
+            )
+        if bits_per_pixel == self.bits_per_pixel:
+            return self
+        # repeat each pixel to the expected number of bits
+        # this fills out the available levels fully and evenly
+        # e.g 1->2bpp 0--1 -> 00--11
+        #     4->8bpp 0--F -> 00--FF
+        # put on string representation, repeat, read back
+        inklevels = tuple(_DEFAULT_INKLEVELS[self.bits_per_pixel])
+        paper = inklevels[0]
+        pixels = self.as_matrix(inklevels=inklevels)
+        factor = bits_per_pixel // self.bits_per_pixel
+        inklevels = tuple(''.join(_p) for _p in product(inklevels, repeat=factor))
+        if fill_depth:
+            pixels = tuple(
+                tuple(_p*factor for _p in _row)
+                for _row in pixels
+            )
+        else:
+            pixels = tuple(
+                tuple(paper*(factor-1) + _p for _p in _row)
+                for _row in pixels
+            )
+        return self.from_matrix(pixels, inklevels=inklevels)
+
 
     def get_byte_size(self, *, align='left', stride=NOT_SET):
         """
@@ -443,8 +472,7 @@ class Raster:
             return 0
         if stride is NOT_SET:
             stride = self.width
-        bits_per_pixel = (self._levels - 1).bit_length()
-        pixels_per_byte = 8 // bits_per_pixel
+        pixels_per_byte = 8 // self.bits_per_pixel
         if align == 'bit':
             return ceildiv(stride * self.height, pixels_per_byte)
         return ceildiv(stride, pixels_per_byte) * self.height

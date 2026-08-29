@@ -21,7 +21,7 @@ from monobit.base import HasProps, writable_property, checked_property
 
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .glyph import Glyph, KernTable
-from .raster import turn_method
+from .raster import turn_method, get_depth_for_levels
 
 
 ###############################################################################
@@ -110,6 +110,8 @@ class FontProperties:
 
     # number of colours or greyscale levels
     levels: int
+    # bit depth needed to store levels
+    bits_per_pixel: int
     # level to colour mapping table
     rgb_table: RGBTable = None
 
@@ -448,6 +450,11 @@ class Font(HasProps):
     def levels(self):
         """Number of ink levels."""
         return max((_g.levels for _g in self.glyphs), default=2)
+
+
+    @checked_property
+    def bits_per_pixel(self):
+        return get_depth_for_levels(self.levels)
 
     @checked_property
     def cell_size(self):
