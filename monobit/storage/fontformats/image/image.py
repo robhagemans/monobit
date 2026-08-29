@@ -12,18 +12,18 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, RGB, RGBTable, FileFormatError, UnsupportedError
+from monobit.base import Coord, RGB, FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
+from monobit.core.palette import RGBTable, create_gradient
+from monobit.renderer.rgb import default_colours, create_image_colours
 from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
-    create_image_colours, RGBTable, create_gradient,
     write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 )
-from monobit.renderer.rgb import default_colours
 
 from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage.utils.perglyph import loop_load, loop_save

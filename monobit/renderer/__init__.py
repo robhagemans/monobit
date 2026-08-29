@@ -10,7 +10,7 @@ from .createchart import (
     chart, create_chart, grid_map, grid_traverser, write_imagefile,
 )
 from .glyphmap import GlyphMap, glyph_to_image
-from .rgb import RGBTable, create_image_colours, create_gradient
+from .rgb import create_image_colours
 from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 
 from . import pdf

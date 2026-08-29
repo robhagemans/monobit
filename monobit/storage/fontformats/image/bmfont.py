@@ -16,7 +16,7 @@ from monobit.base import safe_import
 etree = safe_import('xml.etree.ElementTree')
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, Bounds, RGB, RGBTable
+from monobit.base import Coord, Bounds, RGB
 from monobit.encoding import encodings
 from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
@@ -24,7 +24,8 @@ from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
 from monobit.core.raster import get_depth_for_levels
-from monobit.renderer import GlyphMap, grid_map, RGBTable
+from monobit.core.palette import RGBTable
+from monobit.renderer import GlyphMap, grid_map
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
