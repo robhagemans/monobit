@@ -7,19 +7,8 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.base import RGB, RGBTable
-
-
-def create_gradient(paper:RGB, ink:RGB, levels:int):
-    """Create equal-stepped RGB gradient from paper to ink."""
-    maxlevel = levels - 1
-    return RGBTable(
-        tuple(
-            (_value * _ink + (maxlevel - _value) * _paper) // maxlevel
-            for _ink, _paper in zip(ink, paper)
-        )
-        for _value in range(levels)
-    )
+from monobit.base import RGB
+from monobit.core import RGBTable, create_gradient
 
 
 def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
@@ -33,10 +22,7 @@ def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
         inklevels = [0] * (levels//2) + [1] * (levels-levels//2)
         border = 0
     elif image_mode in ('grey', 'gray'):
-        inklevels = tuple(
-            _v * 255 // (levels-1)
-            for _v in range(levels)
-        )
+        inklevels = create_gradient(paper=0, ink=255, levels=levels)
         border = 0
     elif rgb_table is not None:
         inklevels = RGBTable(rgb_table)

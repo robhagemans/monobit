@@ -12,7 +12,7 @@ from pathlib import PurePath
 from unicodedata import normalize
 
 from monobit.plumbing.scripting import scriptable
-from monobit.base import Coord, Bounds, NOT_SET, RGBTable
+from monobit.base import Coord, Bounds, NOT_SET
 from monobit.base import to_int, Any
 from monobit.encoding import encoder, EncodingName, Encoder, Indexer, Charmap
 from monobit.base.binary import ceildiv
@@ -22,6 +22,7 @@ from monobit.base import HasProps, writable_property, checked_property
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .glyph import Glyph, KernTable
 from .raster import Raster, turn_method, get_depth_for_levels
+from .palette import RGBTable
 
 
 ###############################################################################
