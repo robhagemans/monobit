@@ -7,6 +7,9 @@ licence: https://opensource.org/licenses/MIT
 
 from monobit.base import RGB
 
+BLACK = RGB(0, 0, 0)
+WHITE = RGB(255, 255, 255)
+
 
 class Palette(list):
 
@@ -25,14 +28,23 @@ class Palette(list):
         # ignore transparency attribute if it exists
         return all(_c.r == _c.g == _c.b for _c in iter(self))
 
+    @classmethod
+    def default(cls, levels):
+        """Create equal-stepped RGB gradient from black to white."""
+        return cls.gradient(BLACK, WHITE, levels)
 
-def create_gradient(paper, ink, levels):
-    """Create equal-stepped RGB or intensity gradient from paper to ink."""
-    maxlevel = levels - 1
-    return Palette(
-        tuple(
-            (_value * _ink + (maxlevel - _value) * _paper) // maxlevel
-            for _ink, _paper in zip(ink, paper)
+    @classmethod
+    def gradient(cls, paper, ink, levels):
+        """Create equal-stepped RGB or intensity gradient from paper to ink."""
+        maxlevel = levels - 1
+        return cls(
+            tuple(
+                (_value * _ink + (maxlevel - _value) * _paper) // maxlevel
+                for _ink, _paper in zip(ink, paper)
+            )
+            for _value in range(levels)
         )
-        for _value in range(levels)
-    )
+
+    def as_intensity(self):
+        """Return iterable of intensity values for this palette."""
+        return tuple(sum(_tup) // len(_tup) for _tup in iter(self))
