@@ -12,7 +12,7 @@ from itertools import accumulate
 
 from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
-from monobit.core.palette import RGBTable, create_gradient
+from monobit.core.palette import Palette, create_gradient
 from monobit.base.struct import flag, bitfield, big_endian as be
 from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, FileFormatError, UnsupportedError
@@ -461,7 +461,7 @@ def _read_strike(f, props, loc):
         cfc = _COLOR_FONT_COLORS.from_bytes(data, loc+props.ctf_ColorFontColors)
         logging.debug('ColorFontColors: %s', cfc)
         ct = (be.uint16 * cfc.cfc_Count).from_bytes(data, loc+cfc.cfc_ColorTable)
-        ct = RGBTable((
+        ct = Palette((
             (((_c//256)%16)*0x11, ((_c%256)//16)*0x11, (_c%16)*0x11)
             for _c in ct
         ))
@@ -813,7 +813,7 @@ def save_amiga(fonts, outstream):
         if not font.rgb_table:
             ct = create_gradient((0, 0, 0), (255, 255, 255), font.levels)
         else:
-            ct = RGBTable(font.rgb_table)
+            ct = Palette(font.rgb_table)
         colortable = (be.uint16 * cfc.cfc_Count)(*(
             (_r>>4) * 256 + (_g & 0xf0) + (_b >> 4)
             for _r, _g, _b in ct
