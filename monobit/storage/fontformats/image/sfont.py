@@ -15,7 +15,7 @@ from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 from monobit.renderer import GlyphMap
-from monobit.core.palette import RGBTable
+from monobit.core.palette import Palette
 
 from monobit.storage.utils.limitations import ensure_single
 from .image import identify_inklevels
@@ -88,7 +88,7 @@ if Image:
                     left = right
             else:
                 width = length
-        inklevels = RGBTable(inklevels)
+        inklevels = Palette(inklevels)
         font = Font(
             glyphs,
             rgb_table=inklevels if not inklevels.is_greyscale() else None,

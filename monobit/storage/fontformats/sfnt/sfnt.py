@@ -14,7 +14,7 @@ from unicodedata import bidirectional
 from io import BytesIO
 
 from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
-from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint, RGBTable
+from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint, Palette
 from monobit.storage import loaders, savers
 
 fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
@@ -643,7 +643,7 @@ def _imagedata_to_glyphs(glyphdata, unitable, enctable):
         for _crop, _name, _props in cropdata
     )
     # inklevels RGBA -> RGB, premultiply alphas
-    inklevels = RGBTable(
+    inklevels = Palette(
         (_r*_a//255, _g*_a//255, _b*_a//255) for _r, _g, _b, _a in inklevels
     )
     return glyphs, inklevels
