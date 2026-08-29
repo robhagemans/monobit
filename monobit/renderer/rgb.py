@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 
 from monobit.base import RGB
-from monobit.core import RGBTable, create_gradient
+from monobit.core import Palette, create_gradient
 
 
 def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
@@ -25,7 +25,7 @@ def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
         inklevels = create_gradient(paper=0, ink=255, levels=levels)
         border = 0
     elif rgb_table is not None:
-        inklevels = RGBTable(rgb_table)
+        inklevels = Palette(rgb_table)
         if paper is not None:
             inklevels[0] = RGB(*paper)
         if ink is not None:

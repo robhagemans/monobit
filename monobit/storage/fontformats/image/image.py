@@ -18,7 +18,7 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.core.palette import RGBTable, create_gradient
+from monobit.core.palette import Palette, create_gradient
 from monobit.renderer.rgb import default_colours, create_image_colours
 from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
@@ -277,7 +277,7 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
-        inklevels = RGBTable(inklevels)
+        inklevels = Palette(inklevels)
         font = Font(
             glyphs,
             rgb_table=inklevels if not inklevels.is_greyscale() else None,

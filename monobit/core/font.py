@@ -22,7 +22,7 @@ from monobit.base import HasProps, writable_property, checked_property
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .glyph import Glyph, KernTable
 from .raster import Raster, turn_method, get_depth_for_levels
-from .palette import RGBTable
+from .palette import Palette
 
 
 ###############################################################################
@@ -114,7 +114,7 @@ class FontProperties:
     # bit depth needed to store levels
     bits_per_pixel: int
     # level to colour mapping table
-    rgb_table: RGBTable = None
+    rgb_table: Palette = None
 
     # descriptive typographic quantities
 

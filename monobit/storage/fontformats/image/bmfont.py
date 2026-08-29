@@ -24,7 +24,7 @@ from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
 from monobit.core.raster import get_depth_for_levels
-from monobit.core.palette import RGBTable
+from monobit.core.palette import Palette
 from monobit.renderer import GlyphMap, grid_map
 from monobit.storage.location import Location
 
@@ -645,7 +645,7 @@ def _extract(
         )
         for _glyph, _char in zip(glyphs, chars)
     ]
-    inklevels = RGBTable(inklevels)
+    inklevels = Palette(inklevels)
     font = Font(
         glyphs,
         # if inklevels are evenly spaced greyscale we shouldn't store the colourtable

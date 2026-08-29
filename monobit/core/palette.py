@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 from monobit.base import RGB
 
 
-class RGBTable(list):
+class Palette(list):
 
     def __init__(self, table=()):
         """Set up RGB table."""
@@ -29,7 +29,7 @@ class RGBTable(list):
 def create_gradient(paper, ink, levels):
     """Create equal-stepped RGB or intensity gradient from paper to ink."""
     maxlevel = levels - 1
-    return RGBTable(
+    return Palette(
         tuple(
             (_value * _ink + (maxlevel - _value) * _paper) // maxlevel
             for _ink, _paper in zip(ink, paper)

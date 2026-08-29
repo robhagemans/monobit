@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from monobit.base.struct import big_endian as be
-from monobit.core.palette import RGBTable, create_gradient
+from monobit.core.palette import Palette, create_gradient
 
 
 # https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_V_1986.pdf
@@ -25,7 +25,7 @@ _COLOR_TABLE = be.Struct(
 _COLOR_SPEC = be.Struct(
     # > color representation
     value='uint16',
-    # > the components in an RGBTable are left-justified rather than right-justified in a word
+    # > the components in an Palette are left-justified rather than right-justified in a word
     # > [...] extract the appropriate number of bits from the high order side of the component
     red='uint16',
     green='uint16',
@@ -41,7 +41,7 @@ def extract_fctb(instream):
 
 
 def convert_fctb(color_table, color_specs, levels, **kwargs):
-    """Convert fctb color spec to RGBTable."""
+    """Convert fctb color spec to Palette."""
     if not color_specs:
         return None
     # use leftmost 8 bits of the 16-bit components
@@ -63,11 +63,11 @@ def convert_fctb(color_table, color_specs, levels, **kwargs):
         except KeyError:
             rgb = greyscale.pop()
         rgb_table.append(rgb)
-    return RGBTable(rgb_table)
+    return Palette(rgb_table)
 
 
 def convert_to_fctb(rgb_table):
-    """Convert RGBTable to fctb."""
+    """Convert Palette to fctb."""
     color_specs = (_COLOR_SPEC * len(rgb_table))(*(
         _COLOR_SPEC(value=_i, red=_c.r << 8, green=_c.g << 8, blue=_c.b << 8)
         for _i, _c in enumerate(rgb_table)
