@@ -397,21 +397,31 @@ class Raster:
                 raster = raster.stretch(factor=(factor, 1))
             else:
                 raster = raster.interlace(factor=(factor, 1)).expand(left=factor-1)
-        if align == 'bit':
+            bits_per_pixel = intr_bpp
+        # alignment is meaningless for 8bpp
+        if align == 'bit' and bits_per_pixel <= 4:
+            # NOTE we depend on inklevels being base-n digits
             inklevels = get_inklevels(self._levels)
-            bits = ''.join(
+            pixels = ''.join(
                 ''.join(_row)
                 for _row in raster.as_matrix(inklevels=inklevels)
             )
-            base = 2 ** bits_per_pixel
             pixels_per_byte = 8 // bits_per_pixel
-            bytesize = ceildiv(len(bits), pixels_per_byte)
-            # left align the bits to byte boundary
-            bits = bits.ljust(bytesize * pixels_per_byte, inklevels[0])
-            # per-byte bit swap.
+            bytesize = ceildiv(len(pixels), pixels_per_byte)
+            # left align the pixels to byte boundary
+            pixels = pixels.ljust(bytesize * pixels_per_byte, inklevels[0])
+            # per-byte pixel swap.
+            # NOTE bit_order is really pixel-order for >1 bpp
+            # LE bit order   01 23 45 67 -> BE bit order 76 54 32 10
+            #.               00 10 01 11                 11 10 01 00
+            # but each pixel's value remains the same:
+            #                0  1  2  3 (LE)              3  2  1  0 (BE)
             if bit_order == 'little':
-                bits = reverse_by_group(bits)
-            byterows = (int(bits, base).to_bytes(bytesize, 'big'),)
+                pixels = reverse_by_group(
+                    pixels, group_size=pixels_per_byte, fill=inklevels[0]
+                )
+            base = 2 ** bits_per_pixel
+            byterows = (int(pixels, base).to_bytes(bytesize, 'big'),)
         else:
             byterows = raster.as_byterows(align=align, bit_order=bit_order)
         byteseq = b''.join(byterows)
