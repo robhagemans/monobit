@@ -645,7 +645,7 @@ def _extract(
         )
         for _glyph, _char in zip(glyphs, chars)
     ]
-    font = Font(glyphs, rgb_table=inklevels, **properties)
+    font = Font(glyphs, palette=inklevels, **properties)
     font = font.label()
     return font
 
@@ -1096,7 +1096,7 @@ def spritesheet(font, *, size, spacing, padding):
             for _g in glyphs
         ):
         raise ValueError('Image size is too small for largest glyph.')
-    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
+    glyph_map = GlyphMap(levels=font.levels, palette=font.palette)
     sheets = []
     stored_rasters = {}
     while True:

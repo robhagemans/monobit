@@ -130,7 +130,7 @@ if reportlab:
         canvas.translate(-margin_x, -margin_y)
 
         # get colour table or gradient
-        inklevels = font.rgb_table.as_rgb(ink=ink, paper=paper)
+        inklevels = font.palette.as_rgb(ink=ink, paper=paper)
 
         # draw pages
         for sheet in range(max_sheet+1):
