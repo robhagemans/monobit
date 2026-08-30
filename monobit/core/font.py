@@ -1677,10 +1677,13 @@ class Font(HasProps):
         )))
         if len(used_levels) == self.levels:
             return self
+        new_palette = Palette(self.palette[_i] for _i in used_levels)
+        if new_palette.is_default():
+            new_palette = None
         return self.modify(
             glyphs=(
                 _g.modify(Raster.from_matrix(_m, inklevels=used_levels))
                 for _g, _m in zip(self.glyphs, matrices)
             ),
-            palette=(self.palette[_i] for _i in used_levels),
+            palette=new_palette,
         )
