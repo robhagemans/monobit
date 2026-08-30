@@ -82,7 +82,7 @@ class Palette(list):
             for _int in intensities
         )
 
-    def as_rgb(self, paper:RGB=None, ink:RGB=None, override_colours:bool=True):
+    def as_rgb(self, paper:RGB=None, ink:RGB=None):
         """Return RGB palette."""
         if self.is_greyscale():
             intensities = self.as_intensity()
@@ -97,9 +97,9 @@ class Palette(list):
             )
         else:
             inklevels = [*self]
-            if paper is not None and override_colours:
+            if paper is not None:
                 inklevels[0] = paper
-            if ink is not None and override_colours:
+            if ink is not None:
                 inklevels[-1] = ink
             return inklevels
 
