@@ -20,6 +20,7 @@ from ..base import Props, Coord, RGB, Any
 from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
+from ..core.palette import light_defaults, dark_defaults, BLACK, WHITE
 from ..storage.fontfiles import output_pack_or_font
 from ..storage.magic import MagicRegistry
 from ..storage.location import open_location
@@ -27,7 +28,6 @@ from ..storage.utils.limitations import ensure_single
 from ..plumbing import scriptable
 from .glyphmap import GlyphMap
 from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
-from .rgb import default_colours
 
 
 DIRECTIONS = {
@@ -171,11 +171,14 @@ def output_shades(
             text=text, textfile=textfile, raw=raw,
             margin=margin, direction=direction, align=align,
         )
-        paper, ink, border = default_colours(
-            font, paper, ink, border,
-            default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
-            border_match_paper=True,
-        )
+        # dark defaults
+        if font.rgb_table.is_greyscale():
+            paper, ink = dark_defaults(paper, ink)
+            if border is None:
+                border = paper
+        else:
+            if border is None:
+                border = BLACK
         outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
@@ -204,11 +207,14 @@ def output_sixel(
             text=text, textfile=textfile, raw=raw,
             margin=margin, direction=direction, align=align,
         )
-        paper, ink, border = default_colours(
-            font, paper, ink, border,
-            default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
-            border_match_paper=True,
-        )
+        # dark defaults
+        if font.rgb_table.is_greyscale():
+            paper, ink = dark_defaults(paper, ink)
+            if border is None:
+                border = paper
+        else:
+            if border is None:
+                border = BLACK
         outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
@@ -247,11 +253,14 @@ if Image:
             text=text, textfile=textfile, raw=raw,
             margin=margin, direction=direction, align=align,
         )
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
-            border_match_paper=True,
-        )
+        # light defaults
+        if glyph_map._rgb_table.is_greyscale():
+            paper, ink = light_defaults(paper, ink)
+            if border is None:
+                border = paper
+        else:
+            if border is None:
+                border = WHITE
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink,
             transparent=False,
