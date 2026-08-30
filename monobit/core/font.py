@@ -1682,5 +1682,5 @@ class Font(HasProps):
                 _g.modify(Raster.from_matrix(_m, inklevels=used_levels))
                 for _g, _m in zip(self.glyphs, matrices)
             ),
-            rgb_table=(self.rgb_table[_i] for _i in used_levels) if not self.rgb_table.is_default() else None,
+            rgb_table=(self.rgb_table[_i] for _i in used_levels),
         )
