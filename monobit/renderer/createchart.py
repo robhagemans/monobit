@@ -14,6 +14,7 @@ Image = safe_import('PIL.Image')
 from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, RGB, Any
 from monobit.core import Codepoint, Glyph, Char
+from monobit.core.palette import light_defaults, dark_defaults
 from monobit.plumbing import scriptable
 from monobit.storage.magic import MagicRegistry
 from monobit.storage.fontfiles import output_pack_or_font
@@ -21,7 +22,6 @@ from monobit.encoding.unicode import is_showable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
 from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
-from .rgb import default_colours
 
 
 charters = MagicRegistry(default_text='text')
@@ -187,11 +187,10 @@ def chart_shades(
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
         )
+        # dark defaults
         # don't override border, use terminal default
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
-        )
+        if font.rgb_table.is_greyscale():
+            paper, ink = dark_defaults(paper, ink)
         outstream.text.write(glyph_map.as_shades(
             paper=paper, border=border, ink=ink,
         ))
@@ -241,11 +240,10 @@ def chart_sixel(
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
         )
+        # dark defaults
         # don't override border, use terminal default
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
-        )
+        if font.rgb_table.is_greyscale():
+            paper, ink = dark_defaults(paper, ink)
         outstream.text.write(
             glyph_map.as_sixel(paper=paper, border=border, ink=ink)
         )
@@ -301,11 +299,11 @@ if Image:
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
         )
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
-            default_border=RGB(32, 32, 32),
-        )
+        # light defaults
+        if font.rgb_table.is_greyscale():
+            paper, ink = light_defaults(paper, ink)
+        if border is None:
+            border = RGB(32, 32, 32)
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink,
             transparent=False,
