@@ -82,7 +82,7 @@ class Palette(list):
             for _int in intensities
         )
 
-    def as_rgb(self, paper:RGB=None, ink:RGB=None, override_colours:bool=False):
+    def as_rgb(self, paper:RGB=None, ink:RGB=None, override_colours:bool=True):
         """Return RGB palette."""
         if self.is_greyscale():
             intensities = self.as_intensity()
