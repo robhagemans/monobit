@@ -43,13 +43,11 @@ def save_hrcg(fonts, outstream):
     odd = font.shrink(factor=(2, 1), modulo=(1, 0)).glyphs
     # combine to deinterlaced raster
     rasters = tuple(_e.overlay(_o).pixels for _e, _o in zip(even, odd))
-    # print(rasters)
     # determine shifts
     matrices = (_g.as_matrix(inklevels=(0, 1)) for _g in odd)
     odd_has_ink = (tuple(sum(_row) > 0 for _row in _mx) for _mx in matrices)
     masks = (Raster.from_vector(_ohi, stride=1, inklevels=(False, True)) for _ohi in odd_has_ink)
     # combine glyphs and masks
     glyphs = tuple(Glyph(Raster.concatenate(_g, _mask)) for _g, _mask in zip(rasters, masks))
-    # print(glyphs)
     font = Font(glyphs)
     save_bitmap(outstream, font, msb='right')
