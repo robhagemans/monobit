@@ -623,7 +623,7 @@ def save_amiga_fc(fonts, outstream):
             # this is wrong, but we don't need tf_Baseline in the fontcontents headers
             # it would be better to convert the fonts first and get the structures form there
             shift_up=0,
-            is_colorfont=_f.levels > 2 or _f.rgb_table,
+            is_colorfont=_f.levels > 2 or not _f.rgb_table.is_default(),
         )
         for _f in fonts
     )
@@ -709,7 +709,7 @@ def save_amiga(fonts, outstream):
     # word-align strike
     strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
     # split into planes if colorfont
-    is_colorfont = font.levels > 2 or font.rgb_table
+    is_colorfont = font.levels > 2 or not font.rgb_table.is_default()
     depth = font.bits_per_pixel
     if is_colorfont:
         pixels = strike_raster.as_pixels()
@@ -790,8 +790,8 @@ def save_amiga(fonts, outstream):
     if is_colorfont:
         ctf_header = _COLOR_TEXT_FONT(
             ctf_Flags=_CTF_FLAGS(
-                CT_COLORFONT=font.rgb_table is not None,
-                CT_GREYFONT=font.rgb_table is None,
+                CT_COLORFONT=not font.rgb_table.is_default(),
+                CT_GREYFONT=font.rgb_table.is_default(),
             ),
             ctf_Depth=depth,
             ctf_FgColor=0xff,
@@ -809,14 +809,9 @@ def save_amiga(fonts, outstream):
             ),
         )
         logging.debug('ColorFontColors structure: %s', cfc)
-        # create greyscale table if none defined
-        if not font.rgb_table:
-            ct = Palette.default(font.levels)
-        else:
-            ct = Palette(font.rgb_table)
         colortable = (be.uint16 * cfc.cfc_Count)(*(
             (_r>>4) * 256 + (_g & 0xf0) + (_b >> 4)
-            for _r, _g, _b in ct
+            for _r, _g, _b in font.rgb_table
         ))
         ctf_CharData = (be.uint32 * depth)(*(
             anchor + _ofs * len(fontData) // depth

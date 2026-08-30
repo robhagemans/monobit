@@ -440,7 +440,7 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding, name_encoding
                         data=nfnt_data_to_bytes(nfnt_data),
                     ),
                 )
-                if resource_type == 'nfnt' and font.rgb_table:
+                if resource_type == 'nfnt' and not font.rgb_table.is_default():
                     fctb_data = convert_to_fctb(font.rgb_table)
                     resources.append(
                         Props(
