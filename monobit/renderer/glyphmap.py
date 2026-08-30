@@ -39,7 +39,7 @@ def glyph_to_image(glyph, image_mode, inklevels):
         )
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
     # if using RGBA, inklevels must have 4 numbers per entry too
-    # rgb_table only has 3. set alpha to fully opaque, except background
+    # palette only has 3. set alpha to fully opaque, except background
     if image_mode == 'RGBA' and len(inklevels[0]) == 3:
         inklevels = (tuple(inklevels[0]) + (0,),) + tuple(
             tuple(_c) + (255,) for _c in inklevels[1:]
@@ -51,14 +51,14 @@ def glyph_to_image(glyph, image_mode, inklevels):
 
 class GlyphMap:
 
-    def __init__(self, map=(), *, levels, rgb_table=None):
+    def __init__(self, map=(), *, levels, palette=None):
         self._map = list(map)
         self._labels = []
         self._turns = 0
         self._scale_x = 1
         self._scale_y = 1
         self._levels = levels
-        self._rgb_table = rgb_table or Palette.default(levels)
+        self._palette = palette or Palette.default(levels)
 
     def __iter__(self):
         return iter(self._map)
@@ -144,11 +144,11 @@ class GlyphMap:
 
         image_mode = image_mode[:4].lower()
         if image_mode == 'mono':
-            inklevels = self._rgb_table.as_mono(paper=paper, ink=ink)
+            inklevels = self._palette.as_mono(paper=paper, ink=ink)
         elif image_mode in ('grey', 'gray'):
-            inklevels = self._rgb_table.as_greyscale(paper=paper, ink=ink)
+            inklevels = self._palette.as_greyscale(paper=paper, ink=ink)
         elif image_mode in ('rgb', 'rgba'):
-            inklevels = self._rgb_table.as_rgb(paper=paper, ink=ink)
+            inklevels = self._palette.as_rgb(paper=paper, ink=ink)
         else:
             supported_modes = tuple(_IMAGE_MODE_PIL_MAP.keys())
             raise ValueError(
@@ -217,7 +217,7 @@ class GlyphMap:
         ):
         """Convert glyph map to a sixel sequence."""
         canvas = self.to_canvas(sheet=sheet)
-        inklevels = self._rgb_table.as_rgb(ink=ink, paper=paper)
+        inklevels = self._palette.as_rgb(ink=ink, paper=paper)
         return canvas.as_sixel(
             inklevels=inklevels, border=border
         )
@@ -229,7 +229,7 @@ class GlyphMap:
         ):
         """Convert glyph map to ansi coloured block characters."""
         canvas = self.to_canvas(sheet=sheet)
-        inklevels = self._rgb_table.as_rgb(ink=ink, paper=paper)
+        inklevels = self._palette.as_rgb(ink=ink, paper=paper)
         return canvas.as_shades(
             inklevels=inklevels, border=border
         )

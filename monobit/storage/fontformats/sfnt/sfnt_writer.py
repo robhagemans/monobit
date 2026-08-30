@@ -313,7 +313,7 @@ def _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name):
         )
     # create one strike - multiple strikes of different size are possible
     strike_data = {
-        _name: convert_to_glyph(_g, fb, strike_format, font.rgb_table)
+        _name: convert_to_glyph(_g, fb, strike_format, font.palette)
         for _name, _g in glyphs.items()
     }
     # drop empty glyphs in PNG-based tables
@@ -336,7 +336,7 @@ _BITMAP_DATA_FORMATS = {
 }
 
 
-def convert_to_glyph(glyph, fb, strike_format, rgb_table):
+def convert_to_glyph(glyph, fb, strike_format, palette):
     """Create fontTools bitmap glyph."""
     if glyph.has_vertical_metrics():
         metrics = 'big'
@@ -363,9 +363,9 @@ def convert_to_glyph(glyph, fb, strike_format, rgb_table):
         bmga.metrics.vertBearingX = glyph.shift_left + glyph.width//2
         bmga.metrics.vertBearingY = glyph.top_bearing
         bmga.metrics.vertAdvance = glyph.advance_height
-    if not rgb_table.is_default():  # or font.levels > 256
+    if not palette.is_default():  # or font.levels > 256
         # could use P for <=256-colour, to preserve palette order and unused entries
-        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=rgb_table)
+        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=palette)
         if img.size == (0, 0):
             return None
         elif strike_format == 'png':
@@ -424,7 +424,7 @@ def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name):
             vert = fonttools._create_sbit_line_metrics()
         strike.bitmapSizeTable = fonttools._create_bitmap_size_table(
             font.pixel_size, hori, vert,
-            depth=32 if not font.rgb_table.is_default() else font.bits_per_pixel,
+            depth=32 if not font.palette.is_default() else font.bits_per_pixel,
         )
         strike.indexSubTables = fonttools._create_index_subtables(fb, sdata)
         # eblc strike locations are filled out by ebdt compiler
@@ -455,7 +455,7 @@ def _setup_sbix_table(fb, font, glyphs, strike_format):
     strike.resolution = font.dpi[0]
     strike.glyphs = {}
     for name, glyph in glyphs.items():
-        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=font.rgb_table)
+        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=font.palette)
         if img.size == (0, 0):
             sbix_glyph = fonttools.sbixGlyph(glyphName=name)
         else:
@@ -526,7 +526,7 @@ def _create_sfnt(font, funits_per_em, strike_format, bitmap_table, ebsc_mapped_s
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
     # determine what type of tables to create
     if bitmap_table is None:
-        if not font.rgb_table.is_default() or font.levels > 256:
+        if not font.palette.is_default() or font.levels > 256:
             bitmap_table = 'CBDT'
         else:
             bitmap_table = 'EBDT'

@@ -172,7 +172,7 @@ def output_shades(
             margin=margin, direction=direction, align=align,
         )
         # dark defaults
-        if font.rgb_table.is_greyscale():
+        if font.palette.is_greyscale():
             paper, ink = dark_defaults(paper, ink)
             if border is None:
                 border = paper
@@ -208,7 +208,7 @@ def output_sixel(
             margin=margin, direction=direction, align=align,
         )
         # dark defaults
-        if font.rgb_table.is_greyscale():
+        if font.palette.is_greyscale():
             paper, ink = dark_defaults(paper, ink)
             if border is None:
                 border = paper
@@ -254,7 +254,7 @@ if Image:
             margin=margin, direction=direction, align=align,
         )
         # light defaults
-        if glyph_map._rgb_table.is_greyscale():
+        if glyph_map._palette.is_greyscale():
             paper, ink = light_defaults(paper, ink)
             if border is None:
                 border = paper
@@ -343,7 +343,7 @@ def _render_horizontal(
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
     baseline = -margin_y - font.ascent
-    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
+    glyph_map = GlyphMap(levels=font.levels, palette=font.palette)
     # append empty glyph at start and end for margins
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     for glyph_row in glyphs:
@@ -384,7 +384,7 @@ def _render_vertical(
     # central axis (with leftward bias)
     baseline = font.line_width // 2
     # default is ttb right-to-left
-    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
+    glyph_map = GlyphMap(levels=font.levels, palette=font.palette)
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     for glyph_row in glyphs:
         y = 0

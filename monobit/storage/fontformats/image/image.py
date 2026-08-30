@@ -273,7 +273,7 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
-        font = Font(glyphs, rgb_table=inklevels)
+        font = Font(glyphs, palette=inklevels)
         return font
 
     def _get_border_colour(img, cell, margin, padding):
@@ -468,15 +468,15 @@ if Image:
         image_mode = image_mode.lower()[:4]
         if image_mode == 'mono':
             font = ensure_levels(font, 2)
-            inklevels = font.rgb_table.as_mono()
+            inklevels = font.palette.as_mono()
         elif image_mode in ('grey', 'gray'):
-            if not font.rgb_table.is_greyscale():
+            if not font.palette.is_greyscale():
                 raise FileFormatError(
                     f"Cannot store this colour font as `image_mode`=='grey'."
                 )
-            inklevels = font.rgb_table.as_greyscale()
+            inklevels = font.palette.as_greyscale()
         elif image_mode == 'rgb':
-            inklevels = font.rgb_table.as_rgb(paper=paper, ink=ink)
+            inklevels = font.palette.as_rgb(paper=paper, ink=ink)
         else:
             supported_modes = ('grey', 'gray', 'mono', 'rgb')
             raise ValueError(

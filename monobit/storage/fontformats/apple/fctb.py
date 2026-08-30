@@ -54,24 +54,24 @@ def convert_fctb(color_table, color_specs, levels, **kwargs):
     # use a reverse gradient so we can pop from the tail
     greyscale = Palette.gradient(WHITE, BLACK, levels_needed)
     # this should exactly exhaust greyscale
-    rgb_table = []
+    palette = []
     for i in range(levels):
         try:
             rgb = color_dict[i]
         except KeyError:
             rgb = greyscale.pop()
-        rgb_table.append(rgb)
-    return Palette(rgb_table)
+        palette.append(rgb)
+    return Palette(palette)
 
 
-def convert_to_fctb(rgb_table):
+def convert_to_fctb(palette):
     """Convert Palette to fctb."""
-    color_specs = (_COLOR_SPEC * len(rgb_table))(*(
+    color_specs = (_COLOR_SPEC * len(palette))(*(
         _COLOR_SPEC(value=_i, red=_c.r << 8, green=_c.g << 8, blue=_c.b << 8)
-        for _i, _c in enumerate(rgb_table)
+        for _i, _c in enumerate(palette)
     ))
     # unclear how seed should be chosen
-    color_table = _COLOR_TABLE(ctSeed=1024, ctSize=len(rgb_table))
+    color_table = _COLOR_TABLE(ctSeed=1024, ctSize=len(palette))
     return dict(color_table=color_table, color_specs=color_specs)
 
 
