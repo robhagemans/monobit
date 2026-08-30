@@ -13,20 +13,8 @@ from monobit.core.palette import Palette, BLACK, WHITE
 
 def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
     """Create colour table for given image format."""
-    image_mode = image_mode[:4].lower()
-    if rgb_table is not None and image_mode in ('mono', 'grey', 'gray'):
-        logging.warning('RGB colour table will be ignored.')
-    if image_mode == 'mono':
-        if levels > 2:
-            logging.warning('Ink levels will be downsampled from %d to 2', levels)
-        inklevels = [0] * (levels//2) + [1] * (levels-levels//2)
-        border = 0
-    elif image_mode in ('grey', 'gray'):
-        # TODO intensity-convert if palette exists
-        inklevels = Palette.default(levels).as_intensity()
-        border = 0
-    elif rgb_table is not None:
-        inklevels = Palette(rgb_table)
+    if rgb_table is not None:
+        inklevels = [*rgb_table]
         if paper is not None:
             inklevels[0] = RGB(*paper)
         if ink is not None:
@@ -37,6 +25,14 @@ def create_image_colours(*, image_mode, rgb_table, levels, paper, ink):
         if ink is None:
             ink = WHITE
         inklevels = Palette.gradient(paper=paper, ink=ink, levels=levels)
+    image_mode = image_mode[:4].lower()
+    if image_mode in ('grey', 'gray', 'mono'):
+        inklevels = inklevels.as_intensity()
+        border = 0
+    if image_mode == 'mono':
+        thresh = max(inklevels) // 2
+        inklevels = tuple(int(_int >= thresh) for _int in inklevels)
+        border = 0
     return inklevels
 
 
@@ -47,7 +43,8 @@ def default_colours(
         border_match_paper=False, default_border=None
     ):
     """Apply default colours based on input and colour table."""
-    if font.rgb_table:
+    # FIXME this logic doesn't make much sense. does this function make sense at all?
+    if not font.rgb_table.is_default():
         if ink is None:
             ink = font.rgb_table[-1]
         if paper is None:

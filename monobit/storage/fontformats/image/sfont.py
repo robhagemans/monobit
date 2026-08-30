@@ -88,11 +88,7 @@ if Image:
                     left = right
             else:
                 width = length
-        inklevels = Palette(inklevels)
-        font = Font(
-            glyphs,
-            rgb_table=inklevels if not inklevels.is_greyscale() else None,
-        )
+        font = Font(glyphs, rgb_table=inklevels)
         return font
 
 

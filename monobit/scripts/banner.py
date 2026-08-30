@@ -251,7 +251,7 @@ def main():
         #######################################################################
         # output
         # don't override foreground in colour font, but do override background
-        if font.rgb_table and not args.ink:
+        if not font.rgb_table.is_default() and not args.ink:
             args.ink = font.rgb_table[-1]
         if args.image or args.output and not args.output.endswith('.txt'):
             ink = RGB.create(args.ink or (0, 0, 0))

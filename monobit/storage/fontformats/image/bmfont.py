@@ -645,13 +645,7 @@ def _extract(
         )
         for _glyph, _char in zip(glyphs, chars)
     ]
-    inklevels = Palette(inklevels)
-    font = Font(
-        glyphs,
-        # if inklevels are evenly spaced greyscale we shouldn't store the colourtable
-        rgb_table=inklevels if not inklevels.is_greyscale() else None,
-        **properties
-    )
+    font = Font(glyphs, rgb_table=inklevels, **properties)
     font = font.label()
     return font
 

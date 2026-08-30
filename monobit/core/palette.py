@@ -28,6 +28,10 @@ class Palette(list):
         # ignore transparency attribute if it exists
         return all(_c.r == _c.g == _c.b for _c in iter(self))
 
+    def is_default(self):
+        """Palette is the default palette for this number of levels."""
+        return self == self.default(len(self))
+
     @classmethod
     def default(cls, levels):
         """Create equal-stepped RGB gradient from black to white."""
