@@ -454,9 +454,9 @@ def convert_nfnt(properties, glyphs, fontrec, fctb=None, **kwargs):
         )
     # create RGB table, if fctb present
     if fctb:
-        rgb_table = convert_fctb(**fctb, levels=max((_g.levels for _g in glyphs), default=2))
+        palette = convert_fctb(**fctb, levels=max((_g.levels for _g in glyphs), default=2))
     else:
-        rgb_table = None
+        palette = None
     # store properties
     properties.update({
         # not overridable; also seems incorrect for system fonts
@@ -466,7 +466,7 @@ def convert_nfnt(properties, glyphs, fontrec, fctb=None, **kwargs):
         'descent': fontrec.descent,
         'line_height': fontrec.ascent + fontrec.descent + fontrec.leading,
         'shift_up': -fontrec.descent,
-        'rgb_table': rgb_table,
+        'palette': palette,
         # remove the kerning table and encoding table now stored in glyphs
         'kerning_table': None,
         'encoding_table': None,

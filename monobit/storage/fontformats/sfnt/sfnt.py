@@ -344,7 +344,7 @@ def _convert_bdat(sfnt, bdatname, blocname):
                 glyphs,
                 source_format=source_format,
                 encoding=encoding or None,
-                rgb_table=rgbtable,
+                palette=rgbtable,
                 **vars(props)
             )
             # remove temporary names created by fontTools
@@ -598,7 +598,7 @@ def _convert_sbix(sfnt):
         props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
         fonts.append(Font(
             glyphs=updated_glyphs,
-            rgb_table=rgbtable,
+            palette=rgbtable,
             dpi=strike.resolution,
             encoding=encoding or None,
             source_format='sfnt (sbix)',

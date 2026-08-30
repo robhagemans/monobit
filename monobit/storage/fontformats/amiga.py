@@ -601,12 +601,12 @@ def _convert_amiga_props(amiga_props):
         # which is what we do by default.
         # should a colour table also be defined? should we use it? who knows.
         if amiga_props.ctf_Flags.CT_COLORFONT:
-            props.rgb_table = amiga_props.ctf_ColorTable
+            props.palette = amiga_props.ctf_ColorTable
             # 'predominant colour' to be repaced by the foreground
             if amiga_props.ctf_FgColor not in (0xff, amiga_props.ctf_High):
                 # swap as we use highest-index -> full-ink and lowest-index -> paper
-                props.rgb_table[-1], props.rgb_table[amiga_props.ctf_FgColor] = (
-                    props.rgb_table[-1], props.rgb_table[amiga_props.ctf_FgColor]
+                props.palette[-1], props.palette[amiga_props.ctf_FgColor] = (
+                    props.palette[-1], props.palette[amiga_props.ctf_FgColor]
                 )
     return props
 
@@ -623,7 +623,7 @@ def save_amiga_fc(fonts, outstream):
             # this is wrong, but we don't need tf_Baseline in the fontcontents headers
             # it would be better to convert the fonts first and get the structures form there
             shift_up=0,
-            is_colorfont=_f.levels > 2 or not _f.rgb_table.is_default(),
+            is_colorfont=_f.levels > 2 or not _f.palette.is_default(),
         )
         for _f in fonts
     )
@@ -709,7 +709,7 @@ def save_amiga(fonts, outstream):
     # word-align strike
     strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
     # split into planes if colorfont
-    is_colorfont = font.levels > 2 or not font.rgb_table.is_default()
+    is_colorfont = font.levels > 2 or not font.palette.is_default()
     depth = font.bits_per_pixel
     if is_colorfont:
         pixels = strike_raster.as_pixels()
@@ -790,8 +790,8 @@ def save_amiga(fonts, outstream):
     if is_colorfont:
         ctf_header = _COLOR_TEXT_FONT(
             ctf_Flags=_CTF_FLAGS(
-                CT_COLORFONT=not font.rgb_table.is_default(),
-                CT_GREYFONT=font.rgb_table.is_default(),
+                CT_COLORFONT=not font.palette.is_default(),
+                CT_GREYFONT=font.palette.is_default(),
             ),
             ctf_Depth=depth,
             ctf_FgColor=0xff,
@@ -811,7 +811,7 @@ def save_amiga(fonts, outstream):
         logging.debug('ColorFontColors structure: %s', cfc)
         colortable = (be.uint16 * cfc.cfc_Count)(*(
             (_r>>4) * 256 + (_g & 0xf0) + (_b >> 4)
-            for _r, _g, _b in font.rgb_table
+            for _r, _g, _b in font.palette
         ))
         ctf_CharData = (be.uint32 * depth)(*(
             anchor + _ofs * len(fontData) // depth

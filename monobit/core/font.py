@@ -114,7 +114,7 @@ class FontProperties:
     # bit depth needed to store levels
     bits_per_pixel: int
     # level to colour mapping table
-    rgb_table: Palette = None
+    palette: Palette = None
 
     # descriptive typographic quantities
 
@@ -368,7 +368,7 @@ class Font(HasProps):
     # colour
 
     @writable_property
-    def rgb_table(self):
+    def palette(self):
         """Colour palette."""
         return Palette.default(self.levels)
 
@@ -1682,5 +1682,5 @@ class Font(HasProps):
                 _g.modify(Raster.from_matrix(_m, inklevels=used_levels))
                 for _g, _m in zip(self.glyphs, matrices)
             ),
-            rgb_table=(self.rgb_table[_i] for _i in used_levels),
+            palette=(self.palette[_i] for _i in used_levels),
         )

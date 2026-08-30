@@ -189,7 +189,7 @@ def chart_shades(
         )
         # dark defaults
         # don't override border, use terminal default
-        if font.rgb_table.is_greyscale():
+        if font.palette.is_greyscale():
             paper, ink = dark_defaults(paper, ink)
         outstream.text.write(glyph_map.as_shades(
             paper=paper, border=border, ink=ink,
@@ -242,7 +242,7 @@ def chart_sixel(
         )
         # dark defaults
         # don't override border, use terminal default
-        if font.rgb_table.is_greyscale():
+        if font.palette.is_greyscale():
             paper, ink = dark_defaults(paper, ink)
         outstream.text.write(
             glyph_map.as_sixel(paper=paper, border=border, ink=ink)
@@ -300,7 +300,7 @@ if Image:
             skip_empty_lines=skip_empty_lines,
         )
         # light defaults
-        if font.rgb_table.is_greyscale():
+        if font.palette.is_greyscale():
             paper, ink = light_defaults(paper, ink)
         if border is None:
             border = RGB(32, 32, 32)
@@ -477,7 +477,7 @@ def grid_map(
         )
     glyph_map = GlyphMap(
         glyph_map, levels=font.levels,
-        rgb_table=font.rgb_table,
+        palette=font.palette,
     )
     # use blank glyphs for grid bounds
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)

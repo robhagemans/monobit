@@ -252,8 +252,8 @@ def main():
         #######################################################################
         # output
         # don't override foreground in colour font, but do override background
-        if not font.rgb_table.is_greyscale() and not args.ink:
-            args.ink = font.rgb_table[-1]
+        if not font.palette.is_greyscale() and not args.ink:
+            args.ink = font.palette[-1]
         if args.image or args.output and not args.output.endswith('.txt'):
             # light defaults
             ink = RGB.create(args.ink) if args.ink else BLACK

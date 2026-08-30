@@ -165,7 +165,7 @@ def _convert_bmf(bmf, alpha_only):
     if bmf.header.extraPalettes:
         # I don't understand how multiple palettes are meant to be stored
         logging.warning('Multiple palettes not supported')
-    rgb_table = ((0, 0, 0),) + tuple(
+    palette = ((0, 0, 0),) + tuple(
         (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
     )
     # -- mask off alpha bits in bytemap
@@ -180,11 +180,11 @@ def _convert_bmf(bmf, alpha_only):
         # if all bits are alphaBits, there's no colour information.
         # drop palette and use alpha as greyscale value
         mask = alpha_mask
-        rgb_table = None
+        palette = None
         levels = 1 << bmf.header.alphaBits
     else:
         mask = palette_mask
-        levels = len(rgb_table)
+        levels = len(palette)
     for gp in bmf.glyphs:
         gp.bitmap = bytes(_b & mask for _b in gp.bitmap)
     # -- convert glyphs
@@ -220,7 +220,7 @@ def _convert_bmf(bmf, alpha_only):
         glyphs, x_height=-bmf.header.sizeInner,
         ascent=-bmf.header.sizeOver, descent=bmf.header.sizeUnder,
         line_height=bmf.header.lineHeight,
-        rgb_table=rgb_table,
+        palette=palette,
         name=title,
         source_format=f'bmf 1.{bmf.header.version-0x10}',
     )
@@ -252,7 +252,7 @@ def _convert_to_bmf(font, version, alpha_greyscale):
     alpha_only = (
         alpha_greyscale
         # TODO we can do better, any greyscale works, we just have to replace pixel index with intensities
-        and font.rgb_table.is_default()
+        and font.palette.is_default()
         and font.levels in (2, 4, 16, 256)
     )
     common_right = min(_g.right_bearing for _g in font.glyphs)
@@ -270,9 +270,9 @@ def _convert_to_bmf(font, version, alpha_greyscale):
         alphaBits=8 if alpha_only else 0,
         # extraPalettes=0,
     )
-    bmf.palette = (_RGB_ENTRY * (len(font.rgb_table)-1))(
+    bmf.palette = (_RGB_ENTRY * (len(font.palette)-1))(
         *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
-        for _rgb in font.rgb_table[1:])
+        for _rgb in font.palette[1:])
     )
     bmf.title = font.name.encode(title_encoding, 'replace')
     bmf.ascii_glyphs = tuple(
