@@ -108,6 +108,8 @@ _DEPRECATED_SYNONYMS = {
     'average_advance': 'average_width',
     'max_advance': 'max_width',
     'cap_advance': 'cap_width',
+
+    'rgb_table': 'palette',
 }
 def _set_property(propsdict, key, value):
     try:
