@@ -230,7 +230,6 @@ class GlyphMap:
         """Convert glyph map to ansi coloured block characters."""
         canvas = self.to_canvas(sheet=sheet)
         inklevels = self._rgb_table.as_rgb(ink=ink, paper=paper)
-        print(inklevels)
         return canvas.as_shades(
             inklevels=inklevels, border=border
         )
