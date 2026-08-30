@@ -27,25 +27,48 @@ def dark_defaults(paper=None, ink=None):
     return paper, ink
 
 
-class Palette(list):
+class Palette:
 
     def __init__(self, table=()):
-        """Set up RGB table."""
+        """Set up palette."""
         if isinstance(table, str):
             table = table.splitlines()
-        super().__init__(RGB.create(_v) for _v in table)
+        self._table = tuple(RGB.create(_v) for _v in table)
+
+    def __iter__(self):
+        """Iterate over palette."""
+        return iter(self._table)
+
+    def __len__(self):
+        """Number of levels."""
+        return len(self._table)
+
+    def __getitem__(self, index):
+        """Retrieve palette entry."""
+        return self._table[index]
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        return self._table == other._table
+
+    def __hash__(self):
+        return hash(self._table)
+
+    def __repr__(self):
+        return f'{type(self).__name__}({list(self)})'
 
     def __str__(self):
-        """Convert RGB table to multiline string."""
+        """Convert palette to multiline string."""
         return '\n'.join(str(_v) for _v in iter(self))
 
     def is_greyscale(self):
-        """RGB/RGBA colourset is a grey scale."""
+        """This palette is a grey scale."""
         # ignore transparency attribute if it exists
         return all(_c.r == _c.g == _c.b for _c in iter(self))
 
     def is_default(self):
-        """Palette is the default palette for this number of levels."""
+        """This palette is the default palette for this number of levels."""
         return self == self.default(len(self))
 
     @classmethod
