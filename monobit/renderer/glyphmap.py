@@ -12,10 +12,10 @@ Image = safe_import('PIL.Image')
 
 from monobit.base import Props, Coord, RGB, blockstr
 from monobit.core.raster import turn_method
+from monobit.core.palette import Palette
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
 from .sixel import matrix_to_sixel
-from .rgb import create_image_colours
 
 _IMAGE_MODE_PIL_MAP = {
     'mono': '1',
@@ -58,7 +58,7 @@ class GlyphMap:
         self._scale_x = 1
         self._scale_y = 1
         self._levels = levels
-        self._rgb_table = rgb_table
+        self._rgb_table = rgb_table or Palette.default(levels)
 
     def __iter__(self):
         return iter(self._map)
@@ -120,7 +120,7 @@ class GlyphMap:
     def to_images(
             self, *,
             paper=None, ink=None, border=(32, 32, 32),
-            invert_y=False, transparent=True, image_mode='RGB',
+            invert_y=False, transparent=True, image_mode='rgb',
         ):
         """Draw images based on sheets in glyph map."""
         last_sheet, *_ = self.get_bounds()
@@ -136,18 +136,28 @@ class GlyphMap:
     def as_image(
             self, *,
             paper=None, ink=None, border=(32, 32, 32),
-            sheet=0, invert_y=False, transparent=True, image_mode='RGB',
+            sheet=0, invert_y=False, transparent=True, image_mode='rgb',
         ):
         """Convert glyph map to image."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
-        inklevels = create_image_colours(
-            image_mode=image_mode, rgb_table=self._rgb_table,
-            levels=self._levels, ink=ink, paper=paper
-        )
+
+        image_mode = image_mode[:4].lower()
+        if image_mode == 'mono':
+            inklevels = self._rgb_table.as_mono(paper=paper, ink=ink)
+        elif image_mode in ('grey', 'gray'):
+            inklevels = self._rgb_table.as_greyscale(paper=paper, ink=ink)
+        elif image_mode in ('rgb', 'rgba'):
+            inklevels = self._rgb_table.as_rgb(paper=paper, ink=ink)
+        else:
+            supported_modes = tuple(_IMAGE_MODE_PIL_MAP.keys())
+            raise ValueError(
+                f"`image_mode`=='{image_mode}' not supported: "
+                f'must be one of {supported_modes}.'
+            )
         masklevels = [0] + [1] * (self._levels-1)
         # mono and greyscale images have fixed levels
-        if not image_mode.lower().startswith('rgb'):
+        if image_mode not in ('rgb', 'rgba'):
             border = 0
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
@@ -207,10 +217,7 @@ class GlyphMap:
         ):
         """Convert glyph map to a sixel sequence."""
         canvas = self.to_canvas(sheet=sheet)
-        inklevels = create_image_colours(
-            image_mode='RGB', rgb_table=self._rgb_table,
-            levels=self._levels, ink=ink, paper=paper
-        )
+        inklevels = self._rgb_table.as_rgb(ink=ink, paper=paper)
         return canvas.as_sixel(
             inklevels=inklevels, border=border
         )
@@ -222,10 +229,8 @@ class GlyphMap:
         ):
         """Convert glyph map to ansi coloured block characters."""
         canvas = self.to_canvas(sheet=sheet)
-        inklevels = create_image_colours(
-            image_mode='RGB', rgb_table=self._rgb_table,
-            levels=self._levels, ink=ink, paper=paper
-        )
+        inklevels = self._rgb_table.as_rgb(ink=ink, paper=paper)
+        print(inklevels)
         return canvas.as_shades(
             inklevels=inklevels, border=border
         )

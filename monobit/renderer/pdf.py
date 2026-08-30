@@ -15,7 +15,6 @@ from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
 from .createchart import create_chart, aligns_right, charters
-from .glyphmap import create_image_colours
 
 
 if reportlab:
@@ -131,10 +130,7 @@ if reportlab:
         canvas.translate(-margin_x, -margin_y)
 
         # get colour table or gradient
-        inklevels = create_image_colours(
-            image_mode='RGB', rgb_table=font.rgb_table,
-            levels=font.levels, paper=paper, ink=ink,
-        )
+        inklevels = font.rgb_table.as_rgb(ink=ink, paper=paper)
 
         # draw pages
         for sheet in range(max_sheet+1):
