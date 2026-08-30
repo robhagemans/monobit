@@ -249,7 +249,12 @@ def _convert_to_bmf(font, version, alpha_greyscale):
             f"`version` must be one of ('1.1', '1.2'), not {version}"
         )
     bmf = Props()
-    alpha_only = alpha_greyscale and not font.rgb_table
+    alpha_only = (
+        alpha_greyscale
+        # TODO we can do better, any greyscale works, we just have to replace pixel index with intensities
+        and font.rgb_table.is_default()
+        and font.levels in (2, 4, 16, 256)
+    )
     common_right = min(_g.right_bearing for _g in font.glyphs)
     bmf.header = _BMF_HEADER(
         magic=_BMF_MAGIC,
@@ -265,13 +270,9 @@ def _convert_to_bmf(font, version, alpha_greyscale):
         alphaBits=8 if alpha_only else 0,
         # extraPalettes=0,
     )
-    rgb_table = font.rgb_table or (
-        # FIXME this should be done by Font.rgb_table
-        Palette.default(font.levels)
-    )
-    bmf.palette = (_RGB_ENTRY * (len(rgb_table)-1))(
+    bmf.palette = (_RGB_ENTRY * (len(font.rgb_table)-1))(
         *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
-        for _rgb in rgb_table[1:])
+        for _rgb in font.rgb_table[1:])
     )
     bmf.title = font.name.encode(title_encoding, 'replace')
     bmf.ascii_glyphs = tuple(

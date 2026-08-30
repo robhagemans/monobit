@@ -274,11 +274,7 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
-        inklevels = Palette(inklevels)
-        font = Font(
-            glyphs,
-            rgb_table=inklevels if not inklevels.is_greyscale() else None,
-        )
+        font = Font(glyphs, rgb_table=inklevels)
         return font
 
     def _get_border_colour(img, cell, margin, padding):
