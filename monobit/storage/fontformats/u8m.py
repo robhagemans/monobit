@@ -205,7 +205,6 @@ def _convert_u8m(u8m):
         style=mac_style_name(u8m.selection_header.style),
         # unconverted fields
         **{
-            'u8m.line_gap': u8m.master_table.line_gap,
             'u8m.family_id': u8m.selection_header.family_id,
         },
     )
