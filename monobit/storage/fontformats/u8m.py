@@ -14,6 +14,7 @@ from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Char, Codepoint
 
 from monobit.storage.utils.limitations import ensure_single, ensure_levels
+from monobit.storage.fontformats.common import mac_style_name
 
 
 _U8M_MAGIC = b'U8/M'
@@ -201,10 +202,10 @@ def _convert_u8m(u8m):
         ascent=u8m.master_table.line_ascent,
         descent=u8m.master_table.line_descent,
         line_height=u8m.master_table.line_height,
+        style=mac_style_name(u8m.selection_header.style),
         # unconverted fields
         **{
             'u8m.line_gap': u8m.master_table.line_gap,
             'u8m.family_id': u8m.selection_header.family_id,
-            'u8m.style': u8m.selection_header.style,
         },
     )
