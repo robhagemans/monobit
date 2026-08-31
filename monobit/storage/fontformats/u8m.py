@@ -84,6 +84,7 @@ _BITMAP_RECORD = le.Struct(
     # bitmap data, max 252 bytes
 )
 
+
 def _read_u8m(instream):
     """Read a U8/M file."""
     # unknown word, usually 160 ? maybe a local dos (e.g. c64) header?
@@ -164,34 +165,33 @@ def _convert_u8m(u8m):
                 glyph_index = map.glyph_submap_index + i
                 yield codepoint, glyph_index
 
-    def _add_label(glyph_index, new_label, notes=None):
+    def _add_label(glyph_index, new_label):
         glyph = glyphs[glyph_index]
         glyphs[glyph_index] = (
             glyph.modify(
                 labels=glyph.get_labels() + (new_label,),
-                notes=notes,
             )
         )
 
     for cp6, map_index in enumerate(u8m.master_table.map_index_for_native):
         for cp0, glyph_index in _traverse_map(map_index):
             cp = (cp6<<6) + cp0
-            _add_label(glyph_index, Codepoint(cp), notes=(cp6, cp0))
+            _add_label(glyph_index, Codepoint(cp))
     for cp6, map_index in enumerate(u8m.master_table.map_index_for_low_bmp):
         for cp0, glyph_index in _traverse_map(map_index):
             cp = (cp6<<6) + cp0
-            _add_label(glyph_index, Char(chr(cp)), notes=(cp6, cp0))
+            _add_label(glyph_index, Char(chr(cp)))
     for cp12, map_index in enumerate(u8m.master_table.map_index_for_high_bmp):
         for cp6, submap_index in _traverse_map(map_index):
             for cp0, glyph_index in _traverse_map(submap_index):
                 cp = (cp12<<12) + (cp6<<6) + cp0
-                _add_label(glyph_index, Char(chr(cp)), notes=(cp12, cp6, cp0))
+                _add_label(glyph_index, Char(chr(cp)))
     for cp18, map_index in enumerate(u8m.master_table.map_index_for_astrals):
         for cp12, submap_index in _traverse_map(map_index):
             for cp6, subsubmap_index in _traverse_map(submap_index):
                 for cp0, glyph_index in _traverse_map(subsubmap_index):
                     cp = (cp18<<18) + (cp12<<12) + (cp6<<6) + cp0
-                    _add_label(glyph_index, Char(chr(cp)), notes=(cp18, cp12, cp6, cp0))
+                    _add_label(glyph_index, Char(chr(cp)))
 
     # convert font metrics and metadata
     return Font(
