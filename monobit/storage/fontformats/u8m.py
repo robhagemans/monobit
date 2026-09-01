@@ -32,10 +32,12 @@ def load_u8m(instream):
     return font
 
 
+###############################################################################
+# U8/M file format
 # https://github.com/kreativekorp/u8m
 
 _SELECTION_HEADER = le.Struct(
-    magic=le.uint8 * 4,
+    magic='4s',
     family_name_length='uint8',
     family_name='118s',
     null_terminator='uint8',
@@ -86,6 +88,9 @@ _BITMAP_RECORD = le.Struct(
 )
 
 
+###############################################################################
+# U8/M reader/converter
+
 def _read_u8m(instream):
     """Read a U8/M file."""
     # unknown word, usually 160 ? maybe a local dos (e.g. c64) header?
@@ -93,6 +98,11 @@ def _read_u8m(instream):
     anchor = instream.tell()
     u8m = Props()
     u8m.selection_header = _SELECTION_HEADER.read_from(instream)
+    if u8m.selection_header.magic != _U8M_MAGIC:
+        raise FileFormatError(
+            'Not a U8/M file: incorrect file signature '
+            f'{u8m.selection_header.magic} != {_U8M_MAGIC}'
+        )
     u8m.master_table = _MASTER_TABLE.read_from(instream)
     # read map table
     instream.seek(anchor + 256 * u8m.master_table.map_table_offset)
@@ -138,24 +148,8 @@ def _read_u8m(instream):
     return u8m
 
 
-def _convert_u8m(u8m):
-    """Convert U8/M data structure to monobit font."""
-    # convert glyphs
-    glyphs = [
-        Glyph.from_bytes(
-            _bm.bitmap_data,
-            align='bit',
-            width=_bm.width,
-            height=_bm.height,
-            shift_up=-(_bm.height+_bm.y_offset),
-            left_bearing=_bm.x_offset,
-            right_bearing=_gr.advance_width-_bm.width-_bm.x_offset,
-            # gr=_gr,
-        )
-        for (_gr, _bm) in zip(u8m.glyph_records, u8m.bitmap_records)
-    ]
-
-    # apply codepoints from nested map tables
+def _apply_u8m_codepoint_maps(u8m, glyphs):
+    """Apply codepoints from nested map tables."""
 
     def _traverse_map(map_index):
         map_array = u8m.map_table[map_index]
@@ -194,6 +188,24 @@ def _convert_u8m(u8m):
                     cp = (cp18<<18) + (cp12<<12) + (cp6<<6) + cp0
                     _add_label(glyph_index, Char(chr(cp)))
 
+
+def _convert_u8m(u8m):
+    """Convert U8/M data structure to monobit font."""
+    # convert glyphs
+    glyphs = [
+        Glyph.from_bytes(
+            _bm.bitmap_data,
+            align='bit',
+            width=_bm.width,
+            height=_bm.height,
+            shift_up=-(_bm.height+_bm.y_offset),
+            left_bearing=_bm.x_offset,
+            right_bearing=_gr.advance_width-_bm.width-_bm.x_offset,
+        )
+        for (_gr, _bm) in zip(u8m.glyph_records, u8m.bitmap_records)
+    ]
+    # apply codepoints from nested map tables
+    _apply_u8m_codepoint_maps(u8m, glyphs)
     # convert font metrics and metadata
     return Font(
         glyphs,
@@ -204,7 +216,5 @@ def _convert_u8m(u8m):
         line_height=u8m.master_table.line_height,
         style=mac_style_name(u8m.selection_header.style),
         # unconverted fields
-        **{
-            'u8m.family_id': u8m.selection_header.family_id,
-        },
+        **{'u8m.family_id': u8m.selection_header.family_id},
     )
