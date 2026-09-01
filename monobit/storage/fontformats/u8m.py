@@ -6,6 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 import logging
+from itertools import accumulate
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le
@@ -30,6 +31,16 @@ def load_u8m(instream):
     u8m = _read_u8m(instream)
     font = _convert_u8m(u8m)
     return font
+
+
+@savers.register(linked=load_u8m)
+def save_u8m(fonts, outstream):
+    """Save font to U8/M file."""
+    font = ensure_single(fonts)
+    font = ensure_levels(font, 2)
+    font = font.label().label(codepoint_from=font.encoding)
+    u8m = _convert_to_u8m(font)
+    _write_u8m(u8m, outstream)
 
 
 ###############################################################################
@@ -218,3 +229,204 @@ def _convert_u8m(u8m):
         # unconverted fields
         **{'u8m.family_id': u8m.selection_header.family_id},
     )
+
+
+###############################################################################
+# U8/M writer
+
+def _convert_to_u8m(font):
+    """Convert monobit font to U8/M data structure."""
+    u8m = Props()
+    family = font.family.encode('utf-8')[:118]
+    u8m.selection_header = _SELECTION_HEADER(
+        magic=_U8M_MAGIC,
+        family_name_length=len(family),
+        family_name=family,
+        family_id=font.get_property('u8m.family_id') or 0,
+        # TODO calculate mac style (see NFNT?)
+        style=0,
+        point_size=font.point_size,
+    )
+    # create codepoint index maps
+    (
+        u8m.master_table,
+        u8m.map_headers,
+        u8m.map_data
+    ) = _create_u8m_codepoint_maps(font.glyphs)
+    # remaining font metrics
+    u8m.master_table.line_ascent = font.ascent
+    u8m.master_table.line_descent = font.descent
+    u8m.master_table.line_gap = font.leading
+    u8m.master_table.line_height = font.line_height
+    # convert glyphs
+    u8m.bitmap_data = tuple(_g.as_bytes(align='bit') for _g in font.glyphs)
+    u8m.bitmap_records = (_BITMAP_RECORD * len(font.glyphs))(*(
+        _BITMAP_RECORD(
+            y_offset=-_g.height-_g.shift_up,
+            x_offset=_g.left_bearing,
+            height=_g.height,
+            width=_g.width,
+        )
+        for _g in font.glyphs
+    ))
+    # arrange bitmaps in pages
+    # bitmap record may not cross page boundary
+    lengths = tuple(_BITMAP_RECORD.size + len(_bd) for _bd in u8m.bitmap_data)
+    glyph_records = []
+    # starting file position for bitmap data
+    current = (
+        u8m.master_table.glyph_table_offset * 256
+        + len(font.glyphs) * _GLYPH_RECORD.size
+    )
+    for glyph, length in zip(font.glyphs, lengths):
+        page, addr = divmod(current, 256)
+        if addr + length <= 256:
+            current += length
+        else:
+            page += 1
+            addr = 0
+            current = page * 256 + addr + length
+        glyph_records.append(
+            _GLYPH_RECORD(
+                bitmap_offset_byte_address=addr,
+                bitmap_offset_page_address=page,
+                advance_width=glyph.advance_width,
+            )
+        )
+    u8m.glyph_records = (_GLYPH_RECORD*len(glyph_records))(*glyph_records)
+    return u8m
+
+
+def _create_map(codepoints, lo_bound, hi_bound):
+    entries = []
+    first, last, first_index, last_index = None, None, None, None
+    for index, cp in enumerate(codepoints):
+        if cp is None:
+            continue
+        if lo_bound <= cp < hi_bound:
+            if first is None:
+                first, last = cp, cp
+                first_index, last_index = index, index
+            elif cp == last +1 and index == last_index + 1:
+                last += 1
+                last_index += 1
+            else:
+                entries.append(_MAP_ENTRY(
+                    first_index_value=first,
+                    last_index_value=last,
+                    glyph_submap_index=first_index,
+                ))
+                first, last, first_index, last_index = None, None, None, None
+    if first is not None:
+        entries.append(_MAP_ENTRY(
+            first_index_value=first,
+            last_index_value=last,
+            glyph_submap_index=first_index,
+        ))
+    return tuple(entries)
+
+
+def _get_map_indexes(maps, map_index):
+    indexes = []
+    for map in maps:
+        if map:
+            indexes.append(map_index)
+            map_index += 1
+        else:
+            indexes.append(0)
+    return indexes, map_index
+
+
+def _create_u8m_codepoint_maps(glyphs):
+    # native map (codepoints)
+    codepoints = tuple(
+        int(_g.codepoint) if _g.codepoint else None for _g in glyphs
+    )
+    native_maps = tuple(
+        _create_map(codepoints, (1 << 6) * _map_index, (1 << 6) * (_map_index+1))
+        for _map_index in range(4)
+    )
+    # low_bmp map
+    # TODO: NFC the char labels? or do we already do that?
+    codepoints = tuple(
+        ord(_g.char) if _g.char and len(_g.char) == 1 else None for _g in glyphs
+    )
+    low_bmp_maps = tuple(
+        _create_map(codepoints, (1 << 6) * _map_index, (1 << 6) * (_map_index+1))
+        for _map_index in range(32)
+    )
+    # TODO: high bmp, astral planes
+    high_bmp_maps = tuple(() for _map_index in range(16))
+    astral_maps = tuple(() for _map_index in range(6))
+    # get map indexes
+    # map 0 must be the empty map; add and don't count other empties
+    all_maps = ((),) + tuple(
+        (_MAP_ENTRY*len(_m))(*_m)
+        for _maps in (low_bmp_maps, high_bmp_maps, astral_maps, native_maps)
+        for _m in _maps
+        if _m
+    )
+    n_maps = len(all_maps)
+    map_index = 1
+    low_bmp_indexes, map_index = _get_map_indexes(low_bmp_maps, map_index)
+    high_bmp_indexes, map_index = _get_map_indexes(high_bmp_maps, map_index)
+    astral_indexes, map_index = _get_map_indexes(astral_maps, map_index)
+    native_indexes, map_index = _get_map_indexes(native_maps, map_index)
+    assert map_index == n_maps
+    headers_size = n_maps * _MAP_HEADER.size
+    # map table can always start at byte 0x100 (page 1, byte 0)
+    cumu_size = tuple(accumulate(
+        (len(_map) * _MAP_ENTRY.size for _map in all_maps),
+        initial=256 + headers_size
+    ))
+    map_headers = (n_maps * _MAP_HEADER)(*(
+        _MAP_HEADER(
+            map_offset_byte_address=_offset % 256,
+            map_offset_page_address=_offset // 256,
+            number_of_entries=len(_map),
+        )
+        for _map, _offset in zip(all_maps, cumu_size)
+    ))
+    # n_entries = sum(len(_map) for _map in all_maps)
+    # map_entries = (n_entries * _MAP_ENTRY)(*(
+    #     _entry for _map in all_maps for _entry in _map
+    # ))
+    # start glyph table at first page boundary after map data
+    glyph_table_page = ceildiv(cumu_size[-1], 256)
+    master_table = _MASTER_TABLE(
+        glyph_table_offset=glyph_table_page,
+        glyph_count=len(glyphs), # or only the ones we could index?
+        map_table_offset=1,
+        map_count=n_maps,
+        map_index_for_native=(le.uint16*4)(*native_indexes),
+        map_index_for_low_bmp=(le.uint16*32)(*low_bmp_indexes),
+        map_index_for_high_bmp=(le.uint16*16)(*high_bmp_indexes),
+        map_index_for_astrals=(le.uint16*6)(*astral_indexes),
+    )
+    #FIXME map data must not cross page boundary
+    return master_table, map_headers, all_maps
+
+
+def _write_u8m(u8m, outstream):
+    # FIXME can't seek if we output to stdout
+
+    # not sure about these 2 bytes
+    outstream.write(bytes(le.uint16(160)))
+    anchor = outstream.tell()
+
+    def _align(page, offs):
+        outstream.write(bytes(page * 256 + offs - outstream.tell() + anchor))
+
+    outstream.write(bytes(u8m.selection_header))
+    outstream.write(bytes(u8m.master_table))
+    _align(1, 0)
+    outstream.write(bytes(u8m.map_headers))
+    for mh, md in zip(u8m.map_headers, u8m.map_data):
+        _align(mh.map_offset_page_address, mh.map_offset_byte_address)
+        outstream.write(bytes(md))
+    _align(u8m.master_table.glyph_table_offset, 0)
+    outstream.write(bytes(u8m.glyph_records))
+    for gr, br, bd in zip(u8m.glyph_records, u8m.bitmap_records, u8m.bitmap_data):
+        _align(gr.bitmap_offset_page_address, gr.bitmap_offset_byte_address)
+        outstream.write(bytes(br))
+        outstream.write(bytes(bd))
