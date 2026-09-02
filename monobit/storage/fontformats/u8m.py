@@ -218,6 +218,9 @@ def _convert_u8m(u8m):
     # apply codepoints from nested map tables
     _apply_u8m_codepoint_maps(u8m, glyphs)
     # convert font metrics and metadata
+    # drop "notdef" first glyph, if indeed empty
+    if not glyphs[0].pixels and not glyphs[0].advance_width:
+        glyphs = glyphs[1:]
     return Font(
         glyphs,
         family=u8m.selection_header.family_name.rstrip(b'\0').decode('utf-8'),
@@ -247,27 +250,29 @@ def _convert_to_u8m(font):
         style=0,
         point_size=font.point_size,
     )
+    # first glyph must be notdef glyph
+    glyphs = (Glyph(), *font.glyphs)
     # create codepoint index maps
     (
         u8m.master_table,
         u8m.map_headers,
         u8m.map_data
-    ) = _create_u8m_codepoint_maps(font.glyphs)
+    ) = _create_u8m_codepoint_maps(glyphs)
     # remaining font metrics
     u8m.master_table.line_ascent = font.ascent
     u8m.master_table.line_descent = font.descent
     u8m.master_table.line_gap = font.leading
     u8m.master_table.line_height = font.line_height
     # convert glyphs
-    u8m.bitmap_data = tuple(_g.as_bytes(align='bit') for _g in font.glyphs)
-    u8m.bitmap_records = (_BITMAP_RECORD * len(font.glyphs))(*(
+    u8m.bitmap_data = tuple(_g.as_bytes(align='bit') for _g in glyphs)
+    u8m.bitmap_records = (_BITMAP_RECORD * len(glyphs))(*(
         _BITMAP_RECORD(
             y_offset=-_g.height-_g.shift_up,
             x_offset=_g.left_bearing,
             height=_g.height,
             width=_g.width,
         )
-        for _g in font.glyphs
+        for _g in glyphs
     ))
     # arrange bitmaps in pages
     # bitmap record may not cross page boundary
@@ -276,9 +281,9 @@ def _convert_to_u8m(font):
     # starting file position for bitmap data
     current = (
         u8m.master_table.glyph_table_offset * 256
-        + len(font.glyphs) * _GLYPH_RECORD.size
+        + len(glyphs) * _GLYPH_RECORD.size
     )
-    for glyph, length in zip(font.glyphs, lengths):
+    for glyph, length in zip(glyphs, lengths):
         page, addr = divmod(current, 256)
         if addr + length <= 256:
             current += length
