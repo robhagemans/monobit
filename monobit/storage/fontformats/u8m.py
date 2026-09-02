@@ -304,10 +304,11 @@ def _create_map(codepoints, lo_bound, hi_bound):
         if cp is None:
             continue
         if lo_bound <= cp < hi_bound:
+            cp -= lo_bound
             if first is None:
                 first, last = cp, cp
                 first_index, last_index = index, index
-            elif cp == last +1 and index == last_index + 1:
+            elif cp == last + 1 and index == last_index + 1:
                 last += 1
                 last_index += 1
             else:
@@ -343,7 +344,7 @@ def _create_u8m_codepoint_maps(glyphs):
         int(_g.codepoint) if _g.codepoint else None for _g in glyphs
     )
     native_maps = tuple(
-        _create_map(codepoints, (1 << 6) * _map_index, (1 << 6) * (_map_index+1))
+        _create_map(codepoints, (1<<6) * _map_index, (1<<6) * (_map_index+1))
         for _map_index in range(4)
     )
     # low_bmp map
@@ -352,7 +353,7 @@ def _create_u8m_codepoint_maps(glyphs):
         ord(_g.char) if _g.char and len(_g.char) == 1 else None for _g in glyphs
     )
     low_bmp_maps = tuple(
-        _create_map(codepoints, (1 << 6) * _map_index, (1 << 6) * (_map_index+1))
+        _create_map(codepoints, (1<<6) * _map_index, (1<<6) * (_map_index+1))
         for _map_index in range(32)
     )
     # TODO: high bmp, astral planes
