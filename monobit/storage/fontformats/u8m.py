@@ -350,7 +350,7 @@ def _create_u8m_codepoint_maps(glyphs):
         map = {
             _cp & 0x3f: _glyphindex
             for _cp, _glyphindex in cp_to_glyphindex.items()
-            if _cp>>6 == cp6
+            if (_cp>>6) == cp6
         }
         if not map:
             map_index = 0
@@ -358,11 +358,31 @@ def _create_u8m_codepoint_maps(glyphs):
             map_index = len(map_table)
             map_table.append(map)
         low_bmp_maps[cp6] = map_index
-    # -- high-bmp map: codepoints 0x7ff - 0xffff =: cp12<<12 + cp6 <<6 + cp0
+    # -- high-bmp map: codepoints 0x7ff - 0xffff =: cp12<<12 + cp6<<6 + cp0
     #    master table: [cp12 (*16) -> map index]
     #    map table: [map index -> {cp6 -> submap index}]
     #    map table: [submap index -> {cp0 -> glyph index}]
     high_bmp_maps = {}
+    for cp12 in range(16):
+        map = {}
+        for cp6 in range(64):
+            submap = {
+                _cp & 0x3f: _glyphindex
+                for _cp, _glyphindex in cp_to_glyphindex.items()
+                if (_cp>>6) == cp6 and (_cp>>12) == cp12 and (cp6 >= 32 or cp12 != 0)
+            }
+            if not submap:
+                map_index = 0
+            else:
+                map_index = len(map_table)
+                map_table.append(submap)
+            map[cp6 & 0x3f] = map_index
+        if not map:
+            map_index = 0
+        else:
+            map_index = len(map_table)
+            map_table.append(map)
+        high_bmp_maps[cp12] = map_index
     # -- astral-planes map: codepoints 0xffff - 0x17ffff =: cp18<<18 + scp12<<12 + cp6 <<6 + cp0
     #    master table: [cp18 (*6) -> map index]
     #    map table: [map index -> {cp12 -> submap index}]
