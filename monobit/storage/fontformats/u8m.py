@@ -308,30 +308,21 @@ def _create_map(cp_to_index):
     if not cp_to_index or not any(cp_to_index.values()):
         return _MAP_ENTRY.array(0)()
     entries = []
-    first = None
+    last_index = None
     for cp in sorted(cp_to_index.keys()):
         index = cp_to_index[cp]
         if not index:
             continue
-        if first is None:
-            first, last = cp, cp
-            first_index, last_index = index, index
-        elif cp == last + 1 and index == last_index + 1:
-            last += 1
+        if index-1 == last_index and cp-1 == entries[-1].last_index_value:
+            entries[-1].last_index_value += 1
             last_index += 1
         else:
             entries.append(_MAP_ENTRY(
-                first_index_value=first,
-                last_index_value=last,
-                glyph_submap_index=first_index,
+                first_index_value=cp,
+                last_index_value=cp,
+                glyph_submap_index=index,
             ))
-            first, last = cp, cp
-            first_index, last_index = index, index
-    entries.append(_MAP_ENTRY(
-        first_index_value=first,
-        last_index_value=last,
-        glyph_submap_index=first_index,
-    ))
+            last_index = index
     return (_MAP_ENTRY * len(entries))(*entries)
 
 
