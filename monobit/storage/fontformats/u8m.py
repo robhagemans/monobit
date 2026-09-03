@@ -245,7 +245,7 @@ def _convert_to_u8m(font):
         magic=_U8M_MAGIC,
         family_name_length=len(family),
         family_name=family,
-        family_id=font.get_property('u8m.family_id') or 0,
+        family_id=int(font.get_property('u8m.family_id')) or 0,
         # TODO calculate mac style (see NFNT?)
         style=0,
         point_size=font.point_size,
@@ -303,6 +303,7 @@ def _convert_to_u8m(font):
 
 
 def _create_map(codepoints, lo_bound, hi_bound):
+    """Create a glyph or submap map."""
     entries = []
     first, last, first_index, last_index = None, None, None, None
     for index, cp in enumerate(codepoints):
@@ -333,6 +334,7 @@ def _create_map(codepoints, lo_bound, hi_bound):
 
 
 def _get_map_indexes(maps, map_index):
+    """Give the non-empty maps an index."""
     indexes = []
     for map in maps:
         if map:
@@ -393,10 +395,6 @@ def _create_u8m_codepoint_maps(glyphs):
         )
         for _map, _offset in zip(all_maps, cumu_size)
     ))
-    # n_entries = sum(len(_map) for _map in all_maps)
-    # map_entries = (n_entries * _MAP_ENTRY)(*(
-    #     _entry for _map in all_maps for _entry in _map
-    # ))
     # start glyph table at first page boundary after map data
     glyph_table_page = ceildiv(cumu_size[-1], 256)
     master_table = _MASTER_TABLE(
