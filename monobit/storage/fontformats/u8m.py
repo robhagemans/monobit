@@ -311,6 +311,8 @@ def _create_map(cp_to_index):
     first, last, first_index, last_index = None, None, None, None
     for cp in sorted(cp_to_index.keys()):
         index = cp_to_index[cp]
+        if not index:
+            continue
         if first is None:
             first, last = cp, cp
             first_index, last_index = index, index
@@ -379,7 +381,7 @@ def _create_u8m_codepoint_maps(glyphs):
             else:
                 map_index = len(map_table)
                 map_table.append(submap)
-            map[cp6 & 0x3f] = map_index
+                map[cp6] = map_index
         if not map or all(_i == 0 for _i in map.values()):
             map_index = 0
         else:
