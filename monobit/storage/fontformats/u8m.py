@@ -305,10 +305,10 @@ def _convert_to_u8m(font):
 
 def _create_map(cp_to_index):
     """Create a glyph or submap map based on dictionary."""
-    if not cp_to_index:
+    if not cp_to_index or not any(cp_to_index.values()):
         return _MAP_ENTRY.array(0)()
     entries = []
-    first, last, first_index, last_index = None, None, None, None
+    first = None
     for cp in sorted(cp_to_index.keys()):
         index = cp_to_index[cp]
         if not index:
@@ -325,13 +325,13 @@ def _create_map(cp_to_index):
                 last_index_value=last,
                 glyph_submap_index=first_index,
             ))
-            first, last, first_index, last_index = None, None, None, None
-    if first is not None:
-        entries.append(_MAP_ENTRY(
-            first_index_value=first,
-            last_index_value=last,
-            glyph_submap_index=first_index,
-        ))
+            first, last = cp, cp
+            first_index, last_index = index, index
+    entries.append(_MAP_ENTRY(
+        first_index_value=first,
+        last_index_value=last,
+        glyph_submap_index=first_index,
+    ))
     return (_MAP_ENTRY * len(entries))(*entries)
 
 
