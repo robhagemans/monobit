@@ -354,12 +354,10 @@ def _create_u8m_codepoint_maps(glyphs):
             for _cp, _glyphindex in cp_to_glyphindex.items()
             if (_cp>>6) == cp6
         }
-        if not map or all(_i == 0 for _i in map.values()):
-            map_index = 0
-        else:
+        if map:
             map_index = len(map_table)
             map_table.append(map)
-        low_bmp_maps[cp6] = map_index
+            low_bmp_maps[cp6] = map_index
     # -- high-bmp map: codepoints 0x7ff - 0xffff =: cp12<<12 + cp6<<6 + cp0
     #    master table: [cp12 (*16) -> map index]
     #    map table: [map index -> {cp6 -> submap index}]
@@ -376,18 +374,14 @@ def _create_u8m_codepoint_maps(glyphs):
                     and (cp6 >= 32 or cp12 != 0)
                 )
             }
-            if not submap or all(_i == 0 for _i in submap.values()):
-                map_index = 0
-            else:
+            if submap:
                 map_index = len(map_table)
                 map_table.append(submap)
                 map[cp6] = map_index
-        if not map or all(_i == 0 for _i in map.values()):
-            map_index = 0
-        else:
+        if map:
             map_index = len(map_table)
             map_table.append(map)
-        high_bmp_maps[cp12] = map_index
+            high_bmp_maps[cp12] = map_index
     # -- astral-planes map: codepoints 0xffff - 0x17ffff =: cp18<<18 + scp12<<12 + cp6 <<6 + cp0
     #    master table: [cp18 (*6) -> map index]
     #    map table: [map index -> {cp12 -> submap index}]
@@ -407,24 +401,18 @@ def _create_u8m_codepoint_maps(glyphs):
                         and (cp12 >= 16 or cp18 != 0)
                     )
                 }
-                if not subsubmap or all(_i == 0 for _i in subsubmap.values()):
-                    map_index = 0
-                else:
+                if subsubmap:
                     map_index = len(map_table)
                     map_table.append(subsubmap)
                     submap[cp6] = map_index
-            if not submap or all(_i == 0 for _i in submap.values()):
-                map_index = 0
-            else:
+            if submap:
                 map_index = len(map_table)
                 map_table.append(submap)
                 map[cp12] = map_index
-        if not map or all(_i == 0 for _i in map.values()):
-            map_index = 0
-        else:
+        if map:
             map_index = len(map_table)
             map_table.append(map)
-        astral_maps[cp18] = map_index
+            astral_maps[cp18] = map_index
     # -- native map: native codepoints 0x00--0xff =: cp6<<6 + cp0
     #    master table: [cp6 (*32) -> map index]
     #    map table: [map index -> {cp0 -> glyph index}]
@@ -438,15 +426,16 @@ def _create_u8m_codepoint_maps(glyphs):
             for _cp, _glyphindex in native_cp_to_glyphindex.items()
             if _cp>>6 == cp6
         }
-        if not map:
-            map_index = 0
-        else:
+        if map:
             map_index = len(map_table)
             map_table.append(map)
-        native_maps[cp6] = map_index
+            native_maps[cp6] = map_index
     # convert maps to U8/M data structures
     all_maps = tuple(_create_map(_map_dict) for _map_dict in map_table)
-    native_indexes = [low_bmp_maps[_i] for _i in range(4)]
+    low_bmp_indexes = tuple(low_bmp_maps.get(_i, 0) for _i in range(32))
+    high_bmp_indexes = tuple(high_bmp_maps.get(_i, 0) for _i in range(16))
+    astral_indexes = tuple(astral_maps.get(_i, 0) for _i in range(6))
+    native_indexes = tuple(native_maps.get(_i, 0) for _i in range(4))
     n_maps = len(all_maps)
     headers_size = n_maps * _MAP_HEADER.size
     # map table can always start at byte 0x100 (page 1, byte 0)
@@ -469,10 +458,10 @@ def _create_u8m_codepoint_maps(glyphs):
         glyph_count=len(glyphs), # or only the ones we could index?
         map_table_offset=1,
         map_count=n_maps,
-        map_index_for_native=(le.uint16*4)(*native_maps.values()),
-        map_index_for_low_bmp=(le.uint16*32)(*low_bmp_maps.values()),
-        map_index_for_high_bmp=(le.uint16*16)(*high_bmp_maps.values()),
-        map_index_for_astrals=(le.uint16*6)(*astral_maps.values()),
+        map_index_for_native=(le.uint16*4)(*native_indexes),
+        map_index_for_low_bmp=(le.uint16*32)(*low_bmp_indexes),
+        map_index_for_high_bmp=(le.uint16*16)(*high_bmp_indexes),
+        map_index_for_astrals=(le.uint16*6)(*astral_indexes),
     )
     #FIXME map data must not cross page boundary
     return master_table, map_headers, all_maps
