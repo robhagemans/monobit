@@ -369,7 +369,10 @@ def _create_u8m_codepoint_maps(glyphs):
             submap = {
                 _cp & 0x3f: _glyphindex
                 for _cp, _glyphindex in cp_to_glyphindex.items()
-                if (_cp>>6) == cp6 and (_cp>>12) == cp12 and (cp6 >= 32 or cp12 != 0)
+                if (
+                    (_cp>>12, (_cp>>6)&0x3f) == (cp12, cp6)
+                    and (cp6 >= 32 or cp12 != 0)
+                )
             }
             if not submap or all(_i == 0 for _i in submap.values()):
                 map_index = 0
