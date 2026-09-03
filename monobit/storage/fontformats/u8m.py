@@ -7,6 +7,7 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from itertools import accumulate
+from unicodedata import normalize
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le
@@ -302,85 +303,95 @@ def _convert_to_u8m(font):
     return u8m
 
 
-def _create_map(codepoints, lo_bound, hi_bound):
-    """Create a glyph or submap map."""
+def _create_map(cp_to_index):
+    """Create a glyph or submap map based on dictionary."""
+    if not cp_to_index:
+        return _MAP_ENTRY.array(0)()
     entries = []
     first, last, first_index, last_index = None, None, None, None
-    for index, cp in enumerate(codepoints):
-        if cp is None:
-            continue
-        if lo_bound <= cp < hi_bound:
-            cp -= lo_bound
-            if first is None:
-                first, last = cp, cp
-                first_index, last_index = index, index
-            elif cp == last + 1 and index == last_index + 1:
-                last += 1
-                last_index += 1
-            else:
-                entries.append(_MAP_ENTRY(
-                    first_index_value=first,
-                    last_index_value=last,
-                    glyph_submap_index=first_index,
-                ))
-                first, last, first_index, last_index = None, None, None, None
+    for cp in sorted(cp_to_index.keys()):
+        index = cp_to_index[cp]
+        if first is None:
+            first, last = cp, cp
+            first_index, last_index = index, index
+        elif cp == last + 1 and index == last_index + 1:
+            last += 1
+            last_index += 1
+        else:
+            entries.append(_MAP_ENTRY(
+                first_index_value=first,
+                last_index_value=last,
+                glyph_submap_index=first_index,
+            ))
+            first, last, first_index, last_index = None, None, None, None
     if first is not None:
         entries.append(_MAP_ENTRY(
             first_index_value=first,
             last_index_value=last,
             glyph_submap_index=first_index,
         ))
-    return tuple(entries)
-
-
-def _get_map_indexes(maps, map_index):
-    """Give the non-empty maps an index."""
-    indexes = []
-    for map in maps:
-        if map:
-            indexes.append(map_index)
-            map_index += 1
-        else:
-            indexes.append(0)
-    return indexes, map_index
+    return (_MAP_ENTRY * len(entries))(*entries)
 
 
 def _create_u8m_codepoint_maps(glyphs):
-    # native map (codepoints)
-    codepoints = tuple(
-        int(_g.codepoint) if _g.codepoint else None for _g in glyphs
-    )
-    native_maps = tuple(
-        _create_map(codepoints, (1<<6) * _map_index, (1<<6) * (_map_index+1))
-        for _map_index in range(4)
-    )
-    # low_bmp map
-    # TODO: NFC the char labels? or do we already do that?
-    codepoints = tuple(
-        ord(_g.char) if _g.char and len(_g.char) == 1 else None for _g in glyphs
-    )
-    low_bmp_maps = tuple(
-        _create_map(codepoints, (1<<6) * _map_index, (1<<6) * (_map_index+1))
-        for _map_index in range(32)
-    )
-    # TODO: high bmp, astral planes
-    high_bmp_maps = tuple(() for _map_index in range(16))
-    astral_maps = tuple(() for _map_index in range(6))
-    # get map indexes
-    # map 0 must be the empty map; add and don't count other empties
-    all_maps = ((),) + tuple(
-        (_MAP_ENTRY*len(_m))(*_m)
-        for _maps in (low_bmp_maps, high_bmp_maps, astral_maps, native_maps)
-        for _m in _maps
-        if _m
-    )
+    """Construct nested U8/M codepoint maps."""
+    # construct unicode to glyph index dict
+    chars = (normalize('NFC', _g.char) if _g.char else '' for _g in glyphs)
+    cp_to_glyphindex = {
+        ord(_char): _i for _i, _char in enumerate(chars) if len(_char) == 1
+    }
+    # map 0 must be the empty map
+    map_table = [{}]
+    # -- low-bmp map: codepoints 0x000--0x7ff =: cp6<<6 + cp0
+    #    master table: [cp6 (*32) -> map index]
+    #    map table: [map index -> {cp0 -> glyph index}]
+    low_bmp_maps = {}
+    for cp6 in range(32):
+        map = {
+            _cp & 0x3f: _glyphindex
+            for _cp, _glyphindex in cp_to_glyphindex.items()
+            if _cp>>6 == cp6
+        }
+        if not map:
+            map_index = 0
+        else:
+            map_index = len(map_table)
+            map_table.append(map)
+        low_bmp_maps[cp6] = map_index
+    # -- high-bmp map: codepoints 0x7ff - 0xffff =: cp12<<12 + cp6 <<6 + cp0
+    #    master table: [cp12 (*16) -> map index]
+    #    map table: [map index -> {cp6 -> submap index}]
+    #    map table: [submap index -> {cp0 -> glyph index}]
+    high_bmp_maps = {}
+    # -- astral-planes map: codepoints 0xffff - 0x17ffff =: cp18<<18 + scp12<<12 + cp6 <<6 + cp0
+    #    master table: [cp18 (*6) -> map index]
+    #    map table: [map index -> {cp12 -> submap index}]
+    #    map table: [map index -> {cp6 -> subsubmap index}]
+    #    map table: [subsubmap index -> {cp0 -> glyph index}]
+    astral_maps = {}
+    # -- native map: native codepoints 0x00--0xff =: cp6<<6 + cp0
+    #    master table: [cp6 (*32) -> map index]
+    #    map table: [map index -> {cp0 -> glyph index}]
+    native_cp_to_glyphindex = {
+        int(_g.codepoint): _i for _i, _g in enumerate(glyphs) if _g.codepoint
+    }
+    native_maps = {}
+    for cp6 in range(4):
+        map = {
+            _cp & 0x3f: _glyphindex
+            for _cp, _glyphindex in native_cp_to_glyphindex.items()
+            if _cp>>6 == cp6
+        }
+        if not map:
+            map_index = 0
+        else:
+            map_index = len(map_table)
+            map_table.append(map)
+        native_maps[cp6] = map_index
+    # convert maps to U8/M data structures
+    all_maps = tuple(_create_map(_map_dict) for _map_dict in map_table)
+    native_indexes = [low_bmp_maps[_i] for _i in range(4)]
     n_maps = len(all_maps)
-    map_index = 1
-    low_bmp_indexes, map_index = _get_map_indexes(low_bmp_maps, map_index)
-    high_bmp_indexes, map_index = _get_map_indexes(high_bmp_maps, map_index)
-    astral_indexes, map_index = _get_map_indexes(astral_maps, map_index)
-    native_indexes, map_index = _get_map_indexes(native_maps, map_index)
-    assert map_index == n_maps
     headers_size = n_maps * _MAP_HEADER.size
     # map table can always start at byte 0x100 (page 1, byte 0)
     cumu_size = tuple(accumulate(
@@ -402,10 +413,10 @@ def _create_u8m_codepoint_maps(glyphs):
         glyph_count=len(glyphs), # or only the ones we could index?
         map_table_offset=1,
         map_count=n_maps,
-        map_index_for_native=(le.uint16*4)(*native_indexes),
-        map_index_for_low_bmp=(le.uint16*32)(*low_bmp_indexes),
-        map_index_for_high_bmp=(le.uint16*16)(*high_bmp_indexes),
-        map_index_for_astrals=(le.uint16*6)(*astral_indexes),
+        map_index_for_native=(le.uint16*4)(*native_maps.values()),
+        map_index_for_low_bmp=(le.uint16*32)(*low_bmp_maps.values()),
+        map_index_for_high_bmp=(le.uint16*16)(*high_bmp_maps.values()),
+        map_index_for_astrals=(le.uint16*6)(*astral_maps.values()),
     )
     #FIXME map data must not cross page boundary
     return master_table, map_headers, all_maps
