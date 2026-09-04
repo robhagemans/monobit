@@ -388,6 +388,12 @@ def _create_u8m_codepoint_maps(glyphs):
     #    map table: [map index -> {cp12 -> submap index}]
     #    map table: [map index -> {cp6 -> subsubmap index}]
     #    map table: [subsubmap index -> {cp0 -> glyph index}]
+
+    astral_cp_to_glyphindex = {
+        (_cp>>18, (_cp>>12)&0x3f, (_cp>>6)&0x3f, _cp&0x3f): _glyphindex
+        for _cp, _glyphindex in cp_to_glyphindex.items()
+        if _cp > 0xffff
+    }
     astral_maps = {}
     for cp18 in range(6):
         map = {}
@@ -395,11 +401,11 @@ def _create_u8m_codepoint_maps(glyphs):
             submap = {}
             for cp6 in range(64):
                 subsubmap = {
-                    _cp & 0x3f: _glyphindex
-                    for _cp, _glyphindex in cp_to_glyphindex.items()
+                    _cp0: _glyphindex
+                    for (_cp18, _cp12, _cp6, _cp0), _glyphindex in astral_cp_to_glyphindex.items()
                     if (
-                        (_cp>>18, (_cp>>12)&0x3f, (_cp>>6)&0x3f) == (cp18, cp12, cp6)
-                        and (cp12 >= 16 or cp18 != 0)
+                        (_cp18, _cp12, _cp6) == (cp18, cp12, cp6)
+                        # and (cp12 >= 16 or cp18 != 0)
                     )
                 }
                 if subsubmap:
