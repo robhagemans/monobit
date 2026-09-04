@@ -328,11 +328,21 @@ def _create_map(cp_to_index):
 
 def _create_u8m_codepoint_maps(glyphs):
     """Construct nested U8/M codepoint maps."""
-    # construct unicode to glyph index dict
-    chars = (normalize('NFC', _g.char) if _g.char else '' for _g in glyphs)
-    cp_to_glyphindex = {
-        ord(_char): _i for _i, _char in enumerate(chars) if len(_char) == 1
+    # construct unicode to glyph index dict.
+    # attempt to preserve multi-char grapheme sequences if 1-char NFC is available
+    # but existing 1-char labels take precedence
+    chars = {
+        ord(_g.char): _i
+        for _i, _g in enumerate(glyphs) if len(_g.char) == 1
     }
+    multichars = (
+        (normalize('NFC', _g.char), _i)
+        for _i, _g in enumerate(glyphs) if len(_g.char) > 1
+    )
+    cp_to_glyphindex = (
+        {ord(_c): _i for _c, _i in multichars if len(_c) == 1}
+        | chars
+    )
     # map 0 must be the empty map
     map_table = [{}]
     # -- low-bmp map: codepoints 0x000--0x7ff =: cp6<<6 + cp0
