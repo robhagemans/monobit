@@ -243,16 +243,16 @@ class TestExport(BaseTester):
         self._export_8x16_cp437(format='cpi', save_kwargs=dict(version='DRFONT'))
 
     def test_export_cp(self):
-        """Test exporting kbd CP files"""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='FONT'))
+        """Test exporting bare FONT codepage (kbd .cp) files"""
+        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='FONT'))
 
     def test_export_cp_nt(self):
         """Test exporting bare FONT.NT codepage."""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='FONT.NT'))
+        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='FONT.NT'))
 
     def test_export_cp_drfont(self):
         """Test exporting bare DRFONT codepage."""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='DRFONT'))
+        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='DRFONT'))
 
     # Figlet
 

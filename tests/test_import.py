@@ -504,7 +504,7 @@ class TestImport(BaseTester):
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
     def test_import_cp(self):
-        """Test importing kbd CP files"""
+        """Test importing DOS codepage files"""
         fnt_file = self.font_path / '8x16.cp'
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
