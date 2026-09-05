@@ -87,14 +87,15 @@ Conversion
 Some of the most common font formats take the form of "resource bundles", where a single file can contain multiple resources.
 The supported feature set will depend on the type of resource included. Some resource formats, Apple `nfnt` and TrueType/OpenType `sfnt` in particular, are supported by bundle formats from different vendors. Many resource formats also occur as standalone files; for some (such as TrueType/OpenType) this is the most common way they are distributed.
 
-| Format                | Short Name    | Typical Extension      | Read  | Write | Type   | Supported resources             |
-|-----------------------|---------------|------------------------|-------|-------|--------|---------------------------------|
-| Amiga Font Contents   | `amiga-fc`    | `.font`                |&check;|&check;| binary | `amiga`                         |
-| GEOS Convert file     | `geos`        | `.cvt`                 |&check;|&check;| binary | `vlir`                          |
-| LISA font library     | `lisa`        | `.bin`                 |&check;|       | binary | `nfnt`                          |
-| MacOS resource fork   | `mac`         | `.dfont` `.suit`       |&check;|&check;| binary | `nfnt`, `sfnt`, `fbit`, `hfnt`  |
-| Windows or OS/2 font  | `mzfon`       | `.fon` `.exe` `.dll`   |&check;| (1)   | binary | `win`, `gpi`, `sfnt`            |
-| PalmOS database       | `palm`        | `.pdb`                 |&check;|       | binary | `nfnt`, `nfnt2`, `afnx`         |
+| Format                   | Short Name | Typical Extension      | Read  | Write | Type   | Supported resources             |
+|--------------------------|------------|------------------------|-------|-------|--------|---------------------------------|
+| Amiga Font Contents      | `amiga-fc` | `.font`                |&check;|&check;| binary | `amiga`                         |
+| DOS Codepage Information | `cpi`      | `.cpi`                 |&check;|&check;| binary | `cp`                            |
+| GEOS Convert file        | `geos`     | `.cvt`                 |&check;|&check;| binary | `vlir`                          |
+| LISA font library        | `lisa`     | `.bin`                 |&check;|       | binary | `nfnt`                          |
+| MacOS resource fork      | `mac`      | `.dfont` `.suit`       |&check;|&check;| binary | `nfnt`, `sfnt`, `fbit`, `hfnt`  |
+| Windows or OS/2 font     | `mzfon`    | `.fon` `.exe` `.dll`   |&check;| (1)   | binary | `win`, `gpi`, `sfnt`            |
+| PalmOS database          | `palm`     | `.pdb`                 |&check;|       | binary | `nfnt`, `nfnt2`, `afnx`         |
 | PalmOS resource collection | `palm-prc` | `.prc`               |&check;|       | binary | `nfnt`, `nfnt2`, `afnx`, `grfn` |
 | TrueType/OpenType collection | `ttcf` | `.otc` `.ttc` [F] [**] |&check;|&check;| binary | `sfnt`                          |
 
@@ -187,7 +188,7 @@ If the abbreviation is bracketed, the format supports this but it is not impleme
 | 64C                   | `64c`      | `.64c`                      |&check;|&check;| binary | 8x8  | -        |
 | +3DOS                 | `plus3dos` |                             |&check;|&check;| binary | 8x8  | -        |
 | BBC soft font         | `bbc`      |                             |&check;|&check;| esc    | 8x8  | -        |
-| Codepage Information  | `cpi`      | `.cpi`                      |&check;|&check;| binary | 8xN  | M SB     |
+| FONT / DRFONT / FONT.NT resource | `cp` | `.cp`                  |&check;|&check;| binary | 8xN  | SB       |
 | Dashen                | `dashen`   | `.pft`                      |&check;|       | binary | any  | -        |
 | DEC DRCS soft font    | `dec`      |                             |&check;|&check;| esc    | >4xN | -        |
 | Dr. Halo / Dr. Genius | `drhalo`   | `.fon`                      |&check;|       | binary | any  | -        |
@@ -201,7 +202,6 @@ If the abbreviation is bracketed, the format supports this but it is not impleme
 | Apple HFNT resource   | `hfnt`     |                             |&check;|       | binary | 8N*8N | MB      |
 | AppleSoft Toolkit Hi-Res Character Generator | `hrcg` | `.set`   |&check;|&check;| binary | 8*7 (6) |       |
 | GNU Unifont           | `unifont`  | `.hex`                      |&check;|&check;| coded  | 8x16 (strict) 8xN<=32 (ext) | MC U (strict) MC US (ext) |
-| Bare codepage         | `kbd`      | `.cp`                       |&check;|&check;| binary | 8xN  | SB       |
 | LETAFONT loader       | `letafont` | `.com`                      |&check;|       | binary | 8x8  | -        |
 | REXXCOM Font Mania    | `mania`    | `.com`                      |&check;|       | binary | 8xN  | -        |
 | NetBSD wsfont C header| `netbsd`   | `.h`                        |&check;|&check;| coded  | any  | M SB     |

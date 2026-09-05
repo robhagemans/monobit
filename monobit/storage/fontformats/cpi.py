@@ -45,7 +45,7 @@ def load_cpi(instream, pointer_type:str='auto'):
 
 
 @loaders.register(
-    name='kbd',
+    name='cp',
     patterns=('*.cp',),
     magic=(
         # FONT
