@@ -343,9 +343,9 @@ def _create_u8m_codepoint_maps(glyphs):
         {ord(_c): _i for _c, _i in multichars if len(_c) == 1}
         | chars
     )
+    # -- low-bmp map: codepoints 0x000--0x7ff =: cp6<<6 + cp0
     # map 0 must be the empty map
     map_table = [{}]
-    # -- low-bmp map: codepoints 0x000--0x7ff =: cp6<<6 + cp0
     #    master table: [cp6 (*32) -> map index]
     #    map table: [map index -> {cp0 -> glyph index}]
     low_bmp_maps = {}
@@ -359,20 +359,27 @@ def _create_u8m_codepoint_maps(glyphs):
             map_index = len(map_table)
             map_table.append(map)
             low_bmp_maps[cp6] = map_index
-    # -- high-bmp map: codepoints 0x7ff - 0xffff =: cp12<<12 + cp6<<6 + cp0
+    # -- high-bmp map: codepoints 0x800 - 0xffff =: cp12<<12 + cp6<<6 + cp0
     #    master table: [cp12 (*16) -> map index]
     #    map table: [map index -> {cp6 -> submap index}]
     #    map table: [submap index -> {cp0 -> glyph index}]
+    high_cp_to_glyphindex = {
+        (_cp>>12, (_cp>>6)&0x3f, _cp&0x3f): _glyphindex
+        for _cp, _glyphindex in cp_to_glyphindex.items()
+        if 0x7ff < _cp <= 0xffff
+    }
+    cp12s = set(_cp12 for _cp12, _, _ in high_cp_to_glyphindex)
+    cp6s =  set(_cp6 for _, _cp6, _ in high_cp_to_glyphindex)
     high_bmp_maps = {}
-    for cp12 in range(16):
+    for cp12 in cp12s:
         map = {}
-        for cp6 in range(64):
+        for cp6 in cp6s:
             submap = {
-                _cp & 0x3f: _glyphindex
-                for _cp, _glyphindex in cp_to_glyphindex.items()
+                _cp0: _glyphindex
+                for (_cp12, _cp6, _cp0), _glyphindex in high_cp_to_glyphindex.items()
                 if (
-                    (_cp>>12, (_cp>>6)&0x3f) == (cp12, cp6)
-                    and (cp6 >= 32 or cp12 != 0)
+                    (_cp12, _cp6) == (cp12, cp6)
+                    # and (cp6 >= 32 or cp12 != 0)
                 )
             }
             if submap:
