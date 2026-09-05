@@ -244,6 +244,10 @@ def mac_style_name(font_style):
         _tag for _bit, _tag in STYLE_MAP.items() if font_style & (1 << _bit)
     )
 
+def mac_style_from_name(style_name):
+    """Get font style from human-readable representation."""
+    return sum((1<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
+
 
 ###############################################################################
 # PostScript name

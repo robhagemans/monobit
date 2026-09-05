@@ -525,6 +525,24 @@ class TestExport(BaseTester):
         """Test exporting PFF2 files."""
         self._export_4x6(format='pff2')
 
+    # U8/M
+
+    def test_export_u8m(self):
+        """Test exporting U8/M files."""
+        self._export_4x6(format='u8m')
+
+    def test_export_u8m_high(self):
+        """Test exporting U8/M files including high-BMP and astral planes."""
+        chars = chr(0x20), chr(0xff), chr(0x1cc), chr(0xfc0d), chr(0x1fbc6)
+        font = monobit.Font(monobit.Glyph(char=_c, codepoint=_cp) for _cp, _c in enumerate(chars))
+        file = self.temp_path / f'test.u8m'
+        monobit.save(font, file, format='u8m')
+        font, *_ = monobit.load(file, format='u8m')
+        self.assertEqual(len(font.glyphs), 5)
+        for i, c in enumerate(chars):
+            self.assertEqual(font.glyphs[i].char, c)
+            self.assertEqual(font.glyphs[i].codepoint, bytes([i]))
+
     # BMF
 
     def test_export_bmf1(self):
