@@ -351,17 +351,23 @@ def _create_u8m_codepoint_maps(glyphs):
         {ord(_c): _i for _c, _i in multichars if len(_c) == 1}
         | chars
     )
-    # -- low-bmp map: codepoints 0x000--0x7ff =: cp6<<6 + cp0
     # map 0 must be the empty map
     map_table = [{}]
+    # -- low-bmp map: codepoints 0x000--0x7ff =: cp6<<6 + cp0
     #    master table: [cp6 (*32) -> map index]
     #    map table: [map index -> {cp0 -> glyph index}]
+    low_cp_to_glyphindex = {
+        (_cp>>6, _cp&0x3f): _glyphindex
+        for _cp, _glyphindex in cp_to_glyphindex.items()
+        if _cp <= 0x7ff
+    }
+    cp6s =  set(_cp6 for _cp6, _ in low_cp_to_glyphindex)
     low_bmp_maps = {}
-    for cp6 in range(32):
+    for cp6 in cp6s:
         map = {
-            _cp & 0x3f: _glyphindex
-            for _cp, _glyphindex in cp_to_glyphindex.items()
-            if (_cp>>6) == cp6
+            _cp0: _glyphindex
+            for (_cp6, _cp0), _glyphindex in low_cp_to_glyphindex.items()
+            if _cp6 == cp6
         }
         _append_map(map_table, low_bmp_maps, map, cp6)
     # -- high-bmp map: codepoints 0x800 - 0xffff =: cp12<<12 + cp6<<6 + cp0
@@ -419,17 +425,20 @@ def _create_u8m_codepoint_maps(glyphs):
     native_cp_to_glyphindex = {
         int(_g.codepoint): _i for _i, _g in enumerate(glyphs) if _g.codepoint
     }
+    native_cp_to_glyphindex = {
+        (_cp>>6, _cp&0x3f): _glyphindex
+        for _cp, _glyphindex in native_cp_to_glyphindex.items()
+        if _cp <= 0xff
+    }
+    cp6s =  set(_cp6 for _cp6, _ in native_cp_to_glyphindex)
     native_maps = {}
-    for cp6 in range(4):
+    for cp6 in cp6s:
         map = {
-            _cp & 0x3f: _glyphindex
-            for _cp, _glyphindex in native_cp_to_glyphindex.items()
-            if _cp>>6 == cp6
+            _cp0: _glyphindex
+            for (_cp6, _cp0), _glyphindex in native_cp_to_glyphindex.items()
+            if _cp6 == cp6
         }
-        if map:
-            map_index = len(map_table)
-            map_table.append(map)
-            native_maps[cp6] = map_index
+        _append_map(map_table, native_maps, map, cp6)
     # convert maps to U8/M data structures
     all_maps = tuple(_create_map(_map_dict) for _map_dict in map_table)
     low_bmp_indexes = tuple(low_bmp_maps.get(_i, 0) for _i in range(32))
