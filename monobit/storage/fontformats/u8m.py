@@ -25,7 +25,7 @@ _U8M_MAGIC = b'U8/M'
 @loaders.register(
     name='u8m',
     patterns=('*.u8m',),
-    magic=(Magic.offset(2) + _U8M_MAGIC,)
+    magic=(_U8M_MAGIC, Magic.offset(2) + _U8M_MAGIC)
 )
 def load_u8m(instream):
     """Load font from U8/M file."""
@@ -35,18 +35,23 @@ def load_u8m(instream):
 
 
 @savers.register(linked=load_u8m)
-def save_u8m(fonts, outstream):
-    """Save font to U8/M file."""
+def save_u8m(fonts, outstream, load_address:int=None):
+    """
+    Save font to U8/M file.
+
+    load_address: load address, stored as little-endian short at top of file (default: omit)
+    """
     font = ensure_single(fonts)
     font = ensure_levels(font, 2)
     font = font.label().label(codepoint_from=font.encoding)
     u8m = _convert_to_u8m(font)
-    _write_u8m(u8m, outstream)
+    _write_u8m(u8m, outstream, load_address)
 
 
 ###############################################################################
 # U8/M file format
 # https://github.com/kreativekorp/u8m
+# see also https://github.com/kreativekorp/bitsnpicas
 
 _SELECTION_HEADER = le.Struct(
     magic='4s',
@@ -105,8 +110,9 @@ _BITMAP_RECORD = le.Struct(
 
 def _read_u8m(instream):
     """Read a U8/M file."""
-    # unknown word, usually 160 ? maybe a local dos (e.g. c64) header?
-    unknown = le.uint16.read_from(instream)
+    if instream.peek(4)[:4] != _U8M_MAGIC:
+        # load address (40960 for x16 sample files)
+        load_address = le.uint16.read_from(instream)
     anchor = instream.tell()
     u8m = Props()
     u8m.selection_header = _SELECTION_HEADER.read_from(instream)
@@ -238,10 +244,10 @@ def _convert_u8m(u8m):
 ###############################################################################
 # U8/M writer
 
-def _write_u8m(u8m, outstream):
+def _write_u8m(u8m, outstream, load_address):
     """Write out a U8/M data structure to file."""
-    # not sure about these 2 bytes
-    outstream.write(bytes(le.uint16(160)))
+    if load_address is not None:
+        outstream.write(bytes(le.uint16(load_address)))
 
     pos = 0
 
