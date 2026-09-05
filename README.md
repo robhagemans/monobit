@@ -152,6 +152,7 @@ The supported feature set will depend on the type of resource included. Some res
 | SFont                 | `sfont`    |                             |&check;|&check;| image  | G C      |
 | TrueType/OpenType     | `sfnt`     | `.otb` `.ttf` `.otf` [F] [**] |&check;|&check;| binary | M US SB MB O K V G C |
 | SymbOS font           | `symbos`   | `.fnt`                      |&check;|&check;| binary | -        |
+| UTF-8 for Microcomputers | `u8m`   | `.u8m`                      |&check;|&check;| binary | U O      |
 | vfont                 | `vfont`    |                             |&check;|&check;| binary | O        |
 | GEOS font resource    | `vlir`     |                             |&check;|&check;| binary | O        |
 | Windows font resource | `win`      | `.fnt`                      |&check;|&check;| binary | SB       |
