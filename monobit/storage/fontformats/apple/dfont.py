@@ -19,7 +19,7 @@ from monobit.base import NOT_SET, FileFormatError
 from monobit.encoding import EncodingName
 from monobit.core import Pack
 
-from ..common import MAC_ENCODING, STYLE_MAP
+from ..common import MAC_ENCODING, STYLE_MAP, mac_style_from_name
 from ..sfnt import load_sfnt, save_sfnt
 from .nfnt import (
     extract_nfnt, convert_nfnt,
@@ -607,11 +607,6 @@ def _hash_to_id(family_name, script):
     hash %= (high-low)
     hash += low
     return hash
-
-
-def mac_style_from_name(style_name):
-    """Get font style from human-readable representation."""
-    return sum((1<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
 
 
 def _group_families(fonts):
