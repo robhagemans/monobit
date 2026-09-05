@@ -326,6 +326,14 @@ def _create_map(cp_to_index):
     return (_MAP_ENTRY * len(entries))(*entries)
 
 
+def _append_map(map_table, map, submap, cp_index):
+    """Append a submap to the table and insert its index to a map."""
+    if submap:
+        map_index = len(map_table)
+        map_table.append(submap)
+        map[cp_index] = map_index
+
+
 def _create_u8m_codepoint_maps(glyphs):
     """Construct nested U8/M codepoint maps."""
     # construct unicode to glyph index dict.
@@ -355,10 +363,7 @@ def _create_u8m_codepoint_maps(glyphs):
             for _cp, _glyphindex in cp_to_glyphindex.items()
             if (_cp>>6) == cp6
         }
-        if map:
-            map_index = len(map_table)
-            map_table.append(map)
-            low_bmp_maps[cp6] = map_index
+        _append_map(map_table, low_bmp_maps, map, cp6)
     # -- high-bmp map: codepoints 0x800 - 0xffff =: cp12<<12 + cp6<<6 + cp0
     #    master table: [cp12 (*16) -> map index]
     #    map table: [map index -> {cp6 -> submap index}]
@@ -377,19 +382,10 @@ def _create_u8m_codepoint_maps(glyphs):
             submap = {
                 _cp0: _glyphindex
                 for (_cp12, _cp6, _cp0), _glyphindex in high_cp_to_glyphindex.items()
-                if (
-                    (_cp12, _cp6) == (cp12, cp6)
-                    # and (cp6 >= 32 or cp12 != 0)
-                )
+                if (_cp12, _cp6) == (cp12, cp6)
             }
-            if submap:
-                map_index = len(map_table)
-                map_table.append(submap)
-                map[cp6] = map_index
-        if map:
-            map_index = len(map_table)
-            map_table.append(map)
-            high_bmp_maps[cp12] = map_index
+            _append_map(map_table, map, submap, cp6)
+        _append_map(map_table, high_bmp_maps, map, cp12)
     # -- astral-planes map: codepoints 0x10000 - 0x17ffff =: cp18<<18 + scp12<<12 + cp6 <<6 + cp0
     #    master table: [cp18 (*6) -> map index]
     #    map table: [map index -> {cp12 -> submap index}]
@@ -412,23 +408,11 @@ def _create_u8m_codepoint_maps(glyphs):
                 subsubmap = {
                     _cp0: _glyphindex
                     for (_cp18, _cp12, _cp6, _cp0), _glyphindex in astral_cp_to_glyphindex.items()
-                    if (
-                        (_cp18, _cp12, _cp6) == (cp18, cp12, cp6)
-                        # and (cp12 >= 16 or cp18 != 0)
-                    )
+                    if (_cp18, _cp12, _cp6) == (cp18, cp12, cp6)
                 }
-                if subsubmap:
-                    map_index = len(map_table)
-                    map_table.append(subsubmap)
-                    submap[cp6] = map_index
-            if submap:
-                map_index = len(map_table)
-                map_table.append(submap)
-                map[cp12] = map_index
-        if map:
-            map_index = len(map_table)
-            map_table.append(map)
-            astral_maps[cp18] = map_index
+                _append_map(map_table, submap, subsubmap, cp6)
+            _append_map(map_table, map, submap, cp12)
+        _append_map(map_table, astral_maps, map, cp18)
     # -- native map: native codepoints 0x00--0xff =: cp6<<6 + cp0
     #    master table: [cp6 (*32) -> map index]
     #    map table: [map index -> {cp0 -> glyph index}]
