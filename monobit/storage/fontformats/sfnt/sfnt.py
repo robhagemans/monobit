@@ -881,7 +881,7 @@ def _convert_head_props(head):
         return Props()
     props = Props(
         revision=head.fontRevision,
-        style=mac_style_name(head.macStyle) or None,
+        subfamily=mac_style_name(head.macStyle) or None,
     )
     return props
 

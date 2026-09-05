@@ -348,7 +348,7 @@ def convert_fond(
         fa_entry.fontID: {
             # monobit properties
             'family': name,
-            'style': mac_style_name(fa_entry.fontStyle),
+            'subfamily': mac_style_name(fa_entry.fontStyle),
             'point_size': fa_entry.fontSize,
             #'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
