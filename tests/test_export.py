@@ -80,19 +80,19 @@ class TestExport(BaseTester):
     # Windows
 
     def test_export_fon(self):
-        """Test exporting fon files."""
-        self._export_4x6(format='mzfon', count=256, label=b'A')
+        """Test exporting Windows FON files."""
+        self._export_4x6(format='fon', count=256, label=b'A')
 
     def test_export_fnt_v1(self):
-        """Test exporting v1 fnt files."""
+        """Test exporting Windows v1 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=1), count=256, label=b'A')
 
     def test_export_fnt_v2(self):
-        """Test exporting fnt files."""
+        """Test exporting Windows v2 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=2), count=256, label=b'A')
 
     def test_export_fnt_v3(self):
-        """Test exporting fnt files."""
+        """Test exporting Windows v3 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=3), count=256, label=b'A')
 
     # Unifont

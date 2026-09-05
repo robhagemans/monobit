@@ -94,7 +94,7 @@ The supported feature set will depend on the type of resource included. Some res
 | GEOS Convert file        | `geos`     | `.cvt`                 |&check;|&check;| binary | `vlir`                          |
 | LISA font library        | `lisa`     | `.bin`                 |&check;|       | binary | `nfnt`                          |
 | MacOS resource fork      | `mac`      | `.dfont` `.suit`       |&check;|&check;| binary | `nfnt`, `sfnt`, `fbit`, `hfnt`  |
-| Windows or OS/2 font     | `mzfon`    | `.fon` `.exe` `.dll`   |&check;| (1)   | binary | `win`, `gpi`, `sfnt`            |
+| Windows or OS/2 font     | `fon`      | `.fon` `.exe` `.dll`   |&check;| (1)   | binary | `win`, `gpi`, `sfnt`            |
 | PalmOS database          | `palm`     | `.pdb`                 |&check;|       | binary | `nfnt`, `nfnt2`, `afnx`         |
 | PalmOS resource collection | `palm-prc` | `.prc`               |&check;|       | binary | `nfnt`, `nfnt2`, `afnx`, `grfn` |
 | TrueType/OpenType collection | `ttcf` | `.otc` `.ttc` [F] [**] |&check;|&check;| binary | `sfnt`                          |
