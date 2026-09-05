@@ -14,6 +14,7 @@ from monobit.base.struct import little_endian as le
 from monobit.base import Props
 from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Char, Codepoint
+from monobit.storage.fontformats.common import mac_style_from_name
 
 from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage.fontformats.common import mac_style_name
@@ -235,7 +236,7 @@ def _convert_u8m(u8m):
         ascent=u8m.master_table.line_ascent,
         descent=u8m.master_table.line_descent,
         line_height=u8m.master_table.line_height,
-        style=mac_style_name(u8m.selection_header.style),
+        subfamily=mac_style_name(u8m.selection_header.style),
         # unconverted fields
         **{'u8m.family_id': u8m.selection_header.family_id},
     )
@@ -283,8 +284,7 @@ def _convert_to_u8m(font):
         family_name_length=len(family),
         family_name=family,
         family_id=int(font.get_property('u8m.family_id') or 0),
-        # TODO calculate mac style (see NFNT?)
-        style=0,
+        style=mac_style_from_name(font.subfamily or ''),
         point_size=font.point_size,
     )
     # first glyph must be notdef glyph
