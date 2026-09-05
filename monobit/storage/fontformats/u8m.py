@@ -382,12 +382,16 @@ def _create_u8m_codepoint_maps(glyphs):
     # attempt to preserve multi-char grapheme sequences if 1-char NFC is available
     # but existing 1-char labels take precedence
     chars = {
-        ord(_g.char): _i
-        for _i, _g in enumerate(glyphs) if len(_g.char) == 1
+        ord(_c): _i
+        for _i, _g in enumerate(glyphs)
+        for _c in _g.chars
+        if len(_c) == 1
     }
     multichars = (
-        (normalize('NFC', _g.char), _i)
-        for _i, _g in enumerate(glyphs) if len(_g.char) > 1
+        (normalize('NFC', _c), _i)
+        for _i, _g in enumerate(glyphs)
+        for _c in _g.chars
+        if len(_c) > 1
     )
     cp_to_glyphindex = (
         {ord(_c): _i for _c, _i in multichars if len(_c) == 1}
@@ -465,14 +469,16 @@ def _create_u8m_codepoint_maps(glyphs):
     #    master table: [cp6 (*32) -> map index]
     #    map table: [map index -> {cp0 -> glyph index}]
     native_cp_to_glyphindex = {
-        int(_g.codepoint): _i for _i, _g in enumerate(glyphs) if _g.codepoint
+        int(_cp): _i
+        for _i, _g in enumerate(glyphs)
+        for _cp in _g.codepoints
     }
     native_cp_to_glyphindex = {
         (_cp>>6, _cp&0x3f): _glyphindex
         for _cp, _glyphindex in native_cp_to_glyphindex.items()
         if _cp <= 0xff
     }
-    cp6s =  set(_cp6 for _cp6, _ in native_cp_to_glyphindex)
+    cp6s = set(_cp6 for _cp6, _ in native_cp_to_glyphindex)
     native_maps = {}
     for cp6 in cp6s:
         map = {
