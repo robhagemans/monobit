@@ -481,26 +481,32 @@ def _create_u8m_codepoint_maps(glyphs):
     return master_table, map_headers, all_maps
 
 
-def _write_u8m(u8m, outstream):
-    # FIXME can't seek if we output to stdout
 
+def _write_u8m(u8m, outstream):
+    """Write out a U8/M data structure to file."""
     # not sure about these 2 bytes
     outstream.write(bytes(le.uint16(160)))
-    anchor = outstream.tell()
+
+    pos = 0
+
+    def _write(data):
+        nonlocal pos
+        outstream.write(data)
+        pos += len(data)
 
     def _align(page, offs):
-        outstream.write(bytes(page * 256 + offs - outstream.tell() + anchor))
+        outstream.write(bytes(page * 256 + offs - pos))
 
-    outstream.write(bytes(u8m.selection_header))
-    outstream.write(bytes(u8m.master_table))
+    _write(bytes(u8m.selection_header))
+    _write(bytes(u8m.master_table))
     _align(1, 0)
-    outstream.write(bytes(u8m.map_headers))
+    _write(bytes(u8m.map_headers))
     for mh, md in zip(u8m.map_headers, u8m.map_data):
         _align(mh.map_offset_page_address, mh.map_offset_byte_address)
-        outstream.write(bytes(md))
+        _write(bytes(md))
     _align(u8m.master_table.glyph_table_offset, 0)
-    outstream.write(bytes(u8m.glyph_records))
+    _write(bytes(u8m.glyph_records))
     for gr, br, bd in zip(u8m.glyph_records, u8m.bitmap_records, u8m.bitmap_data):
         _align(gr.bitmap_offset_page_address, gr.bitmap_offset_byte_address)
-        outstream.write(bytes(br))
-        outstream.write(bytes(bd))
+        _write(bytes(br))
+        _write(bytes(bd))
