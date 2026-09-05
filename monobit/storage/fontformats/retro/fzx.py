@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.fzx - FZX format
+monobit.storage.fontformats.retro.fzx - FZX format
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

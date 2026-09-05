@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.bmf - ByteMap Font format
+monobit.storage.fontformats.retro.bmf - ByteMap Font format
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

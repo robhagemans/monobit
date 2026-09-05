@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.u8m - U8/M UTF-8 for microcomputers font format
+monobit.storage.fontformats.retro.u8m - U8/M UTF-8 for microcomputers font format
 
 (c) 2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
