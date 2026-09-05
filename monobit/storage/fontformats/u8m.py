@@ -282,7 +282,7 @@ def _convert_to_u8m(font):
         magic=_U8M_MAGIC,
         family_name_length=len(family),
         family_name=family,
-        family_id=int(font.get_property('u8m.family_id')) or 0,
+        family_id=int(font.get_property('u8m.family_id') or 0),
         # TODO calculate mac style (see NFNT?)
         style=0,
         point_size=font.point_size,

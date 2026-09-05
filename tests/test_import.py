@@ -1743,6 +1743,25 @@ class TestImport(BaseTester):
 @@........@@
 """)
 
+    # U8/M
+
+    u8m = 'https://github.com/kreativekorp/u8m/raw/refs/heads/master/x16/'
+
+    def test_import_u8m(self):
+        """"Test importing U8/M files."""
+        file = ensure_asset(self.u8m, 'PETME.U8M')
+        font, *_ = monobit.load(file, format='u8m' )
+        self.assertEqual(len(font.glyphs), 3211)
+        assert_text_eq(font.get_glyph('A').as_text(), """\
+..@@..
+.@..@.
+@....@
+@@@@@@
+@....@
+@....@
+@....@
+""")
+
 
 
 if __name__ == '__main__':

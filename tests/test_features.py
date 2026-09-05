@@ -193,6 +193,9 @@ class TestFeatures(BaseTester):
     def test_bmf_proportional(self):
         self._render_proportional('bmf', char=True)
 
+    def test_u8m_proportional(self):
+        self._render_proportional('u8m', char=True)
+
 
     # kerning
 
@@ -373,6 +376,9 @@ class TestFeatures(BaseTester):
 
     def test_pff2_negbearings(self):
         self._render_bearings('pff2', char=True)
+
+    def test_u8m_negbearings(self):
+        self._render_bearings('u8m', char=True)
 
 
     # vertical negative bearings
