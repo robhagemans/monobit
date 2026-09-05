@@ -383,23 +383,25 @@ def _create_u8m_codepoint_maps(glyphs):
             map_index = len(map_table)
             map_table.append(map)
             high_bmp_maps[cp12] = map_index
-    # -- astral-planes map: codepoints 0xffff - 0x17ffff =: cp18<<18 + scp12<<12 + cp6 <<6 + cp0
+    # -- astral-planes map: codepoints 0x10000 - 0x17ffff =: cp18<<18 + scp12<<12 + cp6 <<6 + cp0
     #    master table: [cp18 (*6) -> map index]
     #    map table: [map index -> {cp12 -> submap index}]
     #    map table: [map index -> {cp6 -> subsubmap index}]
     #    map table: [subsubmap index -> {cp0 -> glyph index}]
-
     astral_cp_to_glyphindex = {
         (_cp>>18, (_cp>>12)&0x3f, (_cp>>6)&0x3f, _cp&0x3f): _glyphindex
         for _cp, _glyphindex in cp_to_glyphindex.items()
         if _cp > 0xffff
     }
+    cp18s = set(_cp18 for _cp18, _, _, _ in astral_cp_to_glyphindex)
+    cp12s = set(_cp12 for _, _cp12, _, _ in astral_cp_to_glyphindex)
+    cp6s =  set(_cp6 for _, _, _cp6, _ in astral_cp_to_glyphindex)
     astral_maps = {}
-    for cp18 in range(6):
+    for cp18 in cp18s:
         map = {}
-        for cp12 in range(64):
+        for cp12 in cp12s:
             submap = {}
-            for cp6 in range(64):
+            for cp6 in cp6s:
                 subsubmap = {
                     _cp0: _glyphindex
                     for (_cp18, _cp12, _cp6, _cp0), _glyphindex in astral_cp_to_glyphindex.items()
