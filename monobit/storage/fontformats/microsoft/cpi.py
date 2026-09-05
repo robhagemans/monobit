@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.cpi - DOS Codepage Information format
+monobit.storage.fontformats.microsoft.cpi - DOS Codepage Information format
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
