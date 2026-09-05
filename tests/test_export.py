@@ -525,6 +525,12 @@ class TestExport(BaseTester):
         """Test exporting PFF2 files."""
         self._export_4x6(format='pff2')
 
+    # U8/M
+
+    def test_export_u8m(self):
+        """Test exporting U8/M files."""
+        self._export_4x6(format='u8m')
+
     # BMF
 
     def test_export_bmf1(self):
