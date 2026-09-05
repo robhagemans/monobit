@@ -611,7 +611,7 @@ def _hash_to_id(family_name, script):
 
 def mac_style_from_name(style_name):
     """Get font style from human-readable representation."""
-    return sum((2<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
+    return sum((1<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
 
 
 def _group_families(fonts):
