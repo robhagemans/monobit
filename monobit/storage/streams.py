@@ -216,7 +216,7 @@ class Stream(StreamWrapper):
 class DelayedWriterStream(Stream):
     """Stream that writes through a filter on close."""
 
-    def __init__(self, outfile, write_out, name='', **kwargs):
+    def __init__(self, outfile, write_out=None, name='', **kwargs):
         self._outfile = outfile
         self._write_out = write_out
         self._write_out_kwargs = kwargs
@@ -229,7 +229,10 @@ class DelayedWriterStream(Stream):
                 # write out text buffers
                 self.flush()
                 data = self._stream.getvalue()
-                self._write_out(data, self._outfile, **self._write_out_kwargs)
+                if self._write_out:
+                    self._write_out(data, self._outfile, **self._write_out_kwargs)
+                else:
+                    self._outfile.write(data)
             except Exception as exc:
                 logging.warning(
                     f"Could not write to '{self._outfile.name}': {exc}"
