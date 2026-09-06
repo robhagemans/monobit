@@ -8,97 +8,147 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from itertools import accumulate
 
+from monobit.base.basetypes import FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.base.struct import big_endian as be
-from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
+from monobit.storage import loaders, savers
+from monobit.storage.streams import Stream
+from monobit.storage.utils.limitations import ensure_levels, ensure_single
 
-from monobit.storage.utils.limitations import ensure_single, ensure_levels
-
+logger = logging.getLogger(__name__)
 
 # http://www.eonet.ne.jp/~hirotsu/bin/bmf_format.txt
 
 _HEADER = be.Struct(
     mark='4s',
-    # > total size
+    # total size of the file
     size='uint32',
     # > font-family-name size (not including the trailing null)
     ffnSize='uint16',
     # > font-style-name size (not including the trailing null)
     fsnSize='uint16',
-    padding_0='10s',
-    # > The number of characters that can be stored in the location-table -1
-    ltMax='uint16',
+    # rotation and shear angles in radians, 0.0 for upright
+    rotation='float',
+    shear='float',
+    # location-table hash mask; must be a power of two minus one
+    hmask='uint32',
     # > font-point (Bitmap fonts are enabled at this point number)
     point='uint16',
-    # > 0x0300 (unknown)
-    unknown_768='uint16',
-    # unknown and differs per font; ProFont has it all null so that is valid?
-    unknown='8s',
+    # pixel format: 1 = B/W (RLE), 2 = TV scale, 3 = grayscale (4-bit packed)
+    bpp='uint8',
+    version='uint8',
+    # uninitialised memory in fonts written by BeOS
+    reserved='8s',
 )
 
+_FC_BLACK_AND_WHITE = 1
+_FC_TV_SCALE = 2
+_FC_GRAY_SCALE = 3
+
 _LOCATION_ENTRY = be.Struct(
-    pointer='uint32',
-    code='uint16',
-    reserved='uint16',
+    offset='uint32',
+    # utf-16: [char or high surrogate, low surrogate or 0]
+    code_0='uint16',
+    code_1='uint16',
 )
 
 _GLYPH_DATA = be.Struct(
-    unknown_0x4996b438 = 'uint32',
-    unknown_0x4996b440 = 'uint32',
+    # ink edges of the scalable glyph, in em units;
+    # 1234567.0 in edge_left means 'edges not computed'
+    edge_left='float',
+    edge_right='float',
+    # bitmap bounding box relative to the baseline origin, y down
     left='int16',
     top='int16',
     right='int16',
     bottom='int16',
-    width='float',
-    maybe_height='float',
+    # advance vector in (fractional) pixels
+    x_escape='float',
+    y_escape='float',
 )
 
+_EDGE_LEFT_NOT_COMPUTED = 1234567.0
+_EDGE_RIGHT_NOT_COMPUTED = 1234568.0
+
 _BEOS_MAGIC = b'|Be;'
+
+def _char_from_codes(code_0: int, code_1: int) -> str:
+    """Decode a location-entry utf-16 code unit pair to a character."""
+    if 0xd800 <= code_0 < 0xdc00 and 0xdc00 <= code_1 < 0xe000:
+        return chr(
+            0x10000 + ((code_0 - 0xd800) << 10) + (code_1 - 0xdc00)
+        )
+    return chr(code_0)
 
 
 @loaders.register(
     name='beos',
     magic=(_BEOS_MAGIC,)
 )
-def load_beos(instream):
+def load_beos(instream: Stream):
     """Load font from Be Bitmap Font file."""
     header = _HEADER.read_from(instream)
+    if header.version != 0:
+        raise FileFormatError( f'Unknown Be Bitmap Font version {header.version}.' )
+    if header.bpp != _FC_GRAY_SCALE:
+        raise UnsupportedError('Only grayscale Be Bitmap Fonts are supported.')
+    if header.rotation != 0 or header.shear != 0:
+        logger.warning('Nonzero rotation or shear angles are ignored.')
+    if header.hmask & (header.hmask + 1) or header.hmask < 3:
+        # BeOS rejects such files; older monobit versions wrote them
+        logger.warning('Location-table mask is not a power of two minus one')
     familyName = instream.read(header.ffnSize+1)[:-1].decode('latin-1')
     styleName = instream.read(header.fsnSize+1)[:-1].decode('latin-1')
-    logging.debug('header: %s', header)
-    logging.debug('family: %s', familyName)
-    logging.debug('style: %s', styleName)
+    logger.debug('family: %s', familyName)
+    logger.debug('style: %s', styleName)
+
+    table_size = _LOCATION_ENTRY.size * (header.hmask+1)
+    table_bytes = instream.read(table_size)
+    if len(table_bytes) != table_size:
+        raise FileFormatError('Location table extends beyond end of file.')
+    
     # hash table of pointers to glyphs, hashed by unicode codepoint
-    location_table = (_LOCATION_ENTRY * (header.ltMax+1)).read_from(instream)
-    location_dict = {_e.pointer: _e.code for _e in location_table}
+    location_table = (_LOCATION_ENTRY * (header.hmask+1)).from_bytes(table_bytes)
+    location_dict = {
+        _e.offset: _char_from_codes(_e.code_0, _e.code_1)
+        for _e in location_table
+        # the offset is read as signed by BeOS; empty slots hold -1
+        if 0 < _e.offset < 0x80000000
+    }
+
     glyphs = []
     while instream.tell() < header.size:
         pointer = instream.tell()
-        code = location_dict.get(pointer, None)
         glyph_data = _GLYPH_DATA.read_from(instream)
+        # TODO: validate glyph geometry?
         # bitmap dimensions
         width = glyph_data.right - glyph_data.left + 1
         height = glyph_data.bottom - glyph_data.top + 1
-        # 4 bits per pixel
-        bytewidth = ceildiv(width * 4, 8)
-        glyph_bytes = instream.read(height*bytewidth)
+        bitmap_size = ceildiv(width * 4, 8) * height
+        glyph_bytes = instream.read(bitmap_size)
+        # TODO sanity check bitmap_size = glyph_bites
+        # TODO sanity check legacy_ink
         glyphs.append(
             Glyph.from_bytes(
                 glyph_bytes, width=width, height=height, bits_per_pixel=4,
-                char=chr(code) if code is not None else code,
-                right_bearing=round(glyph_data.width)-width-glyph_data.left,
+                char=location_dict.get(pointer, None),
+                right_bearing=(int(glyph_data.x_escape + .5) - width - glyph_data.left),
                 left_bearing=glyph_data.left,
                 shift_up=-1-glyph_data.bottom,
-                scalable_width=glyph_data.width,
+                scalable_width=glyph_data.x_escape,
             )
         )
+    ## TODO: sanity check overhang
+
+    # TODO: detect legacy_ink?
     return Font(
         glyphs,
         encoding='unicode',
         family=familyName,
         subfamily=styleName,
         point_size=header.point,
+        # TODO: verify ppem/dpi=72
     )
 
 
