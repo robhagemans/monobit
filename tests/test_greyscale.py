@@ -2,14 +2,14 @@
 monobit test suite
 greyscale feature tests
 """
+from __future__ import annotations
 
-import os
-import io
 import unittest
 
 import monobit
-from .base import BaseTester, get_stringio, assert_text_eq
+from monobit.base.basetypes import RGB
 
+from .base import BaseTester, assert_text_eq
 
 
 class TestGreyscale(BaseTester):
@@ -61,7 +61,9 @@ class TestGreyscale(BaseTester):
         self._render_greyscale('bdf')
 
     def test_beos_greyscale(self):
-        self._render_greyscale('beos')
+        # BeOS has 8 grey levels, not 16-level font - quantize first
+        expected = self.sampletext.replace('38;2;17;17;17m', '38;2;0;0;0m').replace('38;2;119;119;119m', '38;2;102;102;102m')
+        self._render_greyscale('beos', expected=expected)
 
     def test_nfnt_greyscale(self):
         self._render_greyscale('nfnt')

@@ -1550,14 +1550,14 @@ class TestImport(BaseTester):
         font, *_ = monobit.load(file, format='beos')
         self.assertEqual(len(font.glyphs), 14963)
         assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
-.171.
-17171
-71.17
-7...7
-7...7
-77777
-7...7
-7...7
+.2@2.
+2@2@2
+@2.2@
+@...@
+@...@
+@@@@@
+@...@
+@...@
 """)
 
     # Zap
