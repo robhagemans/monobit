@@ -81,6 +81,40 @@ def _char_from_codes(code_0: int, code_1: int) -> str:
         )
     return chr(code_0)
 
+def _location_table_size(n_glyphs: int) -> int:
+    """
+    the smallest power of two that holds the glyphs with 25% headroom, minimum 4. 
+    BeOS rejects the file otherwise.
+    """
+    needed = ceildiv(n_glyphs * 5, 4)
+    return max(4, 1 << (needed - 1).bit_length())
+
+def _codes_from_char(char: str) -> tuple[int, int]:
+    """Encode a character as a location-entry utf-16 code unit pair."""
+    codepoint = ord(char)
+    if codepoint > 0xffff:
+        codepoint -= 0x10000
+        return 0xd800 + (codepoint >> 10), 0xdc00 + (codepoint & 0x3ff)
+    return codepoint, 0
+
+def _location_hash(code_0: int, code_1: int, hmask: int) -> int:
+    """Location-table hash function"""
+    return (((code_0 << 3) ^ (code_0 >> 2)) + code_1) & hmask
+
+def _nibble_translation(mapping: tuple[int, ...]) -> bytes:
+    """Bytes translation table applying a mapping to both nibbles."""
+    return bytes(
+        (mapping[_byte >> 4] << 4) | mapping[_byte & 0xf]
+        for _byte in range(256)
+    )
+
+_INK_LOAD = _nibble_translation(
+    tuple(min(15, round(_v * 15 / 7)) for _v in range(16))
+)
+_INK_SAVE = _nibble_translation(
+    tuple(round(_v * 7 / 15) for _v in range(16))
+)
+"""4-bit quant"""
 
 @loaders.register(
     name='beos',
@@ -128,7 +162,9 @@ def load_beos(instream: Stream):
         bitmap_size = ceildiv(width * 4, 8) * height
         glyph_bytes = instream.read(bitmap_size)
         # TODO sanity check bitmap_size = glyph_bites
-        # TODO sanity check legacy_ink
+        # TODO sanity check legacy_ink - older monobit didn't scale
+        glyph_bytes = glyph_bytes.translate(_INK_LOAD)
+
         glyphs.append(
             Glyph.from_bytes(
                 glyph_bytes, width=width, height=height, bits_per_pixel=4,
@@ -160,46 +196,50 @@ def save_beos(fonts, outstream):
     font = ensure_levels(font, 16)
     font = font.label()
     # drop multi-codepoint sequences and unlabelled glyphs
-    glyphs = tuple(_g for _g in font.glyphs if len(_g.char) == 1)
+    glyphs = tuple(_g for _g in font.glyphs if _g.char and len(_g.char) == 1)
     # create header
-    style_name = font.name[len(font.family):].strip()
+    style_name = font.subfamily or font.name[len(font.family):].strip()
+    family_name = font.family
+    # TODO: sanity check length
+    count = _location_table_size(len(glyphs))
     header = _HEADER(
         mark=_BEOS_MAGIC,
         # size='uint32',
-        ffnSize=len(font.family),
+        ffnSize=len(family_name),
         fsnSize=len(style_name),
-        # ltMax is an assumption reproducing the value in my sample font
-        ltMax = 2*(len(glyphs)-1)-1,
+        hmask=count-1,
         point=font.point_size,
-        unknown_768=0x300,
+        bpp=_FC_GRAY_SCALE,
+        version=0,
     )
     # create glyph table
     glyph_data = tuple(
         bytes(_GLYPH_DATA(
-            unknown_0x4996b438 = 0x4996b438,
-            unknown_0x4996b440 = 0x4996b440,
+            edge_left=_EDGE_LEFT_NOT_COMPUTED,
+            edge_right=_EDGE_RIGHT_NOT_COMPUTED,
             left=_g.left_bearing,
             top=(-1-_g.shift_up) -_g.height + 1,
             right=_g.width + _g.left_bearing - 1,
             bottom=-1-_g.shift_up,
-            width=_g.scalable_width,
-            # maybe_height='float',
+            x_escape=_g.scalable_width,
+            # y_escape='float',
         ))
         for _g in glyphs
     )
     strike_offset = (
         _HEADER.size + header.ffnSize + 1 + header.fsnSize + 1
-        + _LOCATION_ENTRY.size * (header.ltMax+1)
+        + _LOCATION_ENTRY.size * count
     )
-    glyph_bytes = tuple(_g.as_bytes(bits_per_pixel=4) for _g in glyphs)
+    glyph_bytes = tuple(_g.as_bytes(bits_per_pixel=4).translate(_INK_SAVE) for _g in glyphs)
     offsets = accumulate(
         (len(_g) + len(_s) for _g, _s in zip(glyph_data, glyph_bytes)),
         initial=strike_offset,
     )
     # create location entries
+    codes = tuple(_codes_from_char(_g.char) for _g in glyphs)
     loc_entries = tuple(
-        _LOCATION_ENTRY(pointer=_offs, code=ord(_g.char))
-        for _g, _offs in zip(glyphs, offsets)
+        _LOCATION_ENTRY(offset=_offs, code_0=_c0, code_1=_c1)
+        for (_c0, _c1), _offs in zip(codes, offsets)
     )
     strike = b''.join(
         b''.join((_data, _bytes))
@@ -211,19 +251,17 @@ def save_beos(fonts, outstream):
         ((ord(_g.char)>>2) ^ (ord(_g.char)<<3)) & header.ltMax
         for _g in glyphs
     )
-    location_table = [None] * (header.ltMax+1)
+    location_table = [None] * count
     for entry, hash in zip(loc_entries, hashes):
         while location_table[hash] is not None:
-            hash += 1
-            if hash > header.ltMax:
-                hash = 0
+            hash = (hash + 1) & header.hmask
         location_table[hash] = entry
-    location_table = (_LOCATION_ENTRY * (header.ltMax+1))(*(
-        _entry if _entry else _LOCATION_ENTRY(pointer=0xffffffff)
+    location_table = (_LOCATION_ENTRY * count)(*(
+        _entry if _entry else _LOCATION_ENTRY(offset=0xffffffff)
         for _entry in location_table
     ))
     outstream.write(bytes(header))
-    outstream.write(font.family.encode('latin-1', 'replace')+ b'\0')
+    outstream.write(family_name.encode('latin-1', 'replace')+ b'\0')
     outstream.write(style_name.encode('latin-1', 'replace')+ b'\0')
     outstream.write(bytes(location_table))
     outstream.write(bytes(strike))
