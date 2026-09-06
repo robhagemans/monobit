@@ -4,12 +4,15 @@ monobit.core.raster - bitmap raster
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
 """
+from __future__ import annotations
 
 import logging
 import string
 from itertools import zip_longest
 from collections import deque
 from functools import cache
+import types
+from typing import Tuple
 
 from monobit.base.binary import (
     ceildiv, reverse_by_group, bytes_to_pixels,
@@ -27,6 +30,13 @@ def get_inklevels(n_levels):
     if n_levels <= 256:
         return _INKLEVELS256[:n_levels]
     raise ValueError('More than 256 ink levels not supported.')
+
+def _map_ink_level(current_level: str, target_level:int) -> tuple[str, dict[int,int]]:
+    c_lvl = len(current_level)
+    # TODO: this probably doesn't work with `invert`
+    dest = get_inklevels(target_level)
+    translated = ''.join(dest[round(_i * (target_level-1) / (c_lvl-1))] for _i in range(c_lvl))
+    return dest, str.maketrans(current_level, translated)
 
 
 # turn function for Raster, Glyph and Font
@@ -71,7 +81,7 @@ def shear_shift(y, xpitch, ypitch, modulo):
 class Raster:
     """Bit matrix."""
 
-    def __init__(self, pixels=(), *, width=NOT_SET, inklevels=NOT_SET):
+    def __init__(self, pixels=(), *, width: int | None | types.EllipsisType = NOT_SET, inklevels: str | None | types.EllipsisType =NOT_SET):
         """Create raster from tuple of tuples of string."""
         if isinstance(pixels, type(self)):
             width = pixels._width
@@ -80,17 +90,19 @@ class Raster:
         else:
             if pixels:
                 width = len(pixels[0])
-            elif width is NOT_SET:
+            elif width is NOT_SET or isinstance(width, types.EllipsisType):
                 width = 0
-            if inklevels is NOT_SET:
-                inklevels = get_inklevels(2)
-        self._pixels = pixels
-        self._width = width
-        self._inklevels = inklevels
+        if inklevels is None or inklevels is NOT_SET or isinstance(inklevels, types.EllipsisType):
+            inklevels = get_inklevels(2)
         if set(inklevels) < set(''.join(pixels)):
             raise ValueError(f"{set(inklevels)} >= {set(''.join(pixels))} fails")
+        self._pixels = pixels
+        self._width: int | None = width
+        self._inklevels: str = inklevels
+        """
+        The string representing the ink levels
+        """
         self._paper = self._inklevels[0]
-        self._levels = len(self._inklevels)
         # check pixel matrix types
         if (
                 not isinstance(self._pixels, tuple)
@@ -103,6 +115,10 @@ class Raster:
             raise ValueError(
                 f"All rows in raster must be of the same width: {repr(self)}"
             )
+
+    @property
+    def _levels(self) -> int:
+        return len(self._inklevels)
 
     def __bool__(self):
         """Raster is not empty."""
@@ -243,7 +259,7 @@ class Raster:
             cls, byteseq, width=NOT_SET, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
             byte_swap=0, bit_order='big', bits_per_pixel=1,
-            **kwargs
+            ink_levels: int| None, **kwargs
         ):
         """
         Create raster from bytes/bytearray/int sequence.
@@ -803,10 +819,15 @@ class Raster:
         )
         return type(self)(combined, inklevels=self._inklevels)
 
-    def invert(self):
+    def invert(self) -> Raster:
         """Reverse video."""
         return type(self)(self._pixels, inklevels=self._inklevels[::-1])
-
+                             
+    def rescale_ink(self, new_level: int) -> Raster:
+        """Map ink values to the target level"""
+        dest_str, translator = _map_ink_level(self._inklevels, new_level)
+        return type(self)(tuple(_row.translate(translator) for _row in self._pixels), inklevels=dest_str)
+    
     def smear(self, *, left:int=0, right:int=0, up:int=0, down:int=0):
         """
         Repeat inked pixels.
