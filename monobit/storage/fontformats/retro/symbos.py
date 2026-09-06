@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.symbos - SymbOS FNT font format
+monobit.storage.fontformats.retro.symbos - SymbOS FNT font format
 
 (c) 2025 Michael Steil
 licence: https://opensource.org/licenses/MIT

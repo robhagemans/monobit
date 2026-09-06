@@ -80,19 +80,19 @@ class TestExport(BaseTester):
     # Windows
 
     def test_export_fon(self):
-        """Test exporting fon files."""
-        self._export_4x6(format='mzfon', count=256, label=b'A')
+        """Test exporting Windows FON files."""
+        self._export_4x6(format='fon', count=256, label=b'A')
 
     def test_export_fnt_v1(self):
-        """Test exporting v1 fnt files."""
+        """Test exporting Windows v1 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=1), count=256, label=b'A')
 
     def test_export_fnt_v2(self):
-        """Test exporting fnt files."""
+        """Test exporting Windows v2 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=2), count=256, label=b'A')
 
     def test_export_fnt_v3(self):
-        """Test exporting fnt files."""
+        """Test exporting Windows v3 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=3), count=256, label=b'A')
 
     # Unifont
@@ -243,16 +243,16 @@ class TestExport(BaseTester):
         self._export_8x16_cp437(format='cpi', save_kwargs=dict(version='DRFONT'))
 
     def test_export_cp(self):
-        """Test exporting kbd CP files"""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='FONT'))
+        """Test exporting bare FONT codepage (kbd .cp) files"""
+        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='FONT'))
 
     def test_export_cp_nt(self):
         """Test exporting bare FONT.NT codepage."""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='FONT.NT'))
+        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='FONT.NT'))
 
     def test_export_cp_drfont(self):
         """Test exporting bare DRFONT codepage."""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='DRFONT'))
+        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='DRFONT'))
 
     # Figlet
 

@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.cpi - DOS Codepage Information format
+monobit.storage.fontformats.microsoft.cpi - DOS Codepage Information format
 
 (c) 2019--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
@@ -45,7 +45,7 @@ def load_cpi(instream, pointer_type:str='auto'):
 
 
 @loaders.register(
-    name='kbd',
+    name='cp',
     patterns=('*.cp',),
     magic=(
         # FONT

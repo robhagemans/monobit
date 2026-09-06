@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.fon.os2.gpifont - OS/2 GPI font resource parser
+monobit.storage.fontformats.microsoft.os2.gpifont - OS/2 GPI font resource parser
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT

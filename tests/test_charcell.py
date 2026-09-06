@@ -111,8 +111,8 @@ class TestCharCell(BaseTester):
         self._test_export_charcell_reduced('cpi', count=256, codepage='cp437')
 
     def test_export_cp_r(self):
-        """Test exporting kbd CP files"""
-        self._test_export_charcell_reduced('kbd', count=256, codepage='cp437')
+        """Test exporting DOS codepage files"""
+        self._test_export_charcell_reduced('cp', count=256, codepage='cp437')
 
     def test_export_fontx_r(self):
         """Test exporting fontx files."""

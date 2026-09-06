@@ -1,5 +1,5 @@
 """
-monobit.storage.fontformats.fon.os2.lx - read OS/2 LX containers
+monobit.storage.fontformats.microsoft.os2.lx - read OS/2 LX containers
 
 (c) 2023--2026 Rob Hagemans
 licence: https://opensource.org/licenses/MIT
