@@ -130,9 +130,7 @@ def load_beos(instream: Stream):
         raise UnsupportedError('Only grayscale Be Bitmap Fonts are supported.')
     if header.rotation != 0 or header.shear != 0:
         logger.warning('Nonzero rotation or shear angles are ignored.')
-    if header.hmask & (header.hmask + 1) or header.hmask < 3:
-        # BeOS rejects such files; older monobit versions wrote them
-        logger.warning('Location-table mask is not a power of two minus one')
+    # TODO: sanity check hmask
     familyName = instream.read(header.ffnSize+1)[:-1].decode('latin-1')
     styleName = instream.read(header.fsnSize+1)[:-1].decode('latin-1')
     logger.debug('family: %s', familyName)
