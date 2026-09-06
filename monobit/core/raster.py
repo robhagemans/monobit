@@ -94,7 +94,7 @@ class Raster:
                 width = 0
         if inklevels is None or inklevels is NOT_SET or isinstance(inklevels, types.EllipsisType):
             inklevels = get_inklevels(2)
-        if set(inklevels) < set(''.join(pixels)):
+        if set(''.join(pixels)) - set(inklevels):
             raise ValueError(f"{set(inklevels)} >= {set(''.join(pixels))} fails")
         self._pixels = pixels
         self._width: int | None = width
@@ -259,7 +259,7 @@ class Raster:
             cls, byteseq, width=NOT_SET, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
             byte_swap=0, bit_order='big', bits_per_pixel=1,
-            ink_levels: int| None, **kwargs
+            ink_levels: int| None = None, **kwargs
         ):
         """
         Create raster from bytes/bytearray/int sequence.
@@ -272,6 +272,7 @@ class Raster:
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         bits_per_pixel: bit depth; must be 1, 2, 4 or 8 (default: 1)
+        ink_levels: number of ink_levels if different from bits per pixel (default: 2**bits_per_pixel)
         """
         if all(_arg is NOT_SET for _arg in (width, height, stride)):
             raise ValueError(
@@ -279,10 +280,11 @@ class Raster:
             )
         pixels_per_byte = 8 // bits_per_pixel
         levels = 2**bits_per_pixel
+        ink_levels_computed: int = levels if ink_levels is None else ink_levels
         if width == 0 or height == 0:
             if height is NOT_SET:
                 height = 0
-            return cls.blank(width, height, levels=levels)
+            return cls.blank(width, height, levels=ink_levels_computed)
         if stride is not NOT_SET:
             if width is NOT_SET:
                 width = stride
@@ -311,7 +313,7 @@ class Raster:
             )
         # convert bytes to pixels
         bitseq = bytes_to_pixels(byteseq, levels)
-        inklevels = get_inklevels(levels)
+        inklevels = get_inklevels(ink_levels_computed)
         # per-byte bit swap.
         if bit_order == 'little':
             bitseq = reverse_by_group(bitseq, group_size=pixels_per_byte)
@@ -356,7 +358,7 @@ class Raster:
     def as_bytes(
             self, *,
             align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
-            bits_per_pixel=1,
+            bits_per_pixel=1, ink_levels: int | None = None
         ):
         """
         Convert raster to flat bytes.
@@ -366,7 +368,12 @@ class Raster:
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
         bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
+        ink_levels: number of ink_levels if different from bits per pixel (default: 2**bits_per_pixel)
         """
+        if ink_levels is not None and ink_levels != self._levels:
+            raise ValueError(
+                f'Raster has {self._levels} ink levels, not {ink_levels}.'
+            )
         if not self.height or not self.width:
             return b''
         raster = self
@@ -382,14 +389,17 @@ class Raster:
         elif bits_per_pixel < intr_bpp:
             raise ValueError(f'Requires at least {intr_bpp} bits per pixel.')
         if bits_per_pixel > intr_bpp:
-            # must be a multiple - choice of 1, 2, 4, 8
-            factor = bits_per_pixel // intr_bpp
-            # widen each pixel to the expected number of bits
-            # e.g 1->2bpp 0 -> 00 1 -> 11
-            #     4->8bpp 5 -> 55 A -> AA
-            raster = raster.stretch(factor=(factor, 1))
+            if ink_levels is None:
+                # must be a multiple - choice of 1, 2, 4, 8
+                factor = bits_per_pixel // intr_bpp
+                # widen each pixel to the expected number of bits
+                # e.g 1->2bpp 0 -> 00 1 -> 11
+                #     4->8bpp 5 -> 55 A -> AA
+                raster = raster.stretch(factor=(factor, 1))
+            else:
+                raster = type(raster)(raster._pixels, inklevels=get_inklevels(2**bits_per_pixel),)
         if align == 'bit':
-            inklevels = get_inklevels(self._levels)
+            inklevels = get_inklevels(raster._levels)
             bits = ''.join(
                 ''.join(_row)
                 for _row in raster.as_matrix(inklevels=inklevels)

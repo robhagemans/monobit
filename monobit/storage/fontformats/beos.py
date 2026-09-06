@@ -102,26 +102,11 @@ def _location_hash(code_0: int, code_1: int, hmask: int) -> int:
     """Location-table hash function"""
     return (((code_0 << 3) ^ (code_0 >> 2)) + code_1) & hmask
 
-def _nibble_translation(mapping: tuple[int, ...]) -> bytes:
-    """Bytes translation table applying a mapping to both nibbles."""
-    return bytes(
-        (mapping[_byte >> 4] << 4) | mapping[_byte & 0xf]
-        for _byte in range(256)
-    )
-
-_INK_LOAD = _nibble_translation(
-    tuple(min(15, round(_v * 15 / 7)) for _v in range(16))
-)
-_INK_SAVE = _nibble_translation(
-    tuple(round(_v * 7 / 15) for _v in range(16))
-)
-"""4-bit quant"""
-
 @loaders.register(
     name='beos',
     magic=(_BEOS_MAGIC,)
 )
-def load_beos(instream: Stream):
+def load_beos(instream: Stream, expand_ink: bool = True):
     """Load font from Be Bitmap Font file."""
     header = _HEADER.read_from(instream)
     if header.version != 0:
@@ -162,18 +147,20 @@ def load_beos(instream: Stream):
         glyph_bytes = instream.read(bitmap_size)
         # TODO sanity check bitmap_size = glyph_bites
         # TODO sanity check legacy_ink - older monobit didn't scale
-        glyph_bytes = glyph_bytes.translate(_INK_LOAD)
 
-        glyphs.append(
-            Glyph.from_bytes(
-                glyph_bytes, width=width, height=height, bits_per_pixel=4,
-                char=location_dict.get(pointer, None),
-                right_bearing=(int(glyph_data.x_escape + .5) - width - glyph_data.left),
-                left_bearing=glyph_data.left,
-                shift_up=-1-glyph_data.bottom,
-                scalable_width=glyph_data.x_escape,
-            )
-        )
+        glyph = Glyph.from_bytes(
+                        glyph_bytes, width=width, height=height, bits_per_pixel=4,
+                        char=location_dict.get(pointer, None),
+                        right_bearing=(int(glyph_data.x_escape + .5) - width - glyph_data.left),
+                        left_bearing=glyph_data.left,
+                        shift_up=-1-glyph_data.bottom,
+                        scalable_width=glyph_data.x_escape,
+                        ink_levels=8
+                    )
+        #useful for conversion, unneccesary for native
+        if expand_ink:
+            glyph = glyph.rescale_ink(16)
+        glyphs.append(glyph)
     ## TODO: sanity check overhang
 
     # TODO: detect legacy_ink?
@@ -234,7 +221,7 @@ def save_beos(fonts, outstream):
         _HEADER.size + header.ffnSize + 1 + header.fsnSize + 1
         + _LOCATION_ENTRY.size * count
     )
-    glyph_bytes = tuple(_g.as_bytes(bits_per_pixel=4).translate(_INK_SAVE) for _g in glyphs)
+    glyph_bytes = tuple(_g.rescale_ink(8).as_bytes(bits_per_pixel=4, ink_levels=8) for _g in glyphs)
     offsets = accumulate(
         (len(_g) + len(_s) for _g, _s in zip(glyph_data, glyph_bytes)),
         initial=strike_offset,

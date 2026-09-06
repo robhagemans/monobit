@@ -973,6 +973,10 @@ class Glyph(HasProps):
         """Reverse video."""
         return self.modify(self._pixels.invert())
 
+    def rescale_ink(self, new_level: int):
+        """Map ink values to the target level"""
+        return self.modify(self._pixels.rescale_ink(new_level))
+
     def roll(self, down:int=0, right:int=0):
         """
         Cycle rows and/or columns in raster.
