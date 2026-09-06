@@ -65,6 +65,7 @@ _GLYPH_DATA = be.Struct(
     bottom='int16',
     # advance vector in (fractional) pixels
     x_escape='float',
+    # `x_escape` is the LINEAR (outline) escapement stored in the file
     y_escape='float',
 )
 
@@ -192,6 +193,11 @@ def load_beos(instream: Stream):
 def save_beos(fonts, outstream):
     """Save font to BeOS file."""
     font = ensure_single(fonts)
+    if font.levels > 8:
+        logger.warning(
+            'BeOS stores 8 ink levels; %d-level ink will be quantised.',
+            font.levels,
+        )
     # 4 bits per pixel
     font = ensure_levels(font, 16)
     font = font.label()
@@ -248,8 +254,8 @@ def save_beos(fonts, outstream):
     header.size = strike_offset + len(strike)
     # create hash table
     hashes = (
-        ((ord(_g.char)>>2) ^ (ord(_g.char)<<3)) & header.ltMax
-        for _g in glyphs
+        _location_hash(_c0, _c1, header.hmask)
+        for _c0, _c1 in codes
     )
     location_table = [None] * count
     for entry, hash in zip(loc_entries, hashes):
