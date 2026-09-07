@@ -107,7 +107,11 @@ def _location_hash(code_0: int, code_1: int, hmask: int) -> int:
     magic=(_BEOS_MAGIC,)
 )
 def load_beos(instream: Stream, expand_ink: bool = True):
-    """Load font from Be Bitmap Font file."""
+    """
+    Load font from Be Bitmap Font file.
+
+    expand_ink: rescale BeOS's 8 ink levels to the full 16-level range (default: True)
+    """
     header = _HEADER.read_from(instream)
     if header.version != 0:
         raise FileFormatError( f'Unknown Be Bitmap Font version {header.version}.' )

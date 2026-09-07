@@ -94,8 +94,11 @@ class Raster:
                 width = 0
         if inklevels is None or inklevels is NOT_SET or isinstance(inklevels, types.EllipsisType):
             inklevels = get_inklevels(2)
-        if set(''.join(pixels)) - set(inklevels):
-            raise ValueError(f"{set(inklevels)} >= {set(''.join(pixels))} fails")
+        out_of_range = set(''.join(pixels)) - set(inklevels)
+        if out_of_range:
+            raise ValueError(
+                f'Pixel values {out_of_range} not in ink levels {set(inklevels)}.'
+            )
         self._pixels = pixels
         self._width: int | None = width
         self._inklevels: str = inklevels

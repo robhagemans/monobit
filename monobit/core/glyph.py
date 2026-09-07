@@ -483,14 +483,14 @@ class Glyph(HasProps):
             cls, byteseq, width, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
             byte_swap=0, bit_order='big', bits_per_pixel=1,
-            **kwargs
+            ink_levels:int|None = None, **kwargs
         ):
         """Create glyph from bytes/bytearray/int sequence."""
         pixels = Raster.from_bytes(
             byteseq, width, height,
             align=align, stride=stride, order=order,
             byte_swap=byte_swap, bit_order=bit_order,
-            bits_per_pixel=bits_per_pixel,
+            bits_per_pixel=bits_per_pixel, ink_levels=ink_levels
         )
         return cls(pixels, **kwargs)
 
@@ -499,14 +499,14 @@ class Glyph(HasProps):
             cls, byteseq, width, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
             byte_swap=0, bit_order='big', bits_per_pixel=1,
-            **kwargs
+            ink_levels:int|None = None, **kwargs
         ):
         """Create glyph from hex string."""
         pixels = Raster.from_hex(
             byteseq, width, height,
             align=align, stride=stride, order=order,
             byte_swap=byte_swap, bit_order=bit_order,
-            bits_per_pixel=bits_per_pixel,
+            bits_per_pixel=bits_per_pixel, ink_levels=ink_levels
         )
         return cls(pixels, **kwargs)
 
@@ -567,7 +567,7 @@ class Glyph(HasProps):
 
     def as_bytes(
             self, *, align='left', stride=NOT_SET, byte_swap=0,
-            bit_order='big', bits_per_pixel=1,
+            bit_order='big', bits_per_pixel=1, ink_levels:int|None = None
         ):
         """
         Convert raster to flat bytes.
@@ -581,6 +581,7 @@ class Glyph(HasProps):
         return self._pixels.as_bytes(
             align=align, stride=stride, byte_swap=byte_swap,
             bit_order=bit_order, bits_per_pixel=bits_per_pixel,
+            ink_levels=ink_levels
         )
 
     def as_hex(self, **kwargs):
