@@ -101,6 +101,7 @@ class GlyphProperties:
     width: int
     height: int
     levels: int
+    bits_per_pixel: int
     ink_bounds: Bounds
     bounding_box: Coord
     padding: Bounds
@@ -148,6 +149,10 @@ class Glyph(HasProps):
     @checked_property
     def levels(self):
         return self._pixels.levels
+
+    @checked_property
+    def bits_per_pixel(self):
+        return self._pixels.bits_per_pixel
 
     @checked_property
     def ink_bounds(self):
@@ -567,8 +572,7 @@ class Glyph(HasProps):
         return self._pixels.as_byterows(align=align, bit_order=bit_order)
 
     def as_bytes(
-            self, *, align='left', stride=NOT_SET, byte_swap=0,
-            bit_order='big', bits_per_pixel=1, resample=True,
+            self, *, align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
         ):
         """
         Convert raster to flat bytes.
@@ -577,17 +581,26 @@ class Glyph(HasProps):
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
-        resample: scale byte values to new bit depth if updating bits_per_pixel
         """
         return self._pixels.as_bytes(
-            align=align, stride=stride, byte_swap=byte_swap,
-            bit_order=bit_order, bits_per_pixel=bits_per_pixel, resample=resample,
+            align=align, stride=stride,
+            byte_swap=byte_swap, bit_order=bit_order,
         )
 
     def as_hex(self, **kwargs):
         """Convert glyph to hex string."""
         return self._pixels.as_hex(**kwargs)
+
+    def set_bits_per_pixel(self, bits_per_pixel, fill_depth=True):
+        """
+        Increase bits per pixel.
+
+        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
+        fill_depth: scale byte values to new bit depth if updating bits_per_pixel
+        """
+        return self.modify(self._pixels.set_bits_per_pixel(
+            bits_per_pixel, fill_depth=fill_depth
+        ))
 
 
     ##########################################################################

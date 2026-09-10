@@ -691,8 +691,8 @@ def create_xlfd_properties(font):
         'END_SPACE': font.get_defined('sentence_space'),
     }
     # fontforge extension for greyscale fonts, alongside depth parameter in size header
-    if font.levels > 2:
-        xlfd_props['BITS_PER_PIXEL'] = (font.levels-1).bit_length()
+    if font.bits_per_pixel > 1:
+        xlfd_props['BITS_PER_PIXEL'] = font.bits_per_pixel
     # encoding dependent values
     default_glyph = font.get_default_glyph()
     if encodings.is_unicode(font.encoding):

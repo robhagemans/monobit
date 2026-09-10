@@ -14,7 +14,7 @@ from monobit.base.struct import bitfield, little_endian as le
 from monobit.base import Props, UnsupportedError, RGB
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
-from monobit.renderer import create_gradient
+from monobit.core.palette import Palette
 
 from monobit.storage.utils.limitations import (
     ensure_single, ensure_levels, reencode
@@ -35,7 +35,7 @@ def load_bmf(instream, alpha_only:bool=False):
     """
     bmf = _read_bmf(instream)
     font = _convert_bmf(bmf, alpha_only)
-    return font
+    return font.reduce_levels()
 
 
 @savers.register(linked=load_bmf)
@@ -165,7 +165,7 @@ def _convert_bmf(bmf, alpha_only):
     if bmf.header.extraPalettes:
         # I don't understand how multiple palettes are meant to be stored
         logging.warning('Multiple palettes not supported')
-    rgb_table = ((0, 0, 0),) + tuple(
+    palette = ((0, 0, 0),) + tuple(
         (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
     )
     # -- mask off alpha bits in bytemap
@@ -180,11 +180,11 @@ def _convert_bmf(bmf, alpha_only):
         # if all bits are alphaBits, there's no colour information.
         # drop palette and use alpha as greyscale value
         mask = alpha_mask
-        rgb_table = None
+        palette = None
         levels = 1 << bmf.header.alphaBits
     else:
         mask = palette_mask
-        levels = len(rgb_table)
+        levels = len(palette)
     for gp in bmf.glyphs:
         gp.bitmap = bytes(_b & mask for _b in gp.bitmap)
     # -- convert glyphs
@@ -220,7 +220,7 @@ def _convert_bmf(bmf, alpha_only):
         glyphs, x_height=-bmf.header.sizeInner,
         ascent=-bmf.header.sizeOver, descent=bmf.header.sizeUnder,
         line_height=bmf.header.lineHeight,
-        rgb_table=rgb_table,
+        palette=palette,
         name=title,
         source_format=f'bmf 1.{bmf.header.version-0x10}',
     )
@@ -249,7 +249,12 @@ def _convert_to_bmf(font, version, alpha_greyscale):
             f"`version` must be one of ('1.1', '1.2'), not {version}"
         )
     bmf = Props()
-    alpha_only = alpha_greyscale and not font.rgb_table
+    alpha_only = (
+        alpha_greyscale
+        # TODO we can do better, any greyscale works, we just have to replace pixel index with intensities
+        and font.palette.is_default()
+        and font.levels in (2, 4, 16, 256)
+    )
     common_right = min(_g.right_bearing for _g in font.glyphs)
     bmf.header = _BMF_HEADER(
         magic=_BMF_MAGIC,
@@ -265,13 +270,9 @@ def _convert_to_bmf(font, version, alpha_greyscale):
         alphaBits=8 if alpha_only else 0,
         # extraPalettes=0,
     )
-    rgb_table = font.rgb_table or (
-        # FIXME this should be done by Font.rgb_table
-        create_gradient(RGB(0, 0, 0), RGB(255, 255, 255), font.levels)
-    )
-    bmf.palette = (_RGB_ENTRY * (len(rgb_table)-1))(
+    bmf.palette = (_RGB_ENTRY * (len(font.palette)-1))(
         *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
-        for _rgb in rgb_table[1:])
+        for _rgb in font.palette[1:])
     )
     bmf.title = font.name.encode(title_encoding, 'replace')
     bmf.ascii_glyphs = tuple(
@@ -314,7 +315,7 @@ def _convert_to_bmf_glyph(glyph, which, font, alpha_only, common_right):
         relY=font.line_height - glyph.height - glyph.shift_up - font.descent,
         shift=glyph.advance_width-common_right,
     )
-    gp.bitmap = glyph.pixels.as_bytes(bits_per_pixel=8, resample=alpha_only)
+    gp.bitmap = glyph.set_bits_per_pixel(8, fill_depth=alpha_only).as_bytes()
     return gp
 
 

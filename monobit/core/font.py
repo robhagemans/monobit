@@ -12,7 +12,7 @@ from pathlib import PurePath
 from unicodedata import normalize
 
 from monobit.plumbing.scripting import scriptable
-from monobit.base import Coord, Bounds, NOT_SET, RGBTable
+from monobit.base import Coord, Bounds, NOT_SET
 from monobit.base import to_int, Any
 from monobit.encoding import encoder, EncodingName, Encoder, Indexer, Charmap
 from monobit.base.binary import ceildiv
@@ -21,7 +21,8 @@ from monobit.base import HasProps, writable_property, checked_property
 
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .glyph import Glyph, KernTable
-from .raster import turn_method
+from .raster import Raster, turn_method, get_depth_for_levels
+from .palette import Palette
 
 
 ###############################################################################
@@ -110,8 +111,10 @@ class FontProperties:
 
     # number of colours or greyscale levels
     levels: int
+    # bit depth needed to store levels
+    bits_per_pixel: int
     # level to colour mapping table
-    rgb_table: RGBTable = None
+    palette: Palette = None
 
     # descriptive typographic quantities
 
@@ -360,6 +363,16 @@ class Font(HasProps):
         """
         return self.line_height - self.pixel_size
 
+
+    ##########################################################################
+    # colour
+
+    @writable_property
+    def palette(self):
+        """Colour palette."""
+        return Palette.default(self.levels)
+
+
     ##########################################################################
     # summarising quantities
 
@@ -448,6 +461,12 @@ class Font(HasProps):
     def levels(self):
         """Number of ink levels."""
         return max((_g.levels for _g in self.glyphs), default=2)
+
+
+    @checked_property
+    def bits_per_pixel(self):
+        """Bit depth."""
+        return get_depth_for_levels(self.levels)
 
     @checked_property
     def cell_size(self):
@@ -1646,3 +1665,25 @@ class Font(HasProps):
         Reverse-video by raster.
         """
         return self.for_all(Glyph.invert)
+
+
+    # palette and levels
+
+    def reduce_levels(self):
+        """Reduce to minimum required levels."""
+        matrices = tuple(_g.as_matrix() for _g in self.glyphs)
+        used_levels = sorted(set.union(*(
+            set(_row) for _m in matrices for _row in _m
+        )))
+        if len(used_levels) == self.levels:
+            return self
+        new_palette = Palette(self.palette[_i] for _i in used_levels)
+        if new_palette.is_default():
+            new_palette = None
+        return self.modify(
+            glyphs=(
+                _g.modify(Raster.from_matrix(_m, inklevels=used_levels))
+                for _g, _m in zip(self.glyphs, matrices)
+            ),
+            palette=new_palette,
+        )

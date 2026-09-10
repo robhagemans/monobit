@@ -454,9 +454,9 @@ def convert_nfnt(properties, glyphs, fontrec, fctb=None, **kwargs):
         )
     # create RGB table, if fctb present
     if fctb:
-        rgb_table = convert_fctb(**fctb, levels=max((_g.levels for _g in glyphs), default=2))
+        palette = convert_fctb(**fctb, levels=max((_g.levels for _g in glyphs), default=2))
     else:
-        rgb_table = None
+        palette = None
     # store properties
     properties.update({
         # not overridable; also seems incorrect for system fonts
@@ -466,7 +466,7 @@ def convert_nfnt(properties, glyphs, fontrec, fctb=None, **kwargs):
         'descent': fontrec.descent,
         'line_height': fontrec.ascent + fontrec.descent + fontrec.leading,
         'shift_up': -fontrec.descent,
-        'rgb_table': rgb_table,
+        'palette': palette,
         # remove the kerning table and encoding table now stored in glyphs
         'kerning_table': None,
         'encoding_table': None,
@@ -578,7 +578,8 @@ def generate_nfnt_header(font, endian):
     first_char = int(min(font.get_codepoints()))
     last_char = int(max(font.get_codepoints()))
     # generate NFNT header
-    depth = ((font.levels - 1).bit_length() -1).bit_length()
+    # bits per pixel needed to store bits per pixel; depth 2 means 4bpp means 16 levels
+    depth = (font.bits_per_pixel-1).bit_length()
     fontrec = NFNTHeader(
         # this seems to be always 0x9000, 0xb000
         # even if docs say reserved_15 should be 0
@@ -651,9 +652,7 @@ def convert_to_nfnt(
     strike_raster = Raster.concatenate(*(_g.pixels for _g in glyph_table))
     # word-align strike
     strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
-    font_strike = strike_raster.as_bytes(
-        bits_per_pixel=(font.levels-1).bit_length()
-    )
+    font_strike = strike_raster.set_bits_per_pixel(font.bits_per_pixel).as_bytes()
     # build the width-offset table
     empty = Glyph(wo_offset=255, wo_width=255, levels=font.levels)
     wo_table = b''.join(
@@ -702,7 +701,7 @@ def convert_to_nfnt(
     if ndescent_is_high and owt_loc_high:
         fontrec.nDescent = owt_loc_high
     # fill in the rowWords, indicating that we do have a strike.
-    pixels_per_byte = 8 // (font.levels - 1).bit_length()
+    pixels_per_byte = 8 // font.bits_per_pixel
     fontrec.rowWords = strike_raster.width // (2 * pixels_per_byte)
     # fbr = max width from origin (including whitespace) and right kerned pixels
     # for IIgs header

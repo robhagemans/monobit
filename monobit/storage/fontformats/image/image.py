@@ -12,18 +12,17 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, RGB, RGBTable, FileFormatError, UnsupportedError
+from monobit.base import Coord, RGB, FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
+from monobit.core.palette import Palette
 from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
-    create_image_colours, RGBTable, create_gradient,
     write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 )
-from monobit.renderer.rgb import default_colours
 
 from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage.utils.perglyph import loop_load, loop_save
@@ -81,10 +80,7 @@ def identify_inklevels(colours, background):
         return (paper, ink)
 
 
-GREYSETS = {
-    _levels: create_gradient(RGB(0, 0, 0), RGB(255, 255, 255), _levels)
-    for _levels in (4, 16, 256)
-}
+GREYSETS = {_levels: Palette.default(_levels) for _levels in (4, 16, 256)}
 
 
 def _identify_background(colours, background):
@@ -277,11 +273,7 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
-        inklevels = RGBTable(inklevels)
-        font = Font(
-            glyphs,
-            rgb_table=inklevels if not inklevels.is_greyscale() else None,
-        )
+        font = Font(glyphs, palette=inklevels)
         return font
 
     def _get_border_colour(img, cell, margin, padding):
@@ -416,11 +408,8 @@ if Image:
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
         )
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
-            default_border=RGB(32, 32, 32),
-        )
+        if border is None:
+            border = RGB(32, 32, 32)
         img, = glyph_map.to_images(
             border=border, paper=paper, ink=ink,
             transparent=False,
@@ -462,7 +451,7 @@ if Image:
             fonts, location,
             prefix:str='',
             image_format:str='png',
-            image_mode:str='RGB',
+            image_mode:str='rgb',
             paper:RGB=(0, 0, 0),
             ink:RGB=(255, 255, 255),
         ):
@@ -476,12 +465,24 @@ if Image:
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
         font = ensure_single(fonts)
+        image_mode = image_mode.lower()[:4]
         if image_mode == 'mono':
             font = ensure_levels(font, 2)
-        inklevels = create_image_colours(
-            image_mode=image_mode, rgb_table=font.rgb_table,
-            levels=font.levels, paper=paper, ink=ink,
-        )
+            inklevels = font.palette.as_mono()
+        elif image_mode in ('grey', 'gray'):
+            if not font.palette.is_greyscale():
+                raise FileFormatError(
+                    f"Cannot store this colour font as `image_mode`=='grey'."
+                )
+            inklevels = font.palette.as_greyscale()
+        elif image_mode == 'rgb':
+            inklevels = font.palette.as_rgb(paper=paper, ink=ink)
+        else:
+            supported_modes = ('grey', 'gray', 'mono', 'rgb')
+            raise ValueError(
+                f"`image_mode`=='{image_mode}' not supported: "
+                f'must be one of {supported_modes}.'
+            )
 
         def _save_image_glyph(glyph, imgfile):
             img = glyph_to_image(glyph, image_mode=image_mode, inklevels=inklevels)

@@ -12,11 +12,11 @@ from itertools import accumulate
 
 from monobit.storage import loaders, savers, Regex
 from monobit.core import Font, Glyph, Raster
+from monobit.core.palette import Palette
 from monobit.base.struct import flag, bitfield, big_endian as be
 from monobit.base.binary import ceildiv
 from monobit.base import Props, Coord, FileFormatError, UnsupportedError
 from monobit.storage.utils.limitations import ensure_single, make_contiguous
-from monobit.renderer import RGBTable, create_gradient
 
 
 ###################################################################################################
@@ -461,7 +461,7 @@ def _read_strike(f, props, loc):
         cfc = _COLOR_FONT_COLORS.from_bytes(data, loc+props.ctf_ColorFontColors)
         logging.debug('ColorFontColors: %s', cfc)
         ct = (be.uint16 * cfc.cfc_Count).from_bytes(data, loc+cfc.cfc_ColorTable)
-        ct = RGBTable((
+        ct = Palette((
             (((_c//256)%16)*0x11, ((_c%256)//16)*0x11, (_c%16)*0x11)
             for _c in ct
         ))
@@ -601,12 +601,12 @@ def _convert_amiga_props(amiga_props):
         # which is what we do by default.
         # should a colour table also be defined? should we use it? who knows.
         if amiga_props.ctf_Flags.CT_COLORFONT:
-            props.rgb_table = amiga_props.ctf_ColorTable
+            props.palette = amiga_props.ctf_ColorTable
             # 'predominant colour' to be repaced by the foreground
             if amiga_props.ctf_FgColor not in (0xff, amiga_props.ctf_High):
                 # swap as we use highest-index -> full-ink and lowest-index -> paper
-                props.rgb_table[-1], props.rgb_table[amiga_props.ctf_FgColor] = (
-                    props.rgb_table[-1], props.rgb_table[amiga_props.ctf_FgColor]
+                props.palette[-1], props.palette[amiga_props.ctf_FgColor] = (
+                    props.palette[-1], props.palette[amiga_props.ctf_FgColor]
                 )
     return props
 
@@ -623,7 +623,7 @@ def save_amiga_fc(fonts, outstream):
             # this is wrong, but we don't need tf_Baseline in the fontcontents headers
             # it would be better to convert the fonts first and get the structures form there
             shift_up=0,
-            is_colorfont=_f.levels > 2 or _f.rgb_table,
+            is_colorfont=_f.levels > 2 or not _f.palette.is_default(),
         )
         for _f in fonts
     )
@@ -709,8 +709,8 @@ def save_amiga(fonts, outstream):
     # word-align strike
     strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
     # split into planes if colorfont
-    is_colorfont = font.levels > 2 or font.rgb_table
-    depth = (font.levels-1).bit_length()
+    is_colorfont = font.levels > 2 or not font.palette.is_default()
+    depth = font.bits_per_pixel
     if is_colorfont:
         pixels = strike_raster.as_pixels()
         planes = tuple(
@@ -790,8 +790,8 @@ def save_amiga(fonts, outstream):
     if is_colorfont:
         ctf_header = _COLOR_TEXT_FONT(
             ctf_Flags=_CTF_FLAGS(
-                CT_COLORFONT=font.rgb_table is not None,
-                CT_GREYFONT=font.rgb_table is None,
+                CT_COLORFONT=not font.palette.is_default(),
+                CT_GREYFONT=font.palette.is_default(),
             ),
             ctf_Depth=depth,
             ctf_FgColor=0xff,
@@ -809,14 +809,9 @@ def save_amiga(fonts, outstream):
             ),
         )
         logging.debug('ColorFontColors structure: %s', cfc)
-        # create greyscale table if none defined
-        if not font.rgb_table:
-            ct = create_gradient((0, 0, 0), (255, 255, 255), font.levels)
-        else:
-            ct = RGBTable(font.rgb_table)
         colortable = (be.uint16 * cfc.cfc_Count)(*(
             (_r>>4) * 256 + (_g & 0xf0) + (_b >> 4)
-            for _r, _g, _b in ct
+            for _r, _g, _b in font.palette
         ))
         ctf_CharData = (be.uint32 * depth)(*(
             anchor + _ofs * len(fontData) // depth

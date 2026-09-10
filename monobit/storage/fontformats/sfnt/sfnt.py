@@ -13,8 +13,8 @@ import re
 from unicodedata import bidirectional
 from io import BytesIO
 
-from monobit.base import Props, FileFormatError, UnsupportedError, safe_import, RGBTable
-from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint
+from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
+from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint, Palette
 from monobit.storage import loaders, savers
 
 fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
@@ -344,7 +344,7 @@ def _convert_bdat(sfnt, bdatname, blocname):
                 glyphs,
                 source_format=source_format,
                 encoding=encoding or None,
-                rgb_table=rgbtable,
+                palette=rgbtable,
                 **vars(props)
             )
             # remove temporary names created by fontTools
@@ -598,7 +598,7 @@ def _convert_sbix(sfnt):
         props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
         fonts.append(Font(
             glyphs=updated_glyphs,
-            rgb_table=rgbtable,
+            palette=rgbtable,
             dpi=strike.resolution,
             encoding=encoding or None,
             source_format='sfnt (sbix)',
@@ -643,7 +643,7 @@ def _imagedata_to_glyphs(glyphdata, unitable, enctable):
         for _crop, _name, _props in cropdata
     )
     # inklevels RGBA -> RGB, premultiply alphas
-    inklevels = RGBTable(
+    inklevels = Palette(
         (_r*_a//255, _g*_a//255, _b*_a//255) for _r, _g, _b, _a in inklevels
     )
     return glyphs, inklevels

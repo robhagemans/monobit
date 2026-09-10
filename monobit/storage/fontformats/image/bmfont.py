@@ -16,14 +16,16 @@ from monobit.base import safe_import
 etree = safe_import('xml.etree.ElementTree')
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, Bounds, RGB, RGBTable
+from monobit.base import Coord, Bounds, RGB
 from monobit.encoding import encodings
 from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le
 from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
-from monobit.renderer import GlyphMap, grid_map, RGBTable
+from monobit.core.raster import get_depth_for_levels
+from monobit.core.palette import Palette
+from monobit.renderer import GlyphMap, grid_map
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
@@ -597,7 +599,7 @@ def _extract(
         # get list of used colours
         colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
         inklevels = identify_inklevels(colours, background=background)
-        pixels_per_byte = 8 // (len(inklevels)-1).bit_length()
+        pixels_per_byte = 8 // get_depth_for_levels(len(inklevels))
         # extract glyphs
         for char, sprite in zip(chars, sprites):
             if not char.width:
@@ -643,13 +645,7 @@ def _extract(
         )
         for _glyph, _char in zip(glyphs, chars)
     ]
-    inklevels = RGBTable(inklevels)
-    font = Font(
-        glyphs,
-        # if inklevels are evenly spaced greyscale we shouldn't store the colourtable
-        rgb_table=inklevels if not inklevels.is_greyscale() else None,
-        **properties
-    )
+    font = Font(glyphs, palette=inklevels, **properties)
     font = font.label()
     return font
 
@@ -1100,7 +1096,7 @@ def spritesheet(font, *, size, spacing, padding):
             for _g in glyphs
         ):
         raise ValueError('Image size is too small for largest glyph.')
-    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
+    glyph_map = GlyphMap(levels=font.levels, palette=font.palette)
     sheets = []
     stored_rasters = {}
     while True:

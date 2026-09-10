@@ -6,8 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from monobit.base.struct import big_endian as be
-from monobit.base import RGBTable
-from monobit.renderer import create_gradient
+from monobit.core.palette import Palette, BLACK, WHITE
 
 
 # https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_V_1986.pdf
@@ -26,7 +25,7 @@ _COLOR_TABLE = be.Struct(
 _COLOR_SPEC = be.Struct(
     # > color representation
     value='uint16',
-    # > the components in an RGBTable are left-justified rather than right-justified in a word
+    # > the components in an Palette are left-justified rather than right-justified in a word
     # > [...] extract the appropriate number of bits from the high order side of the component
     red='uint16',
     green='uint16',
@@ -42,7 +41,7 @@ def extract_fctb(instream):
 
 
 def convert_fctb(color_table, color_specs, levels, **kwargs):
-    """Convert fctb color spec to RGBTable."""
+    """Convert fctb color spec to Palette."""
     if not color_specs:
         return None
     # use leftmost 8 bits of the 16-bit components
@@ -53,28 +52,26 @@ def convert_fctb(color_table, color_specs, levels, **kwargs):
     # fill out colour table with greyscale levels (as per V-183)
     levels_needed = levels - len(color_specs)
     # use a reverse gradient so we can pop from the tail
-    greyscale = (
-        create_gradient((255, 255, 255), (0, 0, 0), levels_needed)
-    )
+    greyscale = Palette.gradient(WHITE, BLACK, levels_needed)
     # this should exactly exhaust greyscale
-    rgb_table = []
+    palette = []
     for i in range(levels):
         try:
             rgb = color_dict[i]
         except KeyError:
             rgb = greyscale.pop()
-        rgb_table.append(rgb)
-    return RGBTable(rgb_table)
+        palette.append(rgb)
+    return Palette(palette)
 
 
-def convert_to_fctb(rgb_table):
-    """Convert RGBTable to fctb."""
-    color_specs = (_COLOR_SPEC * len(rgb_table))(*(
+def convert_to_fctb(palette):
+    """Convert Palette to fctb."""
+    color_specs = (_COLOR_SPEC * len(palette))(*(
         _COLOR_SPEC(value=_i, red=_c.r << 8, green=_c.g << 8, blue=_c.b << 8)
-        for _i, _c in enumerate(rgb_table)
+        for _i, _c in enumerate(palette)
     ))
     # unclear how seed should be chosen
-    color_table = _COLOR_TABLE(ctSeed=1024, ctSize=len(rgb_table))
+    color_table = _COLOR_TABLE(ctSeed=1024, ctSize=len(palette))
     return dict(color_table=color_table, color_specs=color_specs)
 
 
