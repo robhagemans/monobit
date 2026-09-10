@@ -63,7 +63,7 @@ class TestGreyscale(BaseTester):
     def test_beos_greyscale(self):
         # BeOS has 8 grey levels, not 16-level font - quantize first
         expected = self.sampletext.replace('38;2;17;17;17m', '38;2;0;0;0m').replace('38;2;119;119;119m', '38;2;102;102;102m')
-        self._render_greyscale('beos', expected=expected)
+        self._render_greyscale('beos', model=expected)
 
     def test_nfnt_greyscale(self):
         self._render_greyscale('nfnt')
