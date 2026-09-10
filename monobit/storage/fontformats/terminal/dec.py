@@ -333,7 +333,7 @@ def _write_dec_drcs(font, outstream, use_8bit=False):
     esc = not use_8bit
     # we can only store the printable ascii range
     ascii = tuple(chr(_b) for _b in range(0x20, 0x80))
-    font = font.resample(ascii, missing='empty')
+    font = font.resample(chars=ascii, missing='empty')
     glyphs = font.glyphs
     # write 96 glyphs?
     is_big = not glyphs[0].is_blank() or not glyphs[-1].is_blank()
