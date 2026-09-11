@@ -16,13 +16,11 @@ from monobit.storage import loaders, savers
 from monobit.storage.streams import Stream
 from monobit.storage.utils.limitations import ensure_levels, ensure_single
 
-logger = logging.getLogger(__name__)
-
 # http://www.eonet.ne.jp/~hirotsu/bin/bmf_format.txt
 
 _HEADER = be.Struct(
     mark='4s',
-    # total size of the file
+    # > total size
     size='uint32',
     # > font-family-name size (not including the trailing null)
     ffnSize='uint16',
@@ -115,13 +113,12 @@ _INK_LOAD = _nibble_translation(
 _INK_SAVE = _nibble_translation(
     tuple(round(_v * 7 / 15) for _v in range(16))
 )
-"""4-bit quant"""
 
 @loaders.register(
     name='beos',
     magic=(_BEOS_MAGIC,)
 )
-def load_beos(instream: Stream):
+def load_beos(instream):
     """Load font from Be Bitmap Font file."""
     header = _HEADER.read_from(instream)
     if header.version != 0:
@@ -129,12 +126,12 @@ def load_beos(instream: Stream):
     if header.bpp != _FC_GRAY_SCALE:
         raise UnsupportedError('Only grayscale Be Bitmap Fonts are supported.')
     if header.rotation != 0 or header.shear != 0:
-        logger.warning('Nonzero rotation or shear angles are ignored.')
-    # TODO: sanity check hmask
+        logging.warning('Nonzero rotation or shear angles are ignored.')
     familyName = instream.read(header.ffnSize+1)[:-1].decode('latin-1')
     styleName = instream.read(header.fsnSize+1)[:-1].decode('latin-1')
-    logger.debug('family: %s', familyName)
-    logger.debug('style: %s', styleName)
+    logging.debug('header: %s', header)
+    logging.debug('family: %s', familyName)
+    logging.debug('style: %s', styleName)
 
     table_size = _LOCATION_ENTRY.size * (header.hmask+1)
     table_bytes = instream.read(table_size)
@@ -154,16 +151,14 @@ def load_beos(instream: Stream):
     while instream.tell() < header.size:
         pointer = instream.tell()
         glyph_data = _GLYPH_DATA.read_from(instream)
-        # TODO: validate glyph geometry?
         # bitmap dimensions
         width = glyph_data.right - glyph_data.left + 1
         height = glyph_data.bottom - glyph_data.top + 1
-        bitmap_size = ceildiv(width * 4, 8) * height
-        glyph_bytes = instream.read(bitmap_size)
-        # TODO sanity check bitmap_size = glyph_bites
+        # 4 bits per pixel
+        bytewidth = ceildiv(width * 4, 8)
+        glyph_bytes = instream.read(height*bytewidth)
         # TODO sanity check legacy_ink - older monobit didn't scale
         glyph_bytes = glyph_bytes.translate(_INK_LOAD)
-
         glyphs.append(
             Glyph.from_bytes(
                 glyph_bytes, width=width, height=height, bits_per_pixel=4,
@@ -174,16 +169,12 @@ def load_beos(instream: Stream):
                 scalable_width=glyph_data.x_escape,
             )
         )
-    ## TODO: sanity check overhang
-
-    # TODO: detect legacy_ink?
     return Font(
         glyphs,
         encoding='unicode',
         family=familyName,
         subfamily=styleName,
         point_size=header.point,
-        # TODO: verify ppem/dpi=72
     )
 
 
@@ -192,7 +183,7 @@ def save_beos(fonts, outstream):
     """Save font to BeOS file."""
     font = ensure_single(fonts)
     if font.levels > 8:
-        logger.warning(
+        logging.warning(
             'BeOS stores 8 ink levels; %d-level ink will be quantised.',
             font.levels,
         )
@@ -204,7 +195,6 @@ def save_beos(fonts, outstream):
     # create header
     style_name = font.subfamily or font.name[len(font.family):].strip()
     family_name = font.family
-    # TODO: sanity check length
     count = _location_table_size(len(glyphs))
     header = _HEADER(
         mark=_BEOS_MAGIC,

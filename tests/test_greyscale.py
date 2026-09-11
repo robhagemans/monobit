@@ -2,12 +2,9 @@
 monobit test suite
 greyscale feature tests
 """
-from __future__ import annotations
-
 import unittest
 
 import monobit
-from monobit.base.basetypes import RGB
 
 from .base import BaseTester, assert_text_eq
 
