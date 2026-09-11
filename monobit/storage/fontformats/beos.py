@@ -100,19 +100,6 @@ def _location_hash(code_0: int, code_1: int, hmask: int) -> int:
     """Location-table hash function"""
     return (((code_0 << 3) ^ (code_0 >> 2)) + code_1) & hmask
 
-def _nibble_translation(mapping: tuple[int, ...]) -> bytes:
-    """Bytes translation table applying a mapping to both nibbles."""
-    return bytes(
-        (mapping[_byte >> 4] << 4) | mapping[_byte & 0xf]
-        for _byte in range(256)
-    )
-
-_INK_LOAD = _nibble_translation(
-    tuple(min(15, round(_v * 15 / 7)) for _v in range(16))
-)
-_INK_SAVE = _nibble_translation(
-    tuple(round(_v * 7 / 15) for _v in range(16))
-)
 
 @loaders.register(
     name='beos',
@@ -157,11 +144,10 @@ def load_beos(instream):
         # 4 bits per pixel
         bytewidth = ceildiv(width * 4, 8)
         glyph_bytes = instream.read(height*bytewidth)
-        # TODO sanity check legacy_ink - older monobit didn't scale
-        glyph_bytes = glyph_bytes.translate(_INK_LOAD)
         glyphs.append(
             Glyph.from_bytes(
-                glyph_bytes, width=width, height=height, bits_per_pixel=4,
+                glyph_bytes, width=width, height=height,
+                bits_per_pixel=4, levels=8,
                 char=location_dict.get(pointer, None),
                 right_bearing=(int(glyph_data.x_escape + .5) - width - glyph_data.left),
                 left_bearing=glyph_data.left,
@@ -182,13 +168,8 @@ def load_beos(instream):
 def save_beos(fonts, outstream):
     """Save font to BeOS file."""
     font = ensure_single(fonts)
-    if font.levels > 8:
-        logging.warning(
-            'BeOS stores 8 ink levels; %d-level ink will be quantised.',
-            font.levels,
-        )
     # 4 bits per pixel
-    font = ensure_levels(font, 16)
+    font = ensure_levels(font, 8)
     font = font.label()
     # drop multi-codepoint sequences and unlabelled glyphs
     glyphs = tuple(_g for _g in font.glyphs if _g.char and len(_g.char) == 1)
