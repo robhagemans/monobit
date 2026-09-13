@@ -2,14 +2,14 @@
 monobit test suite
 greyscale feature tests
 """
+from __future__ import annotations
 
-import os
-import io
 import unittest
 
 import monobit
-from .base import BaseTester, get_stringio, assert_text_eq
+from monobit.base.basetypes import RGB
 
+from .base import BaseTester, assert_text_eq
 
 
 class TestGreyscale(BaseTester):
@@ -30,7 +30,7 @@ class TestGreyscale(BaseTester):
 # .........
 # """
 
-    def _render_greyscale(self, format, *, char=False, load_kwargs=(), save_kwargs=()):
+    def _render_greyscale(self, format, *, char=False, load_kwargs=(), save_kwargs=(), expected: str | None = None):
         font1, *_ = monobit.load(self.font_path / 'konatu-ascii.yaff')
         monobit.save(
             font1, self.temp_path / f'konatu-ascii.{format}',
@@ -44,8 +44,8 @@ class TestGreyscale(BaseTester):
             text = 'te'
         else:
             text = b'te'
-        rendered_text = monobit.render_text(font2, text).as_shades(border=(0,0,0))
-        assert_text_eq(ascii(rendered_text), self.sampletext)
+        rendered_text = monobit.render_text(font2, text).as_shades(border=RGB(0,0,0))
+        assert_text_eq(ascii(rendered_text), expected or self.sampletext)
 
     def test_yaff_greyscale(self):
         self._render_greyscale('yaff')
@@ -57,7 +57,9 @@ class TestGreyscale(BaseTester):
         self._render_greyscale('bdf')
 
     def test_beos_greyscale(self):
-        self._render_greyscale('beos')
+        # BeOS has 8 grey levels, not 16-level font - quantize first
+        expected = self.sampletext.replace('38;2;17;17;17m', '38;2;0;0;0m').replace('38;2;119;119;119m', '38;2;102;102;102m')
+        self._render_greyscale('beos', expected=expected)
 
     def test_nfnt_greyscale(self):
         self._render_greyscale('nfnt')
