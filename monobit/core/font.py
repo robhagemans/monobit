@@ -1659,15 +1659,14 @@ class Font(HasProps):
             thickness = thickness
         )
 
+    # palette and levels
+
     @scriptable
     def invert(self):
         """
         Reverse-video by raster.
         """
         return self.for_all(Glyph.invert)
-
-
-    # palette and levels
 
     def reduce_levels(self):
         """Reduce to minimum required levels."""
@@ -1684,6 +1683,21 @@ class Font(HasProps):
             glyphs=(
                 _g.modify(Raster.from_matrix(_m, inklevels=used_levels))
                 for _g, _m in zip(self.glyphs, matrices)
+            ),
+            palette=new_palette,
+        )
+
+    def with_palette(self, new_palette, *, approximate=False):
+        """Map to nearest in new palette."""
+        new_palette = Palette(new_palette)
+        mapped_levels = self.palette.map_to(new_palette, approximate=approximate)
+        return self.modify(
+            glyphs=(
+                _g.modify(Raster.from_matrix(
+                    _g.as_matrix(inklevels=mapped_levels),
+                    inklevels=range(len(new_palette)),
+                ))
+                for _g in self.glyphs
             ),
             palette=new_palette,
         )

@@ -7,10 +7,10 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 
-from monobit.base.binary import ceildiv
+from monobit.base.binary import ceildiv, SUPPORTED_BITS_PER_PIXEL
 from monobit.storage import loaders, savers
 from monobit.base import Coord, FileFormatError, UnsupportedError
-from monobit.core import Font, Raster, Glyph, Char, Codepoint, Tag
+from monobit.core import Font, Raster, Glyph, Char, Codepoint, Tag, Palette
 from monobit.encoding import encodings, NotFoundError
 from monobit.storage.utils.limitations import ensure_single
 
@@ -363,6 +363,7 @@ def swidth_to_pixel(swidth, point_size, dpi):
         return dwidth
     return round(dwidth / whole, 2) * whole
 
+
 ##############################################################################
 # BDF writer
 
@@ -383,6 +384,15 @@ def _save_bdf(font, outstream):
     # ensure character labels exist if needed
     if encodings.is_unicode(font.encoding):
         font = font.label(match_whitespace=False, match_graphical=False)
+    # map onto smallest default BDF greyscale palette that fits
+    for bpp in SUPPORTED_BITS_PER_PIXEL:
+        try:
+            font = font.with_palette(Palette.default(1<<bpp))
+            break
+        except ValueError as e:
+            pass
+    else:
+        font = font.with_palette(Palette.default(256), approximate=True)
     glyphs = tuple(
         _convert_to_bdf_glyph(glyph, font)
         for glyph in font.glyphs
