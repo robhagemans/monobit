@@ -634,8 +634,9 @@ def convert_to_nfnt(
     WidthEntry = width_entry_struct(base)
     HeightEntry = height_entry_struct(base)
     font = _normalize_metrics(font)
-    # map onto smallest default BDF greyscale palette that fits
-    font = font.with_default_palette(approximate=True)
+    # map onto smallest default greyscale palette that fits
+    if font.palette.is_greyscale():
+        font = font.with_default_palette()
     # get contiguous glyph list
     # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
     if not font.get_codepoints():
