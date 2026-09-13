@@ -11,7 +11,7 @@ from itertools import accumulate
 from monobit.base.basetypes import FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.base.struct import big_endian as be
-from monobit.core import Font, Glyph
+from monobit.core import Font, Glyph, Palette
 from monobit.storage import loaders, savers
 from monobit.storage.streams import Stream
 from monobit.storage.utils.limitations import ensure_levels, ensure_single
@@ -72,6 +72,14 @@ _EDGE_RIGHT_NOT_COMPUTED = 1234568.0
 
 _BEOS_MAGIC = b'|Be;'
 
+# BeOS has a 3-bit palette realised by 4-bit intensities
+# this represents those on an 8-bit scale
+# this is *not* the same as an equally spaced 8-level palette
+_BEOS_PALETTE = Palette.from_intensity(
+    round(_v * 15 / 7) * (255 // 15)
+    for _v in range(8)
+)
+
 def _char_from_codes(code_0: int, code_1: int) -> str:
     """Decode a location-entry utf-16 code unit pair to a character."""
     if 0xd800 <= code_0 < 0xdc00 and 0xdc00 <= code_1 < 0xe000:
@@ -119,12 +127,11 @@ def load_beos(instream):
     logging.debug('header: %s', header)
     logging.debug('family: %s', familyName)
     logging.debug('style: %s', styleName)
-
+    # location table
     table_size = _LOCATION_ENTRY.size * (header.hmask+1)
     table_bytes = instream.read(table_size)
     if len(table_bytes) != table_size:
         raise FileFormatError('Location table extends beyond end of file.')
-
     # hash table of pointers to glyphs, hashed by unicode codepoint
     location_table = (_LOCATION_ENTRY * (header.hmask+1)).from_bytes(table_bytes)
     location_dict = {
@@ -133,7 +140,7 @@ def load_beos(instream):
         # the offset is read as signed by BeOS; empty slots hold -1
         if 0 < _e.offset < 0x80000000
     }
-
+    # glyph data
     glyphs = []
     while instream.tell() < header.size:
         pointer = instream.tell()
@@ -161,6 +168,7 @@ def load_beos(instream):
         family=familyName,
         subfamily=styleName,
         point_size=header.point,
+        palette=_BEOS_PALETTE,
     )
 
 
@@ -168,8 +176,9 @@ def load_beos(instream):
 def save_beos(fonts, outstream):
     """Save font to BeOS file."""
     font = ensure_single(fonts)
-    # 4 bits per pixel
-    font = ensure_levels(font, 8)
+    # move onto BeOS 8-level greyscale palette
+    font = font.with_palette(_BEOS_PALETTE, approximate=True)
+    assert font.bits_per_pixel == 4
     font = font.label()
     # drop multi-codepoint sequences and unlabelled glyphs
     glyphs = tuple(_g for _g in font.glyphs if _g.char and len(_g.char) == 1)
