@@ -591,17 +591,6 @@ class Glyph(HasProps):
         """Convert glyph to hex string."""
         return self._pixels.as_hex(**kwargs)
 
-    def set_bits_per_pixel(self, bits_per_pixel, fill_depth=True):
-        """
-        Increase bits per pixel.
-
-        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
-        fill_depth: scale byte values to new bit depth if updating bits_per_pixel
-        """
-        return self.modify(self._pixels.set_bits_per_pixel(
-            bits_per_pixel, fill_depth=fill_depth
-        ))
-
 
     ##########################################################################
     # glyph transformations
