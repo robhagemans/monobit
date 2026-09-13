@@ -14,11 +14,11 @@ from .base import BaseTester, get_stringio, assert_text_eq
 colourfont = """
 name: ColourTest
 levels: 4
-rgb-table:
-    0 0 0
-    255 0 0
-    0 255 0
-    0 0 255
+palette:
+    000000 .
+    FF0000 1
+    00FF00 2
+    0000FF @
 
 't':
 116:
