@@ -15,7 +15,8 @@ from functools import cached_property, cache
 from monobit.storage import loaders, savers
 from monobit.storage.magic import Sentinel
 from monobit.core import (
-    Font, FontProperties, Glyph, Raster, Label, strip_matching, CUSTOM_NAMESPACE
+    Font, FontProperties, Glyph, Raster, Label, Palette,
+    strip_matching, CUSTOM_NAMESPACE
 )
 from monobit.base import Props, Coord, passthrough, FileFormatError
 
@@ -186,9 +187,20 @@ def _read_yaff(text_stream):
             if key == 'yaff':
                 logging.debug("yaff signature found, version %s", value)
             else:
-                _set_property(font_props, key, value)
                 if key == 'levels':
                     inklevels = YaffParams.inklevels(int(value, 0))
+                elif key == 'palette':
+                    # TODO move into/with Palette class
+                    lines = value.splitlines()
+                    if len(lines[0].split()) == 2:
+                        colours, inklevels = zip(*(_l.split() for _l in lines))
+                        value = tuple(
+                            (int(_rgb[:2], 16), int(_rgb[2:4], 16), int(_rgb[4:6], 16))
+                            for _rgb in colours
+                        )
+                    else:
+                        inklevels = YaffParams.inklevels(len(value))
+                _set_property(font_props, key, value)
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -447,7 +459,7 @@ def _save_yaff(fonts, outstream):
             props['cell_size'] = font.cell_size
         else:
             props['bounding_box'] = font.bounding_box
-        if font.levels != 2:
+        if font.levels != 2 and not font.get_property('palette'):
             props['levels'] = font.levels
         # transfer font properties in defined order
         font_props = font.get_properties()
@@ -461,6 +473,11 @@ def _save_yaff(fonts, outstream):
         if props:
             # write recognised yaff properties first, in defined order
             for key, value in props.items():
+                if isinstance(value, Palette):
+                    value = '\n'.join(
+                        f'{_c.r:02X}{_c.g:02X}{_c.b:02X} {_lvl}'
+                        for _c, _lvl in zip(value, YaffParams.inklevels(len(value)))
+                    )
                 if value != font.get_default(key):
                     _write_property(outstream, key, value, font.get_comment(key))
             outstream.write('\n')
