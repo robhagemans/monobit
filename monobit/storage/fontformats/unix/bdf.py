@@ -384,15 +384,8 @@ def _save_bdf(font, outstream):
     # ensure character labels exist if needed
     if encodings.is_unicode(font.encoding):
         font = font.label(match_whitespace=False, match_graphical=False)
-    # map onto smallest default BDF greyscale palette that fits
-    for bpp in SUPPORTED_BITS_PER_PIXEL:
-        try:
-            font = font.with_palette(Palette.default(1<<bpp))
-            break
-        except ValueError as e:
-            pass
-    else:
-        font = font.with_palette(Palette.default(256), approximate=True)
+    # map onto smallest default BDF greyscale palette that fitss
+    font = font.with_default_palette(approximate=True)
     glyphs = tuple(
         _convert_to_bdf_glyph(glyph, font)
         for glyph in font.glyphs
@@ -537,7 +530,7 @@ def _convert_to_bdf_glyph(glyph, font):
     if not glyph.height:
         glyphdata.append(('BITMAP', ''))
     else:
-        hex = glyph.set_bits_per_pixel(font.bits_per_pixel).as_hex().upper()
+        hex = glyph.as_hex().upper()
         width = len(hex) // glyph.height
         split_hex = [
             hex[_offs:_offs+width]

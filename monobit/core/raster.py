@@ -424,43 +424,6 @@ class Raster:
             byteseq = b''.join(bytes(_chunk[::-1]) for _chunk in zip(*args))
         return byteseq
 
-    def set_bits_per_pixel(self, bits_per_pixel, *, fill_depth=True):
-        """Change bit depth between allowable values, adjusting greyscale index."""
-        if bits_per_pixel not in SUPPORTED_BITS_PER_PIXEL:
-            raise ValueError(
-                f'`bits_per_pixel`={bits_per_pixel} is not supported: '
-                f'must be in {SUPPORTED_BITS_PER_PIXEL}.'
-            )
-        if bits_per_pixel < self.bits_per_pixel:
-            raise ValueError(
-                f'`bits_per_pixel`={bits_per_pixel} is too low: '
-                f'bitmap requires at least {self.bits_per_pixel} bits per pixel.'
-            )
-        if bits_per_pixel == self.bits_per_pixel:
-            return self
-        # repeat each pixel to the expected number of bits
-        # this fills out the available levels fully and evenly
-        # e.g 1->2bpp 0--1 -> 00--11
-        #     4->8bpp 0--F -> 00--FF
-        # put on string representation, repeat, read back
-        inklevels = tuple(_DEFAULT_INKLEVELS[self.bits_per_pixel])
-        paper = inklevels[0]
-        pixels = self.as_matrix(inklevels=inklevels)
-        factor = bits_per_pixel // self.bits_per_pixel
-        inklevels = tuple(''.join(_p) for _p in product(inklevels, repeat=factor))
-        if fill_depth:
-            pixels = tuple(
-                tuple(_p*factor for _p in _row)
-                for _row in pixels
-            )
-        else:
-            pixels = tuple(
-                tuple(paper*(factor-1) + _p for _p in _row)
-                for _row in pixels
-            )
-        return self.from_matrix(pixels, inklevels=inklevels)
-
-
     def get_byte_size(self, *, align='left', stride=NOT_SET):
         """
         Calculate size of bytes representation
