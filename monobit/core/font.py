@@ -15,7 +15,7 @@ from monobit.plumbing.scripting import scriptable
 from monobit.base import Coord, Bounds, NOT_SET
 from monobit.base import to_int, Any
 from monobit.encoding import encoder, EncodingName, Encoder, Indexer, Charmap
-from monobit.base.binary import ceildiv
+from monobit.base.binary import ceildiv, SUPPORTED_BITS_PER_PIXEL
 from monobit.base import extend_string
 from monobit.base import HasProps, writable_property, checked_property
 
@@ -1659,15 +1659,14 @@ class Font(HasProps):
             thickness = thickness
         )
 
+    # palette and levels
+
     @scriptable
     def invert(self):
         """
         Reverse-video by raster.
         """
         return self.for_all(Glyph.invert)
-
-
-    # palette and levels
 
     def reduce_levels(self):
         """Reduce to minimum required levels."""
@@ -1687,3 +1686,36 @@ class Font(HasProps):
             ),
             palette=new_palette,
         )
+
+    def with_palette(self, new_palette, *, approximate=False):
+        """Map to nearest in new palette."""
+        new_palette = Palette(new_palette)
+        mapped_levels = self.palette.map_to(new_palette, approximate=approximate)
+        return self.modify(
+            glyphs=(
+                _g.modify(Raster.from_matrix(
+                    _g.as_matrix(inklevels=mapped_levels),
+                    inklevels=range(len(new_palette)),
+                ))
+                for _g in self.glyphs
+            ),
+            palette=new_palette,
+        )
+
+    def with_default_palette(self, levels=None, *, approximate=False):
+        """Map to smallest default greyscale palette that fits."""
+        if levels is not None:
+            return self.with_palette(
+                Palette.default(levels), approximate=approximate
+            )
+        err = None
+        for bpp in SUPPORTED_BITS_PER_PIXEL:
+            try:
+                return self.with_palette(Palette.default(1<<bpp))
+            except ValueError as e:
+                err = e
+        if approximate:
+            return self.with_palette(Palette.default(256), approximate=True)
+        elif err:
+            raise err
+        return self

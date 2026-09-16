@@ -5,7 +5,11 @@ monobit.core.palette - RGB or greyscale palette
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
+from operator import itemgetter
+
 from monobit.base import RGB
+
 
 BLACK = RGB(0, 0, 0)
 WHITE = RGB(255, 255, 255)
@@ -88,6 +92,11 @@ class Palette:
             for _value in range(levels)
         )
 
+    @classmethod
+    def from_intensity(cls, intensities):
+        """Create palette from intensity values."""
+        return cls(RGB(_i, _i, _i) for _i in intensities)
+
     def as_intensity(self):
         """Return iterable of intensity values for this palette."""
         return tuple(sum(_tup) // len(_tup) for _tup in iter(self))
@@ -106,7 +115,7 @@ class Palette:
         )
 
     def as_rgb(self, paper:RGB=None, ink:RGB=None):
-        """Return RGB palette."""
+        """Return RGB palette with substituted ink and paper values."""
         if self.is_greyscale():
             intensities = self.as_intensity()
             max_int = 255 # max(intensities)
@@ -136,3 +145,25 @@ class Palette:
         thresh = int(max(intensities) * threshold)
         is_above = (_int >= thresh for _int in intensities)
         return tuple(ink if _int else paper for _int in is_above)
+
+    def map_to(self, other, approximate=False):
+        """Return closest index in other palette for each entry."""
+        other = type(self)(other)
+        distances = tuple(
+            tuple(
+                sum(abs(_sv - _ov) for _sv, _ov in zip(_s, _o))
+                for _o in other
+            )
+            for _s in self
+        )
+        if any(min(_d) for (_d) in distances):
+            msg = 'Could not map palettes exactly.'
+            if not approximate:
+                raise ValueError(msg)
+            else:
+                logging.warning(msg)
+        mapped_index = tuple(
+            min(enumerate(_dist), key=itemgetter(1))[0]
+            for _dist in distances
+        )
+        return mapped_index

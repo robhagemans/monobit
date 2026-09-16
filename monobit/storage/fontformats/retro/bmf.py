@@ -14,7 +14,7 @@ from monobit.base.struct import bitfield, little_endian as le
 from monobit.base import Props, UnsupportedError, RGB
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
-from monobit.core.palette import Palette
+from monobit.core.palette import Palette, BLACK
 
 from monobit.storage.utils.limitations import (
     ensure_single, ensure_levels, reencode
@@ -249,12 +249,15 @@ def _convert_to_bmf(font, version, alpha_greyscale):
             f"`version` must be one of ('1.1', '1.2'), not {version}"
         )
     bmf = Props()
-    alpha_only = (
-        alpha_greyscale
-        # TODO we can do better, any greyscale works, we just have to replace pixel index with intensities
-        and font.palette.is_default()
-        and font.levels in (2, 4, 16, 256)
-    )
+    alpha_only = alpha_greyscale and font.palette.is_greyscale()
+    # ensure 8-bpp font, scale up if necessary
+    if alpha_only:
+        font = font.with_default_palette(levels=256, approximate=True)
+    else:
+        font = font.with_palette(
+            list(font.palette) + [BLACK] * (256-len(font.palette))
+        )
+    assert font.bits_per_pixel == 8
     common_right = min(_g.right_bearing for _g in font.glyphs)
     bmf.header = _BMF_HEADER(
         magic=_BMF_MAGIC,
@@ -315,7 +318,7 @@ def _convert_to_bmf_glyph(glyph, which, font, alpha_only, common_right):
         relY=font.line_height - glyph.height - glyph.shift_up - font.descent,
         shift=glyph.advance_width-common_right,
     )
-    gp.bitmap = glyph.set_bits_per_pixel(8, fill_depth=alpha_only).as_bytes()
+    gp.bitmap = glyph.as_bytes()
     return gp
 
 

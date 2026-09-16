@@ -634,6 +634,9 @@ def convert_to_nfnt(
     WidthEntry = width_entry_struct(base)
     HeightEntry = height_entry_struct(base)
     font = _normalize_metrics(font)
+    # map onto smallest default greyscale palette that fits
+    if font.palette.is_greyscale():
+        font = font.with_default_palette()
     # get contiguous glyph list
     # subset_for_nfnt has sorted on codepoint and added a 'missing' glyph
     if not font.get_codepoints():
@@ -652,7 +655,7 @@ def convert_to_nfnt(
     strike_raster = Raster.concatenate(*(_g.pixels for _g in glyph_table))
     # word-align strike
     strike_raster = strike_raster.expand(right=(16-strike_raster.width)%16)
-    font_strike = strike_raster.set_bits_per_pixel(font.bits_per_pixel).as_bytes()
+    font_strike = strike_raster.as_bytes()
     # build the width-offset table
     empty = Glyph(wo_offset=255, wo_width=255, levels=font.levels)
     wo_table = b''.join(
