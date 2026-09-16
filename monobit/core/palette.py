@@ -5,6 +5,7 @@ monobit.core.palette - RGB or greyscale palette
 licence: https://opensource.org/licenses/MIT
 """
 
+import logging
 from operator import itemgetter
 
 from monobit.base import RGB
@@ -155,8 +156,12 @@ class Palette:
             )
             for _s in self
         )
-        if not approximate and any(min(_d) for (_d) in distances):
-            raise ValueError(f'Could not map palettes exactly.')
+        if any(min(_d) for (_d) in distances):
+            msg = 'Could not map palettes exactly.'
+            if not approximate:
+                raise ValueError(msg)
+            else:
+                logging.warning(msg)
         mapped_index = tuple(
             min(enumerate(_dist), key=itemgetter(1))[0]
             for _dist in distances
