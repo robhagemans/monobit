@@ -1528,13 +1528,13 @@ class Font(HasProps):
     @scriptable
     def interlace(
             self, factor:Coord=Coord(1, 1),
-            *, shift_mask_column:int=None, adjust_metrics:bool=True
+            *, shift_mask_column:str=None, adjust_metrics:bool=True
         ):
         """
         Stretch by inserting empty rows and/or columns.
 
         factor: resulting stretch factor (horizontal, vertical) (default: 1,1)
-        shift_mask_column: number of the column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: no shift)
+        shift_mask_column: column holding a mask for half-dot shifts ('left' or 'right'; default: no half-dot shift)
         adjust_metrics: also stretch metrics (default: True)
         """
         factor_x, factor_y = factor

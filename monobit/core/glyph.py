@@ -798,14 +798,14 @@ class Glyph(HasProps):
         return self.modify(pixels, **new_metrics)
 
     def interlace(
-            self, factor:Coord=Coord(1, 1), *, shift_mask_column:int=None,
+            self, factor:Coord=Coord(1, 1), *, shift_mask_column:str=None,
             adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Stretch glyph by inserting empty rows and/or columns.
 
         factor: resulting stretch factor (horizontal, vertical) (default: 1,1)
-        shift_mask_column: number of the column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: no shift)
+        shift_mask_column: column holding a mask for half-dot shifts ('left' or 'right'; default: no half-dot shift)
         adjust_metrics: also stretch metrics (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """

@@ -740,16 +740,17 @@ class Raster:
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
-    def interlace(self, factor:Coord=Coord(1, 1), *, shift_mask_column:int=None):
+    def interlace(self, factor:Coord=Coord(1, 1), *, shift_mask_column:str=None):
         """
         Insert empty rows and/or columns.
 
         factor: resulting stretch factor (horizontal, vertical)
-        shift_mask_column: column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: None)
+        shift_mask_column: column holding a mask for half-dot shifts ('left' or 'right'; default: no half-dot shift)
         """
         factor_x, factor_y = factor
         if factor_x < 1 or factor_y < 1:
             raise ValueError('`factor` values must be greater than zero')
+
         # vertical interlace
         pixels = self._pixels
         if factor_y != 1:
@@ -773,16 +774,22 @@ class Raster:
             )
             pixels = tuple(_row[:-(factor_x-1)] for _row in pixels)
             if shift_mask_column is not None:
+                shift_mask_column = shift_mask_column[0].lower()
+                if shift_mask_column not in ('r', 'l'):
+                    raise ValueError(
+                        "`shift_mask_column` must be one of 'left', 'right'; "
+                        f"not '{shift_mask_column}'."
+                    )
                 def _exclude_mask(row):
-                    # TODO: use 'left' or 'right' here
-                    if shift_mask_column == -1:
+                    if shift_mask_column == 'r':
                         # remove the interlace of the mask column too
                         return row[:-factor_x]
                     else:
                         return row[factor_x:]
                 # half-pixel shift logic for hp-264x, Apple II HRCG
+                mask_col = -1 if shift_mask_column == 'r' else 0
                 pixels = tuple(
-                    self._paper + _exclude_mask(_row) if _row[shift_mask_column] != self._paper
+                    self._paper + _exclude_mask(_row) if _row[mask_col] != self._paper
                     else _exclude_mask(_row) + self._paper
                     for _row in pixels
                 )
