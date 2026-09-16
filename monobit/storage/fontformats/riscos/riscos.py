@@ -139,7 +139,6 @@ def load_x90y45(instream):
                     bits_per_pixel=index_entry.bpp,
                     align='bit',
                     bit_order='little',
-                    bytes=len(char_data),
                 ).flip(),
                 # x0, y0 in the x90y45 file seem to make more sense than in IntMetrics
                 # or I am not understanding the units correctly

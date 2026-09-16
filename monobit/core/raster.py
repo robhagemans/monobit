@@ -265,7 +265,6 @@ class Raster:
             cls, byteseq, width=NOT_SET, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
             byte_swap=0, bit_order='big', bits_per_pixel=NOT_SET, levels=NOT_SET,
-            **kwargs
         ):
         """
         Create raster from bytes/bytearray/int sequence.

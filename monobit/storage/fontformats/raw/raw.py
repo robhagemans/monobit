@@ -217,7 +217,7 @@ def _extract_cells(
         Raster.from_bytes(
             data[_i*bytes_per_row : (_i+1)*bytes_per_row],
             width*cells_per_row, height,
-            align=align, byte_order=byte_order,
+            align=align, order=byte_order,
             byte_swap=byte_swap,
         )
         for _i in range(nrows)
