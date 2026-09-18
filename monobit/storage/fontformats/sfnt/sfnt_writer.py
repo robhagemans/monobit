@@ -365,7 +365,7 @@ def convert_to_glyph(glyph, fb, strike_format, palette):
         bmga.metrics.vertAdvance = glyph.advance_height
     if not palette.is_default():  # or font.levels > 256
         # could use P for <=256-colour, to preserve palette order and unused entries
-        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=palette)
+        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=palette.as_rgb())
         if img.size == (0, 0):
             return None
         elif strike_format == 'png':
@@ -455,7 +455,9 @@ def _setup_sbix_table(fb, font, glyphs, strike_format):
     strike.resolution = font.dpi[0]
     strike.glyphs = {}
     for name, glyph in glyphs.items():
-        img = glyph_to_image(glyph, image_mode='RGBA', inklevels=font.palette)
+        img = glyph_to_image(
+            glyph, image_mode='RGBA', inklevels=font.palette.as_rgb()
+        )
         if img.size == (0, 0):
             sbix_glyph = fonttools.sbixGlyph(glyphName=name)
         else:

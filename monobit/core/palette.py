@@ -45,10 +45,6 @@ class Palette:
         """Number of levels."""
         return len(self._table)
 
-    def __getitem__(self, index):
-        """Retrieve palette entry."""
-        return self._table[index]
-
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False

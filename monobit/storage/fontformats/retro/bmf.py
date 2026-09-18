@@ -275,7 +275,7 @@ def _convert_to_bmf(font, version, alpha_greyscale):
     )
     bmf.palette = (_RGB_ENTRY * (len(font.palette)-1))(
         *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
-        for _rgb in font.palette[1:])
+        for _rgb in font.palette.as_rgb()[1:])
     )
     bmf.title = font.name.encode(title_encoding, 'replace')
     bmf.ascii_glyphs = tuple(

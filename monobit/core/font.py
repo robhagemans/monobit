@@ -1676,7 +1676,8 @@ class Font(HasProps):
         )))
         if len(used_levels) == self.levels:
             return self
-        new_palette = Palette(self.palette[_i] for _i in used_levels)
+        rgbtable = self.palette.as_rgb()
+        new_palette = Palette(rgbtable[_i] for _i in used_levels)
         if new_palette.is_default():
             new_palette = None
         return self.modify(
