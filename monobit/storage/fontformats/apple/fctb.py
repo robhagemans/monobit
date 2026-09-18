@@ -68,7 +68,7 @@ def convert_to_fctb(palette):
     """Convert Palette to fctb."""
     color_specs = (_COLOR_SPEC * len(palette))(*(
         _COLOR_SPEC(value=_i, red=_c.r << 8, green=_c.g << 8, blue=_c.b << 8)
-        for _i, _c in enumerate(palette)
+        for _i, _c in enumerate(palette.as_rgb())
     ))
     # unclear how seed should be chosen
     color_table = _COLOR_TABLE(ctSeed=1024, ctSize=len(palette))

@@ -476,7 +476,10 @@ def _save_yaff(fonts, outstream):
                 if isinstance(value, Palette):
                     value = '\n'.join(
                         f'{_c.r:02X}{_c.g:02X}{_c.b:02X} {_lvl}'
-                        for _c, _lvl in zip(value, YaffParams.inklevels(len(value)))
+                        for _c, _lvl in zip(
+                            value.as_rgb(),
+                            YaffParams.inklevels(len(value))
+                        )
                     )
                 if value != font.get_default(key):
                     _write_property(outstream, key, value, font.get_comment(key))

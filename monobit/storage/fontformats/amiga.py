@@ -811,7 +811,7 @@ def save_amiga(fonts, outstream):
         logging.debug('ColorFontColors structure: %s', cfc)
         colortable = (be.uint16 * cfc.cfc_Count)(*(
             (_r>>4) * 256 + (_g & 0xf0) + (_b >> 4)
-            for _r, _g, _b in font.palette
+            for _r, _g, _b in font.palette.as_rgb()
         ))
         ctf_CharData = (be.uint32 * depth)(*(
             anchor + _ofs * len(fontData) // depth

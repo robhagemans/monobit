@@ -37,11 +37,9 @@ class Palette:
         """Set up palette."""
         if isinstance(table, str):
             table = table.splitlines()
+        if isinstance(table, type(self)):
+            table = table._table
         self._table = tuple(RGB.create(_v) for _v in table)
-
-    def __iter__(self):
-        """Iterate over palette."""
-        return iter(self._table)
 
     def __len__(self):
         """Number of levels."""
@@ -60,20 +58,20 @@ class Palette:
         return hash(self._table)
 
     def __repr__(self):
-        return f'{type(self).__name__}({list(self)})'
+        return f'{type(self).__name__}({list(self._table)})'
 
     def __str__(self):
         """Convert palette to multiline string."""
-        return '\n'.join(str(_v) for _v in iter(self))
+        return '\n'.join(str(_v) for _v in self._table)
 
     def is_greyscale(self):
         """This palette is a grey scale."""
         # ignore transparency attribute if it exists
-        return all(_c.r == _c.g == _c.b for _c in iter(self))
+        return all(_c.r == _c.g == _c.b for _c in self._table)
 
     def is_default(self):
         """This palette is the default palette for this number of levels."""
-        return self == self.default(len(self))
+        return self == self.default(len(self._table))
 
     @classmethod
     def default(cls, levels):
@@ -99,7 +97,7 @@ class Palette:
 
     def as_intensity(self):
         """Return iterable of intensity values for this palette."""
-        return tuple(sum(_tup) // len(_tup) for _tup in iter(self))
+        return tuple(sum(_tup) // len(_tup) for _tup in self._table)
 
     def as_greyscale(self, paper:int=None, ink:int=None):
         """Return intensities between specified values."""
@@ -128,7 +126,7 @@ class Palette:
                 for _int in intensities
             )
         else:
-            inklevels = [*self]
+            inklevels = [*self._table]
             if paper is not None:
                 inklevels[0] = paper
             if ink is not None:
@@ -152,9 +150,9 @@ class Palette:
         distances = tuple(
             tuple(
                 sum(abs(_sv - _ov) for _sv, _ov in zip(_s, _o))
-                for _o in other
+                for _o in other._table
             )
-            for _s in self
+            for _s in self._table
         )
         if any(min(_d) for (_d) in distances):
             msg = 'Could not map palettes exactly.'

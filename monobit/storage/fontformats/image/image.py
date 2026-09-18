@@ -52,8 +52,8 @@ def identify_inklevels(colours, background):
         # check for greyscales
         # any grey-only set in 24-bit RGB is a subset of 256-colour greyscale
         for levels, greyset in GREYSETS.items():
-            if colourset < set(greyset):
-                return greyset
+            if colourset < set(greyset.as_rgb()):
+                return greyset.as_rgb()
         paper = _identify_background(colours, background)
         # if paper is darker than average colour, sort dark to bright
         # else sort bright to dark

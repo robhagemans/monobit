@@ -255,7 +255,7 @@ def _convert_to_bmf(font, version, alpha_greyscale):
         font = font.with_default_palette(levels=256, approximate=True)
     else:
         font = font.with_palette(
-            list(font.palette) + [BLACK] * (256-len(font.palette))
+            list(font.palette.as_rgb()) + [BLACK] * (256-len(font.palette))
         )
     assert font.bits_per_pixel == 8
     common_right = min(_g.right_bearing for _g in font.glyphs)
