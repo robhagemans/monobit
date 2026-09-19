@@ -76,9 +76,24 @@ class TestGreyscale(BaseTester):
     def test_sfont_greyscale(self):
         self._render_greyscale('sfont')
 
-    def test_image_greyscale(self):
+    def test_image_greyscale_grey(self):
         self._render_greyscale(
             'image',
+            save_kwargs=dict(image_mode='grey'),
+            load_kwargs=dict(table_size=(32, 3), first_codepoint=0x20)
+        )
+
+    def test_image_greyscale_rgb(self):
+        self._render_greyscale(
+            'image',
+            save_kwargs=dict(image_mode='rgb'),
+            load_kwargs=dict(table_size=(32, 3), first_codepoint=0x20)
+        )
+
+    def test_image_greyscale_rgba(self):
+        self._render_greyscale(
+            'image',
+            save_kwargs=dict(image_mode='rgba'),
             load_kwargs=dict(table_size=(32, 3), first_codepoint=0x20)
         )
 
