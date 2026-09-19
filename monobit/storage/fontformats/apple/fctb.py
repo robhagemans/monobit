@@ -6,7 +6,7 @@ licence: https://opensource.org/licenses/MIT
 """
 
 from monobit.base.struct import big_endian as be
-from monobit.core.palette import Palette, BLACK, WHITE
+from monobit.core.palette import Palette
 
 
 # https://vintageapple.org/inside_o/pdf/Inside_Macintosh_Volume_V_1986.pdf
@@ -50,9 +50,9 @@ def convert_fctb(color_table, color_specs, levels, **kwargs):
         for _c in color_specs
     }
     # fill out colour table with greyscale levels (as per V-183)
-    levels_needed = levels - len(color_specs)
+    levels_needed = levels - len(color_dict)
     # use a reverse gradient so we can pop from the tail
-    greyscale = Palette.gradient(WHITE, BLACK, levels_needed)
+    greyscale = list(reversed(Palette.default(levels_needed).as_rgb()))
     # this should exactly exhaust greyscale
     palette = []
     for i in range(levels):

@@ -35,108 +35,134 @@ class Palette:
 
     def __init__(self, table=()):
         """Set up palette."""
-        if isinstance(table, str):
-            table = table.splitlines()
         if isinstance(table, type(self)):
-            table = table._table
-        self._table = tuple(RGB.create(_v) for _v in table)
+            self._rgb = table._rgb
+            self._alpha = table._alpha
+            self._levels = table._levels
+            return
+        table = tuple(table)
+        self._levels = len(table)
+        if not table:
+            self._alpha = ()
+            self._rgb = None
+        elif isinstance(table[0], int):
+            self._alpha = table
+            self._rgb = None
+        elif len(table[0]) == 3:
+            self._alpha = None
+            self._rgb = tuple(RGB.create(_v) for _v in table)
+        elif len(table[0]) == 4:
+            self._rgb = tuple(RGB.create(_v[:3]) for _v in table)
+            self._alpha = tuple(_v[3] for _v in table)
+            if len(set(self._rgb)) <= 1:
+                # all the same colour -> intensity palette
+                self._rgb = None
+            elif len(set(self._alpha)) <= 1:
+                # all alpha the same -> no alpha
+                self._alpha = None
+        else:
+            raise ValueError('Palette must be intensity, rgb or rgba')
+        if self._alpha is None and all(_c.r == _c.g == _c.b for _c in self._rgb):
+            self._alpha = tuple(_c[0] for _c in table)
+            self._rgb = None
 
     def __len__(self):
         """Number of levels."""
-        return len(self._table)
+        return self._levels
 
     def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            return False
-        return self._table == other._table
+        return (
+            isinstance(other, type(self))
+            and self._levels == other._levels
+            and self._alpha == other._alpha
+            and self._rgb == other._rgb
+        )
 
     def __hash__(self):
-        return hash(self._table)
+        return hash((self._levels, self._rgb, self._alpha))
 
     def __repr__(self):
-        return f'{type(self).__name__}({list(self._table)})'
+        if self._alpha is None:
+            table = self._rgb
+        elif self._rgb is None:
+            table = self._alpha
+        else:
+            table = self.as_rgba()
+        return f'{type(self).__name__}({list(table)})'
 
     def __str__(self):
         """Convert palette to multiline string."""
-        return '\n'.join(str(_v) for _v in self._table)
+        if self._rgb is None:
+            return '\n'.join(f'{_a:02X}' for _a in self._alpha)
+        if self._alpha is None:
+            table = self._rgb
+        else:
+            table = self.as_rgba()
+        return '\n'.join(''.join(f'{_v:02X}' for _v in _c) for _c in table)
 
     def is_greyscale(self):
         """This palette is a grey scale."""
-        # ignore transparency attribute if it exists
-        return all(_c.r == _c.g == _c.b for _c in self._table)
+        return self._rgb is None
 
     def has_alpha(self):
         """This palette has an alpha channel."""
-        return isinstance(self._table[0], RGBA)
+        return self._alpha is not None
 
     def is_default(self):
         """This palette is the default palette for this number of levels."""
-        return self == self.default(len(self._table))
+        return self == self.default(self._levels)
 
     @classmethod
     def default(cls, levels):
-        """Create equal-stepped RGB gradient from black to white."""
-        return cls.gradient(BLACK, WHITE, levels)
-
-    @classmethod
-    def gradient(cls, paper, ink, levels):
-        """Create equal-stepped RGB or intensity gradient from paper to ink."""
+        """Create equal-stepped intensity gradient."""
         maxlevel = levels - 1
-        return cls(
-            tuple(
-                (_value * _ink + (maxlevel - _value) * _paper) // maxlevel
-                for _ink, _paper in zip(ink, paper)
-            )
-            for _value in range(levels)
-        )
-
-    @classmethod
-    def from_intensity(cls, intensities):
-        """Create palette from intensity values."""
-        return cls(RGB(_i, _i, _i) for _i in intensities)
+        return cls(_value * 255 // maxlevel for _value in range(levels))
 
     def as_intensity(self):
         """Return iterable of intensity values for this palette."""
-        return tuple(sum(_tup) // len(_tup) for _tup in self._table)
+        if self._rgb is None:
+            return self._alpha
+        rgb_int = (sum(_tup) // len(_tup) for _tup in self._rgb)
+        if self._alpha is None:
+            return tuple(rgb_int)
+        return tuple(_a * _i // 255 for _a, _i in zip(self._alpha, rgb_int))
 
     def as_rgb(self, paper:RGB=None, ink:RGB=None):
         """Return RGB palette with substituted ink and paper values."""
-        if self.is_greyscale():
-            intensities = self.as_intensity()
-            max_int = 255 # max(intensities)
+        if self._rgb is None:
             paper, ink = dark_defaults(paper, ink)
             return tuple(
                 RGB(*(
-                    (_i*_int + _p*(max_int-_int)) // max_int
+                    (_i*_int + _p*(255-_int)) // 255
                     for _p, _i in zip(paper, ink)
                 ))
-                for _int in intensities
+                for _int in self._alpha
             )
-        else:
-            inklevels = [*self._table]
-            if paper is not None:
-                inklevels[0] = paper
-            if ink is not None:
-                inklevels[-1] = ink
-            return inklevels
+        rgb = [*self._rgb]
+        if self._alpha is not None:
+            # premultiply alpha
+            rgb = tuple(_i * _a // 255 for _i, _a in zip(rgb, self._alpha))
+        if paper is not None:
+            rgb[0] = paper
+        if ink is not None:
+            rgb[-1] = ink
+        return tuple(RGB(*_v) for _v in rgb)
 
     def as_rgba(self, ink:RGB=None):
         """Return RGBA palette with substituted RGB ink value."""
-        if self.is_greyscale():
-            intensities = self.as_intensity()
+        if self._rgb is None:
             ink = ink or WHITE
-            # use intensity as alpha
-            return tuple(RGBA(*ink, _int) for _int in intensities)
-        elif not self.has_alpha():
+            return tuple(RGBA(*ink, _int) for _int in self._alpha)
+        elif self._alpha is None:
             # set alpha to fully opaque, except background
-            return (tuple(self._table[0]) + (0,),) + tuple(
-                tuple(_c) + (255,) for _c in self._table[1:]
+            return (RGBA(*self._rgb[0], 0,),) + tuple(
+                RGBA(*_c, 255) for _c in self._rgb[1:]
             )
         else:
-            inklevels = [*self._table]
+            rgb = [*self._rgb]
             if ink is not None:
-                inklevels[-1] = (*ink, 255)
-            return inklevels
+                rgb[-1] = ink
+            return tuple(RGBA(*_v, _a) for _v, _a in zip(rgb, self._alpha))
 
     def as_mono(self, threshold=0.5):
         """Map to monochrome."""
@@ -150,9 +176,9 @@ class Palette:
         distances = tuple(
             tuple(
                 sum(abs(_sv - _ov) for _sv, _ov in zip(_s, _o))
-                for _o in other._table
+                for _o in other.as_rgb()
             )
-            for _s in self._table
+            for _s in self.as_rgb()
         )
         if any(min(_d) for (_d) in distances):
             msg = 'Could not map palettes exactly.'

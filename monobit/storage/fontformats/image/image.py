@@ -160,7 +160,7 @@ if Image:
         keep_empty: keep empty glyphs (default: False)
         """
         with Image.open(infile) as img:
-            img = img.convert('RGB')
+            img = img.convert('RGBA')
             if grid:
                 crops = extract_crops_from_grid(
                     img, table_size, cell, scale, padding, margin, direction
