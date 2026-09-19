@@ -474,7 +474,7 @@ if Image:
                 raise FileFormatError(
                     f"Cannot store this colour font as `image_mode`=='grey'."
                 )
-            inklevels = font.palette.as_greyscale()
+            inklevels = font.palette.as_intensity()
         elif image_mode == 'rgb':
             inklevels = font.palette.as_rgb(paper=paper, ink=ink)
         elif image_mode == 'rgba':

@@ -99,19 +99,6 @@ class Palette:
         """Return iterable of intensity values for this palette."""
         return tuple(sum(_tup) // len(_tup) for _tup in self._table)
 
-    def as_greyscale(self, paper:int=None, ink:int=None):
-        """Return intensities between specified values."""
-        intensities = self.as_intensity()
-        max_int = 255 # max(intensities)
-        if paper is None:
-            paper = 0
-        if ink is None:
-            ink = 255
-        return tuple(
-            (ink*_int + paper*(max_int-_int)) // max_int
-            for _int in intensities
-        )
-
     def as_rgb(self, paper:RGB=None, ink:RGB=None):
         """Return RGB palette with substituted ink and paper values."""
         if self.is_greyscale():
@@ -151,16 +138,11 @@ class Palette:
                 inklevels[-1] = (*ink, 255)
             return inklevels
 
-    def as_mono(self, paper=None, ink=None, threshold=0.5):
+    def as_mono(self, threshold=0.5):
         """Map to monochrome."""
-        if paper is None:
-            paper = 0
-        if ink is None:
-            ink = 1
         intensities = self.as_intensity()
         thresh = int(max(intensities) * threshold)
-        is_above = (_int >= thresh for _int in intensities)
-        return tuple(ink if _int else paper for _int in is_above)
+        return tuple(int(_int >= thresh) for _int in intensities)
 
     def map_to(self, other, approximate=False):
         """Return closest index in other palette for each entry."""
