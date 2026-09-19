@@ -211,7 +211,8 @@ class TestExport(BaseTester):
     def test_export_png_mono(self):
         """Test exporting image files (monochrome)."""
         self._export_4x6(
-            format='image', count=192, label=b'A',
+            # no distinctive border in mono mode, so missing glyphs are spaces
+            format='image', count=256, label=b'A',
             save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='mono'),
             load_kwargs=dict(grid=True, cell=(4, 6)),
         )

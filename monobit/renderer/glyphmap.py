@@ -160,9 +160,12 @@ class GlyphMap:
                 f'must be one of {supported_modes}.'
             )
         masklevels = [0] + [1] * (self._levels-1)
-        # mono and greyscale images have fixed levels
-        if image_mode not in ('rgb', 'rgba'):
+        if image_mode == 'mono':
+            # mono has only 0, 1 available
             border = 0
+        elif image_mode in ('grey', 'gray') and isinstance(border, (RGB, tuple)):
+            # convert to intensity
+            border = sum(border) // len(border)
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
