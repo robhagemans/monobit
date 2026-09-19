@@ -57,14 +57,6 @@ def identify_inklevels(colours, background):
         paper = _identify_background(colours, background)
         # if paper is darker than average colour, sort dark to bright
         # else sort bright to dark
-        def _brightness(colour):
-            try:
-                if len(colour) == 4:
-                    r, g, b, a = colour
-                    return (r + g + b) * a // 255
-            except TypeError:
-                pass
-            return sum(colour)
         reverse = _brightness(paper) > sum(_brightness(_c) for _c in colours) / len(colours)
         rgbtable = sorted(colourset, key=lambda _t: _brightness(_t), reverse=reverse)
         # ensure paper is first colour in table
@@ -97,7 +89,7 @@ def _identify_background(colours, background):
             # least common colour in image assumed to be background colour
             paper, _ = colourfreq.most_common()[-1]
     elif background in ('darkest', 'brightest'):
-        brightness = sorted((sum(_c), _c) for _c in colours)
+        brightness = sorted((_brightness(_c), _c) for _c in colours)
         if background == 'darkest':
             # darkest colour assumed to be background
             _, paper = brightness[0]
@@ -122,6 +114,17 @@ def _identify_background(colours, background):
     else:
         raise ValueError(f'Background mode `{background}` not supported.')
     return paper
+
+
+def _brightness(colour):
+    """Intensity of RGB or RGBA colour."""
+    try:
+        if len(colour) == 4:
+            r, g, b, a = colour
+            return (r + g + b) * a // 255
+    except TypeError:
+        pass
+    return sum(colour)
 
 
 if Image:
