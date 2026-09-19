@@ -97,6 +97,24 @@ class TestGreyscale(BaseTester):
             load_kwargs=dict(table_size=(32, 3), first_codepoint=0x20)
         )
 
+    def test_imageset_greyscale_grey(self):
+        self._render_greyscale(
+            'imageset',
+            save_kwargs=dict(image_mode='grey'),
+        )
+
+    def test_imageset_greyscale_rgb(self):
+        self._render_greyscale(
+            'imageset',
+            save_kwargs=dict(image_mode='rgb'),
+        )
+
+    def test_imageset_greyscale_rgba(self):
+        self._render_greyscale(
+            'imageset',
+            save_kwargs=dict(image_mode='rgba'),
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
