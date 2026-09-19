@@ -81,8 +81,25 @@ class TestColour(BaseTester):
     def test_sfont_colour(self):
         self._render_colour('sfont')
 
-    def test_image_colour(self):
-        self._render_colour('image', load_kwargs={'first_codepoint': ord('t')})
+    def test_image_colour_rgb(self):
+        self._render_colour(
+            'image',
+            save_kwargs={'image_mode': 'rgb'},
+            load_kwargs={'first_codepoint': ord('t')}
+        )
+
+    def test_image_colour_rgba(self):
+        self._render_colour(
+            'image',
+            save_kwargs={'image_mode': 'rgba'},
+            load_kwargs={'first_codepoint': ord('t')}
+        )
+
+    def test_imageset_colour_rgb(self):
+        self._render_colour('imageset', save_kwargs={'image_mode': 'rgb'})
+
+    def test_imageset_colour_rgba(self):
+        self._render_colour('imageset', save_kwargs={'image_mode': 'rgba'})
 
 
 if __name__ == '__main__':
