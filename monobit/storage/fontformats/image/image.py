@@ -440,7 +440,7 @@ if Image:
         """
         def _load_image_glyph(stream):
             crop = Image.open(stream)
-            crop = crop.convert('RGB')
+            crop = crop.convert('RGBA')
             cp = int(Path(stream.name).stem.removeprefix(prefix), base)
             # return codepoint, image pair to be parsed by convert_crops_to_font
             return (cp, crop)
