@@ -141,7 +141,10 @@ class Palette:
         rgb = [*self._rgb]
         if self._alpha is not None:
             # premultiply alpha
-            rgb = tuple(_i * _a // 255 for _i, _a in zip(rgb, self._alpha))
+            rgb = tuple(
+                tuple(_i * _a // 255 for _i in _rgb)
+                for _rgb, _a in zip(rgb, self._alpha)
+            )
         if paper is not None:
             rgb[0] = paper
         if ink is not None:
