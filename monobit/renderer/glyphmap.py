@@ -27,7 +27,15 @@ _IMAGE_MODE_PIL_MAP = {
 
 
 def glyph_to_image(glyph, image_mode, inklevels):
-    """Create image of single glyph."""
+    """
+    Create image of single glyph.
+
+    inklevels type depends on image_mode:
+        'mono' -> {0, 1}
+        'grey' -> int 0--255
+        'rgb': 3-tuple of int 0--255
+        'rgba': 4-tuple of int 0--255
+    """
     if not Image:
         raise ImportError('Rendering to image requires PIL module.')
     try:
@@ -38,12 +46,6 @@ def glyph_to_image(glyph, image_mode, inklevels):
             f'got {image_mode} instead.'
         )
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
-    # if using RGBA, inklevels must have 4 numbers per entry too
-    # palette only has 3. set alpha to fully opaque, except background
-    if image_mode == 'RGBA' and len(inklevels[0]) == 3:
-        inklevels = (tuple(inklevels[0]) + (0,),) + tuple(
-            tuple(_c) + (255,) for _c in inklevels[1:]
-        )
     data = glyph.as_vector(inklevels=inklevels)
     charimg.putdata(data)
     return charimg
@@ -141,14 +143,16 @@ class GlyphMap:
         """Convert glyph map to image."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
-
         image_mode = image_mode[:4].lower()
         if image_mode == 'mono':
             inklevels = self._palette.as_mono(paper=paper, ink=ink)
         elif image_mode in ('grey', 'gray'):
             inklevels = self._palette.as_greyscale(paper=paper, ink=ink)
-        elif image_mode in ('rgb', 'rgba'):
+        elif image_mode == 'rgb':
             inklevels = self._palette.as_rgb(paper=paper, ink=ink)
+        elif image_mode == 'rgba':
+            # in RGBA mode, paper is transparent; ignore parameter
+            inklevels = self._palette.as_rgba(ink=ink)
         else:
             supported_modes = tuple(_IMAGE_MODE_PIL_MAP.keys())
             raise ValueError(

@@ -243,7 +243,7 @@ if Image:
         direction: text direction (l, r, b, t, n; default: n)
         align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
         image_format: image file format (default: 'png')
-        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        image_mode: image colour mode. 'mono', 'grey', 'rgb' or 'rgba' (default: 'rgb')
         paper: background colour R,G,B 0--255 (default: 255,255,255)
         ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
         border: border colour R,G,B 0--255 (default: same as paper)

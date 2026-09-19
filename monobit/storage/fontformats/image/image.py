@@ -477,8 +477,10 @@ if Image:
             inklevels = font.palette.as_greyscale()
         elif image_mode == 'rgb':
             inklevels = font.palette.as_rgb(paper=paper, ink=ink)
+        elif image_mode == 'rgba':
+            inklevels = font.palette.as_rgba(ink=ink)
         else:
-            supported_modes = ('grey', 'gray', 'mono', 'rgb')
+            supported_modes = ('grey', 'gray', 'mono', 'rgb', 'rgba')
             raise ValueError(
                 f"`image_mode`=='{image_mode}' not supported: "
                 f'must be one of {supported_modes}.'

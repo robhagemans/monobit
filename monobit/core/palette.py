@@ -8,7 +8,7 @@ licence: https://opensource.org/licenses/MIT
 import logging
 from operator import itemgetter
 
-from monobit.base import RGB
+from monobit.base import RGB, RGBA
 
 
 BLACK = RGB(0, 0, 0)
@@ -64,6 +64,10 @@ class Palette:
         """This palette is a grey scale."""
         # ignore transparency attribute if it exists
         return all(_c.r == _c.g == _c.b for _c in self._table)
+
+    def has_alpha(self):
+        """This palette has an alpha channel."""
+        return isinstance(self._table[0], RGBA)
 
     def is_default(self):
         """This palette is the default palette for this number of levels."""
@@ -127,6 +131,24 @@ class Palette:
                 inklevels[0] = paper
             if ink is not None:
                 inklevels[-1] = ink
+            return inklevels
+
+    def as_rgba(self, ink:RGB=None):
+        """Return RGBA palette with substituted RGB ink value."""
+        if self.is_greyscale():
+            intensities = self.as_intensity()
+            ink = ink or WHITE
+            # use intensity as alpha
+            return tuple(RGBA(*ink, _int) for _int in intensities)
+        elif not self.has_alpha():
+            # set alpha to fully opaque, except background
+            return (tuple(self._table[0]) + (0,),) + tuple(
+                tuple(_c) + (255,) for _c in self._table[1:]
+            )
+        else:
+            inklevels = [*self._table]
+            if ink is not None:
+                inklevels[-1] = (*ink, 255)
             return inklevels
 
     def as_mono(self, paper=None, ink=None, threshold=0.5):

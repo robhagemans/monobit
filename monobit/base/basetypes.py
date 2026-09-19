@@ -104,7 +104,7 @@ class Coord(_VectorMixin, namedtuple('Coord', 'x y')):
 
 
 class RGB(_VectorMixin, namedtuple('RGB', 'r g b')):
-    """Coordinate tuple."""
+    """Red-green-blue tuple."""
 
     @classmethod
     def create(cls, coord=0):
@@ -113,6 +113,24 @@ class RGB(_VectorMixin, namedtuple('RGB', 'r g b')):
 
     def __bool__(self):
         return True
+
+    def __str__(self):
+        return f'{self.r:02X}{self.g:02X}{self.b:02X}'
+
+
+class RGBA(_VectorMixin, namedtuple('RGBA', 'r g b a')):
+    """Red-green-blue-alpha tuple."""
+
+    @classmethod
+    def create(cls, coord=0):
+        coord = to_tuple(coord, length=4)
+        return cls(*coord)
+
+    def __bool__(self):
+        return True
+
+    def __str__(self):
+        return f'{self.r:02X}{self.g:02X}{self.b:02X}{self.a:02X}'
 
 
 def _str_to_tuple(value):

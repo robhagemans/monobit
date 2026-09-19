@@ -1067,7 +1067,7 @@ def _draw_images(glyph_map, packed):
         )
     else:
         images = glyph_map.to_images(
-            invert_y=True, transparent=False, image_mode='RGB',
+            invert_y=True, transparent=False, image_mode='rgb',
         )
     return images
 
