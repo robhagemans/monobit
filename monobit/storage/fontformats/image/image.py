@@ -258,7 +258,7 @@ if Image:
 
 
     def convert_crops_to_font(enumerated_crops, background, keep_empty):
-        """Convert list of RGB glyph images to font."""
+        """Convert list of RGBA glyph images to font."""
         enumerated_crops = tuple(enumerated_crops)
         # get pixels
         _, crops = tuple(zip(*enumerated_crops))
@@ -455,8 +455,8 @@ if Image:
             prefix:str='',
             image_format:str='png',
             image_mode:str='rgb',
-            paper:RGB=(0, 0, 0),
-            ink:RGB=(255, 255, 255),
+            paper:RGB=None,
+            ink:RGB=None,
         ):
         """
         Export font to per-glyph images.
