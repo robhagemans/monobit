@@ -473,10 +473,6 @@ if Image:
             font = ensure_levels(font, 2)
             inklevels = font.palette.as_mono()
         elif image_mode in ('grey', 'gray'):
-            if not font.palette.is_greyscale():
-                raise FileFormatError(
-                    f"Cannot store this colour font as `image_mode`=='grey'."
-                )
             inklevels = font.palette.as_intensity()
         elif image_mode == 'rgb':
             inklevels = font.palette.as_rgb(paper=paper, ink=ink)
