@@ -397,6 +397,7 @@ if Image:
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: false)
         """
+        image_mode = image_mode[:4].lower()
         if image_mode == 'mono':
             fonts = ensure_levels(fonts, 2)
         # NOTE 'imagechart' and 'image' are the same but with different defaults
@@ -468,22 +469,14 @@ if Image:
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
         font = ensure_single(fonts)
-        image_mode = image_mode.lower()[:4]
+        image_mode = image_mode[:4].lower()
+        # we don't downsample to mono as it'll just be ugly
+        # we do allow other downsamplings
         if image_mode == 'mono':
             font = ensure_levels(font, 2)
-            inklevels = font.palette.as_mono()
-        elif image_mode in ('grey', 'gray'):
-            inklevels = font.palette.as_intensity()
-        elif image_mode == 'rgb':
-            inklevels = font.palette.as_rgb(paper=paper, ink=ink)
-        elif image_mode == 'rgba':
-            inklevels = font.palette.as_rgba(ink=ink)
-        else:
-            supported_modes = ('grey', 'gray', 'mono', 'rgb', 'rgba')
-            raise ValueError(
-                f"`image_mode`=='{image_mode}' not supported: "
-                f'must be one of {supported_modes}.'
-            )
+        inklevels = font.palette.as_imagemode(
+            image_mode, paper=paper, ink=ink
+        )
 
         def _save_image_glyph(glyph, imgfile):
             img = glyph_to_image(glyph, image_mode=image_mode, inklevels=inklevels)

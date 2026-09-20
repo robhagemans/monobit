@@ -144,21 +144,9 @@ class GlyphMap:
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
         image_mode = image_mode[:4].lower()
-        if image_mode == 'mono':
-            inklevels = self._palette.as_mono()
-        elif image_mode in ('grey', 'gray'):
-            inklevels = self._palette.as_intensity()
-        elif image_mode == 'rgb':
-            inklevels = self._palette.as_rgb(paper=paper, ink=ink)
-        elif image_mode == 'rgba':
-            # in RGBA mode, paper is transparent; ignore parameter
-            inklevels = self._palette.as_rgba(ink=ink)
-        else:
-            supported_modes = tuple(_IMAGE_MODE_PIL_MAP.keys())
-            raise ValueError(
-                f"`image_mode`=='{image_mode}' not supported: "
-                f'must be one of {supported_modes}.'
-            )
+        inklevels = self._palette.as_imagemode(
+            image_mode, paper=paper, ink=ink
+        )
         masklevels = [0] + [1] * (self._levels-1)
         if image_mode == 'mono':
             # mono has only 0, 1 available

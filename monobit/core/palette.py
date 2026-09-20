@@ -173,6 +173,24 @@ class Palette:
         thresh = int(max(intensities) * threshold)
         return tuple(int(_int >= thresh) for _int in intensities)
 
+    def as_imagemode(self, image_mode, *, paper=None, ink=None, threshold=0.5):
+        """Get palette for given image mode."""
+        image_mode = image_mode[:4].lower()
+        supported_modes = ('grey', 'gray', 'mono', 'rgb', 'rgba')
+        if image_mode == 'mono':
+            return self.as_mono(threshold=threshold)
+        elif image_mode in ('grey', 'gray'):
+            return self.as_intensity()
+        elif image_mode == 'rgb':
+            return self.as_rgb(paper=paper, ink=ink)
+        elif image_mode == 'rgba':
+            return self.as_rgba(ink=ink)
+        else:
+            raise ValueError(
+                f"`image_mode`=='{image_mode}' not supported: "
+                f'must be one of {supported_modes}.'
+            )
+
     def map_to(self, other, approximate=False):
         """Return closest index in other palette for each entry."""
         other = type(self)(other)
