@@ -40,6 +40,19 @@ class Palette:
             self._alpha = table._alpha
             self._levels = table._levels
             return
+        if isinstance(table, str):
+            if not table:
+                table = ()
+            else:
+                lines = (_l.strip() for _l in table.splitlines())
+                groupslines = (
+                    tuple(''.join(_g) for _g in zip(*([iter(_l)] * 2)))
+                    for _l in lines
+                )
+                table = tuple(
+                    tuple(int(_g, 16) for _g in _l)
+                    for _l in groupslines
+                )
         table = tuple(table)
         self._levels = len(table)
         if not table:
@@ -47,6 +60,9 @@ class Palette:
             self._rgb = None
         elif isinstance(table[0], int):
             self._alpha = table
+            self._rgb = None
+        elif len(table[0]) == 1:
+            self._alpha = tuple(int(_entry[0]) for _entry in table)
             self._rgb = None
         elif len(table[0]) == 3:
             self._alpha = None

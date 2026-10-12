@@ -194,10 +194,7 @@ def _read_yaff(text_stream):
                     lines = value.splitlines()
                     if len(lines[0].split()) == 2:
                         colours, inklevels = zip(*(_l.split() for _l in lines))
-                        value = tuple(
-                            (int(_rgb[:2], 16), int(_rgb[2:4], 16), int(_rgb[4:6], 16))
-                            for _rgb in colours
-                        )
+                        value = '\n'.join(colours)
                     else:
                         inklevels = YaffParams.inklevels(len(value))
                 _set_property(font_props, key, value)
@@ -475,9 +472,9 @@ def _save_yaff(fonts, outstream):
             for key, value in props.items():
                 if isinstance(value, Palette):
                     value = '\n'.join(
-                        f'{_c.r:02X}{_c.g:02X}{_c.b:02X} {_lvl}'
-                        for _c, _lvl in zip(
-                            value.as_rgb(),
+                        f'{_entry} {_lvl}'
+                        for _entry, _lvl in zip(
+                            str(value).splitlines(),
                             YaffParams.inklevels(len(value))
                         )
                     )
