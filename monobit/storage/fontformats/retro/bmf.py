@@ -161,10 +161,12 @@ def _convert_bmf(bmf, alpha_only):
             kerning_map[kern.first][kern.second] = kern.correction
     kerning_map = dict(kerning_map)
     # -- convert palette
-    # TODO: color 0 is defined as transparent, not black
     if bmf.header.extraPalettes:
         # I don't understand how multiple palettes are meant to be stored
         logging.warning('Multiple palettes not supported')
+    # NOTE: colour 0 is defined as transparent instead of black
+    # however the paper colour is commonly overridden by the renderer
+    # so avoid introducing an alpha layer unless included in the file
     palette = ((0, 0, 0),) + tuple(
         (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
     )
