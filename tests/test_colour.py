@@ -160,6 +160,24 @@ class TestRGBA(BaseTester):
             load_kwargs={'background': 'alpha'}
         )
 
+    def test_sfnt_cbdt_bit_rgba(self):
+        self._render_rgba('sfnt', char=True, save_kwargs=dict(bitmap_table='CBDT', strike_format='bit'))
+
+    def test_sfnt_cbdt_byte_rgba(self):
+        self._render_rgba('sfnt', char=True, save_kwargs=dict(bitmap_table='CBDT', strike_format='byte'))
+
+    def test_sfnt_cbdt_png_rgba(self):
+        self._render_rgba('sfnt', char=True, save_kwargs=dict(bitmap_table='CBDT', strike_format='png'))
+
+    def test_sfnt_sbix_png_rgba(self):
+        self._render_rgba('sfnt', char=True, save_kwargs=dict(bitmap_table='sbix', strike_format='png'))
+
+    def test_sfnt_sbix_tiff_rgba(self):
+        self._render_rgba('sfnt', char=True, save_kwargs=dict(bitmap_table='sbix', strike_format='tiff'))
+
+    def test_bmfont_rgba(self):
+        self._render_rgba('bmfont', save_kwargs={'packed': False})
+
 
 if __name__ == '__main__':
     unittest.main()
