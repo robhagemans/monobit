@@ -26,6 +26,7 @@ palette:
 """
 
 
+
 class TestColour(BaseTester):
     """Test colour features."""
 
@@ -100,6 +101,64 @@ class TestColour(BaseTester):
 
     def test_imageset_colour_rgba(self):
         self._render_colour('imageset', save_kwargs={'image_mode': 'rgba'})
+
+
+
+rgbafont = """
+name: RGBATest
+levels: 4
+palette:
+    00000000 .
+    FF000055 1
+    00FF00AA 2
+    0000FFFF @
+
+'t':
+116:
+    .12@
+"""
+
+
+class TestRGBA(BaseTester):
+    """Test rgba features."""
+
+    rendered = (
+        (0, 0, 0, 0), (255, 0, 0, 85), (0, 255, 0, 170), (0, 0, 255, 255)
+    )
+
+    def _render_rgba(self, format, *, char=False, load_kwargs=(), save_kwargs=()):
+        font1, *_ = monobit.load(get_stringio(rgbafont))
+        monobit.save(
+            font1, self.temp_path / f'rgba.{format}',
+            format=format, **(save_kwargs or {}),
+        )
+        font2, *_ = monobit.load(
+            self.temp_path / f'rgba.{format}',
+            format=format, **(load_kwargs or {}),
+        )
+        if char:
+            text = 't'
+        else:
+            text = b't'
+        rendered = monobit.render_text(font2, text).as_image(image_mode='rgba', border=(0,0,0,0))
+        assert tuple(rendered.getdata()) == self.rendered
+
+    def test_yaff_rgba(self):
+        self._render_rgba('yaff')
+
+    def test_image_rgba(self):
+        self._render_rgba(
+            'image',
+            save_kwargs={'image_mode': 'rgba'},
+            load_kwargs={'first_codepoint': ord('t'), 'background': 'alpha'}
+        )
+
+    def test_imageset_rgba(self):
+        self._render_rgba(
+            'imageset',
+            save_kwargs={'image_mode': 'rgba'},
+            load_kwargs={'background': 'alpha'}
+        )
 
 
 if __name__ == '__main__':
