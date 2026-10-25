@@ -2,14 +2,14 @@ name: Konatu Regular 10
 spacing: proportional
 bounding-box: 8x9
 palette:
-    000000 .
-    222222 1
-    444444 2
-    666666 3
-    999999 4
-    BBBBBB 5
-    DDDDDD 6
-    FFFFFF @
+    00 .
+    22 1
+    44 2
+    66 3
+    99 4
+    BB 5
+    DD 6
+    FF @
 family: Konatu
 subfamily: Regular
 point-size: 10
