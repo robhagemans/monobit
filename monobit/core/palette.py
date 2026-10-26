@@ -73,11 +73,22 @@ class Palette:
             if len(set(self._rgb)) <= 1:
                 # all the same colour -> intensity palette
                 self._rgb = None
-            elif len(set(self._alpha)) <= 1:
-                # all alpha the same -> no alpha
+            elif (
+                    len(set(self._alpha)) <= 1
+                    or (
+                        set(self._alpha) == {0, 255}
+                        and all(
+                            sum(_rgb) == 0
+                            for _rgb, _a in zip(self._rgb, self._alpha)
+                            if _a == 0
+                        )
+                    )
+                ):
+                # all alpha the same, or alpha only zero if black background -> RGB palette
                 self._alpha = None
         else:
             raise ValueError('Palette must be intensity, rgb or rgba')
+        # convert RGB greyscale palette to intensity palette
         if self._alpha is None and all(_c.r == _c.g == _c.b for _c in self._rgb):
             self._alpha = tuple(_c[0] for _c in table)
             self._rgb = None
