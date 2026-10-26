@@ -337,14 +337,14 @@ def _convert_bdat(sfnt, bdatname, blocname):
             bloc_props = _convert_bloc_props(bloc, i_strike)
             props, hfupp, vfupp = _convert_props(sfnt, bmst.ppemX, bmst.ppemY)
             props = bloc_props | props
-            glyphs, rgbtable = _convert_bdat_glyphs(
+            glyphs, palette = _convert_bdat_glyphs(
                 sfnt, bdat, bloc, i_strike, hfupp, vfupp, unitable, enctable
             )
             font = Font(
                 glyphs,
                 source_format=source_format,
                 encoding=encoding or None,
-                palette=rgbtable,
+                palette=palette,
                 **vars(props)
             )
             # remove temporary names created by fontTools
@@ -422,9 +422,8 @@ def _convert_bdat_glyphs(
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
             glyphdata.append((name, glyphbytes, width, height, props))
-
     glyphs = []
-    rgbtable = None
+    inklevels = None
     # bitDepth==32 stands for BGRA data in CBDT
     # convert, then treat as PNG data below. this is a bit of a hack
     # we can clean this up once we support RGBA glyphs directly
@@ -451,7 +450,26 @@ def _convert_bdat_glyphs(
         glyphdata = updated_glyphdata
     if png:
         try:
-            glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+            vectordata = tuple(
+                _png_data_to_rgba_vector_and_width(_glyphbytes)[0]
+                for _, _glyphbytes, _, _, _ in glyphdata
+            )
+            inklevels = identify_inklevels_from_multiple(
+                vectordata,
+                background='alpha'
+            )
+            glyphs = tuple(
+                Glyph.from_vector(
+                    tuple(_data),
+                    stride=_width,
+                    inklevels=inklevels,
+                    tag=_name,
+                    char=unitable.get(_name, ''),
+                    codepoint=enctable.get(_name, b''),
+                    **_props
+                )
+                for (_name, _, _width, _, _props), _data in zip(glyphdata, vectordata)
+            )
         except StrikeFormatError as err:
             logging.warning(e)
     else:
@@ -467,10 +485,9 @@ def _convert_bdat_glyphs(
                 codepoint=enctable.get(name, b''), **props
             )
             glyphs.append(glyph)
-
     glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
     glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
-    return glyphs, rgbtable
+    return glyphs, inklevels
 
 
 def _convert_glyph_metrics(metrics, small_is_vert):
@@ -527,7 +544,7 @@ def _convert_sbix(sfnt):
         glyphdata = tuple(
             (
                 glyph.glyphName,
-                (
+                *_png_data_to_rgba_vector_and_width(
                     # > The special graphicType of 'dupe' indicates that the
                     # > data field contains a uint16, big-endian glyph ID. The
                     # > bitmap data for the indicated glyph must be used for
@@ -536,8 +553,6 @@ def _convert_sbix(sfnt):
                     glyph_dict[glyph.referenceGlyphName]
                     if glyph.graphicType in ('dupe', 'flip') else glyph.imageData
                 ),
-                # width, height not known and not used by imagedata_to_glyphs
-                None, None,
                 # > The originOffsetX and originOffsetY values give the placement
                 # > of the bitmap graphic in relation to the standard coordinate
                 # > system of the glyph design space. For example,
@@ -571,11 +586,26 @@ def _convert_sbix(sfnt):
         try:
             # does sbix have a concept of background?
             # presumably it's just using alpha transparency
-            glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+            inklevels = identify_inklevels_from_multiple(
+                (_data for _, _data, _, _ in glyphdata),
+                background='alpha'
+            )
+            glyphs = tuple(
+                Glyph.from_vector(
+                    tuple(_data),
+                    stride=_width,
+                    inklevels=inklevels,
+                    tag=_name,
+                    char=unitable.get(_name, ''),
+                    codepoint=enctable.get(_name, b''),
+                    **_props
+                )
+                for _name, _data, _width, _props in glyphdata
+            )
         except StrikeFormatError as err:
             logging.warning(e)
             glyphs = ()
-            rgbtable = None
+            inklevels = None
         # update glyph props with hmtx/vmtx metrics
         fu_p_pix = sfnt.head.unitsPerEm / strike.ppem
         updated_glyphs = []
@@ -600,7 +630,7 @@ def _convert_sbix(sfnt):
         props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
         fonts.append(Font(
             glyphs=updated_glyphs,
-            palette=rgbtable,
+            palette=inklevels,
             dpi=strike.resolution,
             encoding=encoding or None,
             source_format='sfnt (sbix)',
@@ -620,31 +650,6 @@ def _png_data_to_rgba_vector_and_width(data):
     with BytesIO(data) as bytesio:
         image = Image.open(bytesio).convert('RGBA')
         return image.getdata(), image.width
-
-
-def _imagedata_to_glyphs(glyphdata, unitable, enctable):
-    """Convert glyph image data to glyphs."""
-    vectordata = tuple(
-        (*_png_data_to_rgba_vector_and_width(_glyphbytes), _name, _props)
-        for _name, _glyphbytes, _, _, _props in glyphdata
-    )
-    inklevels = identify_inklevels_from_multiple(
-        (_data for _data, _, _, _ in vectordata),
-        background='alpha'
-    )
-    glyphs = tuple(
-        Glyph.from_vector(
-            tuple(_data),
-            stride=_width,
-            inklevels=inklevels,
-            tag=_name,
-            char=unitable.get(_name, ''),
-            codepoint=enctable.get(_name, b''),
-            **_props
-        )
-        for _data, _width, _name, _props in vectordata
-    )
-    return glyphs, inklevels
 
 
 ###############################################################################
