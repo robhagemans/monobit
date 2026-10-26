@@ -23,7 +23,7 @@ fonttools_loaded = ttLib is not None
 Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
-from ..image.image import identify_inklevels_for_images
+from ..image.image import identify_inklevels_from_multiple
 
 
 # specs
@@ -607,7 +607,7 @@ def _convert_sbix(sfnt):
     return fonts
 
 
-def _data_to_crop(data):
+def _pngdata_to_image(data):
     """Convert PNG image data (may be empty) to RGBA image."""
     if data:
         with BytesIO(data) as bytesio:
@@ -622,25 +622,29 @@ def _imagedata_to_glyphs(glyphdata, unitable, enctable):
             "Decoding colour bitmaps requires module `PIL`, which was not found."
         )
         return ()
-    cropdata = tuple(
-        (_data_to_crop(_glyphbytes), _name, _props)
+    imagedata = (
+        (_pngdata_to_image(_glyphbytes), _name, _props)
         for _name, _glyphbytes, _, _, _props in glyphdata
     )
-    inklevels = identify_inklevels_for_images(
-        (_item[0] for _item in cropdata),
+    vectordata = tuple(
+        (_image.getdata(), _image.width, _name, _props)
+        for _image, _name, _props in imagedata
+    )
+    inklevels = identify_inklevels_from_multiple(
+        (_data for _data, _, _, _ in vectordata),
         background='alpha'
     )
     glyphs = tuple(
         Glyph.from_vector(
-            tuple(_crop.getdata()),
-            stride=_crop.width,
+            tuple(_data),
+            stride=_width,
             inklevels=inklevels,
             tag=_name,
             char=unitable.get(_name, ''),
             codepoint=enctable.get(_name, b''),
             **_props
         )
-        for _crop, _name, _props in cropdata
+        for _data, _width, _name, _props in vectordata
     )
     return glyphs, inklevels
 
