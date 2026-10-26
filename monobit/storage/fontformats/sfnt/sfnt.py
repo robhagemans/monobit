@@ -422,6 +422,7 @@ def _convert_bdat_glyphs(
             props.update(_convert_hmtx_metrics(sfnt.hmtx, name, hori_fu_p_pix, width))
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
             glyphdata.append((name, glyphbytes, width, height, props))
+
     glyphs = []
     rgbtable = None
     # bitDepth==32 stands for BGRA data in CBDT
@@ -466,6 +467,7 @@ def _convert_bdat_glyphs(
                 codepoint=enctable.get(name, b''), **props
             )
             glyphs.append(glyph)
+
     glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
     glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
     return glyphs, rgbtable
@@ -607,28 +609,24 @@ def _convert_sbix(sfnt):
     return fonts
 
 
-def _pngdata_to_image(data):
-    """Convert PNG image data (may be empty) to RGBA image."""
-    if data:
-        with BytesIO(data) as bytesio:
-            return Image.open(bytesio).convert('RGBA')
-    return Image.new(mode='RGBA', size=(0, 0), color=(0, 0, 0, 0))
-
-
-def _imagedata_to_glyphs(glyphdata, unitable, enctable):
-    """Convert glyph image data to glyphs."""
+def _png_data_to_rgba_vector_and_width(data):
+    """Convert PNG image data (may be empty) to RGBA vector data."""
     if not Image:
         raise StrikeFormatError(
             "Decoding colour bitmaps requires module `PIL`, which was not found."
         )
-        return ()
-    imagedata = (
-        (_pngdata_to_image(_glyphbytes), _name, _props)
-        for _name, _glyphbytes, _, _, _props in glyphdata
-    )
+    if not data:
+        return (), 0
+    with BytesIO(data) as bytesio:
+        image = Image.open(bytesio).convert('RGBA')
+        return image.getdata(), image.width
+
+
+def _imagedata_to_glyphs(glyphdata, unitable, enctable):
+    """Convert glyph image data to glyphs."""
     vectordata = tuple(
-        (_image.getdata(), _image.width, _name, _props)
-        for _image, _name, _props in imagedata
+        (*_png_data_to_rgba_vector_and_width(_glyphbytes), _name, _props)
+        for _name, _glyphbytes, _, _, _props in glyphdata
     )
     inklevels = identify_inklevels_from_multiple(
         (_data for _data, _, _, _ in vectordata),
