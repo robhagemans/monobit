@@ -608,7 +608,7 @@ def _convert_sbix(sfnt):
 
 
 def _data_to_crop(data):
-    """Convert RGBA data (may be empty) to RGB image with black background."""
+    """Convert PNG image data (may be empty) to RGBA image."""
     if data:
         with BytesIO(data) as bytesio:
             return Image.open(bytesio).convert('RGBA')
@@ -641,10 +641,6 @@ def _imagedata_to_glyphs(glyphdata, unitable, enctable):
             **_props
         )
         for _crop, _name, _props in cropdata
-    )
-    # inklevels RGBA -> RGB, premultiply alphas
-    inklevels = Palette(
-        (_r*_a//255, _g*_a//255, _b*_a//255) for _r, _g, _b, _a in inklevels
     )
     return glyphs, inklevels
 
