@@ -130,6 +130,7 @@ class GlyphMap:
             self.as_image(
                 paper=paper, ink=ink, border=border,
                 invert_y=invert_y, transparent=transparent, image_mode=image_mode,
+                sheet=sheet,
             )
             for sheet in range(last_sheet+1)
         ]
