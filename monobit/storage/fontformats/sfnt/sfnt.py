@@ -425,30 +425,34 @@ def _convert_bdat_glyphs(
     glyphs = []
     inklevels = None
     # bitDepth==32 stands for BGRA data in CBDT
-    # convert, then treat as PNG data below. this is a bit of a hack
-    # we can clean this up once we support RGBA glyphs directly
     if not png and blocstrike.bitmapSizeTable.bitDepth == 32:
-        if not Image:
-            raise StrikeFormatError(
-                "32-bit bitmaps require module `PIL`, which was not found."
-            )
-        updated_glyphdata = []
+        vectordata = []
         for (name, glyphbytes, width, height, props) in glyphdata:
             # split into 4-byte chunks
             iterators = [iter(glyphbytes)] * 4
             bgra_list = zip(*iterators)
-            rgba_list = tuple((_r, _g, _b, _a) for _b, _g, _r, _a in bgra_list)
-            # convert to PNG image
-            with BytesIO() as bytesio:
-                # note the lowercase a for pre-multiplied RGBA (as per CBDT spec)
-                image = Image.new('RGBa', (width, height))
-                image.putdata(rgba_list)
-                image.convert('RGBA').save(bytesio, format='png')
-                glyphbytes = bytesio.getvalue()
-            updated_glyphdata.append((name, glyphbytes, width, height, props))
-        png = True
-        glyphdata = updated_glyphdata
-    if png:
+            # convert pre-multiplied BGRA (per CBDT spec) to RGBA
+            vectordata.append(tuple(
+                (_r, _g, _b, _a) if _a == 0
+                else (_r*255//_a, _g*255//_a, _b*255//_a, _a)
+                for _b, _g, _r, _a in bgra_list
+            ))
+        inklevels = identify_inklevels_from_multiple(
+            vectordata, background='alpha'
+        )
+        glyphs = tuple(
+            Glyph.from_vector(
+                tuple(_data),
+                stride=_width,
+                inklevels=inklevels,
+                tag=_name,
+                char=unitable.get(_name, ''),
+                codepoint=enctable.get(_name, b''),
+                **_props
+            )
+            for (_name, _, _width, _, _props), _data in zip(glyphdata, vectordata)
+        )
+    elif png:
         try:
             vectordata = tuple(
                 _png_data_to_rgba_vector_and_width(_glyphbytes)[0]
