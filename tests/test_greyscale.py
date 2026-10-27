@@ -31,14 +31,9 @@ class TestGreyscale(BaseTester):
 
     def _render_greyscale(self, format, *, char=False, load_kwargs=(), save_kwargs=(), model=sampletext):
         font1, *_ = monobit.load(self.font_path / 'konatu-ascii.yaff')
-        monobit.save(
-            font1, self.temp_path / f'konatu-ascii.{format}',
-            format=format, **(save_kwargs or {}),
-        )
-        font2, *_ = monobit.load(
-            self.temp_path / f'konatu-ascii.{format}',
-            format=format, **(load_kwargs or {}),
-        )
+        path = self.temp_path / f'konatu-ascii.{format}'
+        monobit.save(font1, path, format=format, **(save_kwargs or {}))
+        font2, *_ = monobit.load(path, format=format, **(load_kwargs or {}))
         if char:
             text = 'te'
         else:
