@@ -414,43 +414,43 @@ class TestImport(BaseTester):
 
     # BMFont
 
-    def test_import_bmf_text(self):
+    def test_import_bmfont_text(self):
         """Test importing bmfont files with text descriptor."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-text.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_xml(self):
+    def test_import_bmfont_xml(self):
         """Test importing bmfont files with XML descriptor."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-xml.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_json(self):
+    def test_import_bmfont_json(self):
         """Test importing bmfont files with JSON descriptor."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-json.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_binary(self):
+    def test_import_bmfont_binary(self):
         """Test importing bmfont files with binary descriptor."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-binary.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_8bit(self):
+    def test_import_bmfont_8bit(self):
         """Test importing bmfont files with 8-bit image."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-8bit.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_packed(self):
+    def test_import_bmfont_packed(self):
         """Test importing bmfont files with packed 32-bit image."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-32bit-packed.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_nonpacked(self):
+    def test_import_bmfont_nonpacked(self):
         """Test importing bmfont files with non-packed 32-bit image."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-32bit-nonpacked.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
