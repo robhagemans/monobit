@@ -33,9 +33,8 @@ from monobit.storage.utils.perglyph import loop_load, loop_save
 #
 # most-common       use colour most commonly found in payload cells
 # least-common      use colour least commonly found in payload cells
-# brightest         use brightest colour, by sum of RGB values
-# darkest           use darkest colour, by sum of RGB values
-# top-left          use colour of top-left pixel in first cell
+# brightest         use brightest colour, by sum of alpha-premultiplied RGB values
+# darkest           use darkest colour, by sum of alpha-premultiplied RGB values
 # RGB(A) value      use this specific colour as background
 
 
@@ -63,9 +62,6 @@ def _identify_inklevels(crops, background):
         else:
             # brightest colour assumed to be background
             _, paper = brightness[-1]
-    elif background == 'top-left':
-        # top-left pixel of first char assumed to be background colour
-        paper = colours[0]
     else:
         raise ValueError(f'Background mode `{background}` not supported.')
     return sort_inklevels(colours, paper)
@@ -126,7 +122,7 @@ if Image:
         table_size: (grid) number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis. (default: 32x8).
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
         count: maximum number of glyphs to extract (within constraints of table_size). 0 or negative means extract all (default).
-        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
+        background: determine background colour as "most-common" (default) / "least-common", "brightest" / "darkest" (by alpha-adjusted RGB sum)
         first_codepoint: codepoint value assigned to first glyph (default: 0)
         direction: two-part string, default 'left-to-right top-to-bottom'
         keep_empty: keep empty glyphs (default: False)
@@ -231,9 +227,7 @@ if Image:
         enumerated_crops = tuple(enumerated_crops)
         # get pixels
         _, crops = tuple(zip(*enumerated_crops))
-
         inklevels = _identify_inklevels(crops, background)
-
         # convert to glyphs, set codepoints
         glyphs = tuple(
             Glyph.from_vector(
@@ -400,7 +394,7 @@ if Image:
         """
         Extract font from per-glyph images.
 
-        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
+        background: determine background colour as "most-common" (default) / "least-common", "brightest" / "darkest" (by alpha-adjusted RGB sum)
         prefix: part of the image file name before the codepoint
         base: radix of numerals in file name representing code point
         """
