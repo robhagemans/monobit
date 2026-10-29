@@ -18,7 +18,7 @@ from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.core.palette import Palette
+from monobit.core.palette import Palette, sort_inklevels, brightness
 from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
     write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
@@ -26,70 +26,6 @@ from monobit.renderer import (
 
 from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage.utils.perglyph import loop_load, loop_save
-
-
-# available background policies
-# -----------------------------
-#
-# most-common       use colour most commonly found in payload cells
-# least-common      use colour least commonly found in payload cells
-# brightest         use brightest colour, by sum of alpha-premultiplied RGB values
-# darkest           use darkest colour, by sum of alpha-premultiplied RGB values
-# RGB(A) value      use this specific colour as background
-
-
-def _identify_inklevels(crops, background):
-    """Identify ink levels from colour set."""
-    crop_data = (_crop.getdata() for _crop in crops)
-    counts = (Counter(_cd) for _cd in crop_data)
-    colourfreq = sum(counts, Counter())
-    colours = colourfreq.keys()
-    if not isinstance(background, str):
-        # background provided
-        paper = background
-    elif background in ('most-common', 'least-common'):
-        if background == 'most-common':
-            # most common colour in image assumed to be background colour
-            paper, _ = colourfreq.most_common(1)[0]
-        else:
-            # least common colour in image assumed to be background colour
-            paper, _ = colourfreq.most_common()[-1]
-    elif background in ('darkest', 'brightest'):
-        brightness = sorted((_brightness(_c), _c) for _c in colours)
-        if background == 'darkest':
-            # darkest colour assumed to be background
-            _, paper = brightness[0]
-        else:
-            # brightest colour assumed to be background
-            _, paper = brightness[-1]
-    else:
-        raise ValueError(f'Background mode `{background}` not supported.')
-    return sort_inklevels(colours, paper)
-
-
-def sort_inklevels(colours, paper):
-    """Get brightness-sorted list of ink levels, with explicitly known paper colour."""
-    colours = list(set(colours))
-    try:
-        colours.remove(paper)
-    except ValueError:
-        pass
-    # if paper is darker than average colour, sort dark to bright
-    # else sort bright to dark
-    reverse = _brightness(paper) > sum(_brightness(_c) for _c in colours) / len(colours)
-    inklevels = sorted(colours, key=lambda _t: _brightness(_t), reverse=reverse)
-    return (paper,) + tuple(inklevels)
-
-
-def _brightness(colour):
-    """Intensity of RGB or RGBA colour."""
-    try:
-        if len(colour) == 4:
-            r, g, b, a = colour
-            return (r + g + b) * a // 255
-    except TypeError:
-        pass
-    return sum(colour)
 
 
 if Image:
@@ -244,6 +180,45 @@ if Image:
         font = Font(glyphs, palette=inklevels)
         return font
 
+
+    def _identify_inklevels(crops, background):
+        """
+        Identify ink levels from iterble of cropped glyph images
+
+        values for `background`:
+        most-common       use colour most commonly found in payload cells
+        least-common      use colour least commonly found in payload cells
+        brightest         use brightest colour, by sum of alpha-premultiplied RGB values
+        darkest           use darkest colour, by sum of alpha-premultiplied RGB values
+        RGB(A) value      use this specific colour as background
+        """
+        crop_data = (_crop.getdata() for _crop in crops)
+        counts = (Counter(_cd) for _cd in crop_data)
+        colourfreq = sum(counts, Counter())
+        colours = colourfreq.keys()
+        if not isinstance(background, str):
+            # background provided
+            paper = background
+        elif background in ('most-common', 'least-common'):
+            if background == 'most-common':
+                # most common colour in image assumed to be background colour
+                paper, _ = colourfreq.most_common(1)[0]
+            else:
+                # least common colour in image assumed to be background colour
+                paper, _ = colourfreq.most_common()[-1]
+        elif background in ('darkest', 'brightest'):
+            by_brightness = sorted((brightness(_c), _c) for _c in colours)
+            if background == 'darkest':
+                # darkest colour assumed to be background
+                _, paper = by_brightness[0]
+            else:
+                # brightest colour assumed to be background
+                _, paper = by_brightness[-1]
+        else:
+            raise ValueError(f'Background mode `{background}` not supported.')
+        return sort_inklevels(colours, paper)
+
+
     def _get_border_colour(img, cell, margin, padding):
         """Get border/padding colour."""
         if margin.x or margin.y:
@@ -254,6 +229,7 @@ if Image:
             return img.getpixel((0, cell.y))
         # can't determine border colour without padding or margin
         return None
+
 
     def _crop_border(image, border):
         """Remove border area from image."""

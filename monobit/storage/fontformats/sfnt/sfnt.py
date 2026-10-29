@@ -16,6 +16,7 @@ from io import BytesIO
 from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
 from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint, Palette
 from monobit.storage import loaders, savers
+from monobit.core.palette import sort_inklevels
 
 fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
 ttLib = safe_import('fontTools.ttLib')
@@ -23,7 +24,6 @@ fonttools_loaded = ttLib is not None
 Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
-from ..image.image import sort_inklevels
 
 
 # specs

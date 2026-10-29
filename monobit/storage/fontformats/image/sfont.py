@@ -15,10 +15,9 @@ from monobit.storage import loaders, savers
 from monobit.base import FileFormatError, UnsupportedError
 from monobit.core import Font, Glyph
 from monobit.renderer import GlyphMap
-from monobit.core.palette import Palette
+from monobit.core.palette import Palette, sort_inklevels
 
 from monobit.storage.utils.limitations import ensure_single
-from .image import sort_inklevels
 
 # see https://github.com/karlb/sfont
 

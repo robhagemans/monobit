@@ -24,12 +24,11 @@ from monobit.base import Props, reverse_dict, FileFormatError, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph, Codepoint, Char
 from monobit.core.raster import get_depth_for_levels
-from monobit.core.palette import Palette
+from monobit.core.palette import Palette, sort_inklevels
 from monobit.renderer import GlyphMap, grid_map
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
-from .image import sort_inklevels
 from monobit.storage.utils.limitations import ensure_single
 
 

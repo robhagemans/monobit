@@ -31,6 +31,31 @@ def dark_defaults(paper=None, ink=None):
     return paper, ink
 
 
+def sort_inklevels(colours, paper):
+    """Get brightness-sorted list of ink levels, with explicitly known paper colour."""
+    colours = list(set(colours))
+    try:
+        colours.remove(paper)
+    except ValueError:
+        pass
+    # if paper is darker than average colour, sort dark to bright
+    # else sort bright to dark
+    reverse = brightness(paper) > sum(brightness(_c) for _c in colours) / len(colours)
+    inklevels = sorted(colours, key=lambda _t: brightness(_t), reverse=reverse)
+    return (paper,) + tuple(inklevels)
+
+
+def brightness(colour):
+    """Intensity of RGB or RGBA colour."""
+    try:
+        if len(colour) == 4:
+            r, g, b, a = colour
+            return (r + g + b) * a // 255
+    except TypeError:
+        pass
+    return sum(colour)
+
+
 class Palette:
 
     def __init__(self, table=()):
