@@ -156,14 +156,13 @@ class TestRGBA(BaseTester):
         self._render_rgba(
             'image',
             save_kwargs={'image_mode': 'rgba'},
-            load_kwargs={'first_codepoint': ord('t'), 'background': (0, 0, 0, 0)}
+            load_kwargs={'first_codepoint': ord('t') },
         )
 
     def test_imageset_rgba(self):
         self._render_rgba(
             'imageset',
             save_kwargs={'image_mode': 'rgba'},
-            load_kwargs={'background': (0, 0, 0, 0)}
         )
 
     def test_sfnt_cbdt_bit_rgba(self):
