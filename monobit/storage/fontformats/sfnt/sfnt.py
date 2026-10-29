@@ -23,7 +23,7 @@ fonttools_loaded = ttLib is not None
 Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
-from ..image.image import identify_inklevels_from_multiple
+from ..image.image import sort_inklevels
 
 
 # specs
@@ -433,13 +433,12 @@ def _convert_bdat_glyphs(
             bgra_list = zip(*iterators)
             # convert pre-multiplied BGRA (per CBDT spec) to RGBA
             vectordata.append(tuple(
-                (_r, _g, _b, _a) if _a == 0
+                (0, 0, 0, 0) if _a == 0
                 else (_r*255//_a, _g*255//_a, _b*255//_a, _a)
                 for _b, _g, _r, _a in bgra_list
             ))
-        inklevels = identify_inklevels_from_multiple(
-            vectordata, background='alpha'
-        )
+        colourset = set.union(*(set(_cols) for _cols in vectordata))
+        inklevels = sort_inklevels(colourset, paper=(0, 0, 0, 0))
         glyphs = tuple(
             Glyph.from_vector(
                 tuple(_data),
@@ -458,10 +457,8 @@ def _convert_bdat_glyphs(
                 _png_data_to_rgba_vector_and_width(_glyphbytes)[0]
                 for _, _glyphbytes, _, _, _ in glyphdata
             )
-            inklevels = identify_inklevels_from_multiple(
-                vectordata,
-                background='alpha'
-            )
+            colourset = set.union(*(set(_cols) for _cols in vectordata))
+            inklevels = sort_inklevels(colourset, paper=(0, 0, 0, 0))
             glyphs = tuple(
                 Glyph.from_vector(
                     tuple(_data),
@@ -588,12 +585,8 @@ def _convert_sbix(sfnt):
             for glyph in sfnt_glyphs
         )
         try:
-            # does sbix have a concept of background?
-            # presumably it's just using alpha transparency
-            inklevels = identify_inklevels_from_multiple(
-                (_data for _, _data, _, _ in glyphdata),
-                background='alpha'
-            )
+            colourset = set.union(*(set(_cols) for _, _cols, _, _ in glyphdata))
+            inklevels = sort_inklevels(colourset, paper=(0, 0, 0, 0))
             glyphs = tuple(
                 Glyph.from_vector(
                     tuple(_data),
@@ -653,6 +646,9 @@ def _png_data_to_rgba_vector_and_width(data):
         return (), 0
     with BytesIO(data) as bytesio:
         image = Image.open(bytesio).convert('RGBA')
+        # normalise fully transparent colours to (0, 0, 0, 0)
+        zero = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        image = Image.alpha_composite(zero, image)
         return image.getdata(), image.width
 
 
