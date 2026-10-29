@@ -23,6 +23,7 @@ palette:
 't':
 116:
     .12@
+    ...1
 """
 
 
@@ -30,7 +31,10 @@ palette:
 class TestColour(BaseTester):
     """Test colour features."""
 
-    sampletext = '"""\\\n\x1b[38;2;0;0;0m\\u2588\x1b[0m\x1b[38;2;255;0;0m\\u2588\x1b[0m\x1b[38;2;0;255;0m\\u2588\x1b[0m\x1b[38;2;0;0;255m\\u2588\x1b[0m\n"""'
+    rendered = (
+        (0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255),
+        (0, 0, 0), (0, 0, 0),   (0, 0, 0),   (255, 0, 0),
+    )
 
     def _render_colour(self, format, *, char=False, load_kwargs=(), save_kwargs=()):
         font1, *_ = monobit.load(get_stringio(colourfont))
@@ -46,8 +50,8 @@ class TestColour(BaseTester):
             text = 't'
         else:
             text = b't'
-        rendered_text = monobit.render_text(font2, text).as_shades(border=(0,0,0))
-        assert_text_eq(ascii(rendered_text), self.sampletext)
+        rendered = monobit.render_text(font2, text).as_image(image_mode='rgb', border=(0,0,0))
+        assert tuple(rendered.getdata()) == self.rendered
 
     def test_yaff_colour(self):
         self._render_colour('yaff')
@@ -116,6 +120,7 @@ palette:
 't':
 116:
     .12@
+    ...1
 """
 
 
@@ -123,7 +128,8 @@ class TestRGBA(BaseTester):
     """Test rgba features."""
 
     rendered = (
-        (0, 0, 0, 0), (255, 0, 0, 85), (0, 255, 0, 170), (0, 0, 255, 255)
+        (0, 0, 0, 0), (255, 0, 0, 85), (0, 255, 0, 170), (0, 0, 255, 255),
+        (0, 0, 0, 0), (0, 0, 0, 0),    (0, 0, 0, 0),     (255, 0, 0, 85),
     )
 
     def _render_rgba(self, format, *, char=False, load_kwargs=(), save_kwargs=()):
