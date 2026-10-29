@@ -29,7 +29,7 @@ from monobit.renderer import GlyphMap, grid_map
 from monobit.storage.location import Location
 
 from ..common import CHARSET_MAP, CHARSET_REVERSE_MAP
-from .image import identify_inklevels
+from .image import sort_inklevels
 from monobit.storage.utils.limitations import ensure_single
 
 
@@ -54,14 +54,13 @@ if Image:
         ),
         patterns=('*.fnt',),
     )
-    def load_bmfont(infile, outline:bool=False, background:RGB=RGB(0, 0, 0)):
+    def load_bmfont(infile, outline:bool=False):
         """
         Load fonts from Angelcode BMFont format.
 
         outline: extract outline layer instead of glyph layer (default: False)
-        background: colour to interpret as background (default: (0,0,0))
         """
-        return _read_bmfont(infile, outline, background)
+        return _read_bmfont(infile, outline)
 
     @savers.register(linked=load_bmfont)
     def save(
@@ -521,7 +520,7 @@ def _convert_to_rgba(img):
 def _extract(
         location, name, bmformat,
         info, common, pages, chars,
-        kernings, outline, background
+        kernings, outline
     ):
     """Extract glyphs."""
     image_files = {
@@ -571,13 +570,8 @@ def _extract(
                     tuple(_pix for _pix, _mask in zip(_rgba, masks) if _mask)
                     for _rgba in imgdata
                 )
-                # convert all to RGB values
-                # 1- and 2-component values are converted to greyscale
-                # alpha is dropped from RGBA
-                masked = (
-                    _t[:3] if len(_t) >= 3 else _t if not _t else (sum(_t)//len(_t),) * 3
-                    for _t in masked
-                )
+                # deal with glyph-and-outline BOTH mode:
+                # outline is stored in values <= 127, glyph is stored in values > 127
                 if is_glyph_and_outline:
                     if outline:
                         masked = (
@@ -589,6 +583,22 @@ def _extract(
                             tuple(max(0, _v*2-255) for _v in _pix)
                             for _pix in masked
                         )
+                # convert all to RGBA values
+                # bmfont specifies background is zero, foreground is one
+                # 1- and 2-component values are converted to greyscale
+                # 2-component doesn't make much sense, but we'll treat as sum-intensity
+                masked = (
+                    # RGBA input: normalise full transparency
+                    (0, 0, 0, 0) if len(_t) == 4 and _t[3] == 0
+                    else _t if len(_t) == 4 and _t[3] != 0
+                    # RGB input: black becomes background
+                    else (0, 0, 0, 0) if _t == (0, 0, 0)
+                    else _t + (255,) if len(_t) == 3 and _t != (0, 0, 0)
+                    # greyscale input: encode in alpha
+                    else (255, 255, 255, sum(_t)//len(_t)) if sum(_t)
+                    else (0, 0, 0, 0)
+                    for _t in masked
+                )
             else:
                 masked = ()
             masked = tuple(masked)
@@ -597,8 +607,8 @@ def _extract(
         for image in sheets.values():
             image.close()
         # get list of used colours
-        colours = tuple(_tup for _sprite in sprites for _tup in _sprite)
-        inklevels = identify_inklevels(colours, background=background)
+        colourset = set(_tup for _sprite in sprites for _tup in _sprite)
+        inklevels = sort_inklevels(colourset, paper=(0, 0, 0, 0))
         pixels_per_byte = 8 // get_depth_for_levels(len(inklevels))
         # extract glyphs
         for char, sprite in zip(chars, sprites):
@@ -681,7 +691,7 @@ def _parse_bmfont_props(name, bmformat, imgformats, info, common):
     return properties
 
 
-def _read_bmfont(infile, outline, background):
+def _read_bmfont(infile, outline):
     """Read a bmfont from a container."""
     location = infile.where
     assert isinstance(location, Location)
@@ -706,11 +716,7 @@ def _read_bmfont(infile, outline, background):
         else:
             logging.debug('found text: %s', fnt.name)
             fontinfo = _parse_text(data)
-    return _extract(
-        location, infile.name,
-        outline=outline, background=background, **fontinfo
-    )
-
+    return _extract(location, infile.name, outline=outline, **fontinfo)
 
 
 ##############################################################################
@@ -1067,7 +1073,7 @@ def _draw_images(glyph_map, packed):
         )
     else:
         images = glyph_map.to_images(
-            invert_y=True, transparent=False, image_mode='rgb',
+            invert_y=True, transparent=False, image_mode='rgba',
         )
     return images
 
