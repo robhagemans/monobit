@@ -39,19 +39,16 @@ from monobit.storage.utils.perglyph import loop_load, loop_save
 # RGB(A) value      use this specific colour as background
 
 
-def _identify_inklevels(colours, background):
+def _identify_inklevels(crops, background):
     """Identify ink levels from colour set."""
-    paper = _identify_background(colours, background)
-    return sort_inklevels(colours, paper)
-
-
-def _identify_background(colours, background):
-    """Identify background colour based on policy."""
+    crop_data = (_crop.getdata() for _crop in crops)
+    counts = (Counter(_cd) for _cd in crop_data)
+    colourfreq = sum(counts, Counter())
+    colours = colourfreq.keys()
     if not isinstance(background, str):
         # background provided
         paper = background
     elif background in ('most-common', 'least-common'):
-        colourfreq = Counter(colours)
         if background == 'most-common':
             # most common colour in image assumed to be background colour
             paper, _ = colourfreq.most_common(1)[0]
@@ -71,7 +68,7 @@ def _identify_background(colours, background):
         paper = colours[0]
     else:
         raise ValueError(f'Background mode `{background}` not supported.')
-    return paper
+    return sort_inklevels(colours, paper)
 
 
 def sort_inklevels(colours, paper):
@@ -234,12 +231,9 @@ if Image:
         enumerated_crops = tuple(enumerated_crops)
         # get pixels
         _, crops = tuple(zip(*enumerated_crops))
-        crop_data = (_crop.getdata() for _crop in crops)
-        # FIXME: this won't allow most-/least-common, use counters; merge images first?
-        # just using lists leads to performance issues
-        crops = (set(_crop) for _crop in crop_data)
-        colours = set.union(*crops)
-        inklevels = _identify_inklevels(colours, background)
+
+        inklevels = _identify_inklevels(crops, background)
+
         # convert to glyphs, set codepoints
         glyphs = tuple(
             Glyph.from_vector(
