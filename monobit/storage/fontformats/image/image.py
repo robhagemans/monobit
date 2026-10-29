@@ -116,6 +116,20 @@ def _identify_background(colours, background):
     return paper
 
 
+def sort_inklevels(colours, paper):
+    """Get brightness-sorted list of ink levels, with explicitly known paper colour."""
+    colours = list(set(colours))
+    try:
+        colours.remove(paper)
+    except ValueError:
+        pass
+    # if paper is darker than average colour, sort dark to bright
+    # else sort bright to dark
+    reverse = _brightness(paper) > sum(_brightness(_c) for _c in colours) / len(colours)
+    inklevels = sorted(colours, key=lambda _t: _brightness(_t), reverse=reverse)
+    return (paper,) + tuple(inklevels)
+
+
 def _brightness(colour):
     """Intensity of RGB or RGBA colour."""
     try:
