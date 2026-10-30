@@ -505,12 +505,11 @@ def _parse_binary(data):
 
 def _convert_to_rgba(img):
     """Convert image to RGBA format."""
-    # 8-bit images use 'alpha' in the indicator file
-    # so we need the shading value to go into alpha too
-    # while Image.convert takes it into RGB and sets A=255
-    #
     if img.mode == 'L':
-        return Image.merge('RGBA', (img,)*4)
+        # 8-bit images use 'alpha' in the indicator file
+        # so we need the shading value to go into alpha
+        empty = Image.new('L', img.size, 255)
+        return Image.merge('RGBA', (empty, empty, empty, img))
     else:
         # theoretically we should only see 8- or 32-bit textures, but who knows
         return img.convert('RGBA')
