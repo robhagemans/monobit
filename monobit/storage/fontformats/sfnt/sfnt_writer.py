@@ -296,7 +296,7 @@ def _create_empty_glyf_props(glyphs):
     return {_name: fonttools.Glyph() for _name in glyphs}
 
 
-def _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name):
+def _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name, use_32bit):
     """Build `bdat`, `EBDT` or `CBDT` bitmap data table."""
     ebdt = fonttools.newTable(ebdt_name)
     strike_format = strike_format.lower()
@@ -306,6 +306,10 @@ def _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name):
     else:
         allowed_formats = ('bit', 'byte')
         ebdt.version = 2.0
+        if use_32bit:
+            raise ValueError(
+                f'32-bit strikes require `CBDT` table; not `{ebdt_name}`'
+            )
     if strike_format not in allowed_formats:
         raise ValueError(
             f"For `{ebdt_name}` tables, `strike_format` must be one of "
@@ -313,7 +317,7 @@ def _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name):
         )
     # create one strike - multiple strikes of different size are possible
     strike_data = {
-        _name: convert_to_glyph(_g, fb, strike_format, font.palette)
+        _name: convert_to_glyph(_g, fb, strike_format, use_32bit, font.palette)
         for _name, _g in glyphs.items()
     }
     # drop empty glyphs in PNG-based tables
@@ -336,7 +340,7 @@ _BITMAP_DATA_FORMATS = {
 }
 
 
-def convert_to_glyph(glyph, fb, strike_format, palette):
+def convert_to_glyph(glyph, fb, strike_format, use_32bit, palette):
     """Create fontTools bitmap glyph."""
     if glyph.has_vertical_metrics():
         metrics = 'big'
@@ -363,8 +367,7 @@ def convert_to_glyph(glyph, fb, strike_format, palette):
         bmga.metrics.vertBearingX = glyph.shift_left + glyph.width//2
         bmga.metrics.vertBearingY = glyph.top_bearing
         bmga.metrics.vertAdvance = glyph.advance_height
-    if not palette.is_default():  # or font.levels > 256
-        # could use P for <=256-colour, to preserve palette order and unused entries
+    if use_32bit or strike_format not in ('byte', 'bit'):
         img = glyph_to_image(glyph, image_mode='rgba', inklevels=palette.as_rgba())
         if img.size == (0, 0):
             return None
@@ -373,17 +376,19 @@ def convert_to_glyph(glyph, fb, strike_format, palette):
                 img.save(bytesio, format='png')
                 bmga.imageData = bytesio.getvalue()
         else:
+            # 32-bit byte/bit-aligned
             # no difference between bit or byte alignment for 32-bit strikes
             # per the spec, these are premultiplied alpha use so PIL's 'RGBa'
             img = img.convert('RGBa')
             bgra_data = ((_b, _g, _r, _a) for _r, _g, _b, _a in img.getdata())
             bmga.imageData = bytes(_b for _bgra in bgra_data for _b in _bgra)
     else:
+        # this is for byte and bit-aligned tables only
         bmga.setRows(glyph.as_byterows(), bitDepth=glyph.bits_per_pixel)
     return bmga
 
 
-def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name):
+def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name, use_32bit):
     """Build `EBLC` bitmap locations table."""
     eblc = fonttools.newTable(eblc_name)
     eblc.version = 3.0 if eblc_name == 'CBLC' else 2.0
@@ -424,7 +429,7 @@ def _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name):
             vert = fonttools._create_sbit_line_metrics()
         strike.bitmapSizeTable = fonttools._create_bitmap_size_table(
             font.pixel_size, hori, vert,
-            depth=32 if not font.palette.is_default() else font.bits_per_pixel,
+            depth=32 if use_32bit else font.bits_per_pixel,
         )
         strike.indexSubTables = fonttools._create_index_subtables(fb, sdata)
         # eblc strike locations are filled out by ebdt compiler
@@ -527,8 +532,16 @@ def _create_sfnt(font, funits_per_em, strike_format, bitmap_table, ebsc_mapped_s
     fb.setupCharacterMap(_convert_to_cmap_props(glyphs))
     fb.setupGlyf(_create_empty_glyf_props(glyphs))
     # determine what type of tables to create
+    use_32bit = (
+        # in theory we might be able to use non-RGBA image formats but w
+        strike_format not in (None, 'byte', 'bit')
+        or font.bits_per_pixel > 8
+        or not font.palette.is_default()
+    )
     if bitmap_table is None:
-        if not font.palette.is_default() or font.levels > 256:
+        if strike_format == 'tiff':
+            bitmap_table = 'sbix'
+        elif use_32bit:
             bitmap_table = 'CBDT'
         else:
             bitmap_table = 'EBDT'
@@ -548,8 +561,8 @@ def _create_sfnt(font, funits_per_em, strike_format, bitmap_table, ebsc_mapped_s
                 f"Format '{bitmap_table}' not recognised"
             )
         strike_format = (strike_format or 'bit').lower()
-        _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name)
-        _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name)
+        _setup_ebdt_table(fb, font, glyphs, strike_format, ebdt_name, use_32bit)
+        _setup_eblc_table(fb, font, glyphs, ebdt_name, eblc_name, use_32bit)
     ebsc_mapped_sizes = tuple(ebsc_mapped_sizes)
     if ebsc_mapped_sizes:
         fonttools._setup_ebsc_table(fb, {font.pixel_size: ebsc_mapped_sizes})
