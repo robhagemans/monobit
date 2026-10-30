@@ -1,5 +1,5 @@
 info face="MiscFixedSC613" size=-12 bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=0 aa=1 padding=0,0,0,0 spacing=1,1 outline=0
-common lineHeight=13 base=11 scaleW=64 scaleH=64 pages=3 packed=0 alphaChnl=1 redChnl=0 greenChnl=0 blueChnl=0
+common lineHeight=13 base=11 scaleW=64 scaleH=64 pages=3 packed=0 alphaChnl=0 redChnl=0 greenChnl=0 blueChnl=0
 page id=0 file="6x13-8bit_0.png"
 page id=1 file="6x13-8bit_1.png"
 page id=2 file="6x13-8bit_2.png"
