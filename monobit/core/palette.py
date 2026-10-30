@@ -41,7 +41,8 @@ def sort_inklevels(colours, paper):
     # if paper is darker than average colour, sort dark to bright
     # else sort bright to dark
     reverse = brightness(paper) > sum(brightness(_c) for _c in colours) / len(colours)
-    inklevels = sorted(colours, key=lambda _t: brightness(_t), reverse=reverse)
+    # use alpha to break ties between equal brightness
+    inklevels = sorted(colours, key=lambda _t: (brightness(_t), _t[-1]), reverse=reverse)
     return (paper,) + tuple(inklevels)
 
 
