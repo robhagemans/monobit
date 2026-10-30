@@ -96,8 +96,10 @@ class Palette:
         elif len(table[0]) == 4:
             self._rgb = tuple(RGB.create(_v[:3]) for _v in table)
             self._alpha = tuple(_v[3] for _v in table)
-            if len(set(self._rgb)) <= 1:
-                # all the same colour -> intensity palette
+            if len(set(
+                    _rgb for _rgb, _a in zip(self._rgb, self._alpha) if _a)
+                ) <= 1:
+                # all the same colour except if alpha zero -> intensity palette
                 self._rgb = None
             elif (
                     len(set(self._alpha)) <= 1
