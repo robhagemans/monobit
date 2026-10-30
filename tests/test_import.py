@@ -456,6 +456,18 @@ class TestImport(BaseTester):
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
+    def test_import_bmfont_glyph_outline_combined(self):
+        """Test importing bmfont files with glyph&outline both in one channel."""
+        font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-glyph-and-outline.fnt', format='bmfont')
+        self.assertEqual(len(font.glyphs), 228)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
+
+    def test_import_bmfont_glyph_outline_separate(self):
+        """Test importing bmfont files with glyph&outline in different channels."""
+        font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-glyph-and-outline-32bit.fnt', format='bmfont')
+        self.assertEqual(len(font.glyphs), 228)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
+
     # Image
 
     def test_import_png(self):
