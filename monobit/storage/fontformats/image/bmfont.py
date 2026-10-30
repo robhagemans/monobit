@@ -573,7 +573,8 @@ def _extract(
                 if is_glyph_and_outline:
                     if outline:
                         masked = (
-                            tuple(min(255, _v*2) for _v in _pix)
+                            # adjust for rounding as maximum value is 127
+                            tuple(min(254, _v*2) * 255 // 254 for _v in _pix)
                             for _pix in masked
                         )
                     else:
