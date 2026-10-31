@@ -121,7 +121,7 @@ class GlyphMap:
 
     def to_images(
             self, *,
-            paper=None, ink=None, border=(32, 32, 32),
+            paper=None, ink=None, border=None,
             invert_y=False, image_mode='rgb',
         ):
         """Draw images based on sheets in glyph map."""
@@ -138,7 +138,7 @@ class GlyphMap:
 
     def as_image(
             self, *,
-            paper=None, ink=None, border=(32, 32, 32),
+            paper=None, ink=None, border=None,
             sheet=0, invert_y=False, image_mode='rgb',
         ):
         """Convert glyph map to image."""
