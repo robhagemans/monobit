@@ -300,7 +300,7 @@ if Image:
             skip_empty_lines=skip_empty_lines,
         )
         # light defaults
-        if font.palette.is_greyscale():
+        if fonts[0].palette.is_greyscale():
             paper, ink = light_defaults(paper, ink)
         if border is None:
             border = RGB(32, 32, 32)
