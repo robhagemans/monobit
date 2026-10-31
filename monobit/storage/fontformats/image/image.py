@@ -357,7 +357,7 @@ if Image:
                 paper = (0, 0, 0, 0)
             else:
                 paper = (0, 0, 0)
-        img, = glyph_map.to_images(
+        img = glyph_map.as_image(
             border=border, paper=paper, ink=ink, image_mode=image_mode,
         )
         write_imagefile(outfile, img, image_format)
