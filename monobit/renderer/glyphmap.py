@@ -122,14 +122,14 @@ class GlyphMap:
     def to_images(
             self, *,
             paper=None, ink=None, border=(32, 32, 32),
-            invert_y=False, transparent=True, image_mode='rgb',
+            invert_y=False, image_mode='rgb',
         ):
         """Draw images based on sheets in glyph map."""
         last_sheet, *_ = self.get_bounds()
         images = [
             self.as_image(
                 paper=paper, ink=ink, border=border,
-                invert_y=invert_y, transparent=transparent, image_mode=image_mode,
+                invert_y=invert_y, image_mode=image_mode,
                 sheet=sheet,
             )
             for sheet in range(last_sheet+1)
@@ -139,52 +139,48 @@ class GlyphMap:
     def as_image(
             self, *,
             paper=None, ink=None, border=(32, 32, 32),
-            sheet=0, invert_y=False, transparent=True, image_mode='rgb',
+            sheet=0, invert_y=False, image_mode='rgb',
         ):
         """Convert glyph map to image."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
         image_mode = image_mode[:4].lower()
-        inklevels = self._palette.as_imagemode(
-            image_mode, paper=paper, ink=ink
-        )
-        masklevels = [0] + [1] * (self._levels-1)
         if image_mode == 'mono':
             # mono has only 0, 1 available
             border = 0
-        elif image_mode in ('grey', 'gray') and isinstance(border, (RGB, tuple)):
-            # convert to intensity
-            border = sum(border) // len(border)
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
-        pil_mode = _IMAGE_MODE_PIL_MAP[image_mode[:4].lower()]
-        image = Image.new(pil_mode, (width, height), border)
+        image = Image.new('RGBA', (width, height), border)
+        glyph_images = []
         for entry in self._map:
             if entry.sheet != sheet:
                 continue
-            if transparent:
-                # if glyphs overlap, we need to treat the background colour as transparent
-                # create a mask to paste only non-background pixels
-                # for greyscale and colour, alpha_composite would be better
-                mask = glyph_to_image(
-                    entry.glyph, image_mode='mono', inklevels=masklevels,
-                )
-            else:
-                mask = None
-            colour = glyph_to_image(entry.glyph, image_mode, inklevels)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
                 # Image has ttb y coords, we have btt
                 # our character origin is bottom left
                 target = (entry.x-min_x, height-entry.glyph.height+min_y-entry.y)
-            image.paste(colour, target, mask)
+            glyph_image = glyph_to_image(
+                entry.glyph, image_mode='rgba',
+                inklevels=self._palette.as_rgba(ink=ink),
+            )
+            glyph_images.append((glyph_image, target))
+            if paper is not None and paper != border:
+                paper_patch = Image.new('RGBA', glyph_image.size, paper)
+                image.paste(paper_patch, target)
+        for glyph_image, target in glyph_images:
+            image.alpha_composite(glyph_image, target)
         image = (
             image.resize(
                 (self._scale_x*image.width, self._scale_y*image.height)
             ).rotate(-90 * self._turns, expand=True)
         )
+        if image_mode != 'rgba':
+            background = Image.new('RGBA', (width, height), (0, 0, 0, 255))
+            image = Image.alpha_composite(background, image)
+            image = image.convert(_IMAGE_MODE_PIL_MAP[image_mode])
         return image
 
     def as_text(

@@ -326,8 +326,10 @@ class TestFeatures(BaseTester):
 
     def _render_bearings(self, format, char=False, inklevels='.@', **save_kwargs):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
-        monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
-        font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
+        path = self.temp_path / f'positioning.{format}'
+        # path =  f'positioning.{format}'
+        monobit.save(font, path, format=format, **save_kwargs)
+        font, *_ = monobit.load(path, format=format)
         if char:
             text = monobit.render_text(font, '012').as_text(inklevels=inklevels, border=inklevels[0])
         else:

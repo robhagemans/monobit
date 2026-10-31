@@ -319,15 +319,15 @@ if Image:
         Export font to grid-based image.
 
         image_format: image file format (default: 'png')
-        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        image_mode: image colour mode. 'mono', 'grey', 'rgb' (default) or 'rgba'
         glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
         padding: number of pixels in X,Y direction between glyphs (default: 1x1)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
         direction: two-part string, default 'left-to-right top-to-bottom'
-        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        paper: background colour R,G,B or R,G,B,A 0--255 (default: 0,0,0)
         ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
-        border: border colour R,G,B 0--255 (default 32,32,32)
+        border: border colour R,G,B or R,G,B,A 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: 0-511)
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: false)
@@ -348,11 +348,17 @@ if Image:
             skip_empty_lines=skip_empty_lines,
         )
         if border is None:
-            border = RGB(32, 32, 32)
+            if image_mode == 'rgba':
+                border = (32, 32, 32, 255)
+            else:
+                border = (32, 32, 32)
+        if paper is None:
+            if image_mode == 'rgba':
+                paper = (0, 0, 0, 0)
+            else:
+                paper = (0, 0, 0)
         img, = glyph_map.to_images(
-            border=border, paper=paper, ink=ink,
-            transparent=False,
-            image_mode=image_mode,
+            border=border, paper=paper, ink=ink, image_mode=image_mode,
         )
         write_imagefile(outfile, img, image_format)
 

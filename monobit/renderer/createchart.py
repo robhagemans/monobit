@@ -305,9 +305,7 @@ if Image:
         if border is None:
             border = RGB(32, 32, 32)
         img, = glyph_map.to_images(
-            border=border, paper=paper, ink=ink,
-            transparent=False,
-            image_mode=image_mode,
+            border=border, paper=paper, ink=ink, image_mode=image_mode,
         )
         write_imagefile(outfile, img, image_format)
 
