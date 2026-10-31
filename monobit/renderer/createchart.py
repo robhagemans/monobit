@@ -303,7 +303,9 @@ if Image:
         if fonts[0].palette.is_greyscale():
             paper, ink = light_defaults(paper, ink)
         if border is None:
-            border = RGB(32, 32, 32)
+            border = (32, 32, 32)
+        if paper is None:
+            paper = (0, 0, 0)
         img = glyph_map.as_image(
             border=border, paper=paper, ink=ink, image_mode=image_mode,
         )
