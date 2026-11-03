@@ -174,11 +174,8 @@ def output_shades(
         # dark defaults
         if font.palette.is_greyscale():
             paper, ink = dark_defaults(paper, ink)
-            if border is None:
-                border = paper
-        else:
-            if border is None:
-                border = BLACK
+        if border is None:
+            border = paper if paper is not None else BLACK
         outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
@@ -197,8 +194,8 @@ def output_sixel(
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: text direction (l, r, b, t, n; default: n)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
-    paper: R,G,B colour for uninked areas (default: 255,255,255)
-    ink: R,G,B colour for inked areas (default: 0,0,0)
+    paper: R,G,B colour for uninked areas (default: 0,0,0)
+    ink: R,G,B colour for inked areas (default: 255,255,255)
     border: R,G,B colour for inked areas (default: same as paper)
     """
     for font in fonts:
@@ -210,11 +207,8 @@ def output_sixel(
         # dark defaults
         if font.palette.is_greyscale():
             paper, ink = dark_defaults(paper, ink)
-            if border is None:
-                border = paper
-        else:
-            if border is None:
-                border = BLACK
+        if border is None:
+            border = paper if paper is not None else BLACK
         outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
@@ -256,11 +250,8 @@ if Image:
         # light defaults
         if glyph_map._palette.is_greyscale():
             paper, ink = light_defaults(paper, ink)
-            if border is None:
-                border = paper
-        else:
-            if border is None:
-                border = WHITE
+        if border is None:
+            border = paper if paper is not None else WHITE
         img = glyph_map.as_image(
             border=border, paper=paper, ink=ink, image_mode=image_mode,
         )

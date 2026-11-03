@@ -147,7 +147,7 @@ class GlyphMap:
         image_mode = image_mode[:4].lower()
         if image_mode == 'mono':
             # mono has only 0, 1 available
-            border = 0
+            border = paper or 0
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
