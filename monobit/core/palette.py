@@ -91,10 +91,10 @@ def brightness(colour):
     try:
         if len(colour) == 4:
             r, g, b, a = colour
-            return (r + g + b) * a // 255
+            return (r + g + b) * a // (3*255)
     except TypeError:
         pass
-    return sum(colour)
+    return sum(colour) // len(colour)
 
 
 class Palette:
@@ -217,34 +217,24 @@ class Palette:
         """Return iterable of intensity values for this palette."""
         if self._rgb is None:
             return self._alpha
-        rgb_int = (sum(_tup) // len(_tup) for _tup in self._rgb)
+        rgb_int = (brightness(_tup) for _tup in self._rgb)
         if self._alpha is None:
             return tuple(rgb_int)
-        return tuple(_a * _i // 255 for _a, _i in zip(self._alpha, rgb_int))
+        return tuple(brightness((*_a, _i)) for _a, _i in zip(self._alpha, rgb_int))
 
     def as_rgb(self, paper=None, ink=None):
-        """Return RGB palette with substituted ink and paper values."""
-        if self._rgb is None:
-            paper, ink = dark_defaults(paper, ink)
-            return tuple(
-                RGB(*(
-                    (_i*_int + _p*(255-_int)) // 255
-                    for _p, _i in zip(paper, ink)
-                ))
-                for _int in self._alpha
+        """Return RGB palette with substituted ink and blended paper values."""
+        paper, ink = dark_defaults(paper, ink)
+        rgba = self.as_rgba(ink)
+        # blend with paper. paper is fully opaque at given RGB
+        return tuple(
+            RGB(
+                (paper.r * (255-_a) + _r * _a) // 255,
+                (paper.g * (255-_a) + _g * _a) // 255,
+                (paper.b * (255-_a) + _b * _a) // 255,
             )
-        rgb = [*self._rgb]
-        if self._alpha is not None:
-            # premultiply alpha
-            rgb = tuple(
-                tuple(_i * _a // 255 for _i in _rgb)
-                for _rgb, _a in zip(rgb, self._alpha)
-            )
-        if paper is not None:
-            rgb[0] = paper
-        if ink is not None:
-            rgb[-1] = ink
-        return tuple(RGB(*_v) for _v in rgb)
+            for _r, _g, _b, _a in rgba
+        )
 
     def as_rgba(self, ink=None):
         """Return RGBA palette with substituted RGB ink value."""
