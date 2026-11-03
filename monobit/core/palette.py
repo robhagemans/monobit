@@ -7,8 +7,48 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 from operator import itemgetter
+from collections import namedtuple
 
-from monobit.base import RGB, RGBA
+from monobit.base.basetypes import CONVERTERS, _VectorMixin, grouper
+
+
+class Colour(_VectorMixin):
+    """Base class for RGB or RGBA tuples; mixin alongside namedtuple."""
+
+    def __bool__(self):
+        return True
+
+    def __str__(self):
+        return ''.join(f'{_elem:02X}' for _elem in self)
+
+
+class RGB(Colour, namedtuple('RGB', 'r g b')):
+    """Red-green-blue tuple."""
+
+
+class RGBA(Colour, namedtuple('RGBA', 'r g b a')):
+    """Red-green-blue-alpha tuple."""
+
+
+def to_colour(value):
+    """Convert scalar, tuple or string to RGB or RGBA value."""
+    if isinstance(value, tuple):
+        valuetuple = tuple
+    elif isinstance(value, str):
+        groups = tuple(''.join(_g) for _g in grouper(value, 2))
+        valuetuple = tuple(int(_g, 16) for _g in groups)
+    else:
+        valuetuple = value,
+    if len(valuetuple) == 4:
+        return RGBA(*valuetuple)
+    elif len(valuetuple) == 3:
+        return RGB(*valuetuple)
+    elif len(valuetuple) == 1:
+        return RGB(*(valuetuple*3))
+    raise ValueError(f'Unknown colour specification {value}')
+
+
+CONVERTERS[Colour] = to_colour
 
 
 BLACK = RGB(0, 0, 0)

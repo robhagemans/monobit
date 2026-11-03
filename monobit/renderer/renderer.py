@@ -16,11 +16,11 @@ arabic_reshaper = safe_import('arabic_reshaper')
 graphemecluster = safe_import('uniseg.graphemecluster')
 
 from ..base.binary import ceildiv
-from ..base import Props, Coord, Colour, Any
+from ..base import Props, Coord, Any
 from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
-from ..core.palette import light_defaults, dark_defaults, BLACK, WHITE
+from ..core.palette import Colour, light_defaults, dark_defaults, BLACK, WHITE
 from ..storage.fontfiles import output_pack_or_font
 from ..storage.magic import MagicRegistry
 from ..storage.location import open_location

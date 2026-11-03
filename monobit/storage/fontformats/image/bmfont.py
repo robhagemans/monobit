@@ -16,7 +16,7 @@ from monobit.base import safe_import
 etree = safe_import('xml.etree.ElementTree')
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, Bounds, RGB
+from monobit.base import Coord, Bounds
 from monobit.encoding import encodings
 from monobit.base.binary import bytes_to_int, ceildiv
 from monobit.base.struct import little_endian as le

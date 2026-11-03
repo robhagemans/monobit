@@ -10,9 +10,9 @@ import logging
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Props, Coord, Colour, blockstr
+from monobit.base import Props, Coord, blockstr
 from monobit.core.raster import turn_method
-from monobit.core.palette import Palette
+from monobit.core.palette import Palette, Colour
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
 from .sixel import matrix_to_sixel

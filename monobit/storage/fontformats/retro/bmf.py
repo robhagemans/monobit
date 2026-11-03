@@ -11,7 +11,7 @@ from collections import defaultdict
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import bitfield, little_endian as le
-from monobit.base import Props, UnsupportedError, RGB
+from monobit.base import Props, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 from monobit.core.palette import Palette, BLACK

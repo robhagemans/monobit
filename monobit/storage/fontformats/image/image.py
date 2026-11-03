@@ -12,13 +12,13 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, Colour, FileFormatError, UnsupportedError
+from monobit.base import Coord, FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
-from monobit.core.palette import Palette, sort_inklevels, brightness
+from monobit.core.palette import Palette, Colour, sort_inklevels, brightness
 from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
     write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC

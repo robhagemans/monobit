@@ -10,9 +10,10 @@ import logging
 from monobit.base import safe_import
 reportlab = safe_import('reportlab')
 
-from monobit.base import Coord, Colour, RGB
+from monobit.base import Coord
 from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
+from monobit.core.palette import RGB, Colour
 from monobit.storage.utils.limitations import ensure_single
 from .createchart import create_chart, aligns_right, charters
 

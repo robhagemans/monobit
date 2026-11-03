@@ -12,9 +12,9 @@ from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
 from monobit.base.binary import ceildiv
-from monobit.base import Props, Coord, Colour, Any
+from monobit.base import Props, Coord, Any
 from monobit.core import Codepoint, Glyph, Char
-from monobit.core.palette import light_defaults, dark_defaults
+from monobit.core.palette import Colour, light_defaults, dark_defaults
 from monobit.plumbing import scriptable
 from monobit.storage.magic import MagicRegistry
 from monobit.storage.fontfiles import output_pack_or_font
