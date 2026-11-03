@@ -12,7 +12,7 @@ from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
 from monobit.base.binary import ceildiv
-from monobit.base import Props, Coord, RGB, Any
+from monobit.base import Props, Coord, Colour, Any
 from monobit.core import Codepoint, Glyph, Char
 from monobit.core.palette import light_defaults, dark_defaults
 from monobit.plumbing import scriptable
@@ -150,9 +150,9 @@ def chart_shades(
         padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
-        border:RGB=None,
-        paper:RGB=None,
-        ink:RGB=None,
+        border:Colour=None,
+        paper:Colour=None,
+        ink:Colour=None,
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=True,
         skip_empty_lines:bool=True,
@@ -204,9 +204,9 @@ def chart_sixel(
         padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
-        border:RGB=None,
-        paper:RGB=None,
-        ink:RGB=None,
+        border:Colour=None,
+        paper:Colour=None,
+        ink:Colour=None,
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=True,
         skip_empty_lines:bool=True,
@@ -263,9 +263,9 @@ if Image:
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             direction:str='left-to-right top-to-bottom',
-            border:RGB=None,
-            paper:RGB=None,
-            ink:RGB=None,
+            border:Colour=None,
+            paper:Colour=None,
+            ink:Colour=None,
             codepoint_range:tuple[Codepoint]=None,
             grid_positioning:bool=True,
             skip_empty_lines:bool=True,

@@ -92,9 +92,9 @@ class Palette:
             self._rgb = None
         elif len(table[0]) == 3:
             self._alpha = None
-            self._rgb = tuple(RGB.create(_v) for _v in table)
+            self._rgb = tuple(RGB(*_v) for _v in table)
         elif len(table[0]) == 4:
-            self._rgb = tuple(RGB.create(_v[:3]) for _v in table)
+            self._rgb = tuple(RGB(*_v[:3]) for _v in table)
             self._alpha = tuple(_v[3] for _v in table)
             if len(set(
                     _rgb for _rgb, _a in zip(self._rgb, self._alpha) if _a)
@@ -182,7 +182,7 @@ class Palette:
             return tuple(rgb_int)
         return tuple(_a * _i // 255 for _a, _i in zip(self._alpha, rgb_int))
 
-    def as_rgb(self, paper:RGB=None, ink:RGB=None):
+    def as_rgb(self, paper=None, ink=None):
         """Return RGB palette with substituted ink and paper values."""
         if self._rgb is None:
             paper, ink = dark_defaults(paper, ink)
@@ -206,7 +206,7 @@ class Palette:
             rgb[-1] = ink
         return tuple(RGB(*_v) for _v in rgb)
 
-    def as_rgba(self, ink:RGB=None):
+    def as_rgba(self, ink=None):
         """Return RGBA palette with substituted RGB ink value."""
         if self._rgb is None:
             ink = ink or WHITE

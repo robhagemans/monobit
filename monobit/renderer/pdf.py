@@ -10,7 +10,7 @@ import logging
 from monobit.base import safe_import
 reportlab = safe_import('reportlab')
 
-from monobit.base import Coord, RGB
+from monobit.base import Coord, Colour, RGB
 from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
 from monobit.storage.utils.limitations import ensure_single
@@ -29,9 +29,9 @@ if reportlab:
             lines_per_page:int=16,
             padding:Coord=Coord(3, 3),
             direction:str=None,
-            pixel_border:RGB=RGB(127, 127, 127),
-            ink:RGB=RGB(0, 0, 0),
-            paper:RGB=RGB(255, 255, 255),
+            pixel_border:Colour=RGB(127, 127, 127),
+            ink:Colour=RGB(0, 0, 0),
+            paper:Colour=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
             grid_positioning:bool=False,
             skip_empty_lines:bool=True,

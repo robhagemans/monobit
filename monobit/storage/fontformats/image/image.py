@@ -12,7 +12,7 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, RGB, FileFormatError, UnsupportedError
+from monobit.base import Coord, Colour, FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
@@ -308,9 +308,9 @@ if Image:
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             direction:str='left-to-right top-to-bottom',
-            border:RGB=None,
-            paper:RGB=None,
-            ink:RGB=None,
+            border:Colour=None,
+            paper:Colour=None,
+            ink:Colour=None,
             codepoint_range:tuple[Codepoint]=range(512),
             grid_positioning:bool=True,
             skip_empty_lines:bool=False,
@@ -397,8 +397,8 @@ if Image:
             prefix:str='',
             image_format:str='png',
             image_mode:str='rgb',
-            paper:RGB=None,
-            ink:RGB=None,
+            paper:Colour=None,
+            ink:Colour=None,
         ):
         """
         Export font to per-glyph images.

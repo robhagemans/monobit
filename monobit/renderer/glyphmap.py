@@ -10,7 +10,7 @@ import logging
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Props, Coord, RGB, blockstr
+from monobit.base import Props, Coord, Colour, blockstr
 from monobit.core.raster import turn_method
 from monobit.core.palette import Palette
 from monobit.plumbing import convert_arguments
@@ -204,7 +204,7 @@ class GlyphMap:
 
     def as_sixel(
             self, *,
-            paper:RGB=None, ink:RGB=None, border:RGB=None,
+            paper:Colour=None, ink:Colour=None, border:Colour=None,
             sheet=0
         ):
         """Convert glyph map to a sixel sequence."""
@@ -216,7 +216,7 @@ class GlyphMap:
 
     def as_shades(
             self, *,
-            paper:RGB=None, ink:RGB=None, border:RGB=None,
+            paper:Colour=None, ink:Colour=None, border:Colour=None,
             sheet=0,
         ):
         """Convert glyph map to ansi coloured block characters."""

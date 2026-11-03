@@ -16,7 +16,7 @@ arabic_reshaper = safe_import('arabic_reshaper')
 graphemecluster = safe_import('uniseg.graphemecluster')
 
 from ..base.binary import ceildiv
-from ..base import Props, Coord, RGB, Any
+from ..base import Props, Coord, Colour, Any
 from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
@@ -150,7 +150,7 @@ def output_blocks(
 def output_shades(
         fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        paper:RGB=None, ink:RGB=None, border:RGB=None,
+        paper:Colour=None, ink:Colour=None, border:Colour=None,
     ):
     """
     Render text using ANSI escape colours
@@ -186,7 +186,7 @@ def output_shades(
 def output_sixel(
         fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        paper:RGB=None, ink:RGB=None, border:RGB=None,
+        paper:Colour=None, ink:Colour=None, border:Colour=None,
     ):
     """
     Render text as sixel graphics
@@ -229,9 +229,9 @@ if Image:
             margin:Coord=None, direction:str='', align:str='',
             image_format:str='',
             image_mode:str='RGB',
-            border:RGB=None,
-            paper:RGB=None,
-            ink:RGB=None,
+            border:Colour=None,
+            paper:Colour=None,
+            ink:Colour=None,
         ):
         """
         Render text to image.
