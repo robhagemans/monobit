@@ -92,7 +92,7 @@ if Image:
                     left = right
             else:
                 width = length
-        font = Font(glyphs, palette=inklevels)
+        font = Font(glyphs, palette=Palette(inklevels).if_not_default())
         return font
 
 

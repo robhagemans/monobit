@@ -16,7 +16,7 @@ from io import BytesIO
 from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
 from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint, Palette
 from monobit.storage import loaders, savers
-from monobit.core.palette import sort_inklevels
+from monobit.core.palette import Palette, sort_inklevels
 
 fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
 ttLib = safe_import('fontTools.ttLib')
@@ -344,7 +344,7 @@ def _convert_bdat(sfnt, bdatname, blocname):
                 glyphs,
                 source_format=source_format,
                 encoding=encoding or None,
-                palette=palette,
+                palette=Palette(palette).if_not_default() if palette is not None else None,
                 **vars(props)
             )
             # remove temporary names created by fontTools
@@ -627,7 +627,7 @@ def _convert_sbix(sfnt):
         props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
         fonts.append(Font(
             glyphs=updated_glyphs,
-            palette=inklevels,
+            palette=Palette(inklevels).if_not_default(),
             dpi=strike.resolution,
             encoding=encoding or None,
             source_format='sfnt (sbix)',

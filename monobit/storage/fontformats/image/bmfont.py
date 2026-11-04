@@ -654,7 +654,8 @@ def _extract(
         )
         for _glyph, _char in zip(glyphs, chars)
     ]
-    font = Font(glyphs, palette=inklevels, **properties)
+    palette = Palette(inklevels)
+    font = Font(glyphs, palette=palette.if_not_default(), **properties)
     font = font.label()
     return font
 

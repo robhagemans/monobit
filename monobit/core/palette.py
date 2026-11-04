@@ -207,6 +207,12 @@ class Palette:
         """This palette is the default palette for this number of levels."""
         return self == self.default(self._levels)
 
+    def if_not_default(self):
+        """None if default palette. For use with Font property."""
+        if self.is_default():
+            return None
+        return self
+
     @classmethod
     def default(cls, levels):
         """Create equal-stepped intensity gradient."""

@@ -177,7 +177,7 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
-        font = Font(glyphs, palette=inklevels)
+        font = Font(glyphs, palette=Palette(inklevels).if_not_default())
         return font
 
 

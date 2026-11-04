@@ -1678,14 +1678,12 @@ class Font(HasProps):
             return self
         rgbtable = self.palette.as_rgb()
         new_palette = Palette(rgbtable[_i] for _i in used_levels)
-        if new_palette.is_default():
-            new_palette = None
         return self.modify(
             glyphs=(
                 _g.modify(Raster.from_matrix(_m, inklevels=used_levels))
                 for _g, _m in zip(self.glyphs, matrices)
             ),
-            palette=new_palette,
+            palette=new_palette.if_not_default(),
         )
 
     def with_palette(self, new_palette, *, approximate=False):
@@ -1700,7 +1698,7 @@ class Font(HasProps):
                 ))
                 for _g in self.glyphs
             ),
-            palette=new_palette,
+            palette=new_palette.if_not_default(),
         )
 
     def with_default_palette(self, levels=None, *, approximate=False):
