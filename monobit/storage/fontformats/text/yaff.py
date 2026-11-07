@@ -18,7 +18,7 @@ from monobit.core import (
     Font, FontProperties, Glyph, Raster, Label, Palette,
     strip_matching, CUSTOM_NAMESPACE
 )
-from monobit.base import Props, Coord, passthrough, FileFormatError
+from monobit.base import Props, Coord, passthrough, FileFormatError, to_tuple
 
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
@@ -187,16 +187,8 @@ def _read_yaff(text_stream):
             if key == 'yaff':
                 logging.debug("yaff signature found, version %s", value)
             else:
-                if key == 'levels':
-                    inklevels = YaffParams.inklevels(int(value, 0))
-                elif key == 'palette':
-                    # TODO move into/with Palette class
-                    lines = value.splitlines()
-                    if len(lines[0].split()) == 2:
-                        colours, inklevels = zip(*(_l.split() for _l in lines))
-                        value = '\n'.join(colours)
-                    else:
-                        inklevels = YaffParams.inklevels(len(value))
+                if key in ('levels', 'palette', 'rgb-table'):
+                    value, inklevels = _read_palette(key, value)
                 _set_property(font_props, key, value)
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
@@ -392,6 +384,25 @@ class YaffPropertyOrGlyph(YaffMultiline):
         # may be property or (deprecated) glyph with plain label
         # we need to check the contents; allows 2-level glyphs only
         return first[:1] in self.inklevels(2) or set(first) == set(self.empty)
+
+
+def _read_palette(key, value):
+    """Convert yaff palette to Font palette initialiser and inklevels."""
+    if key == 'levels':
+        inklevels = YaffParams.inklevels(int(value, 0))
+    elif key == 'palette':
+        lines = value.splitlines()
+        if len(lines[0].split()) == 2:
+            colours, inklevels = zip(*(_l.split() for _l in lines))
+            value = '\n'.join(colours)
+        else:
+            inklevels = YaffParams.inklevels(len(value))
+    elif key == 'rgb-table':
+        # deprecated palette specification through rgb-table with 3-tuples
+        lines = value.splitlines()
+        inklevels = YaffParams.inklevels(len(value))
+        value = tuple(to_tuple(_l, length=3) for _l in lines)
+    return value, inklevels
 
 
 ##############################################################################
