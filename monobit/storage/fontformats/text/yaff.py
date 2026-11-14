@@ -249,36 +249,22 @@ class YaffGlyph(YaffMultiline):
         return line and (line[:1] in self.label_chars) or '+' in line
 
     def get_value(self, inklevels):
+        """Parse a yaff glyph definition."""
+        # strip : separator from labels
         labels = tuple(_l[:-1] for _l in self.lines[:self.n_keys])
+        # strip indent from glyph definition
         lines = (_l[self.indent:] for _l in self.lines[self.n_keys:])
+        # drop empty lines
         lines = tuple(_l for _l in lines if _l)
-        # locate glyph properties
-        i = 0
-        for i, line in enumerate(lines):
+        # locate first glyph property; everything before that is pixel definition
+        raster_height = 0
+        for raster_height, line in enumerate(lines):
             if self.separator in line:
                 break
         else:
-            i += 1
-        if not i:
-            raise FileFormatError('Malformed yaff file: expected glyph definition.')
-        raster = tuple(_l.upper() for _l in lines[:i])
-        properties = {}
-        key = None
-        for line in lines[i:]:
-            if line[:1] in self.whitespace:
-                # follow-up lines in multiline glyph properties
-                # note - won't work with deprecated synonyms
-                if not properties[key]:
-                    properties[key] = line.strip()
-                else:
-                    properties[key] = '\n'.join((properties[key], line.strip()))
-            else:
-                # first line of property
-                # one-line glyph properties
-                key, _, value = line.partition(self.separator)
-                key = normalise_property(key)
-                value = value.strip()
-                _set_property(properties, key, value)
+            raster_height += 1
+        # parse pixel raster
+        raster = tuple(_l.upper() for _l in lines[:raster_height])
         # deal with sized empties (why?)
         if not raster:
             raster = Raster()
@@ -299,6 +285,24 @@ class YaffGlyph(YaffMultiline):
             raster = Raster.from_matrix(raster, inklevels=inklevels)
         else:
             raster = Raster(raster, inklevels=inklevels)
+        # parse glyph properties
+        properties = {}
+        key = None
+        for line in lines[raster_height:]:
+            if line[:1] in self.whitespace:
+                # follow-up lines in multiline glyph properties
+                # note - won't work with deprecated synonyms
+                if not properties[key]:
+                    properties[key] = line.strip()
+                else:
+                    properties[key] = '\n'.join((properties[key], line.strip()))
+            else:
+                # first line of property
+                # one-line glyph properties
+                key, _, value = line.partition(self.separator)
+                key = normalise_property(key)
+                value = value.strip()
+                _set_property(properties, key, value)
         return Props(pixels=raster, labels=labels, **properties)
 
     def _count_keys(self):
