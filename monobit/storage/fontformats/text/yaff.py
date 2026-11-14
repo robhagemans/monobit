@@ -289,17 +289,17 @@ class YaffGlyph(YaffMultiline):
             )
         # split up pixel groups for 8-bit
         elif len(inklevels) == 256:
-            raster = Raster.from_matrix(
-                (
+            raster = tuple(tuple(_row.split()) for _row in raster)
+            # deal with (deprecated) non-separated pixel groups
+            if len(raster[0]) == 1:
+                raster = tuple(
                     tuple(_row[_c:_c+2] for _c in range(0, len(_row), 2))
-                    for _row in raster
-                ),
-                inklevels=inklevels,
-            )
-        return Props(
-            pixels=Raster(raster, inklevels=inklevels),
-            labels=labels, **properties
-        )
+                    for _row, *_ in raster
+                )
+            raster = Raster.from_matrix(raster, inklevels=inklevels)
+        else:
+            raster = Raster(raster, inklevels=inklevels)
+        return Props(pixels=raster, labels=labels, **properties)
 
     def _count_keys(self):
         return sum(

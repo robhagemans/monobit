@@ -303,17 +303,35 @@ levels: 16
             '\x1b[38;2;255;255;255m\u2588\x1b[0m\n'
         )
 
-    shades_256 = """\n
+    shades_256_joined = """\n
 levels: 256
 
 '-':
     ..{}@@
 """.format(''.join(f'{_x:02X}' for _x in range(1, 255)))
 
+    shades_256 = """\n
+levels: 256
+
+'-':
+    .. {}@@
+""".format(''.join(f'{_x:02X} ' for _x in range(1, 255)))
+
 
     def test_render_256shades(self):
         """Render 1x1 shaded blocks format, 256 ink levels"""
         font, *_ = monobit.load(get_stringio(self.shades_256))
+        text = monobit.render_text(font, '-').as_shades(border=(0,0,0))
+        assert_text_eq(text,
+            ''.join(
+                f'\x1b[38;2;{_s};{_s};{_s}m\u2588\x1b[0m'
+                for _s in range(256)
+            ) + '\n'
+        )
+
+    def test_render_256shades_joined(self):
+        """Render 1x1 shaded blocks format, 256 ink levels (joined pixel groups in yaff input)"""
+        font, *_ = monobit.load(get_stringio(self.shades_256_joined))
         text = monobit.render_text(font, '-').as_shades(border=(0,0,0))
         assert_text_eq(text,
             ''.join(
