@@ -9,6 +9,7 @@ import unittest
 
 import monobit
 from monobit import Glyph, Tag, Codepoint, Char
+from monobit.core.raster import Raster, get_inklevels
 from .base import BaseTester, get_stringio, assert_text_eq
 
 
@@ -343,6 +344,88 @@ glyph:
             'property comment\nspanning two lines'
         ))
         assert_text_eq(f.glyphs[0].comment, 'glyph comment')
+
+
+    glyphs_2bpp = """
+levels: 4
+
+'a':
+    .....
+    .12@.
+    .@21.
+"""
+
+    def test_glyphs_2bpp(self):
+        file = get_stringio(self.glyphs_2bpp)
+        f,  *_ = monobit.load(file)
+        assert f.levels == 4
+        assert f.bits_per_pixel == 2
+        a = f.get_glyph('a')
+        assert a.pixels.as_matrix() == (
+            (0, 0, 0, 0, 0),
+            (0, 1, 2, 3, 0),
+            (0, 3, 2, 1, 0),
+        )
+
+
+    glyphs_4bpp = """
+levels: 16
+
+'a':
+    .................
+    .123456789ABCDE@.
+"""
+
+    def test_glyphs_4bpp(self):
+        file = get_stringio(self.glyphs_4bpp)
+        f,  *_ = monobit.load(file)
+        assert f.levels == 16
+        assert f.bits_per_pixel == 4
+        a = f.get_glyph('a')
+        assert a.pixels.as_matrix() == (
+            (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+            (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0)
+        )
+
+
+    glyphs_8bpp = """
+levels: 256
+
+'a':
+    .. .. .. .. .. .. ..
+    .. 01 11 AB CD @@ ..
+"""
+
+    def test_glyphs_8bpp(self):
+        file = get_stringio(self.glyphs_8bpp)
+        f,  *_ = monobit.load(file)
+        assert f.levels == 256
+        assert f.bits_per_pixel == 8
+        a = f.get_glyph('a')
+        assert a.pixels.as_matrix() == (
+            (0, 0, 0, 0, 0, 0, 0),
+            (0, 1, 17, 171, 205, 255, 0)
+        )
+
+
+    glyphs_8bpp_deprecated = """
+levels: 256
+
+'a':
+    ..............
+    ..0111ABCD@@..
+"""
+
+    def test_glyphs_8bpp_deprecated(self):
+        file = get_stringio(self.glyphs_8bpp_deprecated)
+        f,  *_ = monobit.load(file)
+        assert f.levels == 256
+        assert f.bits_per_pixel == 8
+        a = f.get_glyph('a')
+        assert a.pixels.as_matrix() == (
+            (0, 0, 0, 0, 0, 0, 0),
+            (0, 1, 17, 171, 205, 255, 0)
+        )
 
 
 if __name__ == '__main__':
