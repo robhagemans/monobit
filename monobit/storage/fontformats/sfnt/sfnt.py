@@ -472,7 +472,7 @@ def _convert_bdat_glyphs(
                 for (_name, _, _width, _, _props), _data in zip(glyphdata, vectordata)
             )
         except StrikeFormatError as err:
-            logging.warning(e)
+            logging.warning(err)
     else:
         for (name, glyphbytes, width, height, props) in glyphdata:
             raster = Raster.from_bytes(
@@ -600,7 +600,7 @@ def _convert_sbix(sfnt):
                 for _name, _data, _width, _props in glyphdata
             )
         except StrikeFormatError as err:
-            logging.warning(e)
+            logging.warning(err)
             glyphs = ()
             inklevels = None
         # update glyph props with hmtx/vmtx metrics

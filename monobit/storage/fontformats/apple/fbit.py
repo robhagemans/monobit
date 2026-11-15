@@ -133,7 +133,7 @@ def extract_fbit(instream, data_fork_stream):
             glyphstream.seek(bitmap_pos, 0)
     elif header.fdef_id != 0:
         logging.warning(
-            'Unknown fdef id %d, trying format for fdef_id 0', fdef_id
+            'Unknown fdef id %d, trying format for fdef_id 0', header.fdef_id
         )
     # table of run lengths
     table_size = be.uint16.read_from(instream)

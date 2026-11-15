@@ -13,7 +13,7 @@ from monobit.core import Tag
 from monobit.base.binary import ceildiv
 from monobit.storage import loaders, savers
 from monobit.storage.utils.limitations import ensure_single
-from monobit.base import reverse_dict, to_number, safe_import
+from monobit.base import reverse_dict, to_number, safe_import, FileFormatError
 from monobit.renderer import glyph_to_image
 from monobit.core.labels import to_range
 
