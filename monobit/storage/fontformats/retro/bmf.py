@@ -11,7 +11,7 @@ from collections import defaultdict
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import bitfield, little_endian as le
-from monobit.base import Props, UnsupportedError, RGB
+from monobit.base import Props, UnsupportedError
 from monobit.storage import loaders, savers
 from monobit.core import Font, Glyph
 from monobit.core.palette import Palette, BLACK
@@ -161,10 +161,12 @@ def _convert_bmf(bmf, alpha_only):
             kerning_map[kern.first][kern.second] = kern.correction
     kerning_map = dict(kerning_map)
     # -- convert palette
-    # TODO: color 0 is defined as transparent, not black
     if bmf.header.extraPalettes:
         # I don't understand how multiple palettes are meant to be stored
         logging.warning('Multiple palettes not supported')
+    # NOTE: colour 0 is defined as transparent instead of black
+    # however the paper colour is commonly overridden by the renderer
+    # so avoid introducing an alpha layer unless included in the file
     palette = ((0, 0, 0),) + tuple(
         (_p.r*255//63, _p.g*255//63, _p.b*255//63) for _p in bmf.palette
     )
@@ -255,7 +257,7 @@ def _convert_to_bmf(font, version, alpha_greyscale):
         font = font.with_default_palette(levels=256, approximate=True)
     else:
         font = font.with_palette(
-            list(font.palette) + [BLACK] * (256-len(font.palette))
+            list(font.palette.as_rgb()) + [BLACK] * (256-len(font.palette))
         )
     assert font.bits_per_pixel == 8
     common_right = min(_g.right_bearing for _g in font.glyphs)
@@ -275,7 +277,7 @@ def _convert_to_bmf(font, version, alpha_greyscale):
     )
     bmf.palette = (_RGB_ENTRY * (len(font.palette)-1))(
         *(_RGB_ENTRY(r=_rgb.r>>2, g=_rgb.g>>2, b=_rgb.b>>2)
-        for _rgb in font.palette[1:])
+        for _rgb in font.palette.as_rgb()[1:])
     )
     bmf.title = font.name.encode(title_encoding, 'replace')
     bmf.ascii_glyphs = tuple(

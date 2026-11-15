@@ -206,13 +206,46 @@ class TestExport(BaseTester):
         """Test exporting bmfont files with binary descriptor."""
         self._export_4x6(format='bmfont', save_kwargs=dict(descriptor='binary'))
 
+    def test_export_bmfont_packed(self):
+        """Test exporting bmfont files with channel packing."""
+        self._export_4x6(format='bmfont', save_kwargs=dict(packed=True))
+
+    def test_export_bmfont_grid(self):
+        """Test exporting bmfont files with grid image."""
+        self._export_4x6(format='bmfont', save_kwargs=dict(grid=True))
+
+
     # Image
 
-    def test_export_png(self):
-        """Test exporting image files."""
+    def test_export_png_mono(self):
+        """Test exporting image files (monochrome)."""
+        self._export_4x6(
+            # no distinctive border in mono mode, so missing glyphs are spaces
+            format='image', count=256, label=b'A',
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='mono'),
+            load_kwargs=dict(grid=True, cell=(4, 6)),
+        )
+
+    def test_export_png_grey(self):
+        """Test exporting image files (greyscale)."""
         self._export_4x6(
             format='image', count=192, label=b'A',
-            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True),
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='grey'),
+            load_kwargs=dict(grid=True, cell=(4, 6)),
+        )
+
+    def test_export_png_rgb_(self):
+        """Test exporting image files (rgb)."""
+        self._export_4x6(
+            format='image', count=192, label=b'A',
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='rgb'),
+            load_kwargs=dict(grid=True, cell=(4, 6)),
+        )
+    def test_export_png_rgba(self):
+        """Test exporting image files (rgba)."""
+        self._export_4x6(
+            format='image', count=192, label=b'A',
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='rgba'),
             load_kwargs=dict(grid=True, cell=(4, 6)),
         )
 

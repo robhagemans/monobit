@@ -139,13 +139,38 @@ class TestFeatures(BaseTester):
             'hppcl', save_kwargs=dict(orientation='landscape')
         )
 
-    def test_image_proportional(self):
+    def test_image_proportional_grey(self):
         self._render_proportional(
-            'image', load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
+            'image',
+            save_kwargs=dict(image_mode='grey'),
+            load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
         )
 
-    def test_imageset_proportional(self):
-        self._render_proportional('imageset')
+    def test_image_proportional_rgb(self):
+        self._render_proportional(
+            'image',
+            save_kwargs=dict(image_mode='rgb'),
+            load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
+        )
+
+    def test_image_proportional_rgba(self):
+        self._render_proportional(
+            'image',
+            save_kwargs=dict(image_mode='rgba'),
+            load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
+        )
+
+    def test_imageset_proportional_rgb(self):
+        self._render_proportional('imageset', save_kwargs=dict(image_mode='rgb'))
+
+    def test_imageset_proportional_rgba(self):
+        self._render_proportional('imageset', save_kwargs=dict(image_mode='rgba'))
+
+    def test_imageset_proportional_grey(self):
+        self._render_proportional('imageset', save_kwargs=dict(image_mode='grey'))
+
+    def test_imageset_proportional_mono(self):
+        self._render_proportional('imageset', save_kwargs=dict(image_mode='mono'))
 
     def test_iigs_proportional(self):
         self._render_proportional('iigs')
@@ -301,8 +326,10 @@ class TestFeatures(BaseTester):
 
     def _render_bearings(self, format, char=False, inklevels='.@', **save_kwargs):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
-        monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
-        font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
+        path = self.temp_path / f'positioning.{format}'
+        # path =  f'positioning.{format}'
+        monobit.save(font, path, format=format, **save_kwargs)
+        font, *_ = monobit.load(path, format=format)
         if char:
             text = monobit.render_text(font, '012').as_text(inklevels=inklevels, border=inklevels[0])
         else:

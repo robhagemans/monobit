@@ -75,7 +75,7 @@ _BEOS_MAGIC = b'|Be;'
 # BeOS has a 3-bit palette realised by 4-bit intensities
 # this represents those on an 8-bit scale
 # this is *not* the same as an equally spaced 8-level palette
-_BEOS_PALETTE = Palette.from_intensity(
+_BEOS_PALETTE = Palette(
     round(_v * 15 / 7) * (255 // 15)
     for _v in range(8)
 )

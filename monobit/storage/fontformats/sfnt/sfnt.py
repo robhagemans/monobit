@@ -16,6 +16,7 @@ from io import BytesIO
 from monobit.base import Props, FileFormatError, UnsupportedError, safe_import
 from monobit.core import Font, Glyph, Raster, Tag, Char, Codepoint, Palette
 from monobit.storage import loaders, savers
+from monobit.core.palette import Palette, sort_inklevels
 
 fonttools = safe_import('monobit.storage.fontformats.sfnt.fonttools')
 ttLib = safe_import('fontTools.ttLib')
@@ -23,7 +24,6 @@ fonttools_loaded = ttLib is not None
 Image = safe_import('PIL.Image')
 
 from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
-from ..image.image import identify_inklevels_for_images
 
 
 # specs
@@ -337,14 +337,14 @@ def _convert_bdat(sfnt, bdatname, blocname):
             bloc_props = _convert_bloc_props(bloc, i_strike)
             props, hfupp, vfupp = _convert_props(sfnt, bmst.ppemX, bmst.ppemY)
             props = bloc_props | props
-            glyphs, rgbtable = _convert_bdat_glyphs(
+            glyphs, palette = _convert_bdat_glyphs(
                 sfnt, bdat, bloc, i_strike, hfupp, vfupp, unitable, enctable
             )
             font = Font(
                 glyphs,
                 source_format=source_format,
                 encoding=encoding or None,
-                palette=rgbtable,
+                palette=Palette(palette).if_not_default() if palette is not None else None,
                 **vars(props)
             )
             # remove temporary names created by fontTools
@@ -423,34 +423,54 @@ def _convert_bdat_glyphs(
             props.update(_convert_vmtx_metrics(sfnt.vmtx, name, vert_fu_p_pix, height))
             glyphdata.append((name, glyphbytes, width, height, props))
     glyphs = []
-    rgbtable = None
+    inklevels = None
     # bitDepth==32 stands for BGRA data in CBDT
-    # convert, then treat as PNG data below. this is a bit of a hack
-    # we can clean this up once we support RGBA glyphs directly
     if not png and blocstrike.bitmapSizeTable.bitDepth == 32:
-        if not Image:
-            raise StrikeFormatError(
-                "32-bit bitmaps require module `PIL`, which was not found."
-            )
-        updated_glyphdata = []
+        vectordata = []
         for (name, glyphbytes, width, height, props) in glyphdata:
             # split into 4-byte chunks
             iterators = [iter(glyphbytes)] * 4
             bgra_list = zip(*iterators)
-            rgba_list = tuple((_r, _g, _b, _a) for _b, _g, _r, _a in bgra_list)
-            # convert to PNG image
-            with BytesIO() as bytesio:
-                # note the lowercase a for pre-multiplied RGBA (as per CBDT spec)
-                image = Image.new('RGBa', (width, height))
-                image.putdata(rgba_list)
-                image.convert('RGBA').save(bytesio, format='png')
-                glyphbytes = bytesio.getvalue()
-            updated_glyphdata.append((name, glyphbytes, width, height, props))
-        png = True
-        glyphdata = updated_glyphdata
-    if png:
+            # convert pre-multiplied BGRA (per CBDT spec) to RGBA
+            vectordata.append(tuple(
+                (0, 0, 0, 0) if _a == 0
+                else (_r*255//_a, _g*255//_a, _b*255//_a, _a)
+                for _b, _g, _r, _a in bgra_list
+            ))
+        colourset = set.union(*(set(_cols) for _cols in vectordata))
+        inklevels = sort_inklevels(colourset, paper=(0, 0, 0, 0))
+        glyphs = tuple(
+            Glyph.from_vector(
+                tuple(_data),
+                stride=_width,
+                inklevels=inklevels,
+                tag=_name,
+                char=unitable.get(_name, ''),
+                codepoint=enctable.get(_name, b''),
+                **_props
+            )
+            for (_name, _, _width, _, _props), _data in zip(glyphdata, vectordata)
+        )
+    elif png:
         try:
-            glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+            vectordata = tuple(
+                _png_data_to_rgba_vector_and_width(_glyphbytes)[0]
+                for _, _glyphbytes, _, _, _ in glyphdata
+            )
+            colourset = set.union(*(set(_cols) for _cols in vectordata))
+            inklevels = sort_inklevels(colourset, paper=(0, 0, 0, 0))
+            glyphs = tuple(
+                Glyph.from_vector(
+                    tuple(_data),
+                    stride=_width,
+                    inklevels=inklevels,
+                    tag=_name,
+                    char=unitable.get(_name, ''),
+                    codepoint=enctable.get(_name, b''),
+                    **_props
+                )
+                for (_name, _, _width, _, _props), _data in zip(glyphdata, vectordata)
+            )
         except StrikeFormatError as err:
             logging.warning(e)
     else:
@@ -468,7 +488,7 @@ def _convert_bdat_glyphs(
             glyphs.append(glyph)
     glyphs = _convert_kern_metrics(glyphs, sfnt.kern, hori_fu_p_pix)
     glyphs = _convert_gpos_metrics(glyphs, sfnt.GPOS, hori_fu_p_pix)
-    return glyphs, rgbtable
+    return glyphs, inklevels
 
 
 def _convert_glyph_metrics(metrics, small_is_vert):
@@ -525,7 +545,7 @@ def _convert_sbix(sfnt):
         glyphdata = tuple(
             (
                 glyph.glyphName,
-                (
+                *_png_data_to_rgba_vector_and_width(
                     # > The special graphicType of 'dupe' indicates that the
                     # > data field contains a uint16, big-endian glyph ID. The
                     # > bitmap data for the indicated glyph must be used for
@@ -534,8 +554,6 @@ def _convert_sbix(sfnt):
                     glyph_dict[glyph.referenceGlyphName]
                     if glyph.graphicType in ('dupe', 'flip') else glyph.imageData
                 ),
-                # width, height not known and not used by imagedata_to_glyphs
-                None, None,
                 # > The originOffsetX and originOffsetY values give the placement
                 # > of the bitmap graphic in relation to the standard coordinate
                 # > system of the glyph design space. For example,
@@ -567,13 +585,24 @@ def _convert_sbix(sfnt):
             for glyph in sfnt_glyphs
         )
         try:
-            # does sbix have a concept of background?
-            # presumably it's just using alpha transparency
-            glyphs, rgbtable = _imagedata_to_glyphs(glyphdata, unitable, enctable)
+            colourset = set.union(*(set(_cols) for _, _cols, _, _ in glyphdata))
+            inklevels = sort_inklevels(colourset, paper=(0, 0, 0, 0))
+            glyphs = tuple(
+                Glyph.from_vector(
+                    tuple(_data),
+                    stride=_width,
+                    inklevels=inklevels,
+                    tag=_name,
+                    char=unitable.get(_name, ''),
+                    codepoint=enctable.get(_name, b''),
+                    **_props
+                )
+                for _name, _data, _width, _props in glyphdata
+            )
         except StrikeFormatError as err:
             logging.warning(e)
             glyphs = ()
-            rgbtable = None
+            inklevels = None
         # update glyph props with hmtx/vmtx metrics
         fu_p_pix = sfnt.head.unitsPerEm / strike.ppem
         updated_glyphs = []
@@ -598,7 +627,7 @@ def _convert_sbix(sfnt):
         props, _, _ = _convert_props(sfnt, strike.ppem, strike.ppem)
         fonts.append(Font(
             glyphs=updated_glyphs,
-            palette=rgbtable,
+            palette=Palette(inklevels).if_not_default(),
             dpi=strike.resolution,
             encoding=encoding or None,
             source_format='sfnt (sbix)',
@@ -607,46 +636,20 @@ def _convert_sbix(sfnt):
     return fonts
 
 
-def _data_to_crop(data):
-    """Convert RGBA data (may be empty) to RGB image with black background."""
-    if data:
-        with BytesIO(data) as bytesio:
-            return Image.open(bytesio).convert('RGBA')
-    return Image.new(mode='RGBA', size=(0, 0), color=(0, 0, 0, 0))
-
-
-def _imagedata_to_glyphs(glyphdata, unitable, enctable):
-    """Convert glyph image data to glyphs."""
+def _png_data_to_rgba_vector_and_width(data):
+    """Convert PNG image data (may be empty) to RGBA vector data."""
     if not Image:
         raise StrikeFormatError(
             "Decoding colour bitmaps requires module `PIL`, which was not found."
         )
-        return ()
-    cropdata = tuple(
-        (_data_to_crop(_glyphbytes), _name, _props)
-        for _name, _glyphbytes, _, _, _props in glyphdata
-    )
-    inklevels = identify_inklevels_for_images(
-        (_item[0] for _item in cropdata),
-        background='alpha'
-    )
-    glyphs = tuple(
-        Glyph.from_vector(
-            tuple(_crop.getdata()),
-            stride=_crop.width,
-            inklevels=inklevels,
-            tag=_name,
-            char=unitable.get(_name, ''),
-            codepoint=enctable.get(_name, b''),
-            **_props
-        )
-        for _crop, _name, _props in cropdata
-    )
-    # inklevels RGBA -> RGB, premultiply alphas
-    inklevels = Palette(
-        (_r*_a//255, _g*_a//255, _b*_a//255) for _r, _g, _b, _a in inklevels
-    )
-    return glyphs, inklevels
+    if not data:
+        return (), 0
+    with BytesIO(data) as bytesio:
+        image = Image.open(bytesio).convert('RGBA')
+        # normalise fully transparent colours to (0, 0, 0, 0)
+        zero = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        image = Image.alpha_composite(zero, image)
+        return image.getdata(), image.width
 
 
 ###############################################################################

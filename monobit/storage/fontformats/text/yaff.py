@@ -18,7 +18,7 @@ from monobit.core import (
     Font, FontProperties, Glyph, Raster, Label, Palette,
     strip_matching, CUSTOM_NAMESPACE
 )
-from monobit.base import Props, Coord, passthrough, FileFormatError
+from monobit.base import Props, Coord, passthrough, FileFormatError, to_tuple
 
 from .draw import NonEmptyBlock, DrawComment, Empty, Unparsed, iter_blocks
 from .draw import format_comment
@@ -187,19 +187,8 @@ def _read_yaff(text_stream):
             if key == 'yaff':
                 logging.debug("yaff signature found, version %s", value)
             else:
-                if key == 'levels':
-                    inklevels = YaffParams.inklevels(int(value, 0))
-                elif key == 'palette':
-                    # TODO move into/with Palette class
-                    lines = value.splitlines()
-                    if len(lines[0].split()) == 2:
-                        colours, inklevels = zip(*(_l.split() for _l in lines))
-                        value = tuple(
-                            (int(_rgb[:2], 16), int(_rgb[2:4], 16), int(_rgb[4:6], 16))
-                            for _rgb in colours
-                        )
-                    else:
-                        inklevels = YaffParams.inklevels(len(value))
+                if key in ('levels', 'palette', 'rgb-table'):
+                    value, inklevels = _read_palette(key, value)
                 _set_property(font_props, key, value)
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
@@ -260,22 +249,46 @@ class YaffGlyph(YaffMultiline):
         return line and (line[:1] in self.label_chars) or '+' in line
 
     def get_value(self, inklevels):
+        """Parse a yaff glyph definition."""
+        # strip : separator from labels
         labels = tuple(_l[:-1] for _l in self.lines[:self.n_keys])
+        # strip indent from glyph definition
         lines = (_l[self.indent:] for _l in self.lines[self.n_keys:])
+        # drop empty lines
         lines = tuple(_l for _l in lines if _l)
-        # locate glyph properties
-        i = 0
-        for i, line in enumerate(lines):
+        # locate first glyph property; everything before that is pixel definition
+        raster_height = 0
+        for raster_height, line in enumerate(lines):
             if self.separator in line:
                 break
         else:
-            i += 1
-        if not i:
-            raise FileFormatError('Malformed yaff file: expected glyph definition.')
-        raster = tuple(_l.upper() for _l in lines[:i])
+            raster_height += 1
+        # parse pixel raster
+        raster = tuple(_l.upper() for _l in lines[:raster_height])
+        # deal with sized empties (why?)
+        if not raster:
+            raster = Raster()
+        elif all(set(_line) == set([self.empty]) for _line in raster):
+            raster = Raster.blank(
+                width=len(raster[0])-1, height=len(raster)-1,
+                levels=len(inklevels),
+            )
+        # split up pixel groups for 8-bit
+        elif len(inklevels) == 256:
+            raster = tuple(tuple(_row.split()) for _row in raster)
+            # deal with (deprecated) non-separated pixel groups
+            if len(raster[0]) == 1:
+                raster = tuple(
+                    tuple(_row[_c:_c+2] for _c in range(0, len(_row), 2))
+                    for _row, *_ in raster
+                )
+            raster = Raster.from_matrix(raster, inklevels=inklevels)
+        else:
+            raster = Raster(raster, inklevels=inklevels)
+        # parse glyph properties
         properties = {}
         key = None
-        for line in lines[i:]:
+        for line in lines[raster_height:]:
             if line[:1] in self.whitespace:
                 # follow-up lines in multiline glyph properties
                 # note - won't work with deprecated synonyms
@@ -290,27 +303,7 @@ class YaffGlyph(YaffMultiline):
                 key = normalise_property(key)
                 value = value.strip()
                 _set_property(properties, key, value)
-        # deal with sized empties (why?)
-        if not raster:
-            raster = Raster()
-        elif all(set(_line) == set([self.empty]) for _line in raster):
-            raster = Raster.blank(
-                width=len(raster[0])-1, height=len(raster)-1,
-                levels=len(inklevels),
-            )
-        # split up pixel groups for 8-bit
-        elif len(inklevels) == 256:
-            raster = Raster.from_matrix(
-                (
-                    tuple(_row[_c:_c+2] for _c in range(0, len(_row), 2))
-                    for _row in raster
-                ),
-                inklevels=inklevels,
-            )
-        return Props(
-            pixels=Raster(raster, inklevels=inklevels),
-            labels=labels, **properties
-        )
+        return Props(pixels=raster, labels=labels, **properties)
 
     def _count_keys(self):
         return sum(
@@ -397,6 +390,25 @@ class YaffPropertyOrGlyph(YaffMultiline):
         return first[:1] in self.inklevels(2) or set(first) == set(self.empty)
 
 
+def _read_palette(key, value):
+    """Convert yaff palette to Font palette initialiser and inklevels."""
+    if key == 'levels':
+        inklevels = YaffParams.inklevels(int(value, 0))
+    elif key == 'palette':
+        lines = value.splitlines()
+        if len(lines[0].split()) == 2:
+            colours, inklevels = zip(*(_l.split() for _l in lines))
+            value = '\n'.join(colours)
+        else:
+            inklevels = YaffParams.inklevels(len(value))
+    elif key == 'rgb-table':
+        # deprecated palette specification through rgb-table with 3-tuples
+        lines = value.splitlines()
+        inklevels = YaffParams.inklevels(len(value))
+        value = tuple(to_tuple(_l, length=3) for _l in lines)
+    return value, inklevels
+
+
 ##############################################################################
 # write file
 
@@ -475,8 +487,11 @@ def _save_yaff(fonts, outstream):
             for key, value in props.items():
                 if isinstance(value, Palette):
                     value = '\n'.join(
-                        f'{_c.r:02X}{_c.g:02X}{_c.b:02X} {_lvl}'
-                        for _c, _lvl in zip(value, YaffParams.inklevels(len(value)))
+                        f'{_entry} {_lvl}'
+                        for _entry, _lvl in zip(
+                            str(value).splitlines(),
+                            YaffParams.inklevels(len(value))
+                        )
                     )
                 if value != font.get_default(key):
                     _write_property(outstream, key, value, font.get_comment(key))

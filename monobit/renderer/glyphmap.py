@@ -10,9 +10,9 @@ import logging
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Props, Coord, RGB, blockstr
+from monobit.base import Props, Coord, blockstr
 from monobit.core.raster import turn_method
-from monobit.core.palette import Palette
+from monobit.core.palette import Palette, Colour
 from monobit.plumbing import convert_arguments
 from .blocks import matrix_to_blocks, matrix_to_shades
 from .sixel import matrix_to_sixel
@@ -27,7 +27,15 @@ _IMAGE_MODE_PIL_MAP = {
 
 
 def glyph_to_image(glyph, image_mode, inklevels):
-    """Create image of single glyph."""
+    """
+    Create image of single glyph.
+
+    inklevels type depends on image_mode:
+        'mono' -> {0, 1}
+        'grey' -> int 0--255
+        'rgb': 3-tuple of int 0--255
+        'rgba': 4-tuple of int 0--255
+    """
     if not Image:
         raise ImportError('Rendering to image requires PIL module.')
     try:
@@ -38,12 +46,6 @@ def glyph_to_image(glyph, image_mode, inklevels):
             f'got {image_mode} instead.'
         )
     charimg = Image.new(image_mode, (glyph.width, glyph.height))
-    # if using RGBA, inklevels must have 4 numbers per entry too
-    # palette only has 3. set alpha to fully opaque, except background
-    if image_mode == 'RGBA' and len(inklevels[0]) == 3:
-        inklevels = (tuple(inklevels[0]) + (0,),) + tuple(
-            tuple(_c) + (255,) for _c in inklevels[1:]
-        )
     data = glyph.as_vector(inklevels=inklevels)
     charimg.putdata(data)
     return charimg
@@ -119,15 +121,16 @@ class GlyphMap:
 
     def to_images(
             self, *,
-            paper=None, ink=None, border=(32, 32, 32),
-            invert_y=False, transparent=True, image_mode='rgb',
+            paper=None, ink=None, border=None,
+            invert_y=False, image_mode='rgb',
         ):
         """Draw images based on sheets in glyph map."""
         last_sheet, *_ = self.get_bounds()
         images = [
             self.as_image(
                 paper=paper, ink=ink, border=border,
-                invert_y=invert_y, transparent=transparent, image_mode=image_mode,
+                invert_y=invert_y, image_mode=image_mode,
+                sheet=sheet,
             )
             for sheet in range(last_sheet+1)
         ]
@@ -135,60 +138,49 @@ class GlyphMap:
 
     def as_image(
             self, *,
-            paper=None, ink=None, border=(32, 32, 32),
-            sheet=0, invert_y=False, transparent=True, image_mode='rgb',
+            paper=None, ink=None, border=None,
+            sheet=0, invert_y=False, image_mode='rgb',
         ):
         """Convert glyph map to image."""
         if not Image:
             raise ImportError('Rendering to image requires PIL module.')
-
         image_mode = image_mode[:4].lower()
         if image_mode == 'mono':
-            inklevels = self._palette.as_mono(paper=paper, ink=ink)
-        elif image_mode in ('grey', 'gray'):
-            inklevels = self._palette.as_greyscale(paper=paper, ink=ink)
-        elif image_mode in ('rgb', 'rgba'):
-            inklevels = self._palette.as_rgb(paper=paper, ink=ink)
-        else:
-            supported_modes = tuple(_IMAGE_MODE_PIL_MAP.keys())
-            raise ValueError(
-                f"`image_mode`=='{image_mode}' not supported: "
-                f'must be one of {supported_modes}.'
-            )
-        masklevels = [0] + [1] * (self._levels-1)
-        # mono and greyscale images have fixed levels
-        if image_mode not in ('rgb', 'rgba'):
-            border = 0
+            # mono has only 0, 1 available
+            border = paper or 0
         _, min_x, min_y, max_x, max_y = self.get_bounds()
         # no +1 as bounds are inclusive
         width, height = max_x - min_x, max_y - min_y
-        pil_mode = _IMAGE_MODE_PIL_MAP[image_mode[:4].lower()]
-        image = Image.new(pil_mode, (width, height), border)
+        image = Image.new('RGBA', (width, height), border)
+        glyph_images = []
         for entry in self._map:
             if entry.sheet != sheet:
                 continue
-            if transparent:
-                # if glyphs overlap, we need to treat the background colour as transparent
-                # create a mask to paste only non-background pixels
-                # for greyscale and colour, alpha_composite would be better
-                mask = glyph_to_image(
-                    entry.glyph, image_mode='mono', inklevels=masklevels,
-                )
-            else:
-                mask = None
-            colour = glyph_to_image(entry.glyph, image_mode, inklevels)
             if invert_y:
                 target = (entry.x, entry.y)
             else:
                 # Image has ttb y coords, we have btt
                 # our character origin is bottom left
                 target = (entry.x-min_x, height-entry.glyph.height+min_y-entry.y)
-            image.paste(colour, target, mask)
+            glyph_image = glyph_to_image(
+                entry.glyph, image_mode='rgba',
+                inklevels=self._palette.as_rgba(ink=ink),
+            )
+            glyph_images.append((glyph_image, target))
+            if paper is not None and paper != border:
+                paper_patch = Image.new('RGBA', glyph_image.size, paper)
+                image.paste(paper_patch, target)
+        for glyph_image, target in glyph_images:
+            image.alpha_composite(glyph_image, target)
         image = (
             image.resize(
                 (self._scale_x*image.width, self._scale_y*image.height)
             ).rotate(-90 * self._turns, expand=True)
         )
+        if image_mode != 'rgba':
+            background = Image.new('RGBA', (width, height), (0, 0, 0, 255))
+            image = Image.alpha_composite(background, image)
+            image = image.convert(_IMAGE_MODE_PIL_MAP[image_mode])
         return image
 
     def as_text(
@@ -212,7 +204,7 @@ class GlyphMap:
 
     def as_sixel(
             self, *,
-            paper:RGB=None, ink:RGB=None, border:RGB=None,
+            paper:Colour=None, ink:Colour=None, border:Colour=None,
             sheet=0
         ):
         """Convert glyph map to a sixel sequence."""
@@ -224,7 +216,7 @@ class GlyphMap:
 
     def as_shades(
             self, *,
-            paper:RGB=None, ink:RGB=None, border:RGB=None,
+            paper:Colour=None, ink:Colour=None, border:Colour=None,
             sheet=0,
         ):
         """Convert glyph map to ansi coloured block characters."""

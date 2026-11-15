@@ -303,13 +303,13 @@ levels: 16
             '\x1b[38;2;255;255;255m\u2588\x1b[0m\n'
         )
 
+
     shades_256 = """\n
 levels: 256
 
 '-':
-    ..{}@@
-""".format(''.join(f'{_x:02X}' for _x in range(1, 255)))
-
+    .. {}@@
+""".format(''.join(f'{_x:02X} ' for _x in range(1, 255)))
 
     def test_render_256shades(self):
         """Render 1x1 shaded blocks format, 256 ink levels"""
@@ -321,6 +321,7 @@ levels: 256
                 for _s in range(256)
             ) + '\n'
         )
+
 
     # render command (render to file)
 

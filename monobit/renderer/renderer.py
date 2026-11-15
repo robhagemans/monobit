@@ -16,11 +16,11 @@ arabic_reshaper = safe_import('arabic_reshaper')
 graphemecluster = safe_import('uniseg.graphemecluster')
 
 from ..base.binary import ceildiv
-from ..base import Props, Coord, RGB, Any
+from ..base import Props, Coord, Any
 from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
-from ..core.palette import light_defaults, dark_defaults, BLACK, WHITE
+from ..core.palette import Colour, light_defaults, dark_defaults, BLACK, WHITE
 from ..storage.fontfiles import output_pack_or_font
 from ..storage.magic import MagicRegistry
 from ..storage.location import open_location
@@ -150,7 +150,7 @@ def output_blocks(
 def output_shades(
         fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        paper:RGB=None, ink:RGB=None, border:RGB=None,
+        paper:Colour=None, ink:Colour=None, border:Colour=None,
     ):
     """
     Render text using ANSI escape colours
@@ -174,11 +174,8 @@ def output_shades(
         # dark defaults
         if font.palette.is_greyscale():
             paper, ink = dark_defaults(paper, ink)
-            if border is None:
-                border = paper
-        else:
-            if border is None:
-                border = BLACK
+        if border is None:
+            border = paper if paper is not None else BLACK
         outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
@@ -186,7 +183,7 @@ def output_shades(
 def output_sixel(
         fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        paper:RGB=None, ink:RGB=None, border:RGB=None,
+        paper:Colour=None, ink:Colour=None, border:Colour=None,
     ):
     """
     Render text as sixel graphics
@@ -197,8 +194,8 @@ def output_sixel(
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: text direction (l, r, b, t, n; default: n)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
-    paper: R,G,B colour for uninked areas (default: 255,255,255)
-    ink: R,G,B colour for inked areas (default: 0,0,0)
+    paper: R,G,B colour for uninked areas (default: 0,0,0)
+    ink: R,G,B colour for inked areas (default: 255,255,255)
     border: R,G,B colour for inked areas (default: same as paper)
     """
     for font in fonts:
@@ -210,11 +207,8 @@ def output_sixel(
         # dark defaults
         if font.palette.is_greyscale():
             paper, ink = dark_defaults(paper, ink)
-            if border is None:
-                border = paper
-        else:
-            if border is None:
-                border = BLACK
+        if border is None:
+            border = paper if paper is not None else BLACK
         outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
@@ -229,9 +223,9 @@ if Image:
             margin:Coord=None, direction:str='', align:str='',
             image_format:str='',
             image_mode:str='RGB',
-            border:RGB=None,
-            paper:RGB=None,
-            ink:RGB=None,
+            border:Colour=None,
+            paper:Colour=None,
+            ink:Colour=None,
         ):
         """
         Render text to image.
@@ -243,7 +237,7 @@ if Image:
         direction: text direction (l, r, b, t, n; default: n)
         align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
         image_format: image file format (default: 'png')
-        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        image_mode: image colour mode. 'mono', 'grey', 'rgb' or 'rgba' (default: 'rgb')
         paper: background colour R,G,B 0--255 (default: 255,255,255)
         ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
         border: border colour R,G,B 0--255 (default: same as paper)
@@ -256,15 +250,10 @@ if Image:
         # light defaults
         if glyph_map._palette.is_greyscale():
             paper, ink = light_defaults(paper, ink)
-            if border is None:
-                border = paper
-        else:
-            if border is None:
-                border = WHITE
-        img, = glyph_map.to_images(
-            border=border, paper=paper, ink=ink,
-            transparent=False,
-            image_mode=image_mode,
+        if border is None:
+            border = paper if paper is not None else WHITE
+        img = glyph_map.as_image(
+            border=border, paper=paper, ink=ink, image_mode=image_mode,
         )
         write_imagefile(outfile, img, image_format)
 

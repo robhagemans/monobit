@@ -14,7 +14,7 @@ platformdirs = safe_import('platformdirs')
 
 import monobit
 from monobit.plumbing import wrap_main, unescape
-from monobit.base import Coord, RGB
+from monobit.base import Coord, to_colour
 from monobit.renderer import render_text
 from monobit.core import Font
 from monobit.core.palette import BLACK, WHITE
@@ -256,9 +256,9 @@ def main():
             args.ink = font.palette[-1]
         if args.image or args.output and not args.output.endswith('.txt'):
             # light defaults
-            ink = RGB.create(args.ink) if args.ink else BLACK
-            paper = RGB.create(args.paper) if args.paper else WHITE
-            border = RGB.create(args.border) if args.border else paper
+            ink = to_colour(args.ink) if args.ink else BLACK
+            paper = to_colour(args.paper) if args.paper else WHITE
+            border = to_colour(args.border) if args.border else paper
             image = glyph_map.as_image(paper=paper, ink=ink, border=border)
             if args.output:
                 image.save(args.output)
@@ -270,15 +270,15 @@ def main():
                 text = glyph_map.as_blocks(resolution)
             elif args.shades:
                 # dark defaults
-                ink = RGB.create(args.ink) if args.ink else WHITE
-                paper = RGB.create(args.paper) if args.paper else BLACK
-                border = RGB.create(args.border) if args.border else paper
+                ink = to_colour(args.ink) if args.ink else WHITE
+                paper = to_colour(args.paper) if args.paper else BLACK
+                border = to_colour(args.border) if args.border else paper
                 text = glyph_map.as_shades(paper=paper, ink=ink, border=border)
             elif args.sixel:
                 # dark defaults
-                ink = RGB.create(args.ink) if args.ink else WHITE
-                paper = RGB.create(args.paper) if args.paper else BLACK
-                border = RGB.create(args.border) if args.border else paper
+                ink = to_colour(args.ink) if args.ink else WHITE
+                paper = to_colour(args.paper) if args.paper else BLACK
+                border = to_colour(args.border) if args.border else paper
                 text = glyph_map.as_sixel(paper=paper, ink=ink, border=border)
             else:
                 ink = args.ink or '#'
