@@ -761,7 +761,7 @@ class Raster:
                 for _rep in range(factor_y)
             )
             # remove "interlace" at the end
-            pixels = pixels[:-(factor-y-1)]
+            pixels = pixels[:-(factor_y-1)]
         if factor_x != 1:
             # horizontal interlace
             pixels = tuple(
