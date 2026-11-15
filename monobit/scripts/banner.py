@@ -14,10 +14,10 @@ platformdirs = safe_import('platformdirs')
 
 import monobit
 from monobit.plumbing import wrap_main, unescape
-from monobit.base import Coord, to_colour
+from monobit.base import Coord
 from monobit.renderer import render_text
 from monobit.core import Font
-from monobit.core.palette import BLACK, WHITE
+from monobit.core.palette import BLACK, WHITE, to_colour
 
 
 if platformdirs:
