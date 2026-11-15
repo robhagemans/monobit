@@ -19,6 +19,8 @@ class Colour(_VectorMixin):
         return True
 
     def __str__(self):
+        # pylint: disable=not-an-iterable
+        # iter() to be inherited from namedtuple
         return ''.join(f'{_elem:02X}' for _elem in self)
 
 
