@@ -112,17 +112,11 @@ _DEPRECATED_SYNONYMS = {
 
     'rgb_table': 'palette',
 }
-def _set_property(propsdict, key, value):
+def _resolve_key(key):
     try:
-        key = _DEPRECATED_SYNONYMS[key]
+        return _DEPRECATED_SYNONYMS[key]
     except KeyError:
-        pass
-    if isinstance(key, tuple):
-        for key, value in zip(key, Coord.create(value)):
-            propsdict[key] = value
-    else:
-        propsdict[key] = value
-
+        return key
 
 
 ##############################################################################
@@ -189,7 +183,8 @@ def _read_yaff(text_stream):
             else:
                 if key in ('levels', 'palette', 'rgb-table'):
                     value, inklevels = _read_palette(key, value)
-                _set_property(font_props, key, value)
+                key = _resolve_key(key)
+                font_props[key] = value
             font_prop_comms[key] = '\n\n'.join(current_comment)
             current_comment = []
         if not glyphs and not font_props:
@@ -289,20 +284,29 @@ class YaffGlyph(YaffMultiline):
         properties = {}
         key = None
         for line in lines[raster_height:]:
+            if not line.strip():
+                # empty lines in multiline properties must be quoted
+                continue
             if line[:1] in self.whitespace:
                 # follow-up lines in multiline glyph properties
-                # note - won't work with deprecated synonyms
+                linevalue = _strip_quotes(line)
                 if not properties[key]:
-                    properties[key] = line.strip()
+                    properties[key] = linevalue
                 else:
-                    properties[key] = '\n'.join((properties[key], line.strip()))
+                    properties[key] = '\n'.join((properties[key], linevalue))
             else:
                 # first line of property
                 # one-line glyph properties
                 key, _, value = line.partition(self.separator)
                 key = normalise_property(key)
-                value = value.strip()
-                _set_property(properties, key, value)
+                key = _resolve_key(key)
+                value = _strip_quotes(value)
+                if isinstance(key, tuple):
+                    # this *only* deals with `offset`
+                    for key, value in zip(key, Coord.create(value)):
+                        properties[key] = value
+                else:
+                    properties[key] = value
         return Props(pixels=raster, labels=labels, **properties)
 
     def _count_keys(self):
@@ -367,7 +371,9 @@ class YaffPropertyOrGlyph(YaffMultiline):
         return line[:1] not in self.whitespace and line[-1:] == self.separator
 
     def get_value(self):
-        return '\n'.join(_strip_quotes(_l) for _l in self.lines[1:])
+        return '\n'.join(
+            _strip_quotes(_l) for _l in self.lines[1:] if _l.strip()
+        )
 
     def get_key(self):
         return normalise_property(self.lines[0][:-1])

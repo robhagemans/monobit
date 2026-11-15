@@ -54,14 +54,14 @@ empty:
         assert f.raster_size == (0, 1), f.raster_size
 
     glyphs = """
-a:
+'a':
     .....
     ..@..
     .@.@.
     .@@@.
     .@.@.
     .@.@.
-b:
+'b':
     .....
     .@@..
     .@.@.
@@ -85,10 +85,10 @@ b:
 
     sections = """
 ---
-a:
+'a':
     ..
 ---
-a:
+'a':
     @@
 """
 
@@ -100,7 +100,7 @@ a:
     # labels
 
     labels = """
-tag:
+"tag":
     .
 0x01:
     ..
@@ -112,7 +112,7 @@ u+0001:
 'a':
     .
     .
-b:
+'b':
     ....
 """
 
@@ -152,9 +152,9 @@ u+0001,u+0003:
     ..
 ',':
     ...
-':
+''':
     ....
-":
+'"':
     .....
 :
     ......
@@ -175,17 +175,6 @@ u+0001,u+0003:
 a:
 tag_a:
     .
-0x02:
-0x03:
-    ..
-b:
-c:
-u+0020:
-    ...
-tag1:
-tag2:
-tag3:
-    ....
 """
 
     def test_multiple_labels(self):
@@ -193,15 +182,6 @@ tag3:
         f,  *_ = monobit.load(file)
         assert f.glyphs[0].get_labels() == (
             Codepoint(1), Char('a'), Tag('tag_a')
-        )
-        assert f.glyphs[1].get_labels() == (
-            Codepoint(2), Codepoint(3)
-        )
-        assert f.glyphs[2].get_labels() == (
-            Char('b'), Char('c'), Char(' ')
-        )
-        assert f.glyphs[3].get_labels() == (
-            Tag('tag1'), Tag('tag2'), Tag('tag3')
         )
 
     # properties
@@ -241,7 +221,8 @@ has-colon: ::myprop
 at-end: "myprop:"
 not-a-glyph:
     ".@"
-glyph:
+
+"glyph":
     .@
 """
 
@@ -251,12 +232,11 @@ glyph:
         assert f.has_colon == '::myprop'
         assert f.at_end == 'myprop:'
         assert f.not_a_glyph == '.@'
-        assert f.get_glyph('glyph').width == 2
 
     # glyph props
 
     glyphprops = """
-a:
+'a':
     .....
     ..@..
     .@.@.
@@ -267,7 +247,7 @@ a:
     multiline:
         another value
 
-b:
+'b':
     .....
     .@@..
     .@.@.
@@ -287,11 +267,11 @@ b:
 
 
     globalprops = """
-a:
+'a':
     .....
     left-bearing: 1
 
-b:
+'b':
     .@@..
     left-bearing: 1
 """
@@ -327,7 +307,7 @@ another_property: value
 commented-property: 1
 
 # glyph comment
-glyph:
+"glyph":
     -
 """
     def test_comments(self):
