@@ -11,7 +11,7 @@ from unicodedata import normalize
 
 from monobit.base.binary import ceildiv
 from monobit.base.struct import little_endian as le
-from monobit.base import Props
+from monobit.base import Props, FileFormatError
 from monobit.storage import loaders, savers, Magic
 from monobit.core import Font, Glyph, Char, Codepoint
 from monobit.storage.fontformats.common import mac_style_from_name

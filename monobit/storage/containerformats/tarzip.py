@@ -133,7 +133,7 @@ class ZipContainer(ZipTarBase):
             archivemode = cls.modemap[mode]
         except KeyError:
             raise ValueError(
-                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+                f"`mode` must be one of {set(cls.modemap)}; got '{mode}'."
             )
         try:
             return zipfile.ZipFile(
@@ -215,7 +215,7 @@ class TarContainer(ZipTarBase):
             archivemode = cls.modemap[mode]
         except KeyError:
             raise ValueError(
-                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+                f"`mode` must be one of {set(cls.modemap)}; got '{mode}'."
             )
         try:
             return tarfile.open(fileobj=stream, mode=archivemode)

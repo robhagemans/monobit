@@ -42,6 +42,7 @@ class LazyModule:
         self._name = name
         self._module = None
 
+    # pylint: disable=method-hidden
     @cached_property
     def _available(self):
         try:
@@ -67,7 +68,7 @@ class LazyModule:
             try:
                 self._module = import_module(self._name)
             except Exception as e:
-                logging.warning('Error while importing module `%s`: %s', module_name, e)
+                logging.warning('Error while importing module `%s`: %s', self._name, e)
                 self._available = False
                 raise AttributeError(attr)
         return getattr(self._module, attr)

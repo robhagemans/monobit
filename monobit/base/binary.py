@@ -61,7 +61,7 @@ def bytes_to_pixels(byteseq, bits_per_pixel):
     if bits_per_pixel not in SUPPORTED_BITS_PER_PIXEL:
         raise ValueError(
             'Unsupported `bits_per_pixel` value: '
-            f'{levels} not in {SUPPORTED_BITS_PER_PIXEL}'
+            f'{bits_per_pixel} not in {SUPPORTED_BITS_PER_PIXEL}'
         )
     if not byteseq:
         return ''

@@ -537,8 +537,8 @@ def _convert_amiga_glyphs(glyphs, amiga_props):
     # adjust reverse-path glyphs; negative to positive advance width.
     glyphs = [
         _glyph.modify(
-            right_bearing=-self.left_bearing - self.width,
-            left_bearing=-self.right_bearing - self.width,
+            right_bearing=-_glyph.left_bearing - _glyph.width,
+            left_bearing=-_glyph.right_bearing - _glyph.width,
             **{'amiga.reverse_path': 1},
         )
         if _glyph.advance_width < 0 else _glyph
