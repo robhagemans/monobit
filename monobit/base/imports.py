@@ -42,6 +42,7 @@ class LazyModule:
         self._name = name
         self._module = None
 
+    # pylint: disable=method-hidden
     @cached_property
     def _available(self):
         try:
