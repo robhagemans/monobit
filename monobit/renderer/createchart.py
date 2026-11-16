@@ -400,10 +400,8 @@ def grid_resample(font, glyphs_per_line, codepoint_range, skip_empty_lines):
         font = font.label(codepoint_from=font.encoding)
         font = font.modify(encoding=None)
     # fill up all contiguous grid positions
-    try:
-        codepoints = font.get_codepoints()
-    except ValueError:
-        # empty sequence
+    codepoints = font.get_codepoints()
+    if not codepoints:
         raise ValueError('No codepoint labels found.')
     if skip_empty_lines:
         lines = {int(_cp) // glyphs_per_line for _cp in codepoints}
