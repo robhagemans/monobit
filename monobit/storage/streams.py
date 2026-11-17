@@ -179,7 +179,7 @@ class Stream(StreamWrapper):
         if not self._textstream:
             encoding = 'utf-8-sig' if self.mode == 'r' else 'utf-8'
             self._textstream = io.TextIOWrapper(
-                self._stream, encoding=encoding,
+                KeepOpen(self._stream), encoding=encoding,
                 # on the one hand, this avoids breaks on slightly damaged files
                 # on the other hand, we are less likely to break
                 # on files that are clearly not text

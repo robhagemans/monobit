@@ -8,5 +8,5 @@ licence: https://opensource.org/licenses/MIT
 from .base import loaders, savers
 from .fontfiles import load, save, load_plugins
 from .magic import Regex, Glob, Magic
-from .streams import Stream, KeepOpen, get_stringio, get_bytesio
+from .streams import Stream, get_stringio, get_bytesio
 from . import streams

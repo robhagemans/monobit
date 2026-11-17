@@ -37,10 +37,7 @@ def resolve_path(location='', *, subpath='', mode='r', **kwargs):
         # stream or container object
         if not isinstance(location, (Stream, Container)):
             # assume it's a python stream object
-            # not clear why we need KeepOpen
-            # streams mysteriously get closed without it
-            # but KeepOpen.close() does not actually get called... :/
-            location = Stream(location, mode=mode, keep_open=True)
+            location = Stream(location, mode=mode)
         if location.mode != mode:
             if mode == 'r':
                 raise ValueError(
