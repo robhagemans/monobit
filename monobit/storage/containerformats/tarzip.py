@@ -16,7 +16,7 @@ from itertools import chain
 from monobit.base import FileFormatError
 from ..containers import Archive
 from ..base import containers
-from ..streams import KeepOpen, Stream
+from ..streams import Stream
 from ..magic import Magic
 
 
@@ -85,7 +85,7 @@ class ZipTarBase(Archive):
             ):
             raise FileExistsError(f"{name} already exists in this container and we can't overwrite.")
         # stop BytesIO from being closed until we want it to be
-        newfile = Stream(KeepOpen(io.BytesIO()), mode='w', name=name)
+        newfile = Stream(io.BytesIO(), mode='w', name=name, keep_open=True)
         self._files.append(newfile)
         return newfile
 

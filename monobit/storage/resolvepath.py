@@ -40,7 +40,7 @@ def resolve_path(location='', *, subpath='', mode='r', **kwargs):
             # not clear why we need KeepOpen
             # streams mysteriously get closed without it
             # but KeepOpen.close() does not actually get called... :/
-            location = Stream(KeepOpen(location), mode=mode)
+            location = Stream(location, mode=mode, keep_open=True)
         if location.mode != mode:
             if mode == 'r':
                 raise ValueError(

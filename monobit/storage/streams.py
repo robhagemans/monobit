@@ -79,7 +79,7 @@ class TellableWriter(StreamWrapper):
 class Stream(StreamWrapper):
     """Manage file resource."""
 
-    def __init__(self, file, mode, *, name='', where=None):
+    def __init__(self, file, mode, *, name='', where=None, keep_open=False):
         """
         Ensure file is a stream of the right type, open or wrap if necessary.
 
@@ -116,6 +116,9 @@ class Stream(StreamWrapper):
         self._ensure_rw()
         # Ensure we have a binary stream
         self._ensure_binary()
+        if keep_open:
+            self._stream = KeepOpen(self._stream)
+            self._textstream = None
         if not self._stream.seekable():
             if mode == 'r':
                 # we need read streams to be seekable - drain to buffer
