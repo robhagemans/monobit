@@ -177,7 +177,8 @@ class _PathResolver:
                 mode=stream.mode,
                 format=format,
             )
-        except FileFormatError:
+        except FileFormatError as e:
+            logging.debug(e)
             # innermost stream is a non-container stream.
             if self._unresolved_path == Path():
                 return
@@ -312,16 +313,19 @@ def _open_container(
     # identify file type
     fitting_classes = registry.get_for(instream, format=format)
     if not fitting_classes:
-        msg = "Container format not recognised"
+        action = 'unpack' if mode == 'r' else 'pack'
+        msg = f"Could not {action} '{instream.name}'"
         if format:
-            msg += f': `{format}`'
+            msg += f': `{format}` is not a known container format'
+        else:
+            msg += f': no known container formats fit'
         raise FileFormatError(msg)
     last_error = None
     for cls in fitting_classes:
         if mode in ('r', '+'):
             instream.seek(0)
         logging.info(
-            "Opening stream '%s' as container format `%s` for mode '%s'",
+            "Opening '%s' as a container with format `%s` for mode '%s'",
             instream.name, cls.format, mode
         )
         try:
@@ -338,9 +342,10 @@ def _open_container(
             return container
     if last_error:
         raise last_error
-    message = f"Could not open container {instream.name}"
+    action = 'unpack' if mode == 'r' else 'pack'
+    message = f"Could not {action} '{instream.name}'"
     if format:
-        message += f': format specifier `{format}` not recognised'
+        message += f' with container format `{format}`'
     raise FileFormatError(message)
 
 
@@ -361,10 +366,15 @@ def _get_transcoded_stream(
     for transcoder in iter_funcs_from_registry(registry, instream, format):
         if mode == 'r':
             instream.seek(0)
-        logging.info(
-            "Transcoding stream '%s' with wrapper format `%s` in mode '%s'",
-            instream.name, transcoder.format, mode
-        )
+            logging.info(
+                "Unwrapping '%s' with format `%s`",
+                instream.name, transcoder.format
+            )
+        else:
+            logging.info(
+                "Wrapping '%s' with format `%s`",
+                instream.name, transcoder.format
+            )
         try:
             # pick arguments we can use
             kwargs = take_arguments(transcoder, argdict)
@@ -381,9 +391,11 @@ def _get_transcoded_stream(
     if last_error:
         raise last_error
     if mode == 'r':
-        message = f"Could not decode {instream.name}"
+        message = f"Could not (further) unwrap '{instream.name}'"
     else:
-        message = f"Could not encode {instream.name}"
+        message = f"Could not (further) wrap '{instream.name}'"
     if format:
-        message += f': format specifier `{format}` not recognised'
+        message += f': `{format}` is not a known wrapper format'
+    else:
+        message+= f': no known wrapper formats fit'
     raise FileFormatError(message)

@@ -34,6 +34,10 @@ def looks_like_text(instream):
     Check if a binary input stream looks a bit like it might hold utf-8 text.
     Currently just checks for unexpected bytes in a short sample.
     """
+    try:
+        return instream.textlike
+    except AttributeError:
+        pass
     if instream.mode == 'w':
         # output binary streams *could* hold text
         # (this is not about the file type, but about the content)
@@ -44,12 +48,15 @@ def looks_like_text(instream):
         return None
     if not sample:
         logging.debug(f"input stream '{instream.name}' is empty.")
+        instream.textlike = True
         return True
-    if set(sample) & set(_NON_TEXT_BYTES):
+    nontextlike = set(sample) & set(_NON_TEXT_BYTES)
+    if nontextlike:
         logging.debug(
-            'Found non-text-like bytes: '
-            f"input stream '{instream.name}' is likely binary."
+            f'Found non-text-like bytes: '
+            f"data in '{instream.name}' is likely binary."
         )
+        instream.textlike = False
         return False
     try:
         sample.decode('utf-8')
@@ -58,12 +65,14 @@ def looks_like_text(instream):
         if err.reason != 'unexpected end of data':
             logging.debug(
                 'Found non-UTF8 sequences:'
-                f"input stream '{instream.name}' is likely binary."
+                f"data in '{instream.name}' is likely binary."
             )
+            instream.textlike = False
             return False
     logging.debug(
-        f"input stream '{instream.name}' is likely text."
+        f"data in '{instream.name}' is likely text."
     )
+    instream.textlike = True
     return True
 
 
