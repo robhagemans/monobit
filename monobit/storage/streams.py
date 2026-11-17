@@ -27,6 +27,21 @@ class StreamWrapper:
     def __init__(self, stream):
         self._stream = stream
 
+    def __getattr__(self, attr):
+        """Delegate undefined attributes to wrapped stream."""
+        return getattr(self._stream, attr)
+
+    # dunder methods are not delegated
+
+    def __iter__(self):
+        return self._stream.__iter__()
+
+    def __repr__(self):
+        return f"{type(self).__name__}({repr(self._stream)})"
+
+    # not directly delegating __enter__ and __exit__
+    # so that we can override close()
+
     def __enter__(self):
         return self
 
@@ -35,14 +50,6 @@ class StreamWrapper:
         if exc_type == BrokenPipeError:
             return True
         self.close()
-
-    def __getattr__(self, attr):
-        """Delegate undefined attributes to wrapped stream."""
-        return getattr(self._stream, attr)
-
-    def __iter__(self):
-        # dunder methods not delegated
-        return self._stream.__iter__()
 
 
 class KeepOpen(StreamWrapper):
