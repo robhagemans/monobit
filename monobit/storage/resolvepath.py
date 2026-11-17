@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from ..plumbing import take_arguments
 from .magic import FileFormatError, iter_funcs_from_registry
-from .streams import Stream, KeepOpen
+from .streams import Stream
 from .base import encoders, decoders, containers
 from .containers import Container
 from .containerformats.directory import Directory
@@ -30,7 +30,7 @@ def resolve_path(location='', *, subpath='', mode='r', **kwargs):
         here = Path().resolve()
         root = Path(commonpath((path, here)))
         subpath = path.relative_to(root)
-        # Directory objects doesn't really need to be closed
+        # Directory object doesn't really need to be closed
         # so it's OK that we won't close this one
         root = Directory(root, mode=mode)
     else:
@@ -78,8 +78,8 @@ class _PathResolver:
         self.mode = mode
         self.overwrite = overwrite
         self.match_case = match_case
-        # container or stream on which we attch the path
-        # this object is NOT owned by us but externaly provided
+        # container or stream on which we attach the path
+        # this object is NOT owned by us but externally provided
         # an further objects in the path will be ours to close
         if isinstance(root, Container):
             self.elements = [
@@ -87,7 +87,7 @@ class _PathResolver:
             ]
         else:
             self.elements = [
-                _PathElement(streams=[KeepOpen(root)], container=None, subpath=Path())
+                _PathElement(streams=[root], container=None, subpath=Path())
             ]
         # remaining path from innermost container object
         self._unresolved_path = Path()
