@@ -36,10 +36,6 @@ class StreamWrapper:
             return True
         self.close()
 
-    def close(self):
-        logging.debug('Closing %r', self)
-        self._stream.close()
-
     def __getattr__(self, attr):
         """Delegate undefined attributes to wrapped stream."""
         return getattr(self._stream, attr)
@@ -190,15 +186,16 @@ class Stream(StreamWrapper):
         # if self.closed:
         #     return
         # always close at wrapper level
+        logging.debug('Closing %r', self)
         if self._textstream:
             try:
                 self._textstream.close()
-            except EnvironmentError:
-                pass
+            except EnvironmentError as err:
+                logging.debug("Error while closing text wrapper for '%s': %s", self.name, err)
         try:
-            super().close()
-        except EnvironmentError:
-            pass
+            self._stream.close()
+        except EnvironmentError as err:
+            logging.debug("Error while closing underlying stream for '%s': %s", self.name, err)
         self.closed = True
 
 
