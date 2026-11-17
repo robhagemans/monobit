@@ -22,9 +22,9 @@ def get_stringio(string):
 
 
 class StreamWrapper:
-    """Base class for streams."""
+    """Base class for wrappers for Python streams."""
 
-    def __init__(self, stream, mode='', name='', where=None):
+    def __init__(self, stream, mode='', name=''):
         self._stream = stream
         self.name = name
         self.mode = mode[:1]
@@ -39,8 +39,6 @@ class StreamWrapper:
                         self.mode = 'r'
                     else:
                         self.mode = 'w'
-        # embedding container
-        self.where = where
         self.closed = False
 
     def __enter__(self):
@@ -51,13 +49,6 @@ class StreamWrapper:
         if exc_type == BrokenPipeError:
             return True
         self.close()
-
-    def __repr__(self):
-        """String representation."""
-        return (
-            f"<{type(self).__name__} name='{self.name}' mode='{self.mode}'"
-            f"{' [closed]' if self.closed else ''}>"
-        )
 
     def close(self):
         if self._stream:
@@ -99,7 +90,7 @@ class Stream(StreamWrapper):
         if isinstance(file, (str, Path)):
             raise ValueError('Argument `file` must be a Python file or stream-like object.')
         # initialise wrapper
-        super().__init__(file, mode=mode, name=name, where=where)
+        super().__init__(file, mode=mode, name=name)
         # check r/w mode is consistent
         self._ensure_rw()
         # Ensure we have a binary stream
@@ -113,6 +104,15 @@ class Stream(StreamWrapper):
             self._anchor = self._stream.tell()
         else:
             self._anchor = 0
+        # embedding container
+        self.where = where
+
+    def __repr__(self):
+        """String representation."""
+        return (
+            f"<{type(self).__name__} name='{self.name}' mode='{self.mode}'"
+            f"{' [closed]' if self.closed else ''}>"
+        )
 
     @classmethod
     def from_data(cls, data, **kwargs):
