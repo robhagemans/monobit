@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from ..plumbing import take_arguments
 from .magic import FileFormatError, iter_funcs_from_registry
-from .streams import StreamBase, Stream, KeepOpen
+from .streams import Stream, KeepOpen
 from .base import encoders, decoders, containers
 from .containers import Container
 from .containerformats.directory import Directory
@@ -35,7 +35,7 @@ def resolve_path(location='', *, subpath='', mode='r', **kwargs):
         root = Directory(root, mode=mode)
     else:
         # stream or container object
-        if not isinstance(location, (StreamBase, Container)):
+        if not isinstance(location, (Stream, Container)):
             # assume it's a python stream object
             # not clear why we need KeepOpen
             # streams mysteriously get closed without it

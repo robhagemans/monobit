@@ -21,7 +21,7 @@ def get_stringio(string):
     return io.TextIOWrapper(get_bytesio(string.encode()))
 
 
-class StreamBase:
+class StreamWrapper:
     """Base class for streams."""
 
     def __init__(self, stream, mode='', name='', where=None):
@@ -71,10 +71,6 @@ class StreamBase:
             logging.debug('Closing %r', self)
             self._stream.close()
         self.closed = True
-
-
-class StreamWrapper(StreamBase):
-    """Wrapper object to emulate a single text stream."""
 
     def __getattr__(self, attr):
         """Delegate undefined attributes to wrapped stream."""
