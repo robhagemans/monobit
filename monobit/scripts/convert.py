@@ -13,6 +13,8 @@ from monobit.plumbing import (
     wrap_main, parse_subcommands, argrecord, GLOBAL_ARG_PREFIX, external_str
 )
 from monobit.plumbing.help import print_help
+from monobit.core import Font, Pack
+
 
 script_name = Path(sys.argv[0]).name
 
@@ -84,8 +86,10 @@ def main():
                     # no font/pack arg, pack return
                     fonts += operation(*args.args, **args.kwargs)
                 elif operation.pack_operation:
-                    # pack arg, pack return
+                    # pack arg, pack or font return
                     fonts = operation(fonts, *args.args, **args.kwargs)
+                    if isinstance(fonts, Font):
+                        fonts = Pack([fonts])
                 else:
                     # font arg, font return
                     fonts = tuple(
