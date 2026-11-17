@@ -24,22 +24,8 @@ def get_stringio(string):
 class StreamWrapper:
     """Base class for wrappers for Python streams."""
 
-    def __init__(self, stream, mode='', name=''):
+    def __init__(self, stream):
         self._stream = stream
-        self.name = name
-        self.mode = mode[:1]
-        if self._stream:
-            if not self.name:
-                self.name = get_name(stream)
-            if not self.mode:
-                try:
-                    self.mode = self._stream.mode[:1]
-                except AttributeError:
-                    if self._stream.readable():
-                        self.mode = 'r'
-                    else:
-                        self.mode = 'w'
-        self.closed = False
 
     def __enter__(self):
         return self
@@ -51,10 +37,8 @@ class StreamWrapper:
         self.close()
 
     def close(self):
-        if self._stream:
-            logging.debug('Closing %r', self)
-            self._stream.close()
-        self.closed = True
+        logging.debug('Closing %r', self)
+        self._stream.close()
 
     def __getattr__(self, attr):
         """Delegate undefined attributes to wrapped stream."""
@@ -90,7 +74,25 @@ class Stream(StreamWrapper):
         if isinstance(file, (str, Path)):
             raise ValueError('Argument `file` must be a Python file or stream-like object.')
         # initialise wrapper
-        super().__init__(file, mode=mode, name=name)
+        super().__init__(file)
+        if name:
+            self.name = name
+        else:
+            try:
+                self.name = self._stream.name
+            except AttributeError:
+                # not all streams have one (e.g. BytesIO)
+                self.name = ''
+        if mode:
+            self.mode = mode[:1]
+        else:
+            try:
+                self.mode = self._stream.mode[:1]
+            except AttributeError:
+                if self._stream.readable():
+                    self.mode = 'r'
+                else:
+                    self.mode = 'w'
         # check r/w mode is consistent
         self._ensure_rw()
         # Ensure we have a binary stream
@@ -242,11 +244,3 @@ def is_binary(stream):
     except TypeError:
         return False
     return True
-
-def get_name(stream):
-    """Get stream name, if available."""
-    try:
-        return stream.name
-    except AttributeError:
-        # not all streams have one (e.g. BytesIO)
-        return ''

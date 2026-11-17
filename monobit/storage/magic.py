@@ -10,7 +10,6 @@ from pathlib import Path
 from fnmatch import fnmatch
 import re
 
-from .streams import get_name
 from ..base import FileFormatError
 from ..plumbing import manage_arguments
 
