@@ -60,6 +60,22 @@ class KeepOpen(StreamWrapper):
         self._stream.flush()
 
 
+class TellableWriter(StreamWrapper):
+    """Implement tell() for non-seekable write streams."""
+
+    def __init__(self, stream):
+        super().__init__(stream)
+        self._count = 0
+
+    def write(self, bytestr):
+        written = self._stream.write(bytestr)
+        self._count += written
+        return written
+
+    def tell(self):
+        return self._count
+
+
 class Stream(StreamWrapper):
     """Manage file resource."""
 
@@ -100,15 +116,18 @@ class Stream(StreamWrapper):
         self._ensure_rw()
         # Ensure we have a binary stream
         self._ensure_binary()
-        if mode == 'r' and not self._stream.seekable():
-            # we need streams to be seekable - drain to buffer
-            # note you can only do this once on the input stream!
-            self._stream = get_bytesio(self._stream.read())
-            self._ensure_binary()
-        if mode == 'r':
-            self._anchor = self._stream.tell()
-        else:
-            self._anchor = 0
+        if not self._stream.seekable():
+            if mode == 'r':
+                # we need read streams to be seekable - drain to buffer
+                # note you can only do this once on the input stream!
+                self._stream = get_bytesio(self._stream.read())
+            else:
+                # we don't need seek() but we do need tell() on write streams
+                self._stream = TellableWriter(self._stream)
+            # if we were provided with a text stream and used its buffer
+            # then we shouldn't keep using the original text stream now
+            self._textstream = None
+        self._anchor = self._stream.tell()
         # embedding container
         self.where = where
 
