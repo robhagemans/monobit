@@ -39,25 +39,18 @@ class StreamWrapper:
                         self.mode = 'r'
                     else:
                         self.mode = 'w'
-        self._refcount = 0
         # embedding container
         self.where = where
         self.closed = False
 
     def __enter__(self):
-        self._refcount += 1
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Ensure stream is closed."""
         if exc_type == BrokenPipeError:
             return True
-        self._refcount -= 1
-        logging.debug(
-            'Exiting %r with reference count %d. '
-            '[Underlying stream %r]', self, self._refcount, self._stream)
-        if not self._refcount:
-            self.close()
+        self.close()
 
     def __repr__(self):
         """String representation."""
@@ -67,7 +60,7 @@ class StreamWrapper:
         )
 
     def close(self):
-        if self._stream and not self._refcount:
+        if self._stream:
             logging.debug('Closing %r', self)
             self._stream.close()
         self.closed = True
