@@ -286,7 +286,6 @@ def _split_path_containername(path, formats):
         if headpath == Path():
             continue
         subpath = path.relative_to(headpath)
-
         current_part = len(headpath.parts) + 1
         if formats and len(formats) >= current_part and current_part:
             format = formats[-current_part]
@@ -297,7 +296,7 @@ def _split_path_containername(path, formats):
         elif not format or format == 'dir':
             continue
         elif subpath != Path():
-            raise ValueError(f'Container format `{format}` not recognised.')
+            raise ValueError(f'`{format}` is not a knwon container format')
     # no match
     return path, Path('.')
 
@@ -364,12 +363,12 @@ def _get_transcoded_stream(
         if mode == 'r':
             instream.seek(0)
             logging.info(
-                "Unwrapping '%s' with format `%s`",
+                "Unwrapping '%s' with wrapper format `%s`",
                 instream.name, transcoder.format
             )
         else:
             logging.info(
-                "Wrapping '%s' with format `%s`",
+                "Wrapping '%s' with wrapper format `%s`",
                 instream.name, transcoder.format
             )
         try:
@@ -394,5 +393,5 @@ def _get_transcoded_stream(
     if format:
         message += f': `{format}` is not a known wrapper format'
     else:
-        message+= f': no known wrapper formats fit'
+        message += f': no known wrapper formats fit'
     raise FileFormatError(message)
