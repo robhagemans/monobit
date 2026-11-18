@@ -88,7 +88,7 @@ class _PathResolver:
             ]
         # remaining path from innermost container object
         self._unresolved_path = Path()
-        # format parameters
+        # format parameters - this must be list of lists
         self._formats = []
         # filter annotations from path spec
         for element in Path(path).parts:
@@ -98,7 +98,7 @@ class _PathResolver:
             else:
                 format = ''
             self._unresolved_path /= name
-            self._formats.append(format.strip().lower())
+            self._formats.append(format.strip().lower().split('.'))
         self.make_dir = make_dir
         self.argdict = argdict
 
@@ -117,7 +117,7 @@ class _PathResolver:
             match_case=self.match_case,
             argdict=self.argdict,
             elements=self.elements,
-            format=self._formats[-1].split('.')[0] if self._formats else '',
+            format=self._formats[-1][0] if self._formats else '',
         )
         if error:
             # close all resources created by _resolve()
@@ -135,37 +135,34 @@ class _PathResolver:
                 break
         if self._unresolved_path != Path():
             # catchall - this should not be reached
-            raise FileNotFoundError(
-                f'Unresolved path {self._unresolved_path}.'
-            )
+            raise FileNotFoundError(f'Unresolved path {self._unresolved_path}.')
 
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
         current_part = len(self._unresolved_path.parts) + 1
-        if self._formats and len(self._formats) >= current_part:
-            wrapper_formats = self._formats[-current_part]
-            wrapper_formats = wrapper_formats.split('.')
-        else:
+        try:
+            wrapper_formats = self._formats[len(self._formats)-current_part]
+        except IndexError:
             wrapper_formats = []
         while True:
             stream = self.elements[-1].streams[-1]
-            if wrapper_formats:
-                format = wrapper_formats[-1]
-            else:
+            try:
+                # mutable reference - this changes self._formats
+                format = wrapper_formats.pop()
+            except IndexError:
                 format = ''
             try:
                 unwrapped_stream = _get_transcoded_stream(
                     stream, mode=self.mode, format=format, argdict=self.argdict,
                 )
             except FileFormatError as e:
-                # not a wrapper, maybe a container
+                # not a wrapper, maybe a container.
+                # push back unused format parameter
+                wrapper_formats.append(format)
                 logging.debug(e)
                 break
             else:
-                if wrapper_formats:
-                    wrapper_formats.pop()
                 self.elements[-1].streams.append(unwrapped_stream)
-                stream = unwrapped_stream
         # check if innermost stream is a container
         try:
             container_object = _open_container(
@@ -176,12 +173,9 @@ class _PathResolver:
             )
         except FileFormatError as e:
             logging.debug(e)
+            wrapper_formats.append(format)
             # innermost stream is a non-container stream.
             if self._unresolved_path == Path():
-                try:
-                    self._formats[len(self._formats)-current_part] = '.'.join(wrapper_formats)
-                except IndexError:
-                    pass
                 return
             if stream.mode == 'r':
                 raise ValueError(
@@ -190,18 +184,13 @@ class _PathResolver:
                 )
             elif stream.mode == '+':
                 raise FileExistsError(
-                     f"Could not create {join_path(stream.name, self._unresolved_path)}: "
-                     f"{stream.name} already exists "
-                     "and we cannot update it."
-                 )
+                    f"Could not create {join_path(stream.name, self._unresolved_path)}: "
+                    f"{stream.name} already exists "
+                    "and we cannot update it."
+                )
         else:
-            if wrapper_formats:
-                wrapper_formats.pop()
             self.elements[-1].container = container_object
-        try:
-            self._formats[len(self._formats)-current_part] = '.'.join(wrapper_formats)
-        except IndexError:
-            pass
+
 
     def _resolve_subpath(self):
         """Resolve subpath on a container object."""
@@ -252,9 +241,10 @@ class _PathResolver:
             # step forward until a container pattern is encountered, or we run out of path
             path_to_container, unmatched = _split_path_containername(unmatched, self._formats)
             current_part = len(unmatched.parts) + 1
-            if self._formats and len(self._formats) >= current_part and current_part:
-                format = self._formats[-current_part]
-            else:
+            try:
+                # no .pop() here (as we are not decoding yet?)
+                format = self._formats[len(self._formats)-current_part][-1]
+            except IndexError:
                 format = ''
             to_be_created = existing / path_to_container
             self.elements[-1].subpath = to_be_created
@@ -295,16 +285,16 @@ def _split_path_containername(path, formats):
             continue
         subpath = path.relative_to(headpath)
         current_part = len(headpath.parts) + 1
-        if formats and len(formats) >= current_part and current_part:
-            format = formats[-current_part]
-        else:
+        try:
+            format = formats[len(formats)-current_part][0]
+        except IndexError:
             format = ''
         if containers.identify_filename(headpath.name, format):
             return headpath, subpath
         elif not format or format == 'dir':
             continue
         elif subpath != Path():
-            raise ValueError(f'`{format}` is not a knwon container format')
+            raise ValueError(f'`{format}` is not a known container format')
     # no match
     return path, Path('.')
 
