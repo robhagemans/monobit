@@ -50,7 +50,7 @@ def load_cpi(instream, pointer_type:str='auto'):
     magic=(
         # FONT
         Magic.offset(6) + b'\1\0' + Magic.offset(20) + b'\1\0',
-        # DRFONT
+        # DRFONT (should not occur standalone and is not recognised by kbd)
         Magic.offset(6) + b'\1\0' + Magic.offset(20) + b'\2\0',
     ),
 )
@@ -73,12 +73,20 @@ def save_cp(
     """
     Save character-cell fonts to Linux Keyboard Codepage (.CP) file.
 
-    version: CPI format version. One of 'DRFONT', 'FONT.NT', or 'FONT' (default)
+    version: CPI format version. One of 'FONT.NT', or 'FONT' (default)
     codepage_prefix: prefix to use to find numbered codepage in encodings. Default: 'cp'.
     """
     format = version[:7].upper().ljust(7)
     if isinstance(format, str):
         format = format.encode('ascii', 'replace')
+    # standalone DRDOS .cp files don't (or shouldn't) exist
+    # they are not supported by kbd and structually don't really make sense
+    # see https://github.com/robhagemans/monobit/issues/61
+    if format not in (_ID_MS, _ID_NT):
+        raise UnsupportedError(
+            "`version` must be one of ('FONT', 'FONT.NT'); "
+            f"'{version}' is not supported"
+        )
     fonts = _make_fit(fonts, codepage_prefix)
     cpdata, _ = _convert_to_cp(fonts)
     if len(cpdata) > 1:
@@ -360,7 +368,6 @@ def _parse_cp(
         *, pointer_type
     ):
     """Parse a .CP codepage."""
-    logging.debug('parse cp')
     pointer = _get_pointer_converter(pointer_type)
     cpeh, cpih = _read_cp_header(
         data, cpeh_offset, header_id, standalone, pointer_type=pointer_type
@@ -373,6 +380,8 @@ def _parse_cp(
         cit_offset = fh_offset + cpih.num_fonts * _SCREEN_FONT_HEADER.size
         cit = _CHARACTER_INDEX_TABLE.from_bytes(data, cit_offset)
         glyph_index = cit.FontIndex
+        # ensure we report the format correctly
+        header_id = _ID_DR
     else:
         glyph_index = range(256)
     fonts = []
@@ -385,11 +394,14 @@ def _parse_cp(
             # bitmaps are in between headers for FONT and FONT.NT
             bm_offset = fh_offset
             fh_offset += fh.num_chars * bytesize
-        else:
+        elif drdos_effh is not None:
             # this is also the height, as width must be 8
             bytesize = drdos_effh.font_cellsize[cp_index]
             # bitmaps are at end of file
             bm_offset = drdos_effh.dfd_offset[cp_index]
+        else:
+            bytesize = fh.height * ceildiv(fh.width, 8)
+            bm_offset = cit_offset + _CHARACTER_INDEX_TABLE.size
         cells = _read_glyphs(
             data, bm_offset, bytesize, fh.width, glyph_index[:fh.num_chars]
         )

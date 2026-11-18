@@ -1841,6 +1841,32 @@ class TestImport(BaseTester):
         font, *_ = monobit.load(self.temp_path / "x90y45")
         assert len(font.glyphs) == 2
 
+    def test_import_standalone_drfont_cp(self):
+        """Test importing hypothetical standalone DRFONT .cp files."""
+        # contributed by @nielsbosma, https://github.com/robhagemans/monobit/issues/61
+        import struct
+        d = struct.pack("<H", 28) + struct.pack("<I", 0) + struct.pack("<H", 1) + b"VGA     "
+        d += struct.pack("<H", 437) + b"\0" * 6 + struct.pack("<I", 0)   # entry header
+        d += struct.pack("<HHH", 2, 1, 6)                                # info header: DRFONT, 1 font
+        d += bytes([8, 8, 0, 0]) + struct.pack("<H", 256)                # font header 8x8
+        for i in range(256):
+            d += struct.pack("<H", i % 4)                                # index table
+        d += bytes([0x3C, 0x42, 0x81, 0x81, 0xFF, 0x81, 0x81, 0x00] * 4) # four slots
+        name = self.temp_path / "v2-standalone.cp"
+        with open(name, "wb") as f:
+            f.write(d)
+        font, *_ = monobit.load(name)
+        assert_text_eq(font.get_glyph('A').as_text(), """\
+..@@@@..
+.@....@.
+@......@
+@......@
+@@@@@@@@
+@......@
+@......@
+........
+""")
+
 
 if __name__ == '__main__':
     unittest.main()

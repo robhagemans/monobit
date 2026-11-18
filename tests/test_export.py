@@ -283,10 +283,6 @@ class TestExport(BaseTester):
         """Test exporting bare FONT.NT codepage."""
         self._export_8x16_cp437(format='cp', save_kwargs=dict(version='FONT.NT'))
 
-    def test_export_cp_drfont(self):
-        """Test exporting bare DRFONT codepage."""
-        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='DRFONT'))
-
     # Figlet
 
     def test_export_flf(self):
