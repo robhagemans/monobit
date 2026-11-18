@@ -143,14 +143,14 @@ class _PathResolver:
         """Open one or more wrappers until an unwrapped stream is found."""
         current_part = len(self._unresolved_path.parts) + 1
         if self._formats and len(self._formats) >= current_part:
-            container_format = self._formats[-current_part]
-            container_format = container_format.split('.')
+            wrapper_formats = self._formats[-current_part]
+            wrapper_formats = wrapper_formats.split('.')
         else:
-            container_format = []
+            wrapper_formats = []
         while True:
             stream = self.elements[-1].streams[-1]
-            if container_format:
-                format = container_format[-1]
+            if wrapper_formats:
+                format = wrapper_formats[-1]
             else:
                 format = ''
             try:
@@ -162,8 +162,8 @@ class _PathResolver:
                 logging.debug(e)
                 break
             else:
-                if container_format:
-                    container_format.pop()
+                if wrapper_formats:
+                    wrapper_formats.pop()
                 self.elements[-1].streams.append(unwrapped_stream)
                 stream = unwrapped_stream
         # check if innermost stream is a container
@@ -178,6 +178,10 @@ class _PathResolver:
             logging.debug(e)
             # innermost stream is a non-container stream.
             if self._unresolved_path == Path():
+                try:
+                    self._formats[len(self._formats)-current_part] = '.'.join(wrapper_formats)
+                except IndexError:
+                    pass
                 return
             if stream.mode == 'r':
                 raise ValueError(
@@ -191,9 +195,13 @@ class _PathResolver:
                      "and we cannot update it."
                  )
         else:
-            if container_format:
-                container_format.pop()
+            if wrapper_formats:
+                wrapper_formats.pop()
             self.elements[-1].container = container_object
+        try:
+            self._formats[len(self._formats)-current_part] = '.'.join(wrapper_formats)
+        except IndexError:
+            pass
 
     def _resolve_subpath(self):
         """Resolve subpath on a container object."""
