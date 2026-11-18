@@ -107,16 +107,11 @@ class AppleContainer(FlatFilterContainer):
             if entry.entry_id == _ID_NAME:
                 name = data[entry.offset:entry.offset+entry.length]
                 name = name.decode('mac-roman')
-        if name:
-            return {
-                f'data/{name}': data_fork,
-                f'rsrc/{name}': rsrc_fork,
-            }
-        else:
-            return {
-                f'data': data_fork,
-                f'rsrc': rsrc_fork,
-            }
+        name = name or stream.name or 'file'
+        return {
+            f'{name}': data_fork,
+            f'{name}.rsrc': rsrc_fork,
+        }
 
 
 containers.register(

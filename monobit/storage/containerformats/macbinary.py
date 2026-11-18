@@ -124,13 +124,8 @@ class MacBinary(FlatFilterContainer):
         ofs += align(header.data_length, 7)
         rsrc_fork = data[ofs:ofs+header.rsrc_length]
         name = header.filename.decode('mac-roman').strip()
-        if name:
-            return {
-                f'data/{name}': data_fork,
-                f'rsrc/{name}': rsrc_fork,
-            }
-        else:
-            return {
-                f'data': data_fork,
-                f'rsrc': rsrc_fork,
-            }
+        name = name or stream.name or 'file'
+        return {
+            f'{name}': data_fork,
+            f'{name}.rsrc': rsrc_fork,
+        }

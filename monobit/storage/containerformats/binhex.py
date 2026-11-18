@@ -135,16 +135,11 @@ class BinHex(FlatFilterContainer):
             logging.error('CRC fault in data fork')
         if crc_hqx(rsrc, 0) != rc.crc:
             logging.error('CRC fault in resource fork')
-        if name:
-            return {
-                f'data/{name}': data,
-                f'rsrc/{name}': rsrc,
-            }
-        else:
-            return {
-                f'data': data,
-                f'rsrc': rsrc,
-            }
+        name = name or stream.name or 'file'
+        return {
+            f'{name}': data,
+            f'{name}.rsrc': rsrc,
+        }
 
 
 ###############################################################################
