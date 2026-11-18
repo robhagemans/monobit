@@ -63,7 +63,7 @@ class TestCharCell(BaseTester):
         font = self.fixed8x8r
         if codepage:
             font = font.modify(encoding=codepage)
-            font = font.label(codepoint_from=codepage, overwrite=True)
+            font = font.label(codepoint_from=codepage, replace=True)
         monobit.save(font, file, format=format, **save_kwargs)
         font, *_ = monobit.load(file, format=format, **load_kwargs)
         self.assertEqual(len(font.glyphs), count)

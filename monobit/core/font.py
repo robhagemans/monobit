@@ -1074,7 +1074,7 @@ class Font(HasProps):
             self, *,
             codepoint_from:encoder=NOT_SET, char_from:encoder=NOT_SET,
             tag_from:encoder=NOT_SET, comment_from:encoder=NOT_SET,
-            overwrite:bool=False,
+            replace:bool=False,
             match_whitespace:bool=True, match_graphical:bool=True
         ):
         """
@@ -1084,7 +1084,7 @@ class Font(HasProps):
         char_from: encoder registered name or filename to use to set characters from codepoint labels. Default: use font encoding.
         tag_from: tagger registered name or filename to use to set tag labels
         comment_from: tagger registered name or filename to use to set comments
-        overwrite: overwrite existing codepoints and/or characters
+        replace: replace existing codepoints and/or characters
         match_whitespace: do not give blank glyphs a non-whitespace char label (default: True)
         match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
@@ -1104,7 +1104,7 @@ class Font(HasProps):
                 logging.warning(f'Encoding `{self.encoding}` not recognised.')
                 return self
         encoding = self.encoding
-        if overwrite or not self.encoding:
+        if replace or not self.encoding:
             # don't set encoding if we use a Tagger
             if isinstance(char_from, Encoder):
                 encoding = char_from.name
@@ -1116,7 +1116,7 @@ class Font(HasProps):
                 encoding = codepoint_from.name
         glyphs = tuple(
             _glyph.label(
-                overwrite=overwrite,
+                replace=replace,
                 match_whitespace=match_whitespace,
                 match_graphical=match_graphical,
                 char_from=char_from,
@@ -1243,7 +1243,7 @@ class Font(HasProps):
             glyphs, references = font._relink_glyphs(glyphs)
             font = font.modify(glyphs, **references)
             if encoding:
-                font = font.label(codepoint_from=encoding, overwrite=True)
+                font = font.label(codepoint_from=encoding, replace=True)
         return font
 
 

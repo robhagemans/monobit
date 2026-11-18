@@ -319,7 +319,7 @@ class Glyph(HasProps):
     def label(
             self, codepoint_from=NOT_SET, char_from=NOT_SET,
             tag_from=NOT_SET, comment_from=NOT_SET,
-            overwrite=False, match_whitespace=True, match_graphical=True,
+            replace=False, match_whitespace=True, match_graphical=True,
         ):
         """
            Set labels or comment using provided encoder or tagger object.
@@ -328,7 +328,7 @@ class Glyph(HasProps):
            codepoint_from: Encoder object used to set codepoint labels
            tag_from: Encoder object used to set tag labels
            comment_from: Encoder object used to set comment
-           overwrite: overwrite codepoint or char if already given
+           replace: replace codepoint or char if already given
            match_whitespace: do not give blank glyphs a non-whitespace char label (default: True)
            match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
@@ -344,16 +344,16 @@ class Glyph(HasProps):
         # use codepage to find codepoint if not set
         if codepoint_from is not NOT_SET:
             if not codepoint_from:
-                if overwrite:
+                if replace:
                     return self.modify(codepoint=None)
-            elif overwrite or not self.codepoint:
+            elif replace or not self.codepoint:
                 return self.modify(codepoint=codepoint_from.codepoint(*labels))
         # use codepage to find char if not set
         if char_from is not NOT_SET:
             if not char_from:
-                if overwrite:
+                if replace:
                     return self.modify(char=None)
-            elif overwrite or not self.char:
+            elif replace or not self.char:
                 char = char_from.char(*labels)
                 if match_whitespace and self.is_blank() and char and not is_blank(char):
                     return self
@@ -362,9 +362,9 @@ class Glyph(HasProps):
                 return self.modify(char=char)
         if tag_from is not NOT_SET:
             if not tag_from:
-                if overwrite:
+                if replace:
                     return self.modify(tag=None)
-            elif overwrite or not self.tags:
+            elif replace or not self.tags:
                 return self.modify(tag=tag_from.tag(*labels))
         if comment_from is not NOT_SET:
             if not comment_from:

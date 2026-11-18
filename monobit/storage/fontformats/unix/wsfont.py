@@ -281,7 +281,7 @@ def convert_to_wsfont(font, byte_order, bit_order):
     font = ensure_charcell(font)
     if font.encoding not in _TO_WSF_ENCODING and font.get_chars():
         # standard encoding is latin-1 in this format
-        font = font.label(codepoint_from='latin-1', overwrite=True)
+        font = font.label(codepoint_from='latin-1', replace=True)
     font = make_contiguous(font, missing='space')
     codepoints = font.get_codepoints()
     if not codepoints:

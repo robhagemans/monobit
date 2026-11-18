@@ -92,7 +92,7 @@ def _prepare_font_for_geos_vlir_record(font):
     font = font.label(match_graphical=False, match_whitespace=False)
     font = font.subset(chars=(chr(_c) for _c in _GEOS_RANGE))
     font = font.label(
-        codepoint_from='ascii', overwrite=True,
+        codepoint_from='ascii', replace=True,
         match_graphical=False, match_whitespace=False,
     )
     font = make_contiguous(font, full_range=_GEOS_RANGE, missing='empty')
