@@ -1762,7 +1762,7 @@ class TestImport(BaseTester):
     # GRUB2 PFF2
 
     def test_import_pff2(self):
-        """"Test importing PFF2 files."""
+        """Test importing PFF2 files."""
         font, *_ = monobit.load(self.font_path / 'Minecraft24.pf2')
         self.assertEqual(len(font.glyphs), 156)
         assert_text_eq(font.get_glyph('A').as_text(), """\
@@ -1790,7 +1790,7 @@ class TestImport(BaseTester):
     u8m = 'https://github.com/kreativekorp/u8m/raw/refs/heads/master/x16/'
 
     def test_import_u8m(self):
-        """"Test importing U8/M files."""
+        """Test importing U8/M files."""
         file = ensure_asset(self.u8m, 'PETME.U8M')
         font, *_ = monobit.load(file, format='u8m' )
         self.assertEqual(len(font.glyphs), 3211)
@@ -1804,6 +1804,42 @@ class TestImport(BaseTester):
 @....@
 """)
 
+    def test_riscos_broken_metrics(self):
+        """Test RiscOS with out of bounds index in IntMetrics."""
+        # contributed by @nielsbosma, https://github.com/robhagemans/monobit/issues/60
+        import struct
+
+        def strike():
+            char_len = 12 * 12 // 2            # 4bpp, 12x12
+            record, table_abs = 17, 17 + 20
+            off_a = record + 532 - table_abs
+            off_b = off_a + 4 + char_len
+            entry = struct.pack("<BBBBIII", 10, 4, 90, 45, 0, record, record + 532 + 2 * (4 + char_len))
+            data = struct.pack("<IIII", 160 * 90, 160 * 45, 90, 45) + struct.pack("<4b", 0, 0, 12, 12)
+            offsets = bytearray(512)
+            struct.pack_into("<H", offsets, 65 * 2, off_a)
+            struct.pack_into("<H", offsets, 66 * 2, off_b)
+            chars = bytearray()
+            for cp in (65, 66):
+                chars += struct.pack("<4b", 0, 0, 12, 12)
+                chars += bytes(char_len)
+            return entry + b"\x00" + data + bytes(offsets) + bytes(chars)
+
+        def int_metrics(n, mapping, x_offsets):
+            out = bytearray(40)                       # name, CR-padded
+            out += struct.pack("<II", 16, 16)
+            out += bytes([n, 0, 0, 0])
+            out += bytes(mapping.get(cp, 0) for cp in range(256))
+            for array in range(6):                    # x0 y0 x1 y1 xoffs yoffs, int16 LE
+                out += struct.pack("<%dh" % n, *(x_offsets if array == 4 else [0] * n))
+            return bytes(out)
+
+        with open(self.temp_path / "x90y45", "wb") as f:
+            f.write(strike())
+        with open(self.temp_path / "IntMetrics", "wb") as f:
+            f.write(int_metrics(2, {65: 1, 66: 2}, [0, 160]))
+        font, *_ = monobit.load(self.temp_path / "x90y45")
+        assert len(font.glyphs) == 2
 
 
 if __name__ == '__main__':

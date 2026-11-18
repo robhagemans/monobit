@@ -114,7 +114,7 @@ def load_x90y45(instream):
                 continue
             if metrics:
                 metrics_index = header.mapping[cp]
-                char_metrics = metrics[metrics_index]
+                char_metrics = metrics[metrics_index] if metrics_index < len(metrics) else None
             else:
                 char_metrics = None
             instream.seek(anchor + offset)
