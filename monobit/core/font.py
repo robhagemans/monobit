@@ -244,8 +244,12 @@ class Font(HasProps):
             weight = ''
         else:
             weight = self.weight.title()
+        if self.decoration == self.get_default('decoration'):
+            decoration = ''
+        else:
+            decoration = self.decoration.title()
         return ' '.join(
-            _x for _x in (setwidth, weight, slant) if _x
+            _x for _x in (setwidth, weight, slant, decoration) if _x
         )
 
     @writable_property

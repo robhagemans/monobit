@@ -5,7 +5,9 @@ monobit.storage.fontformats.common - tables common to various formats
 licence: https://opensource.org/licenses/MIT
 """
 
-from monobit.base import reverse_dict
+from collections import defaultdict
+
+from monobit.base import reverse_dict, Props
 from monobit.encoding import EncodingName
 
 
@@ -237,16 +239,49 @@ STYLE_MAP = {
     5: 'condensed',
     6: 'extended',
 }
+REVERSE_STYLE_MAP = reverse_dict(STYLE_MAP)
 
-def mac_style_name(font_style):
-    """Get human-readable representation of font style."""
-    return ' '.join(
-        _tag for _bit, _tag in STYLE_MAP.items() if font_style & (1 << _bit)
-    )
 
-def mac_style_from_name(style_name):
-    """Get font style from human-readable representation."""
-    return sum((1<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
+def mac_style_properties(font_style):
+    """Extract properties from font style."""
+    props = defaultdict(list)
+    if font_style & (1 << REVERSE_STYLE_MAP['bold']):
+        props['weight'] = 'bold'
+    if font_style & (1 << REVERSE_STYLE_MAP['italic']):
+        props['slant'] = 'italic'
+    if font_style & (1 << REVERSE_STYLE_MAP['underline']):
+        props['decoration'].append('underline')
+    if font_style & (1 << REVERSE_STYLE_MAP['outline']):
+        props['decoration'].append('outline')
+    if font_style & (1 << REVERSE_STYLE_MAP['shadow']):
+        props['decoration'].append('shadow')
+    if font_style & (1 << REVERSE_STYLE_MAP['condensed']):
+        props['setwidth'] = 'condensed'
+    if font_style & (1 << REVERSE_STYLE_MAP['extended']):
+        # 'condensed extended doesn't make sense... ?
+        props['setwidth'] = 'extended'
+    props['decoration'] = ' '.join(props['decoration'])
+    return dict(props)
+
+
+def mac_style_from_properties(font):
+    """Extract mac style from font properties."""
+    font_style = 0
+    if font.weight == 'bold':
+        font_style &= (1 << REVERSE_STYLE_MAP['bold'])
+    if font.slant == 'italic':
+        font_style &= (1 << REVERSE_STYLE_MAP['italic'])
+    if 'underline' in font.decoration:
+        font_style &= (1 << REVERSE_STYLE_MAP['underline'])
+    if 'outline' in font.decoration:
+        font_style &= (1 << REVERSE_STYLE_MAP['outline'])
+    if 'shadow' in font.decoration:
+        font_style &= (1 << REVERSE_STYLE_MAP['shadow'])
+    if font.setwidth == 'condensed':
+        font_style &= (1 << REVERSE_STYLE_MAP['condensed'])
+    if font.setwidth == 'extended':
+        font_style &= (1 << REVERSE_STYLE_MAP['extended'])
+    return font_style
 
 
 ###############################################################################

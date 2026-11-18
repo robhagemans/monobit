@@ -23,7 +23,9 @@ ttLib = safe_import('fontTools.ttLib')
 fonttools_loaded = ttLib is not None
 Image = safe_import('PIL.Image')
 
-from ..common import WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_name
+from ..common import (
+    WEIGHT_MAP, CHARSET_MAP, MAC_ENCODING, STYLE_MAP, mac_style_properties
+)
 
 
 # specs
@@ -884,7 +886,7 @@ def _convert_head_props(head):
         return Props()
     props = Props(
         revision=head.fontRevision,
-        subfamily=mac_style_name(head.macStyle) or None,
+        **mac_style_properties(head.macStyle),
     )
     return props
 

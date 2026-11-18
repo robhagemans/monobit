@@ -11,7 +11,7 @@ from itertools import accumulate
 from monobit.base.struct import bitfield, big_endian as be, sizeof
 from monobit.core import Glyph
 
-from ..common import MAC_ENCODING, mac_style_name, to_postscript_name
+from ..common import MAC_ENCODING, mac_style_properties, to_postscript_name
 
 
 ##############################################################################
@@ -348,7 +348,6 @@ def convert_fond(
         fa_entry.fontID: {
             # monobit properties
             'family': name,
-            'subfamily': mac_style_name(fa_entry.fontStyle),
             'point_size': fa_entry.fontSize,
             #'spacing': 'monospace' if fond_header.ffFlags.fixed_width else 'proportional',
             'encoding': encoding,
@@ -356,6 +355,8 @@ def convert_fond(
             'kerning-table': kerning_table.get(fa_entry.fontStyle, ()),
             'encoding-table': encoding_table,
             'twos-complement': fond_header.ffVersion >= 2,
+            # monobit properties from mac style
+            **mac_style_properties(fa_entry.fontStyle),
         }
         for fa_entry in fa_list
     }
@@ -368,7 +369,7 @@ def convert_fond(
     for style in dropped_styles:
         logging.warning(
             'Kerning table not preserved '
-            f'for style {style:#0x} ({mac_style_name(style)})'
+            f'for style {style:#0x} ({mac_style_properties(style)})'
         )
         logging.debug(kerning_table[style])
     return info
