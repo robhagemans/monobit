@@ -21,68 +21,35 @@ def get_stringio(string):
     return io.TextIOWrapper(get_bytesio(string.encode()))
 
 
-class StreamBase:
-    """Base class for streams."""
+class StreamWrapper:
+    """Base class for wrappers for Python streams."""
 
-    def __init__(self, stream, mode='', name='', where=None):
+    def __init__(self, stream):
         self._stream = stream
-        self.name = name
-        self.mode = mode[:1]
-        if self._stream:
-            if not self.name:
-                self.name = get_name(stream)
-            if not self.mode:
-                try:
-                    self.mode = self._stream.mode[:1]
-                except AttributeError:
-                    if self._stream.readable():
-                        self.mode = 'r'
-                    else:
-                        self.mode = 'w'
-        self._refcount = 0
-        # embedding container
-        self.where = where
-        self.closed = False
+
+    def __getattr__(self, attr):
+        """Delegate undefined attributes to wrapped stream."""
+        return getattr(self._stream, attr)
+
+    # dunder methods are not delegated
+
+    def __iter__(self):
+        return self._stream.__iter__()
+
+    def __repr__(self):
+        return f"{type(self).__name__}({repr(self._stream)})"
+
+    # not directly delegating __enter__ and __exit__
+    # so that we can override close()
 
     def __enter__(self):
-        self._refcount += 1
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Ensure stream is closed."""
         if exc_type == BrokenPipeError:
             return True
-        self._refcount -= 1
-        logging.debug(
-            'Exiting %r with reference count %d. '
-            '[Underlying stream %r]', self, self._refcount, self._stream)
-        if not self._refcount:
-            self.close()
-
-    def __repr__(self):
-        """String representation."""
-        return (
-            f"<{type(self).__name__} name='{self.name}' mode='{self.mode}'"
-            f"{' [closed]' if self.closed else ''}>"
-        )
-
-    def close(self):
-        if self._stream and not self._refcount:
-            logging.debug('Closing %r', self)
-            self._stream.close()
-        self.closed = True
-
-
-class StreamWrapper(StreamBase):
-    """Wrapper object to emulate a single text stream."""
-
-    def __getattr__(self, attr):
-        """Delegate undefined attributes to wrapped stream."""
-        return getattr(self._stream, attr)
-
-    def __iter__(self):
-        # dunder methods not delegated
-        return self._stream.__iter__()
+        self.close()
 
 
 class KeepOpen(StreamWrapper):
@@ -93,10 +60,26 @@ class KeepOpen(StreamWrapper):
         self._stream.flush()
 
 
+class TellableWriter(StreamWrapper):
+    """Implement tell() for non-seekable write streams."""
+
+    def __init__(self, stream):
+        super().__init__(stream)
+        self._count = 0
+
+    def write(self, bytestr):
+        written = self._stream.write(bytestr)
+        self._count += written
+        return written
+
+    def tell(self):
+        return self._count
+
+
 class Stream(StreamWrapper):
     """Manage file resource."""
 
-    def __init__(self, file, mode, *, name='', where=None):
+    def __init__(self, file, mode, *, name='', where=None, keep_open=False):
         """
         Ensure file is a stream of the right type, open or wrap if necessary.
 
@@ -110,20 +93,53 @@ class Stream(StreamWrapper):
         if isinstance(file, (str, Path)):
             raise ValueError('Argument `file` must be a Python file or stream-like object.')
         # initialise wrapper
-        super().__init__(file, mode=mode, name=name, where=where)
+        super().__init__(file)
+        if name:
+            self.name = name
+        else:
+            try:
+                self.name = self._stream.name
+            except AttributeError:
+                # not all streams have one (e.g. BytesIO)
+                self.name = ''
+        if mode:
+            self.mode = mode[:1]
+        else:
+            try:
+                self.mode = self._stream.mode[:1]
+            except AttributeError:
+                if self._stream.readable():
+                    self.mode = 'r'
+                else:
+                    self.mode = 'w'
         # check r/w mode is consistent
         self._ensure_rw()
         # Ensure we have a binary stream
         self._ensure_binary()
-        if mode == 'r' and not self._stream.seekable():
-            # we need streams to be seekable - drain to buffer
-            # note you can only do this once on the input stream!
-            self._stream = get_bytesio(self._stream.read())
-            self._ensure_binary()
-        if mode == 'r':
-            self._anchor = self._stream.tell()
-        else:
-            self._anchor = 0
+        if keep_open:
+            self._stream = KeepOpen(self._stream)
+            self._textstream = None
+        if not self._stream.seekable():
+            if mode == 'r':
+                # we need read streams to be seekable - drain to buffer
+                # note you can only do this once on the input stream!
+                self._stream = get_bytesio(self._stream.read())
+            else:
+                # we don't need seek() but we do need tell() on write streams
+                self._stream = TellableWriter(self._stream)
+            # if we were provided with a text stream and used its buffer
+            # then we shouldn't keep using the original text stream now
+            self._textstream = None
+        self._anchor = self._stream.tell()
+        # embedding container
+        self.where = where
+
+    def __repr__(self):
+        """String representation."""
+        return (
+            f"<{type(self).__name__} name='{self.name}' mode='{self.mode}'"
+            f"{' [closed]' if self.closed else ''}>"
+        )
 
     @classmethod
     def from_data(cls, data, **kwargs):
@@ -163,7 +179,7 @@ class Stream(StreamWrapper):
         if not self._textstream:
             encoding = 'utf-8-sig' if self.mode == 'r' else 'utf-8'
             self._textstream = io.TextIOWrapper(
-                self._stream, encoding=encoding,
+                KeepOpen(self._stream), encoding=encoding,
                 # on the one hand, this avoids breaks on slightly damaged files
                 # on the other hand, we are less likely to break
                 # on files that are clearly not text
@@ -199,15 +215,16 @@ class Stream(StreamWrapper):
         # if self.closed:
         #     return
         # always close at wrapper level
+        logging.debug('Closing %r', self)
         if self._textstream:
             try:
                 self._textstream.close()
-            except EnvironmentError:
-                pass
+            except EnvironmentError as err:
+                logging.debug("Error while closing text wrapper for '%s': %s", self.name, err)
         try:
-            super().close()
-        except EnvironmentError:
-            pass
+            self._stream.close()
+        except EnvironmentError as err:
+            logging.debug("Error while closing underlying stream for '%s': %s", self.name, err)
         self.closed = True
 
 
@@ -253,11 +270,3 @@ def is_binary(stream):
     except TypeError:
         return False
     return True
-
-def get_name(stream):
-    """Get stream name, if available."""
-    try:
-        return stream.name
-    except AttributeError:
-        # not all streams have one (e.g. BytesIO)
-        return ''

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from ..plumbing import take_arguments
 from .magic import FileFormatError, iter_funcs_from_registry
-from .streams import StreamBase, Stream, KeepOpen
+from .streams import Stream
 from .base import encoders, decoders, containers
 from .containers import Container
 from .containerformats.directory import Directory
@@ -30,17 +30,14 @@ def resolve_path(location='', *, subpath='', mode='r', **kwargs):
         here = Path().resolve()
         root = Path(commonpath((path, here)))
         subpath = path.relative_to(root)
-        # Directory objects doesn't really need to be closed
+        # Directory object doesn't really need to be closed
         # so it's OK that we won't close this one
         root = Directory(root, mode=mode)
     else:
         # stream or container object
-        if not isinstance(location, (StreamBase, Container)):
+        if not isinstance(location, (Stream, Container)):
             # assume it's a python stream object
-            # not clear why we need KeepOpen
-            # streams mysteriously get closed without it
-            # but KeepOpen.close() does not actually get called... :/
-            location = Stream(KeepOpen(location), mode=mode)
+            location = Stream(location, mode=mode)
         if location.mode != mode:
             if mode == 'r':
                 raise ValueError(
@@ -78,8 +75,8 @@ class _PathResolver:
         self.mode = mode
         self.overwrite = overwrite
         self.match_case = match_case
-        # container or stream on which we attch the path
-        # this object is NOT owned by us but externaly provided
+        # container or stream on which we attach the path
+        # this object is NOT owned by us but externally provided
         # an further objects in the path will be ours to close
         if isinstance(root, Container):
             self.elements = [
@@ -87,11 +84,11 @@ class _PathResolver:
             ]
         else:
             self.elements = [
-                _PathElement(streams=[KeepOpen(root)], container=None, subpath=Path())
+                _PathElement(streams=[root], container=None, subpath=Path())
             ]
         # remaining path from innermost container object
         self._unresolved_path = Path()
-        # format parameters
+        # format parameters - this must be list of lists
         self._formats = []
         # filter annotations from path spec
         for element in Path(path).parts:
@@ -101,7 +98,7 @@ class _PathResolver:
             else:
                 format = ''
             self._unresolved_path /= name
-            self._formats.append(format.strip().lower())
+            self._formats.append(format.strip().lower().split('.'))
         self.make_dir = make_dir
         self.argdict = argdict
 
@@ -120,7 +117,7 @@ class _PathResolver:
             match_case=self.match_case,
             argdict=self.argdict,
             elements=self.elements,
-            format=self._formats[-1].split('.')[0] if self._formats else '',
+            format=self._formats[-1][0] if self._formats else '',
         )
         if error:
             # close all resources created by _resolve()
@@ -138,40 +135,34 @@ class _PathResolver:
                 break
         if self._unresolved_path != Path():
             # catchall - this should not be reached
-            raise FileNotFoundError(
-                f'Unresolved path {self._unresolved_path}.'
-            )
+            raise FileNotFoundError(f'Unresolved path {self._unresolved_path}.')
 
     def _resolve_wrappers(self):
         """Open one or more wrappers until an unwrapped stream is found."""
         current_part = len(self._unresolved_path.parts) + 1
-        if self._formats and len(self._formats) >= current_part:
-            container_format = self._formats[-current_part]
-            container_format = container_format.split('.')
-        else:
-            container_format = []
+        try:
+            wrapper_formats = self._formats[len(self._formats)-current_part]
+        except IndexError:
+            wrapper_formats = []
         while True:
             stream = self.elements[-1].streams[-1]
-            if container_format:
-                format = container_format[-1]
-            else:
+            try:
+                # mutable reference - this changes self._formats
+                format = wrapper_formats.pop()
+            except IndexError:
                 format = ''
             try:
                 unwrapped_stream = _get_transcoded_stream(
                     stream, mode=self.mode, format=format, argdict=self.argdict,
                 )
             except FileFormatError as e:
-                # not a known wrapper, but we need another format inside
-                if any(container_format[:-1]):
-                    raise e
-                # not a wrapper, maybe a container
+                # not a wrapper, maybe a container.
+                # push back unused format parameter
+                wrapper_formats.append(format)
                 logging.debug(e)
                 break
             else:
-                if container_format:
-                    container_format.pop()
                 self.elements[-1].streams.append(unwrapped_stream)
-                stream = unwrapped_stream
         # check if innermost stream is a container
         try:
             container_object = _open_container(
@@ -180,7 +171,9 @@ class _PathResolver:
                 mode=stream.mode,
                 format=format,
             )
-        except FileFormatError:
+        except FileFormatError as e:
+            logging.debug(e)
+            wrapper_formats.append(format)
             # innermost stream is a non-container stream.
             if self._unresolved_path == Path():
                 return
@@ -191,14 +184,13 @@ class _PathResolver:
                 )
             elif stream.mode == '+':
                 raise FileExistsError(
-                     f"Could not create {join_path(stream.name, self._unresolved_path)}: "
-                     f"{stream.name} already exists "
-                     "and we cannot update it."
-                 )
+                    f"Could not create {join_path(stream.name, self._unresolved_path)}: "
+                    f"{stream.name} already exists "
+                    "and we cannot update it."
+                )
         else:
-            if container_format:
-                container_format.pop()
             self.elements[-1].container = container_object
+
 
     def _resolve_subpath(self):
         """Resolve subpath on a container object."""
@@ -249,9 +241,10 @@ class _PathResolver:
             # step forward until a container pattern is encountered, or we run out of path
             path_to_container, unmatched = _split_path_containername(unmatched, self._formats)
             current_part = len(unmatched.parts) + 1
-            if self._formats and len(self._formats) >= current_part and current_part:
-                format = self._formats[-current_part]
-            else:
+            try:
+                # no .pop() here (as we are not decoding yet?)
+                format = self._formats[len(self._formats)-current_part][-1]
+            except IndexError:
                 format = ''
             to_be_created = existing / path_to_container
             self.elements[-1].subpath = to_be_created
@@ -291,18 +284,17 @@ def _split_path_containername(path, formats):
         if headpath == Path():
             continue
         subpath = path.relative_to(headpath)
-
         current_part = len(headpath.parts) + 1
-        if formats and len(formats) >= current_part and current_part:
-            format = formats[-current_part]
-        else:
+        try:
+            format = formats[len(formats)-current_part][0]
+        except IndexError:
             format = ''
         if containers.identify_filename(headpath.name, format):
             return headpath, subpath
         elif not format or format == 'dir':
             continue
         elif subpath != Path():
-            raise ValueError(f'Container format `{format}` not recognised.')
+            raise ValueError(f'`{format}` is not a known container format')
     # no match
     return path, Path('.')
 
@@ -315,16 +307,19 @@ def _open_container(
     # identify file type
     fitting_classes = registry.get_for(instream, format=format)
     if not fitting_classes:
-        msg = "Container format not recognised"
+        action = 'unpack' if mode == 'r' else 'pack'
+        msg = f"Could not {action} '{instream.name}'"
         if format:
-            msg += f': `{format}`'
+            msg += f': `{format}` is not a known container format'
+        else:
+            msg += f': no known container formats fit'
         raise FileFormatError(msg)
     last_error = None
     for cls in fitting_classes:
         if mode in ('r', '+'):
             instream.seek(0)
         logging.info(
-            "Opening stream '%s' as container format `%s` for mode '%s'",
+            "Opening '%s' as a container with format `%s` for mode '%s'",
             instream.name, cls.format, mode
         )
         try:
@@ -341,9 +336,10 @@ def _open_container(
             return container
     if last_error:
         raise last_error
-    message = f"Could not open container {instream.name}"
+    action = 'unpack' if mode == 'r' else 'pack'
+    message = f"Could not {action} '{instream.name}'"
     if format:
-        message += f': format specifier `{format}` not recognised'
+        message += f' with container format `{format}`'
     raise FileFormatError(message)
 
 
@@ -364,10 +360,15 @@ def _get_transcoded_stream(
     for transcoder in iter_funcs_from_registry(registry, instream, format):
         if mode == 'r':
             instream.seek(0)
-        logging.info(
-            "Transcoding stream '%s' with wrapper format `%s` in mode '%s'",
-            instream.name, transcoder.format, mode
-        )
+            logging.info(
+                "Unwrapping '%s' with wrapper format `%s`",
+                instream.name, transcoder.format
+            )
+        else:
+            logging.info(
+                "Wrapping '%s' with wrapper format `%s`",
+                instream.name, transcoder.format
+            )
         try:
             # pick arguments we can use
             kwargs = take_arguments(transcoder, argdict)
@@ -384,9 +385,11 @@ def _get_transcoded_stream(
     if last_error:
         raise last_error
     if mode == 'r':
-        message = f"Could not decode {instream.name}"
+        message = f"Could not (further) unwrap '{instream.name}'"
     else:
-        message = f"Could not encode {instream.name}"
+        message = f"Could not (further) wrap '{instream.name}'"
     if format:
-        message += f': format specifier `{format}` not recognised'
+        message += f': `{format}` is not a known wrapper format'
+    else:
+        message += f': no known wrapper formats fit'
     raise FileFormatError(message)
