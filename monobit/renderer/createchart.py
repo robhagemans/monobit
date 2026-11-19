@@ -12,8 +12,9 @@ from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
 from monobit.base.binary import ceildiv
-from monobit.base import Props, Coord, RGB, Any
+from monobit.base import Props, Coord, Any
 from monobit.core import Codepoint, Glyph, Char
+from monobit.core.palette import Colour, light_defaults, dark_defaults
 from monobit.plumbing import scriptable
 from monobit.storage.magic import MagicRegistry
 from monobit.storage.fontfiles import output_pack_or_font
@@ -21,7 +22,6 @@ from monobit.encoding.unicode import is_showable
 from monobit.storage.utils.limitations import ensure_single
 from .glyphmap import GlyphMap
 from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
-from .rgb import default_colours
 
 
 charters = MagicRegistry(default_text='text')
@@ -150,9 +150,9 @@ def chart_shades(
         padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
-        border:RGB=None,
-        paper:RGB=None,
-        ink:RGB=None,
+        border:Colour=None,
+        paper:Colour=None,
+        ink:Colour=None,
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=True,
         skip_empty_lines:bool=True,
@@ -187,11 +187,10 @@ def chart_shades(
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
         )
+        # dark defaults
         # don't override border, use terminal default
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
-        )
+        if font.palette.is_greyscale():
+            paper, ink = dark_defaults(paper, ink)
         outstream.text.write(glyph_map.as_shades(
             paper=paper, border=border, ink=ink,
         ))
@@ -205,9 +204,9 @@ def chart_sixel(
         padding:Coord=Coord(1, 1),
         scale:Coord=Coord(1, 1),
         direction:str=None,
-        border:RGB=None,
-        paper:RGB=None,
-        ink:RGB=None,
+        border:Colour=None,
+        paper:Colour=None,
+        ink:Colour=None,
         codepoint_range:tuple[Codepoint]=None,
         grid_positioning:bool=True,
         skip_empty_lines:bool=True,
@@ -241,11 +240,10 @@ def chart_sixel(
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
         )
+        # dark defaults
         # don't override border, use terminal default
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
-        )
+        if font.palette.is_greyscale():
+            paper, ink = dark_defaults(paper, ink)
         outstream.text.write(
             glyph_map.as_sixel(paper=paper, border=border, ink=ink)
         )
@@ -265,9 +263,9 @@ if Image:
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             direction:str='left-to-right top-to-bottom',
-            border:RGB=None,
-            paper:RGB=None,
-            ink:RGB=None,
+            border:Colour=None,
+            paper:Colour=None,
+            ink:Colour=None,
             codepoint_range:tuple[Codepoint]=None,
             grid_positioning:bool=True,
             skip_empty_lines:bool=True,
@@ -276,7 +274,7 @@ if Image:
         Export font to chart image.
 
         image_format: image file format (default: 'png')
-        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        image_mode: image colour mode. 'mono', 'grey', 'rgb' or 'rgba' (default: 'rgb')
         glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
         padding: number of pixels in X,Y direction between glyphs (default: 1x1)
@@ -301,15 +299,15 @@ if Image:
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
         )
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
-            default_border=RGB(32, 32, 32),
-        )
-        img, = glyph_map.to_images(
-            border=border, paper=paper, ink=ink,
-            transparent=False,
-            image_mode=image_mode,
+        # light defaults
+        if fonts[0].palette.is_greyscale():
+            paper, ink = light_defaults(paper, ink)
+        if border is None:
+            border = (32, 32, 32)
+        if paper is None:
+            paper = (0, 0, 0)
+        img = glyph_map.as_image(
+            border=border, paper=paper, ink=ink, image_mode=image_mode,
         )
         write_imagefile(outfile, img, image_format)
 
@@ -402,10 +400,8 @@ def grid_resample(font, glyphs_per_line, codepoint_range, skip_empty_lines):
         font = font.label(codepoint_from=font.encoding)
         font = font.modify(encoding=None)
     # fill up all contiguous grid positions
-    try:
-        codepoints = font.get_codepoints()
-    except ValueError:
-        # empty sequence
+    codepoints = font.get_codepoints()
+    if not codepoints:
         raise ValueError('No codepoint labels found.')
     if skip_empty_lines:
         lines = {int(_cp) // glyphs_per_line for _cp in codepoints}
@@ -479,7 +475,7 @@ def grid_map(
         )
     glyph_map = GlyphMap(
         glyph_map, levels=font.levels,
-        rgb_table=font.rgb_table,
+        palette=font.palette,
     )
     # use blank glyphs for grid bounds
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)

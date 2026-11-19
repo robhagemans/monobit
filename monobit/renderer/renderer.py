@@ -16,10 +16,11 @@ arabic_reshaper = safe_import('arabic_reshaper')
 graphemecluster = safe_import('uniseg.graphemecluster')
 
 from ..base.binary import ceildiv
-from ..base import Props, Coord, RGB, Any
+from ..base import Props, Coord, Any
 from ..core import Char, Codepoint
 from ..core import Raster
 from ..core import Glyph
+from ..core.palette import Colour, light_defaults, dark_defaults, BLACK, WHITE
 from ..storage.fontfiles import output_pack_or_font
 from ..storage.magic import MagicRegistry
 from ..storage.location import open_location
@@ -27,7 +28,6 @@ from ..storage.utils.limitations import ensure_single
 from ..plumbing import scriptable
 from .glyphmap import GlyphMap
 from .image import write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
-from .rgb import default_colours
 
 
 DIRECTIONS = {
@@ -150,7 +150,7 @@ def output_blocks(
 def output_shades(
         fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        paper:RGB=None, ink:RGB=None, border:RGB=None,
+        paper:Colour=None, ink:Colour=None, border:Colour=None,
     ):
     """
     Render text using ANSI escape colours
@@ -171,11 +171,11 @@ def output_shades(
             text=text, textfile=textfile, raw=raw,
             margin=margin, direction=direction, align=align,
         )
-        paper, ink, border = default_colours(
-            font, paper, ink, border,
-            default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
-            border_match_paper=True,
-        )
+        # dark defaults
+        if font.palette.is_greyscale():
+            paper, ink = dark_defaults(paper, ink)
+        if border is None:
+            border = paper if paper is not None else BLACK
         outfile.text.write(glyph_map.as_shades(paper=paper, ink=ink, border=border))
 
 
@@ -183,7 +183,7 @@ def output_shades(
 def output_sixel(
         fonts, outfile, text:str='', *, textfile:Any='', raw:bool=False,
         margin:Coord=None, direction:str='', align:str='',
-        paper:RGB=None, ink:RGB=None, border:RGB=None,
+        paper:Colour=None, ink:Colour=None, border:Colour=None,
     ):
     """
     Render text as sixel graphics
@@ -194,8 +194,8 @@ def output_sixel(
     margin: HxV margin around the text, in pixels (default: minimum needed)
     direction: text direction (l, r, b, t, n; default: n)
     align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
-    paper: R,G,B colour for uninked areas (default: 255,255,255)
-    ink: R,G,B colour for inked areas (default: 0,0,0)
+    paper: R,G,B colour for uninked areas (default: 0,0,0)
+    ink: R,G,B colour for inked areas (default: 255,255,255)
     border: R,G,B colour for inked areas (default: same as paper)
     """
     for font in fonts:
@@ -204,11 +204,11 @@ def output_sixel(
             text=text, textfile=textfile, raw=raw,
             margin=margin, direction=direction, align=align,
         )
-        paper, ink, border = default_colours(
-            font, paper, ink, border,
-            default_ink=RGB(255, 255, 255), default_paper=RGB(0, 0, 0),
-            border_match_paper=True,
-        )
+        # dark defaults
+        if font.palette.is_greyscale():
+            paper, ink = dark_defaults(paper, ink)
+        if border is None:
+            border = paper if paper is not None else BLACK
         outfile.text.write(glyph_map.as_sixel(paper=paper, ink=ink, border=border))
 
 
@@ -223,9 +223,9 @@ if Image:
             margin:Coord=None, direction:str='', align:str='',
             image_format:str='',
             image_mode:str='RGB',
-            border:RGB=None,
-            paper:RGB=None,
-            ink:RGB=None,
+            border:Colour=None,
+            paper:Colour=None,
+            ink:Colour=None,
         ):
         """
         Render text to image.
@@ -237,7 +237,7 @@ if Image:
         direction: text direction (l, r, b, t, n; default: n)
         align: alignment of consecutive lines of text (l, r, b, t; default: same as direction)
         image_format: image file format (default: 'png')
-        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        image_mode: image colour mode. 'mono', 'grey', 'rgb' or 'rgba' (default: 'rgb')
         paper: background colour R,G,B 0--255 (default: 255,255,255)
         ink: full-intensity foreground colour R,G,B 0--255 (default: 0,0,0)
         border: border colour R,G,B 0--255 (default: same as paper)
@@ -247,15 +247,13 @@ if Image:
             text=text, textfile=textfile, raw=raw,
             margin=margin, direction=direction, align=align,
         )
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_ink=RGB(0, 0, 0), default_paper=RGB(255, 255, 255),
-            border_match_paper=True,
-        )
-        img, = glyph_map.to_images(
-            border=border, paper=paper, ink=ink,
-            transparent=False,
-            image_mode=image_mode,
+        # light defaults
+        if glyph_map._palette.is_greyscale():
+            paper, ink = light_defaults(paper, ink)
+        if border is None:
+            border = paper if paper is not None else WHITE
+        img = glyph_map.as_image(
+            border=border, paper=paper, ink=ink, image_mode=image_mode,
         )
         write_imagefile(outfile, img, image_format)
 
@@ -334,7 +332,7 @@ def _render_horizontal(
     # if a glyph extends below the descent line or left of the origin,
     # it may draw into the margin
     baseline = -margin_y - font.ascent
-    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
+    glyph_map = GlyphMap(levels=font.levels, palette=font.palette)
     # append empty glyph at start and end for margins
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     for glyph_row in glyphs:
@@ -375,7 +373,7 @@ def _render_vertical(
     # central axis (with leftward bias)
     baseline = font.line_width // 2
     # default is ttb right-to-left
-    glyph_map = GlyphMap(levels=font.levels, rgb_table=font.rgb_table)
+    glyph_map = GlyphMap(levels=font.levels, palette=font.palette)
     glyph_map.append_glyph(Glyph(), 0, 0, sheet=0)
     for glyph_row in glyphs:
         y = 0

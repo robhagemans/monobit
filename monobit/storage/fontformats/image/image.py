@@ -12,120 +12,20 @@ from pathlib import Path
 from monobit.base import safe_import
 Image = safe_import('PIL.Image')
 
-from monobit.base import Coord, RGB, RGBTable, FileFormatError, UnsupportedError
+from monobit.base import Coord, FileFormatError, UnsupportedError
 from monobit.base.binary import ceildiv
 from monobit.storage.base import (
     loaders, savers, container_loaders, container_savers
 )
 from monobit.core import Font, Glyph, Codepoint
+from monobit.core.palette import Palette, Colour, sort_inklevels, brightness
 from monobit.renderer import (
     create_chart, glyph_to_image, grid_traverser,
-    create_image_colours, RGBTable, create_gradient,
     write_imagefile, IMAGE_PATTERNS, IMAGE_MAGIC
 )
-from monobit.renderer.rgb import default_colours
 
 from monobit.storage.utils.limitations import ensure_single, ensure_levels
 from monobit.storage.utils.perglyph import loop_load, loop_save
-
-
-# available background policies
-# -----------------------------
-#
-# most-common       use colour most commonly found in payload cells
-# least-common      use colour least commonly found in payload cells
-# brightest         use brightest colour, by sum of RGB values
-# darkest           use darkest colour, by sum of RGB values
-# top-left          use colour of top-left pixel in first cell
-# RGB value         use this specific colour as background
-# alpha             use fully transparent as background
-
-def identify_inklevels(colours, background):
-    """Identify ink levels from colour set."""
-    colourset = set(colours)
-    if len(colourset) < 2:
-        raise FileFormatError('No glyphs or only blank glyphs found.')
-    elif len(colourset) > 256:
-        raise UnsupportedError(
-            f'More than 256 shades not supported (found {len(colourset)}).'
-        )
-    elif len(colourset) > 2:
-        # check for greyscales
-        # any grey-only set in 24-bit RGB is a subset of 256-colour greyscale
-        for levels, greyset in GREYSETS.items():
-            if colourset < set(greyset):
-                return greyset
-        paper = _identify_background(colours, background)
-        # if paper is darker than average colour, sort dark to bright
-        # else sort bright to dark
-        def _brightness(colour):
-            try:
-                if len(colour) == 4:
-                    r, g, b, a = colour
-                    return (r + g + b) * a // 255
-            except TypeError:
-                pass
-            return sum(colour)
-        reverse = _brightness(paper) > sum(_brightness(_c) for _c in colours) / len(colours)
-        rgbtable = sorted(colourset, key=lambda _t: _brightness(_t), reverse=reverse)
-        # ensure paper is first colour in table
-        try:
-            rgbtable.remove(paper)
-        except ValueError:
-            pass
-        return (paper, *rgbtable)
-    else:
-        paper = _identify_background(colours, background)
-        # 2 colour image - not-paper means ink
-        ink = (colourset - {paper}).pop()
-        return (paper, ink)
-
-
-GREYSETS = {
-    _levels: create_gradient(RGB(0, 0, 0), RGB(255, 255, 255), _levels)
-    for _levels in (4, 16, 256)
-}
-
-
-def _identify_background(colours, background):
-    """Identify background colour based on policy."""
-    if not isinstance(background, str):
-        # background provided
-        paper = background
-    elif background in ('most-common', 'least-common'):
-        colourfreq = Counter(colours)
-        if background == 'most-common':
-            # most common colour in image assumed to be background colour
-            paper, _ = colourfreq.most_common(1)[0]
-        else:
-            # least common colour in image assumed to be background colour
-            paper, _ = colourfreq.most_common()[-1]
-    elif background in ('darkest', 'brightest'):
-        brightness = sorted((sum(_c), _c) for _c in colours)
-        if background == 'darkest':
-            # darkest colour assumed to be background
-            _, paper = brightness[0]
-        else:
-            # brightest colour assumed to be background
-            _, paper = brightness[-1]
-    elif background == 'alpha':
-        # fully transparent assumed to be background
-        transparent = tuple(
-            (_r, _g, _b, _a) for _r, _g, _b, _a in colours if _a == 0
-        )
-        if transparent:
-            # if more than one, pick darkest
-            transparent = sorted((sum(_c), _c) for _c in transparent)
-            _, paper = transparent[0]
-        else:
-            # if no transparent colours, create one
-            paper = (0, 0, 0, 0)
-    elif background == 'top-left':
-        # top-left pixel of first char assumed to be background colour
-        paper = colours[0]
-    else:
-        raise ValueError(f'Background mode `{background}` not supported.')
-    return paper
 
 
 if Image:
@@ -158,13 +58,13 @@ if Image:
         table_size: (grid) number of glyphs in X, Y direction. 0 or negative means as much as fits on the axis. (default: 32x8).
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
         count: maximum number of glyphs to extract (within constraints of table_size). 0 or negative means extract all (default).
-        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
+        background: determine background colour as "most-common" (default) / "least-common", "brightest" / "darkest" (by alpha-adjusted RGB sum)
         first_codepoint: codepoint value assigned to first glyph (default: 0)
         direction: two-part string, default 'left-to-right top-to-bottom'
         keep_empty: keep empty glyphs (default: False)
         """
         with Image.open(infile) as img:
-            img = img.convert('RGB')
+            img = img.convert('RGBA')
             if grid:
                 crops = extract_crops_from_grid(
                     img, table_size, cell, scale, padding, margin, direction
@@ -259,11 +159,11 @@ if Image:
 
 
     def convert_crops_to_font(enumerated_crops, background, keep_empty):
-        """Convert list of RGB glyph images to font."""
+        """Convert list of RGBA glyph images to font."""
         enumerated_crops = tuple(enumerated_crops)
         # get pixels
         _, crops = tuple(zip(*enumerated_crops))
-        inklevels = identify_inklevels_for_images(crops, background)
+        inklevels = _identify_inklevels(crops, background)
         # convert to glyphs, set codepoints
         glyphs = tuple(
             Glyph.from_vector(
@@ -277,12 +177,47 @@ if Image:
         # drop empty glyphs
         if not keep_empty:
             glyphs = tuple(_g for _g in glyphs if _g.height and _g.width)
-        inklevels = RGBTable(inklevels)
-        font = Font(
-            glyphs,
-            rgb_table=inklevels if not inklevels.is_greyscale() else None,
-        )
+        font = Font(glyphs, palette=Palette(inklevels).if_not_default())
         return font
+
+
+    def _identify_inklevels(crops, background):
+        """
+        Identify ink levels from iterble of cropped glyph images
+
+        values for `background`:
+        most-common       use colour most commonly found in payload cells
+        least-common      use colour least commonly found in payload cells
+        brightest         use brightest colour, by sum of alpha-premultiplied RGB values
+        darkest           use darkest colour, by sum of alpha-premultiplied RGB values
+        RGB(A) value      use this specific colour as background
+        """
+        crop_data = (_crop.getdata() for _crop in crops)
+        counts = (Counter(_cd) for _cd in crop_data)
+        colourfreq = sum(counts, Counter())
+        colours = colourfreq.keys()
+        if not isinstance(background, str):
+            # background provided
+            paper = background
+        elif background in ('most-common', 'least-common'):
+            if background == 'most-common':
+                # most common colour in image assumed to be background colour
+                paper, _ = colourfreq.most_common(1)[0]
+            else:
+                # least common colour in image assumed to be background colour
+                paper, _ = colourfreq.most_common()[-1]
+        elif background in ('darkest', 'brightest'):
+            by_brightness = sorted((brightness(_c), _c) for _c in colours)
+            if background == 'darkest':
+                # darkest colour assumed to be background
+                _, paper = by_brightness[0]
+            else:
+                # brightest colour assumed to be background
+                _, paper = by_brightness[-1]
+        else:
+            raise ValueError(f'Background mode `{background}` not supported.')
+        return sort_inklevels(colours, paper)
+
 
     def _get_border_colour(img, cell, margin, padding):
         """Get border/padding colour."""
@@ -295,11 +230,6 @@ if Image:
         # can't determine border colour without padding or margin
         return None
 
-    def identify_inklevels_for_images(crops, background):
-        """Identify ink levels from cells."""
-        crops = (set(_crop.getdata()) for _crop in crops)
-        colours = set.union(*crops)
-        return identify_inklevels(colours, background)
 
     def _crop_border(image, border):
         """Remove border area from image."""
@@ -378,9 +308,9 @@ if Image:
             padding:Coord=Coord(1, 1),
             scale:Coord=Coord(1, 1),
             direction:str='left-to-right top-to-bottom',
-            border:RGB=None,
-            paper:RGB=None,
-            ink:RGB=None,
+            border:Colour=None,
+            paper:Colour=None,
+            ink:Colour=None,
             codepoint_range:tuple[Codepoint]=range(512),
             grid_positioning:bool=True,
             skip_empty_lines:bool=False,
@@ -389,19 +319,20 @@ if Image:
         Export font to grid-based image.
 
         image_format: image file format (default: 'png')
-        image_mode: image colour mode. 'mono', 'grey' or 'rgb' (default)
+        image_mode: image colour mode. 'mono', 'grey', 'rgb' (default) or 'rgba'
         glyphs_per_line: number of glyphs per line in glyph chart (default: 32)
         margin: number of pixels in X,Y direction around glyph grid (default: 0x0)
         padding: number of pixels in X,Y direction between glyphs (default: 1x1)
         scale: number of pixels in X,Y direction per glyph bit (default: 1x1)
         direction: two-part string, default 'left-to-right top-to-bottom'
-        paper: background colour R,G,B 0--255 (default: 0,0,0)
+        paper: background colour R,G,B or R,G,B,A 0--255 (default: 0,0,0)
         ink: full-intensity foreground colour R,G,B 0--255 (default: 255,255,255)
-        border: border colour R,G,B 0--255 (default 32,32,32)
+        border: border colour R,G,B or R,G,B,A 0--255 (default 32,32,32)
         codepoint_range: range of codepoints to include (includes bounds and undefined codepoints; default: 0-511)
         grid_positioning: place codepoints on corresponding grid positions, leaving gaps if undefined (default: true)
         skip_empty_lines: if -grid-positioning is used, skip lines that have no glyphs (default: false)
         """
+        image_mode = image_mode[:4].lower()
         if image_mode == 'mono':
             fonts = ensure_levels(fonts, 2)
         # NOTE 'imagechart' and 'image' are the same but with different defaults
@@ -416,15 +347,18 @@ if Image:
             grid_positioning=grid_positioning,
             skip_empty_lines=skip_empty_lines,
         )
-        paper, ink, border = default_colours(
-            fonts[0], paper, ink, border,
-            default_paper=RGB(0, 0, 0), default_ink=RGB(255, 255, 255),
-            default_border=RGB(32, 32, 32),
-        )
-        img, = glyph_map.to_images(
-            border=border, paper=paper, ink=ink,
-            transparent=False,
-            image_mode=image_mode,
+        if border is None:
+            if image_mode == 'rgba':
+                border = (32, 32, 32, 255)
+            else:
+                border = (32, 32, 32)
+        if paper is None:
+            if image_mode == 'rgba':
+                paper = (0, 0, 0, 0)
+            else:
+                paper = (0, 0, 0)
+        img = glyph_map.as_image(
+            border=border, paper=paper, ink=ink, image_mode=image_mode,
         )
         write_imagefile(outfile, img, image_format)
 
@@ -442,13 +376,13 @@ if Image:
         """
         Extract font from per-glyph images.
 
-        background: determine background from "most-common" (default), "least-common", "brightest", "darkest", "top-left" colour
+        background: determine background colour as "most-common" (default) / "least-common", "brightest" / "darkest" (by alpha-adjusted RGB sum)
         prefix: part of the image file name before the codepoint
         base: radix of numerals in file name representing code point
         """
         def _load_image_glyph(stream):
             crop = Image.open(stream)
-            crop = crop.convert('RGB')
+            crop = crop.convert('RGBA')
             cp = int(Path(stream.name).stem.removeprefix(prefix), base)
             # return codepoint, image pair to be parsed by convert_crops_to_font
             return (cp, crop)
@@ -462,9 +396,9 @@ if Image:
             fonts, location,
             prefix:str='',
             image_format:str='png',
-            image_mode:str='RGB',
-            paper:RGB=(0, 0, 0),
-            ink:RGB=(255, 255, 255),
+            image_mode:str='rgb',
+            paper:Colour=None,
+            ink:Colour=None,
         ):
         """
         Export font to per-glyph images.
@@ -476,11 +410,13 @@ if Image:
         ink: foreground colour R,G,B 0--255 (default: 255,255,255)
         """
         font = ensure_single(fonts)
+        image_mode = image_mode[:4].lower()
+        # we don't downsample to mono as it'll just be ugly
+        # we do allow other downsamplings
         if image_mode == 'mono':
             font = ensure_levels(font, 2)
-        inklevels = create_image_colours(
-            image_mode=image_mode, rgb_table=font.rgb_table,
-            levels=font.levels, paper=paper, ink=ink,
+        inklevels = font.palette.as_imagemode(
+            image_mode, paper=paper, ink=ink
         )
 
         def _save_image_glyph(glyph, imgfile):

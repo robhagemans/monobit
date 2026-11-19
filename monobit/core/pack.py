@@ -60,11 +60,14 @@ class Pack:
             )
         )
 
-    def list_by(self, property):
-        """List property of fonts in collection."""
-        return tuple(getattr(_font, property) for _font in self._fonts)
+    def list_by(self, properties):
+        """List given properties of fonts in collection."""
+        return tuple(
+            tuple(getattr(_font, _prop) for _prop in properties)
+            for _font in self._fonts
+        )
 
-    def itergroups(self, property):
-        """Iterate over subpacks with one value for a property."""
-        for value in sorted(set(self.list_by(property))):
-            yield value, self.select(**{property: value})
+    def itergroups(self, properties):
+        """Iterate over subpacks with one value for given properties."""
+        for valuetuple in sorted(set(self.list_by(properties))):
+            yield valuetuple, self.select(**dict(zip(properties, valuetuple)))

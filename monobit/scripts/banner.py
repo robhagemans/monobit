@@ -14,9 +14,10 @@ platformdirs = safe_import('platformdirs')
 
 import monobit
 from monobit.plumbing import wrap_main, unescape
-from monobit.base import Coord, RGB
+from monobit.base import Coord
 from monobit.renderer import render_text
 from monobit.core import Font
+from monobit.core.palette import BLACK, WHITE, to_colour
 
 
 if platformdirs:
@@ -48,7 +49,14 @@ def main():
     )
     parser.add_argument(
         '--font', '-f', type=str, default='',
-        help='font file to use when printng text'
+        help='font file to use when printing text'
+    )
+    parser.add_argument(
+        '--vector-scale', type=float, default=1,
+        help=(
+            'number of pixels per length unit for vector fonts '
+            '(default: 1)'
+        )
     )
     parser.add_argument(
         '--format', type=str, default='',
@@ -195,7 +203,9 @@ def main():
         #######################################################################
         if args.font:
             # take first font from pack
-            font, *_ = monobit.load(args.font, format=args.format)
+            font, *_ = monobit.load(
+                args.font, format=args.format, scale=args.vector_scale
+            )
         elif args.set_default:
             font = None
         elif DEFAULT_CACHE:
@@ -251,12 +261,13 @@ def main():
         #######################################################################
         # output
         # don't override foreground in colour font, but do override background
-        if font.rgb_table and not args.ink:
-            args.ink = font.rgb_table[-1]
+        if not font.palette.is_greyscale() and not args.ink:
+            args.ink = font.palette[-1]
         if args.image or args.output and not args.output.endswith('.txt'):
-            ink = RGB.create(args.ink or (0, 0, 0))
-            paper = RGB.create(args.paper or (255, 255, 255))
-            border = RGB.create(args.border) if args.border else paper
+            # light defaults
+            ink = to_colour(args.ink) if args.ink else BLACK
+            paper = to_colour(args.paper) if args.paper else WHITE
+            border = to_colour(args.border) if args.border else paper
             image = glyph_map.as_image(paper=paper, ink=ink, border=border)
             if args.output:
                 image.save(args.output)
@@ -267,14 +278,16 @@ def main():
                 resolution = tuple(int(_v) for _v in args.blocks.split('x'))
                 text = glyph_map.as_blocks(resolution)
             elif args.shades:
-                ink = RGB.create(args.ink or (255, 255, 255))
-                paper = RGB.create(args.paper or (0, 0, 0))
-                border = RGB.create(args.border) if args.border else paper
+                # dark defaults
+                ink = to_colour(args.ink) if args.ink else WHITE
+                paper = to_colour(args.paper) if args.paper else BLACK
+                border = to_colour(args.border) if args.border else paper
                 text = glyph_map.as_shades(paper=paper, ink=ink, border=border)
             elif args.sixel:
-                ink = RGB.create(args.ink or (255, 255, 255))
-                paper = RGB.create(args.paper or (0, 0, 0))
-                border = RGB.create(args.border) if args.border else paper
+                # dark defaults
+                ink = to_colour(args.ink) if args.ink else WHITE
+                paper = to_colour(args.paper) if args.paper else BLACK
+                border = to_colour(args.border) if args.border else paper
                 text = glyph_map.as_sixel(paper=paper, ink=ink, border=border)
             else:
                 ink = args.ink or '#'

@@ -77,7 +77,7 @@ class TestVector(BaseTester):
         """Test exporting Hershey font in Windows vector format."""
         monobit.save(
             self.hershey, self.temp_path / 'hershey.fon',
-            format='mzfon', vector=True
+            format='fon', vector=True
         )
         font, *_ = monobit.load(self.temp_path / 'hershey.fon')
         self.assertEqual(len(font.glyphs), 26)

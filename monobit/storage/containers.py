@@ -10,7 +10,7 @@ import itertools
 from io import BytesIO
 from pathlib import Path
 
-from .streams import Stream, KeepOpen
+from .streams import Stream
 
 
 class Container:
@@ -178,7 +178,7 @@ class FlatFilterContainer(Archive):
             raise FileExistsError(
                 f"Cannot create multiple files of the same name '{name}'"
             )
-        newfile = Stream(KeepOpen(BytesIO()), mode='w', name=name)
+        newfile = Stream(BytesIO(), mode='w', name=name, keep_open=True)
         self._files[filename] = {
             'outstream': newfile,
             **kwargs

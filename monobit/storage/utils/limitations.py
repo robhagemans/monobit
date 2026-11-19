@@ -72,7 +72,7 @@ def reencode(font, encoding, fallback=None):
     # create char labels where possible
     font = font.label()
     # remove all old codepoint labels
-    font = font.label(codepoint_from=None, overwrite=True)
+    font = font.label(codepoint_from=None, replace=True)
     # create new codepoint labels
     font = font.label(codepoint_from=encoding)
     font = font.label(codepoint_from=fallback)

@@ -80,19 +80,19 @@ class TestExport(BaseTester):
     # Windows
 
     def test_export_fon(self):
-        """Test exporting fon files."""
-        self._export_4x6(format='mzfon', count=256, label=b'A')
+        """Test exporting Windows FON files."""
+        self._export_4x6(format='fon', count=256, label=b'A')
 
     def test_export_fnt_v1(self):
-        """Test exporting v1 fnt files."""
+        """Test exporting Windows v1 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=1), count=256, label=b'A')
 
     def test_export_fnt_v2(self):
-        """Test exporting fnt files."""
+        """Test exporting Windows v2 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=2), count=256, label=b'A')
 
     def test_export_fnt_v3(self):
-        """Test exporting fnt files."""
+        """Test exporting Windows v3 FNT resource."""
         self._export_4x6(format='win', save_kwargs=dict(version=3), count=256, label=b'A')
 
     # Unifont
@@ -190,29 +190,62 @@ class TestExport(BaseTester):
 
     # BMFont
 
-    def test_export_bmf_text(self):
+    def test_export_bmfont_text(self):
         """Test exporting bmfont files with text descriptor."""
         self._export_4x6(format='bmfont')
 
-    def test_export_bmf_json(self):
+    def test_export_bmfont_json(self):
         """Test exporting bmfont files with json descriptor."""
         self._export_4x6(format='bmfont', save_kwargs=dict(descriptor='json'))
 
-    def test_export_bmf_xml(self):
+    def test_export_bmfont_xml(self):
         """Test exporting bmfont files with xml descriptor."""
         self._export_4x6(format='bmfont', save_kwargs=dict(descriptor='xml'))
 
-    def test_export_bmf_binary(self):
+    def test_export_bmfont_binary(self):
         """Test exporting bmfont files with binary descriptor."""
         self._export_4x6(format='bmfont', save_kwargs=dict(descriptor='binary'))
 
+    def test_export_bmfont_packed(self):
+        """Test exporting bmfont files with channel packing."""
+        self._export_4x6(format='bmfont', save_kwargs=dict(packed=True))
+
+    def test_export_bmfont_grid(self):
+        """Test exporting bmfont files with grid image."""
+        self._export_4x6(format='bmfont', save_kwargs=dict(grid=True))
+
+
     # Image
 
-    def test_export_png(self):
-        """Test exporting image files."""
+    def test_export_png_mono(self):
+        """Test exporting image files (monochrome)."""
+        self._export_4x6(
+            # no distinctive border in mono mode, so missing glyphs are spaces
+            format='image', count=256, label=b'A',
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='mono'),
+            load_kwargs=dict(grid=True, cell=(4, 6)),
+        )
+
+    def test_export_png_grey(self):
+        """Test exporting image files (greyscale)."""
         self._export_4x6(
             format='image', count=192, label=b'A',
-            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True),
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='grey'),
+            load_kwargs=dict(grid=True, cell=(4, 6)),
+        )
+
+    def test_export_png_rgb_(self):
+        """Test exporting image files (rgb)."""
+        self._export_4x6(
+            format='image', count=192, label=b'A',
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='rgb'),
+            load_kwargs=dict(grid=True, cell=(4, 6)),
+        )
+    def test_export_png_rgba(self):
+        """Test exporting image files (rgba)."""
+        self._export_4x6(
+            format='image', count=192, label=b'A',
+            save_kwargs=dict(codepoint_range=range(256), grid_positioning=True, image_mode='rgba'),
             load_kwargs=dict(grid=True, cell=(4, 6)),
         )
 
@@ -243,16 +276,12 @@ class TestExport(BaseTester):
         self._export_8x16_cp437(format='cpi', save_kwargs=dict(version='DRFONT'))
 
     def test_export_cp(self):
-        """Test exporting kbd CP files"""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='FONT'))
+        """Test exporting bare FONT codepage (kbd .cp) files"""
+        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='FONT'))
 
     def test_export_cp_nt(self):
         """Test exporting bare FONT.NT codepage."""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='FONT.NT'))
-
-    def test_export_cp_drfont(self):
-        """Test exporting bare DRFONT codepage."""
-        self._export_8x16_cp437(format='kbd', save_kwargs=dict(version='DRFONT'))
+        self._export_8x16_cp437(format='cp', save_kwargs=dict(version='FONT.NT'))
 
     # Figlet
 
@@ -518,6 +547,41 @@ class TestExport(BaseTester):
     def test_export_symbos(self):
         """Test exporting SymbOS files."""
         self._export_4x6(format='symbos', count=96)
+
+    # GRUB PFF2
+
+    def test_export_pff2(self):
+        """Test exporting PFF2 files."""
+        self._export_4x6(format='pff2')
+
+    # U8/M
+
+    def test_export_u8m(self):
+        """Test exporting U8/M files."""
+        self._export_4x6(format='u8m')
+
+    def test_export_u8m_high(self):
+        """Test exporting U8/M files including high-BMP and astral planes."""
+        chars = chr(0x20), chr(0xff), chr(0x1cc), chr(0xfc0d), chr(0x1fbc6)
+        font = monobit.Font(monobit.Glyph(char=_c, codepoint=_cp) for _cp, _c in enumerate(chars))
+        file = self.temp_path / f'test.u8m'
+        monobit.save(font, file, format='u8m')
+        font, *_ = monobit.load(file, format='u8m')
+        self.assertEqual(len(font.glyphs), 5)
+        for i, c in enumerate(chars):
+            self.assertEqual(font.glyphs[i].char, c)
+            self.assertEqual(font.glyphs[i].codepoint, bytes([i]))
+
+    # BMF
+
+    def test_export_bmf1(self):
+        """Test exporting ByteMap Font v1.1 files."""
+        self._export_4x6(format='bmf', label='A', save_kwargs=dict(version='1.1'), count=240)
+
+    def test_export_bmf2(self):
+        """Test exporting ByteMap Font v1.2 files."""
+        self._export_4x6(format='bmf', label='A', save_kwargs=dict(version='1.2'))
+
 
     # TasPrint
 

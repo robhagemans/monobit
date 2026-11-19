@@ -76,11 +76,11 @@ def parse_subcommands(operations, global_options):
                     expect_value = False
                 else:
                     # record the key as set even if still expecting a value
-                    ns.kwargs[key] = value or SET
+                    ns.kwargs[key] = external_str(value) or SET
                     expect_value = value == ''
             elif expect_value:
                 value = arg
-                ns.kwargs[key] = value
+                ns.kwargs[key] = external_str(value)
                 expect_value = False
             else:
                 # positional argument
@@ -142,10 +142,15 @@ def wrap_main(debug=False):
     # run main script
     try:
         yield
+        sys.stdout.flush()
     except BrokenPipeError:
+        # https://docs.python.org/3/library/signal.html#note-on-sigpipe
         # happens e.g. when piping to `head`
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(1)
         # https://stackoverflow.com/questions/16314321/suppressing-printout-of-exception-ignored-message-in-python-3
-        sys.stdout = os.fdopen(1)
+        # sys.stdout = os.fdopen(1)
     except Exception as exc:
         logging.error(exc)
         if debug:

@@ -16,7 +16,7 @@ from itertools import chain
 from monobit.base import FileFormatError
 from ..containers import Archive
 from ..base import containers
-from ..streams import KeepOpen, Stream
+from ..streams import Stream
 from ..magic import Magic
 
 
@@ -85,7 +85,7 @@ class ZipTarBase(Archive):
             ):
             raise FileExistsError(f"{name} already exists in this container and we can't overwrite.")
         # stop BytesIO from being closed until we want it to be
-        newfile = Stream(KeepOpen(io.BytesIO()), mode='w', name=name)
+        newfile = Stream(io.BytesIO(), mode='w', name=name, keep_open=True)
         self._files.append(newfile)
         return newfile
 
@@ -133,7 +133,7 @@ class ZipContainer(ZipTarBase):
             archivemode = cls.modemap[mode]
         except KeyError:
             raise ValueError(
-                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+                f"`mode` must be one of {set(cls.modemap)}; got '{mode}'."
             )
         try:
             return zipfile.ZipFile(
@@ -149,7 +149,7 @@ class ZipContainer(ZipTarBase):
             return self._archive.open(filename, 'r', pwd=password)
         except KeyError:
             # return None for open() on directories (like tarfile does)
-            if filename + '/' in self.list():
+            if not filename or filename == '.' or filename + '/' in self.list():
                 return None
             raise
 
@@ -215,7 +215,7 @@ class TarContainer(ZipTarBase):
             archivemode = cls.modemap[mode]
         except KeyError:
             raise ValueError(
-                f"`mode` must be one of {set(self.modemap)}; got '{mode}'."
+                f"`mode` must be one of {set(cls.modemap)}; got '{mode}'."
             )
         try:
             return tarfile.open(fileobj=stream, mode=archivemode)

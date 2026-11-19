@@ -19,7 +19,7 @@ from monobit.base import NOT_SET, FileFormatError
 from monobit.encoding import EncodingName
 from monobit.core import Pack
 
-from ..common import MAC_ENCODING, STYLE_MAP
+from ..common import MAC_ENCODING, STYLE_MAP, mac_style_from_properties
 from ..sfnt import load_sfnt, save_sfnt
 from .nfnt import (
     extract_nfnt, convert_nfnt,
@@ -440,8 +440,8 @@ def save_dfont(fonts, outstream, resource_type, resample_encoding, name_encoding
                         data=nfnt_data_to_bytes(nfnt_data),
                     ),
                 )
-                if resource_type == 'nfnt' and font.rgb_table:
-                    fctb_data = convert_to_fctb(font.rgb_table)
+                if resource_type == 'nfnt' and not font.palette.is_default():
+                    fctb_data = convert_to_fctb(font.palette)
                     resources.append(
                         Props(
                             type='fctb',
@@ -609,17 +609,12 @@ def _hash_to_id(family_name, script):
     return hash
 
 
-def mac_style_from_name(style_name):
-    """Get font style from human-readable representation."""
-    return sum((2<<_bit for _bit, _k in STYLE_MAP.items() if _k in style_name))
-
-
 def _group_families(fonts):
     """Group pack of fonts by families and subfamilies."""
     families = tuple(sorted(
         # assuming encoding stays the same across family
-        (_get_family_id(_name, _group[0].encoding), _group)
-        for _name, _group in fonts.itergroups('family')
+        (_get_family_id(_name[0], _group[0].encoding), _group)
+        for _name, _group in fonts.itergroups(('family',))
     ))
     fond_families = []
     for id, group in families:
@@ -636,8 +631,8 @@ def _group_families(fonts):
             )
             return _group_individually(fonts)
         style_groups = tuple(sorted(
-            (mac_style_from_name(_subfamily), _fonts)
-            for _subfamily, _fonts in group.itergroups('subfamily')
+            (mac_style_from_properties(_fonts[0]), _fonts)
+            for _, _fonts in group.itergroups(('weight', 'slant', 'setwidth', 'decoration'))
         ))
         for _, group in style_groups:
             sizes = tuple(_f.point_size for _f in group)
@@ -656,7 +651,7 @@ def _group_individually(fonts):
         (
             # we're assuming names differ
             _get_family_id(_font.name, _font.encoding),
-            ((mac_style_from_name(_font.subfamily), [_font]),)
+            ((mac_style_from_properties(_font), [_font]),)
         )
         for _font in fonts
     ))

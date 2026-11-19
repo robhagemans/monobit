@@ -414,47 +414,89 @@ class TestImport(BaseTester):
 
     # BMFont
 
-    def test_import_bmf_text(self):
+    def test_import_bmfont_text(self):
         """Test importing bmfont files with text descriptor."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-text.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_xml(self):
+    def test_import_bmfont_xml(self):
         """Test importing bmfont files with XML descriptor."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-xml.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_json(self):
+    def test_import_bmfont_json(self):
         """Test importing bmfont files with JSON descriptor."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-json.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_binary(self):
+    def test_import_bmfont_binary(self):
         """Test importing bmfont files with binary descriptor."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-binary.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_8bit(self):
+    def test_import_bmfont_8bit(self):
         """Test importing bmfont files with 8-bit image."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-8bit.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_packed(self):
+    def test_import_bmfont_packed(self):
         """Test importing bmfont files with packed 32-bit image."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-32bit-packed.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
 
-    def test_import_bmf_nonpacked(self):
+    def test_import_bmfont_nonpacked(self):
         """Test importing bmfont files with non-packed 32-bit image."""
         font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-32bit-nonpacked.fnt', format='bmfont')
         self.assertEqual(len(font.glyphs), 189)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
+
+    def test_import_bmfont_glyph_outline_combined(self):
+        """Test importing bmfont files with glyph&outline both in one channel."""
+        font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-glyph-and-outline.fnt', format='bmfont')
+        self.assertEqual(len(font.glyphs), 228)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
+
+    def test_import_bmfont_glyph_outline_separate(self):
+        """Test importing bmfont files with glyph&outline in different channels."""
+        font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-glyph-and-outline-32bit.fnt', format='bmfont')
+        self.assertEqual(len(font.glyphs), 228)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed6x13_A)
+
+    outline_A = """\
+...1@1...
+..1@@@1..
+.1@@@@@1.
+1@@@@@@@1
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+@@@@@@@@@
+1@@@1@@@1
+.1@1.1@1.
+"""
+
+
+    def test_import_bmfont_glyph_outline_combined_outline(self):
+        """Test importing bmfont files with glyph&outline both in one channel."""
+        font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-glyph-and-outline.fnt', format='bmfont', outline=True)
+        self.assertEqual(len(font.glyphs), 228)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.outline_A)
+
+    def test_import_bmfont_glyph_outline_separate(self):
+        """Test importing bmfont files with glyph&outline in different channels."""
+        font, *_ = monobit.load(self.font_path / '6x13.bmf' / '6x13-glyph-and-outline-32bit.fnt', format='bmfont', outline=True)
+        self.assertEqual(len(font.glyphs), 228)
+        assert_text_eq(font.get_glyph('A').reduce().as_text(), self.outline_A)
+
 
     # Image
 
@@ -504,7 +546,7 @@ class TestImport(BaseTester):
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed8x16_A)
 
     def test_import_cp(self):
-        """Test importing kbd CP files"""
+        """Test importing DOS codepage files"""
         fnt_file = self.font_path / '8x16.cp'
         font, *_ = monobit.load(fnt_file)
         self.assertEqual(len(font.glyphs), 256)
@@ -1240,6 +1282,38 @@ class TestImport(BaseTester):
         self.assertEqual(len(hires.glyphs), 2)
         assert_text_eq(hires.glyphs[0].as_text(), self.big_key)
 
+
+    plucker = 'https://sourceforge.net/projects/palmfontconv/files/pre-built%20URW%20fonts/1.1/Plucker-URW-sony-os4.zip/'
+
+    def test_import_palm_prc_grayfont(self):
+        """Test importing PRC with afnx resource."""
+        file = ensure_asset(self.plucker, 'download')
+        fonts = monobit.load(file / 'Plucker-URWPalladio-sony-os4.zip/URWPalladio15-sony-os4.prc', format='palm-prc')
+        self.assertEqual(len(fonts), 6)
+        assert_text_eq(fonts[0].get_glyph('A').as_text(), """\
+............
+............
+............
+............
+.....95.....
+.....ec.....
+....76@3....
+....a.ca....
+...54.4@2...
+...a...d8...
+..4@@@@@@...
+..b2...2@7..
+.2a.....ae..
+3ca3...39@91
+............
+............
+............
+............
+............
+............
+"""
+)
+
     # OS/2
 
     def test_import_os2_lx_exepack2(self):
@@ -1518,14 +1592,14 @@ class TestImport(BaseTester):
         font, *_ = monobit.load(file, format='beos')
         self.assertEqual(len(font.glyphs), 14963)
         assert_text_eq(font.get_glyph('A').reduce().as_text(),  """\
-.171.
-17171
-71.17
-7...7
-7...7
-77777
-7...7
-7...7
+.1@1.
+1@1@1
+@1.1@
+@...@
+@...@
+@@@@@
+@...@
+@...@
 """)
 
     # Zap
@@ -1684,6 +1758,114 @@ class TestImport(BaseTester):
         font, *_ = monobit.load(self.font_path / '4x6.drhalo')
         self.assertEqual(len(font.glyphs), 96)
         assert_text_eq(font.get_glyph('A').reduce().as_text(), self.fixed4x6_A)
+
+    # GRUB2 PFF2
+
+    def test_import_pff2(self):
+        """Test importing PFF2 files."""
+        font, *_ = monobit.load(self.font_path / 'Minecraft24.pf2')
+        self.assertEqual(len(font.glyphs), 156)
+        assert_text_eq(font.get_glyph('A').as_text(), """\
+..@@@@@@@@..
+..@@@@@@@@..
+@@........@@
+@@........@@
+@@........@@
+@@@@@@@@@@@@
+@@@@@@@@@@@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+@@........@@
+""")
+
+    # U8/M
+
+    u8m = 'https://github.com/kreativekorp/u8m/raw/refs/heads/master/x16/'
+
+    def test_import_u8m(self):
+        """Test importing U8/M files."""
+        file = ensure_asset(self.u8m, 'PETME.U8M')
+        font, *_ = monobit.load(file, format='u8m' )
+        self.assertEqual(len(font.glyphs), 3211)
+        assert_text_eq(font.get_glyph('A').as_text(), """\
+..@@..
+.@..@.
+@....@
+@@@@@@
+@....@
+@....@
+@....@
+""")
+
+    def test_riscos_broken_metrics(self):
+        """Test RiscOS with out of bounds index in IntMetrics."""
+        # contributed by @nielsbosma, https://github.com/robhagemans/monobit/issues/60
+        import struct
+
+        def strike():
+            char_len = 12 * 12 // 2            # 4bpp, 12x12
+            record, table_abs = 17, 17 + 20
+            off_a = record + 532 - table_abs
+            off_b = off_a + 4 + char_len
+            entry = struct.pack("<BBBBIII", 10, 4, 90, 45, 0, record, record + 532 + 2 * (4 + char_len))
+            data = struct.pack("<IIII", 160 * 90, 160 * 45, 90, 45) + struct.pack("<4b", 0, 0, 12, 12)
+            offsets = bytearray(512)
+            struct.pack_into("<H", offsets, 65 * 2, off_a)
+            struct.pack_into("<H", offsets, 66 * 2, off_b)
+            chars = bytearray()
+            for cp in (65, 66):
+                chars += struct.pack("<4b", 0, 0, 12, 12)
+                chars += bytes(char_len)
+            return entry + b"\x00" + data + bytes(offsets) + bytes(chars)
+
+        def int_metrics(n, mapping, x_offsets):
+            out = bytearray(40)                       # name, CR-padded
+            out += struct.pack("<II", 16, 16)
+            out += bytes([n, 0, 0, 0])
+            out += bytes(mapping.get(cp, 0) for cp in range(256))
+            for array in range(6):                    # x0 y0 x1 y1 xoffs yoffs, int16 LE
+                out += struct.pack("<%dh" % n, *(x_offsets if array == 4 else [0] * n))
+            return bytes(out)
+
+        with open(self.temp_path / "x90y45", "wb") as f:
+            f.write(strike())
+        with open(self.temp_path / "IntMetrics", "wb") as f:
+            f.write(int_metrics(2, {65: 1, 66: 2}, [0, 160]))
+        font, *_ = monobit.load(self.temp_path / "x90y45")
+        assert len(font.glyphs) == 2
+
+    def test_import_standalone_drfont_cp(self):
+        """Test importing hypothetical standalone DRFONT .cp files."""
+        # contributed by @nielsbosma, https://github.com/robhagemans/monobit/issues/61
+        import struct
+        d = struct.pack("<H", 28) + struct.pack("<I", 0) + struct.pack("<H", 1) + b"VGA     "
+        d += struct.pack("<H", 437) + b"\0" * 6 + struct.pack("<I", 0)   # entry header
+        d += struct.pack("<HHH", 2, 1, 6)                                # info header: DRFONT, 1 font
+        d += bytes([8, 8, 0, 0]) + struct.pack("<H", 256)                # font header 8x8
+        for i in range(256):
+            d += struct.pack("<H", i % 4)                                # index table
+        d += bytes([0x3C, 0x42, 0x81, 0x81, 0xFF, 0x81, 0x81, 0x00] * 4) # four slots
+        name = self.temp_path / "v2-standalone.cp"
+        with open(name, "wb") as f:
+            f.write(d)
+        font, *_ = monobit.load(name)
+        assert_text_eq(font.get_glyph('A').as_text(), """\
+..@@@@..
+.@....@.
+@......@
+@......@
+@@@@@@@@
+@......@
+@......@
+........
+""")
 
 
 if __name__ == '__main__':

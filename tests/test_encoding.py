@@ -192,7 +192,7 @@ class TestEncoding(BaseTester):
             self.font_path / '4x6.raw',
             format='raw', cell='4x6', count=0x61
         )
-        font = font.label(codepoint_from='0,0x20-', overwrite=True)
+        font = font.label(codepoint_from='0,0x20-', replace=True)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_indexer_tbl(self):
@@ -201,24 +201,24 @@ class TestEncoding(BaseTester):
             self.font_path / '4x6.raw',
             format='raw', cell='4x6', count=0x61
         )
-        font = font.label(codepoint_from=str(self.font_path / '4x6-0x7f.tbl'), overwrite=True)
+        font = font.label(codepoint_from=str(self.font_path / '4x6-0x7f.tbl'), replace=True)
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_charmap_labeller(self):
         """Test labelling codepoints from chars with a builtin charmap."""
-        font = self.fixed4x6.label(codepoint_from=None, overwrite=True)
+        font = self.fixed4x6.label(codepoint_from=None, replace=True)
         assert not any(_g.codepoint for _g in font.glyphs)
         font = font.label(codepoint_from='cp437')
         assert_text_eq(font.get_glyph(b'A').reduce().as_text(), self.fixed4x6_A)
 
     def test_unicode_tag_labeller(self):
         """Test labelling tags from chars with unicode tagmap."""
-        font = self.fixed4x6.label(tag_from='name', overwrite=True)
+        font = self.fixed4x6.label(tag_from='name', replace=True)
         assert_text_eq(font.get_glyph('"LATIN CAPITAL LETTER A"').reduce().as_text(), self.fixed4x6_A)
 
     def test_tagmap_labeller(self):
         """Test labelling chars from tags with a builtin tagmap."""
-        font = self.fixed4x6.label(char_from=None, overwrite=True)
+        font = self.fixed4x6.label(char_from=None, replace=True)
         font = font.label(char_from='adobe')
         assert_text_eq(font.get_glyph('"A"').reduce().as_text(), self.fixed4x6_A)
 

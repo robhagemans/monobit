@@ -12,16 +12,17 @@ from pathlib import PurePath
 from unicodedata import normalize
 
 from monobit.plumbing.scripting import scriptable
-from monobit.base import Coord, Bounds, NOT_SET, RGBTable
+from monobit.base import Coord, Bounds, NOT_SET
 from monobit.base import to_int, Any
 from monobit.encoding import encoder, EncodingName, Encoder, Indexer, Charmap
-from monobit.base.binary import ceildiv
+from monobit.base.binary import ceildiv, SUPPORTED_BITS_PER_PIXEL
 from monobit.base import extend_string
 from monobit.base import HasProps, writable_property, checked_property
 
 from .labels import Tag, Char, Codepoint, Label, to_label
 from .glyph import Glyph, KernTable
-from .raster import turn_method
+from .raster import Raster, turn_method, get_depth_for_levels
+from .palette import Palette
 
 
 ###############################################################################
@@ -110,8 +111,10 @@ class FontProperties:
 
     # number of colours or greyscale levels
     levels: int
+    # bit depth needed to store levels
+    bits_per_pixel: int
     # level to colour mapping table
-    rgb_table: RGBTable = None
+    palette: Palette = None
 
     # descriptive typographic quantities
 
@@ -241,8 +244,12 @@ class Font(HasProps):
             weight = ''
         else:
             weight = self.weight.title()
+        if self.decoration == self.get_default('decoration'):
+            decoration = ''
+        else:
+            decoration = self.decoration.title()
         return ' '.join(
-            _x for _x in (setwidth, weight, slant) if _x
+            _x for _x in (setwidth, weight, slant, decoration) if _x
         )
 
     @writable_property
@@ -360,6 +367,16 @@ class Font(HasProps):
         """
         return self.line_height - self.pixel_size
 
+
+    ##########################################################################
+    # colour
+
+    @writable_property
+    def palette(self):
+        """Colour palette."""
+        return Palette.default(self.levels)
+
+
     ##########################################################################
     # summarising quantities
 
@@ -448,6 +465,12 @@ class Font(HasProps):
     def levels(self):
         """Number of ink levels."""
         return max((_g.levels for _g in self.glyphs), default=2)
+
+
+    @checked_property
+    def bits_per_pixel(self):
+        """Bit depth."""
+        return get_depth_for_levels(self.levels)
 
     @checked_property
     def cell_size(self):
@@ -1010,6 +1033,43 @@ class Font(HasProps):
 
 
     ##########################################################################
+    # kerning
+
+    def get_kerning(self, first='left'):
+        """Combine all glyph kerning tables."""
+
+        def _first_label(glyph):
+            if glyph is not None:
+                try:
+                    return glyph.get_labels()[0]
+                except IndexError:
+                    pass
+            return None
+        # we need to get labels indirectly to normalise all to first labels
+        right_kerning = {
+            (_first_label(_g), _first_label(self.get_glyph(_label, missing=None))): _value
+            for _ord, _g in enumerate(self.glyphs)
+            for _label, _value in _g.right_kerning.items()
+        }
+        left_kerning = {
+            (_first_label(self.get_glyph(_label, missing=None)), _first_label(_g)): _value
+            for _ord, _g in enumerate(self.glyphs)
+            for _label, _value in _g.left_kerning.items()
+        }
+        kerning_table = {
+            _pair: left_kerning.get(_pair, 0) + right_kerning.get(_pair, 0)
+            for _pair in set(left_kerning.keys()) | set(right_kerning.keys())
+            if None not in _pair
+        }
+        if first.lower().startswith('r'):
+            kerning_table = {
+                (_r, _l): _v
+                for (_l, _r), _v in kerning_table.items()
+            }
+        return kerning_table
+
+
+    ##########################################################################
     # font operations
 
 
@@ -1018,7 +1078,7 @@ class Font(HasProps):
             self, *,
             codepoint_from:encoder=NOT_SET, char_from:encoder=NOT_SET,
             tag_from:encoder=NOT_SET, comment_from:encoder=NOT_SET,
-            overwrite:bool=False,
+            replace:bool=False,
             match_whitespace:bool=True, match_graphical:bool=True
         ):
         """
@@ -1028,7 +1088,7 @@ class Font(HasProps):
         char_from: encoder registered name or filename to use to set characters from codepoint labels. Default: use font encoding.
         tag_from: tagger registered name or filename to use to set tag labels
         comment_from: tagger registered name or filename to use to set comments
-        overwrite: overwrite existing codepoints and/or characters
+        replace: replace existing codepoints and/or characters
         match_whitespace: do not give blank glyphs a non-whitespace char label (default: True)
         match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
@@ -1048,7 +1108,7 @@ class Font(HasProps):
                 logging.warning(f'Encoding `{self.encoding}` not recognised.')
                 return self
         encoding = self.encoding
-        if overwrite or not self.encoding:
+        if replace or not self.encoding:
             # don't set encoding if we use a Tagger
             if isinstance(char_from, Encoder):
                 encoding = char_from.name
@@ -1060,7 +1120,7 @@ class Font(HasProps):
                 encoding = codepoint_from.name
         glyphs = tuple(
             _glyph.label(
-                overwrite=overwrite,
+                replace=replace,
                 match_whitespace=match_whitespace,
                 match_graphical=match_graphical,
                 char_from=char_from,
@@ -1187,7 +1247,7 @@ class Font(HasProps):
             glyphs, references = font._relink_glyphs(glyphs)
             font = font.modify(glyphs, **references)
             if encoding:
-                font = font.label(codepoint_from=encoding, overwrite=True)
+                font = font.label(codepoint_from=encoding, replace=True)
         return font
 
 
@@ -1472,13 +1532,13 @@ class Font(HasProps):
     @scriptable
     def interlace(
             self, factor:Coord=Coord(1, 1),
-            *, shift_mask_column:int=None, adjust_metrics:bool=True
+            *, shift_mask_column:str=None, adjust_metrics:bool=True
         ):
         """
         Stretch by inserting empty rows and/or columns.
 
         factor: resulting stretch factor (horizontal, vertical) (default: 1,1)
-        shift_mask_column: number of the column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: no shift)
+        shift_mask_column: column holding a mask for half-dot shifts ('left' or 'right'; default: no half-dot shift)
         adjust_metrics: also stretch metrics (default: True)
         """
         factor_x, factor_y = factor
@@ -1598,10 +1658,9 @@ class Font(HasProps):
         """
         if thickness is None:
             thickness = self.outline_thickness
-        return self.for_all(
-            Glyph.outline,
-            thickness = thickness
-        )
+        return self.for_all(Glyph.outline, thickness=thickness)
+
+    # palette and levels
 
     @scriptable
     def invert(self):
@@ -1609,3 +1668,54 @@ class Font(HasProps):
         Reverse-video by raster.
         """
         return self.for_all(Glyph.invert)
+
+    def reduce_levels(self):
+        """Reduce to minimum required levels."""
+        matrices = tuple(_g.as_matrix() for _g in self.glyphs)
+        used_levels = sorted(set.union(*(
+            set(_row) for _m in matrices for _row in _m
+        )))
+        if len(used_levels) == self.levels:
+            return self
+        rgbtable = self.palette.as_rgb()
+        new_palette = Palette(rgbtable[_i] for _i in used_levels)
+        return self.modify(
+            glyphs=(
+                _g.modify(Raster.from_matrix(_m, inklevels=used_levels))
+                for _g, _m in zip(self.glyphs, matrices)
+            ),
+            palette=new_palette.if_not_default(),
+        )
+
+    def with_palette(self, new_palette, *, approximate=False):
+        """Map to nearest in new palette."""
+        new_palette = Palette(new_palette)
+        mapped_levels = self.palette.map_to(new_palette, approximate=approximate)
+        return self.modify(
+            glyphs=(
+                _g.modify(Raster.from_matrix(
+                    _g.as_matrix(inklevels=mapped_levels),
+                    inklevels=range(len(new_palette)),
+                ))
+                for _g in self.glyphs
+            ),
+            palette=new_palette.if_not_default(),
+        )
+
+    def with_default_palette(self, levels=None, *, approximate=False):
+        """Map to smallest default greyscale palette that fits."""
+        if levels is not None:
+            return self.with_palette(
+                Palette.default(levels), approximate=approximate
+            )
+        err = None
+        for bpp in SUPPORTED_BITS_PER_PIXEL:
+            try:
+                return self.with_palette(Palette.default(1<<bpp))
+            except ValueError as e:
+                err = e
+        if approximate:
+            return self.with_palette(Palette.default(256), approximate=True)
+        elif err:
+            raise err
+        return self

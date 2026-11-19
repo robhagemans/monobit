@@ -72,7 +72,7 @@ def _load_stream(instream, *, format='', **kwargs):
     for loader in iter_funcs_from_registry(loaders, instream, format):
         tried_formats.append(loader.format)
         instream.seek(0)
-        logging.info("Loading '%s' as format `%s`", instream.name, loader.format)
+        logging.info("Loading '%s' as font format `%s`", instream.name, loader.format)
         try:
             fonts = loader(instream, **kwargs)
         except FileFormatError as e:
@@ -81,15 +81,15 @@ def _load_stream(instream, *, format='', **kwargs):
             if fonts:
                 break
             logging.debug(
-                "No fonts found in '%s' as format `%s`.",
+                "'%s' could be read as format `%s`, but no fonts were found in it",
                 instream.name, loader.format
             )
     else:
         message = f"Unable to read fonts from '{instream.name}': "
         if not tried_formats:
-            message += f'format specifier `{format}` not recognised.'
+            message += f'`{format}` is not a known font format'
         else:
-            message += 'tried formats: ' + ', '.join(tried_formats)
+            message += 'the following formats were tried: ' + ', '.join(tried_formats)
         raise FileFormatError(message)
     # convert font or pack to pack
     pack = _annotate_fonts_with_source(
@@ -146,23 +146,27 @@ def _load_container(location, *, format='', **kwargs):
     for loader in iter_funcs_from_registry(
             container_loaders, instream=None, format=format
         ):
-        logging.info("Loading '%s' as container format `%s`", location.path, loader.format)
+        # formats defining a single font through multiple files, e.g. imageset
+        logging.info(
+            "Loading location '%s' as multifile font format `%s`",
+            location.path, loader.format
+        )
         try:
             fonts = loader(location, **kwargs)
         except FileFormatError as e:
             logging.debug(e)
             continue
-        spec_msg = f"as format {loader.format}"
+        spec_msg = f"as multifile font format {loader.format}"
         pack = _annotate_fonts_with_source(
             fonts, location.path, location, loader.format, kwargs
         )
         break
     else:
         pack = load_all(location, format=format, **kwargs)
-        spec_msg = 'all'
+        spec_msg = 'as container of font files'
     if not pack:
         raise FileFormatError(
-            f"No fonts found in '{location.path}' while loading {spec_msg}."
+            f"'{location.path}' could be read {spec_msg}, but no fonts were found"
         )
     return pack
 
@@ -170,7 +174,7 @@ def _load_container(location, *, format='', **kwargs):
 def load_all(root_location, *, format='', **kwargs):
     """Open container and load all fonts found in it into one pack."""
     load_plugins()
-    logging.info('Reading all from `%s`.', root_location)
+    logging.info('Loading all files from location `%s`.', root_location)
     packs = Pack()
     for location in root_location.walk():
         with location:
@@ -184,7 +188,9 @@ def load_all(root_location, *, format='', **kwargs):
             else:
                 packs += Pack(pack)
     if not packs:
-        raise FileFormatError('Unable to read fonts from container.')
+        raise FileFormatError(
+            f'Could not load any fonts from location {root_location}'
+        )
     return packs
 
 
@@ -296,7 +302,7 @@ def _output_to_container(pack, location, *, format, registry, **kwargs):
 def _output_all(pack, location, *, format, registry, template='', **kwargs):
     """Save fonts to a container."""
     format = format or registry.default_text_format
-    logging.info('Outputting all to %s.', location)
+    logging.info("Outputting all fonts to location '%s'", location)
     for font in pack:
         if format and not template:
             # generate name from format
@@ -318,4 +324,4 @@ def _output_all(pack, location, *, format, registry, template='', **kwargs):
                     **kwargs
                 )
         except (FileFormatError, UnsupportedError) as e:
-            logging.error('Could not output %s: %s', filename, e)
+            logging.error("Could not output fonts to location '%s': %s", filename, e)

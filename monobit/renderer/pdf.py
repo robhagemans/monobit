@@ -10,12 +10,12 @@ import logging
 from monobit.base import safe_import
 reportlab = safe_import('reportlab')
 
-from monobit.base import Coord, RGB
+from monobit.base import Coord
 from monobit.base.binary import ceildiv
 from monobit.core import Font, Codepoint
+from monobit.core.palette import RGB, Colour
 from monobit.storage.utils.limitations import ensure_single
 from .createchart import create_chart, aligns_right, charters
-from .glyphmap import create_image_colours
 
 
 if reportlab:
@@ -30,9 +30,9 @@ if reportlab:
             lines_per_page:int=16,
             padding:Coord=Coord(3, 3),
             direction:str=None,
-            pixel_border:RGB=RGB(127, 127, 127),
-            ink:RGB=RGB(0, 0, 0),
-            paper:RGB=RGB(255, 255, 255),
+            pixel_border:Colour=RGB(127, 127, 127),
+            ink:Colour=RGB(0, 0, 0),
+            paper:Colour=RGB(255, 255, 255),
             codepoint_range:tuple[Codepoint]=None,
             grid_positioning:bool=False,
             skip_empty_lines:bool=True,
@@ -131,10 +131,7 @@ if reportlab:
         canvas.translate(-margin_x, -margin_y)
 
         # get colour table or gradient
-        inklevels = create_image_colours(
-            image_mode='RGB', rgb_table=font.rgb_table,
-            levels=font.levels, paper=paper, ink=ink,
-        )
+        inklevels = font.palette.as_rgb(ink=ink, paper=paper)
 
         # draw pages
         for sheet in range(max_sheet+1):

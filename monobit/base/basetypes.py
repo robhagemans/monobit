@@ -12,6 +12,7 @@ from numbers import Real
 
 
 # sentinel object
+# used by scriptable functions to indicate that a parameter was not specified
 NOT_SET = ...
 
 
@@ -29,9 +30,15 @@ class blockstr(str):
         return f'"""\\\n{self}"""'
 
 
+def grouper(value, grouplength):
+    """Split into groups of given length. Recipe from itertools docs."""
+    return zip(*([iter(value)] * grouplength))
+
+
 def passthrough(var):
     """Passthrough type."""
     return var
+
 
 def to_int(int_str):
     """Convert from int-like or string in any representation."""
@@ -66,10 +73,7 @@ def to_number(value=0):
 
 
 class _VectorMixin:
-    """Vector operations on tuple."""
-
-    def __str__(self):
-        return ' '.join(f'{_e}' for _e in self)
+    """Vector operations on namedtuple."""
 
     def __add__(self, other):
         return type(self)(*(_l + _r for _l, _r in zip(self, other)))
@@ -81,58 +85,32 @@ class _VectorMixin:
         return any(self)
 
 
+class _CoordMixin:
+    """Coordinate creation/string representation."""
 
-class Bounds(_VectorMixin, namedtuple('Bounds', 'left bottom right top')):
-    """4-coordinate tuple."""
+    _default_separator = ' '
 
     @classmethod
     def create(cls, coord=0):
-        coord = to_tuple(coord, length=4)
+        coord = to_tuple(coord, length=len(cls._fields))
         return cls(*coord)
-
-
-class Coord(_VectorMixin, namedtuple('Coord', 'x y')):
-    """Coordinate tuple."""
 
     def __str__(self):
-        return 'x'.join(str(_x) for _x in self)
-
-    @classmethod
-    def create(cls, coord=0):
-        coord = to_tuple(coord, length=2)
-        return cls(*coord)
+        return self._default_separator.join(f'{_e}' for _e in self)
 
 
-class RGB(_VectorMixin, namedtuple('RGB', 'r g b')):
-    """Coordinate tuple."""
-
-    @classmethod
-    def create(cls, coord=0):
-        coord = to_tuple(coord, length=3)
-        return cls(*coord)
-
-    def __bool__(self):
-        return True
+class Bounds(
+        _VectorMixin, _CoordMixin,
+        namedtuple('Bounds', 'left bottom right top')
+    ):
+    _default_separator = ' '
 
 
-class RGBTable(list):
-
-    def __init__(self, table=()):
-        """Set up RGB table."""
-        if isinstance(table, str):
-            table = table.splitlines()
-        super().__init__(RGB.create(_v) for _v in table)
-
-    def __str__(self):
-        """Convert RGB table to multiline string."""
-        return '\n'.join(str(_v) for _v in iter(self))
-
-    def is_greyscale(self):
-        """RGB/RGBA colourset is a grey scale."""
-        # ignore transparency attribute if it exists
-        return all(_c.r == _c.g == _c.b for _c in iter(self))
-
-
+class Coord(
+        _VectorMixin, _CoordMixin,
+        namedtuple('Coord', 'x y')
+    ):
+    _default_separator = 'x'
 
 
 def _str_to_tuple(value):
@@ -167,5 +145,4 @@ CONVERTERS = {
     Any: passthrough,
     Coord: Coord.create,
     Bounds: Bounds.create,
-    RGB: RGB.create,
 }

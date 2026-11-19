@@ -12,7 +12,6 @@ from monobit.encoding.unicode import is_graphical, is_blank
 from monobit.base import Props, extend_string
 from monobit.base import HasProps, checked_property, writable_property
 from monobit.base import Coord, Bounds, to_number, NOT_SET
-from monobit.plumbing.scripting import scriptable
 
 from .raster import Raster, turn_method, shear_shift
 from .vector import StrokePath
@@ -90,6 +89,8 @@ class GlyphProperties:
 
     # path segments for stroke fonts
     path: StrokePath = StrokePath()
+    # scaling factor, number of pixels used per vector length unit
+    path_width: int
 
     # overridable
     scalable_width: float
@@ -101,6 +102,7 @@ class GlyphProperties:
     width: int
     height: int
     levels: int
+    bits_per_pixel: int
     ink_bounds: Bounds
     bounding_box: Coord
     padding: Bounds
@@ -148,6 +150,10 @@ class Glyph(HasProps):
     @checked_property
     def levels(self):
         return self._pixels.levels
+
+    @checked_property
+    def bits_per_pixel(self):
+        return self._pixels.bits_per_pixel
 
     @checked_property
     def ink_bounds(self):
@@ -314,7 +320,7 @@ class Glyph(HasProps):
     def label(
             self, codepoint_from=NOT_SET, char_from=NOT_SET,
             tag_from=NOT_SET, comment_from=NOT_SET,
-            overwrite=False, match_whitespace=True, match_graphical=True,
+            replace=False, match_whitespace=True, match_graphical=True,
         ):
         """
            Set labels or comment using provided encoder or tagger object.
@@ -323,7 +329,7 @@ class Glyph(HasProps):
            codepoint_from: Encoder object used to set codepoint labels
            tag_from: Encoder object used to set tag labels
            comment_from: Encoder object used to set comment
-           overwrite: overwrite codepoint or char if already given
+           replace: replace codepoint or char if already given
            match_whitespace: do not give blank glyphs a non-whitespace char label (default: True)
            match_graphical: do not give non-blank glyphs a non-graphical label (default: True)
         """
@@ -339,16 +345,16 @@ class Glyph(HasProps):
         # use codepage to find codepoint if not set
         if codepoint_from is not NOT_SET:
             if not codepoint_from:
-                if overwrite:
+                if replace:
                     return self.modify(codepoint=None)
-            elif overwrite or not self.codepoint:
+            elif replace or not self.codepoint:
                 return self.modify(codepoint=codepoint_from.codepoint(*labels))
         # use codepage to find char if not set
         if char_from is not NOT_SET:
             if not char_from:
-                if overwrite:
+                if replace:
                     return self.modify(char=None)
-            elif overwrite or not self.char:
+            elif replace or not self.char:
                 char = char_from.char(*labels)
                 if match_whitespace and self.is_blank() and char and not is_blank(char):
                     return self
@@ -357,9 +363,9 @@ class Glyph(HasProps):
                 return self.modify(char=char)
         if tag_from is not NOT_SET:
             if not tag_from:
-                if overwrite:
+                if replace:
                     return self.modify(tag=None)
-            elif overwrite or not self.tags:
+            elif replace or not self.tags:
                 return self.modify(tag=tag_from.tag(*labels))
         if comment_from is not NOT_SET:
             if not comment_from:
@@ -482,15 +488,16 @@ class Glyph(HasProps):
     def from_bytes(
             cls, byteseq, width, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
-            byte_swap=0, bit_order='big', bits_per_pixel=1,
+            bits_per_pixel=NOT_SET, levels=NOT_SET,
+            byte_swap=0, bit_order='big',
             **kwargs
         ):
         """Create glyph from bytes/bytearray/int sequence."""
         pixels = Raster.from_bytes(
             byteseq, width, height,
             align=align, stride=stride, order=order,
+            bits_per_pixel=bits_per_pixel, levels=levels,
             byte_swap=byte_swap, bit_order=bit_order,
-            bits_per_pixel=bits_per_pixel,
         )
         return cls(pixels, **kwargs)
 
@@ -517,18 +524,25 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_path(cls, path, *, advance_width=None, scale=1, **kwargs):
+    def from_path(cls, path, *, path_width=None, scale=1, **kwargs):
         """Draw the StrokePath and create a Glyph."""
         strokepath = StrokePath(path)
         raster = strokepath.draw(scale=scale)
-        if advance_width is None:
-            advance_width = strokepath.bounds.right*scale
+        if path_width is None:
+            path_width = strokepath.bounds.right
+        else:
+            path_width = float(path_width)
         return cls(
-            raster, path=strokepath,
-            right_bearing=advance_width-strokepath.bounds.right*scale,
-            left_bearing=strokepath.bounds.left*scale,
-            shift_up=strokepath.bounds.bottom*scale,
-            **kwargs
+            raster, path=strokepath, path_width=path_width,
+            **(kwargs | dict(
+                scalable_width=path_width*scale,
+                right_bearing=(
+                    round(path_width*scale)
+                    - round(strokepath.bounds.right*scale)
+                ),
+                left_bearing=round(strokepath.bounds.left*scale),
+                shift_up=round(strokepath.bounds.bottom*scale),
+            ))
         )
 
     ##########################################################################
@@ -566,8 +580,7 @@ class Glyph(HasProps):
         return self._pixels.as_byterows(align=align, bit_order=bit_order)
 
     def as_bytes(
-            self, *, align='left', stride=NOT_SET, byte_swap=0,
-            bit_order='big', bits_per_pixel=1,
+            self, *, align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
         ):
         """
         Convert raster to flat bytes.
@@ -576,11 +589,10 @@ class Glyph(HasProps):
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
         """
         return self._pixels.as_bytes(
-            align=align, stride=stride, byte_swap=byte_swap,
-            bit_order=bit_order, bits_per_pixel=bits_per_pixel,
+            align=align, stride=stride,
+            byte_swap=byte_swap, bit_order=bit_order,
         )
 
     def as_hex(self, **kwargs):
@@ -663,7 +675,7 @@ class Glyph(HasProps):
         return self.modify(pixels)
 
 
-    turn = scriptable(turn_method)
+    turn = turn_method
 
     # raster resizing
 
@@ -794,14 +806,14 @@ class Glyph(HasProps):
         return self.modify(pixels, **new_metrics)
 
     def interlace(
-            self, factor:Coord=Coord(1, 1), *, shift_mask_column:int=None,
+            self, factor:Coord=Coord(1, 1), *, shift_mask_column:str=None,
             adjust_metrics:bool=True, create_vertical_metrics:bool=False,
         ):
         """
         Stretch glyph by inserting empty rows and/or columns.
 
         factor: resulting stretch factor (horizontal, vertical) (default: 1,1)
-        shift_mask_column: number of the column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: no shift)
+        shift_mask_column: column holding a mask for half-dot shifts ('left' or 'right'; default: no half-dot shift)
         adjust_metrics: also stretch metrics (default: True)
         create_vertical_metrics: create vertical metrics if they don't exist (default: False)
         """

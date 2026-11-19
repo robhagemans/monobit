@@ -7,25 +7,40 @@ licence: https://opensource.org/licenses/MIT
 
 import logging
 import string
-from itertools import zip_longest
+from itertools import zip_longest, product
 from collections import deque
-from functools import cache
+from functools import cache, cached_property
 
 from monobit.base.binary import (
     ceildiv, reverse_by_group, bytes_to_pixels,
+    SUPPORTED_BITS_PER_PIXEL
 )
 from monobit.base import Bounds, Coord, NOT_SET, blockstr
 
 
-_INKLEVELS16 = '0123456789abcdef'
-_INKLEVELS256 = ''.join(chr(_i) for _i in range(256))
+_DEFAULT_INKLEVELS = {
+    _bpp: (
+        bytes_to_pixels(bytes(range(1<<_bpp)), bits_per_pixel=_bpp)
+        [8//_bpp-1::8//_bpp]
+    )
+    for _bpp in SUPPORTED_BITS_PER_PIXEL
+}
 
 @cache
 def get_inklevels(n_levels):
-    if n_levels <= 16:
-        return _INKLEVELS16[:n_levels]
-    if n_levels <= 256:
-        return _INKLEVELS256[:n_levels]
+    """Get the standard inklevels consistent with bytes_to_pixels."""
+    for bpp in sorted(_DEFAULT_INKLEVELS):
+        if n_levels <= 1<<bpp:
+            return _DEFAULT_INKLEVELS[bpp][:n_levels]
+    raise ValueError('More than 256 ink levels not supported.')
+
+
+def get_depth_for_levels(levels):
+    """Bit depth used to store a given number of levels."""
+    bit_depth = (levels - 1).bit_length()
+    for bpp in sorted(SUPPORTED_BITS_PER_PIXEL):
+        if bit_depth <= bpp:
+            return bpp
     raise ValueError('More than 256 ink levels not supported.')
 
 
@@ -87,8 +102,10 @@ class Raster:
         self._pixels = pixels
         self._width = width
         self._inklevels = inklevels
-        if set(inklevels) < set(''.join(pixels)):
-            raise ValueError(f"{set(inklevels)} >= {set(''.join(pixels))} fails")
+        if pixels:
+            unmapped = set(''.join(pixels)) - set(inklevels)
+            if unmapped:
+                raise ValueError(f'Unmapped ink levels: {unmapped}')
         self._paper = self._inklevels[0]
         self._levels = len(self._inklevels)
         # check pixel matrix types
@@ -119,6 +136,11 @@ class Raster:
     def levels(self):
         """Number of shades of ink."""
         return self._levels
+
+    @cached_property
+    def bits_per_pixel(self):
+        """Bit depth."""
+        return get_depth_for_levels(self._levels)
 
     # NOTE - these following are shadowed in GlyphProperties
 
@@ -242,8 +264,7 @@ class Raster:
     def from_bytes(
             cls, byteseq, width=NOT_SET, height=NOT_SET,
             *, align='left', order='row-major', stride=NOT_SET,
-            byte_swap=0, bit_order='big', bits_per_pixel=1,
-            **kwargs
+            byte_swap=0, bit_order='big', bits_per_pixel=NOT_SET, levels=NOT_SET,
         ):
         """
         Create raster from bytes/bytearray/int sequence.
@@ -255,14 +276,20 @@ class Raster:
         order: 'row-major' (default) or 'column-major' order of the byte array (no effect if align == 'bit')
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be 1, 2, 4 or 8 (default: 1)
+        bits_per_pixel: bit depth; must be 1, 2, 4 or 8 (default: 1 unless levels is set)
+        levels: number of ink levels (default: 2**bits_per_pixel)
         """
         if all(_arg is NOT_SET for _arg in (width, height, stride)):
             raise ValueError(
                 'At least one of width, height or stride must be specified'
             )
+        if levels is NOT_SET:
+            if bits_per_pixel is NOT_SET:
+                bits_per_pixel = 1
+            levels = 1 << bits_per_pixel
+        elif bits_per_pixel is NOT_SET:
+            bits_per_pixel = get_depth_for_levels(levels)
         pixels_per_byte = 8 // bits_per_pixel
-        levels = 2**bits_per_pixel
         if width == 0 or height == 0:
             if height is NOT_SET:
                 height = 0
@@ -294,11 +321,16 @@ class Raster:
                 for _offs in range(height)
             )
         # convert bytes to pixels
-        bitseq = bytes_to_pixels(byteseq, levels)
-        inklevels = get_inklevels(levels)
+        bitseq = bytes_to_pixels(byteseq, bits_per_pixel)
+        all_inklevels = get_inklevels(1<<bits_per_pixel)
+        inklevels = all_inklevels[:levels]
         # per-byte bit swap.
         if bit_order == 'little':
             bitseq = reverse_by_group(bitseq, group_size=pixels_per_byte)
+        missing = set(bitseq) - set(inklevels)
+        if missing:
+            min_levels = 1 + max(all_inklevels.find(_c) for _c in missing)
+            raise ValueError(f'Insufficient `levels` value {levels}, at least {min_levels} needed.')
         return cls.from_vector(
             bitseq, width=width, height=height, stride=stride, align=align,
             inklevels=inklevels,
@@ -318,9 +350,7 @@ class Raster:
             ''.join(_row)
             for _row in self.as_matrix(inklevels=inklevels)
         )
-        bits_per_pixel = (self._levels - 1).bit_length()
-        base = 2 ** bits_per_pixel
-        pixels_per_byte = 8 // bits_per_pixel
+        pixels_per_byte = 8 // self.bits_per_pixel
         bytewidth = ceildiv(self.width, pixels_per_byte)
         stride = pixels_per_byte * bytewidth
         if align.startswith('l'):
@@ -329,18 +359,18 @@ class Raster:
             rows = (_row.rjust(stride, inklevels[0]) for _row in rows)
         if bit_order == 'little':
             rows = (reverse_by_group(_row) for _row in rows)
-        if base == 256:
+        if self.bits_per_pixel > 4:
             byterows = tuple(_row.encode('latin-1') for _row in rows)
         else:
             byterows = tuple(
-                int(_row, base).to_bytes(bytewidth, 'big') for _row in rows
+                int(_row, 1 << self.bits_per_pixel).to_bytes(bytewidth, 'big')
+                for _row in rows
             )
         return byterows
 
     def as_bytes(
             self, *,
             align='left', stride=NOT_SET, byte_swap=0, bit_order='big',
-            bits_per_pixel=1,
         ):
         """
         Convert raster to flat bytes.
@@ -349,7 +379,6 @@ class Raster:
         align: 'left' or 'right' for byte-alignment; 'bit' for bit-alignment
         byte_swap: swap byte order in units of n bytes, 0 (default) for no swap
         bit_order: per-byte bit endianness; 'little' for lsb left, 'big' (default) for msb left
-        bits_per_pixel: bit depth; must be higher than or equal to intrinsic bit depth (default: 1).
         """
         if not self.height or not self.width:
             return b''
@@ -360,33 +389,30 @@ class Raster:
             else:
                 # left or bit-aligned
                 raster = raster.expand(right=stride-self.width)
-        intr_bpp = (self._levels - 1).bit_length()
-        if bits_per_pixel is None:
-            bits_per_pixel = intr_bpp
-        elif bits_per_pixel < intr_bpp:
-            raise ValueError(f'Requires at least {intr_bpp} bits per pixel.')
-        if bits_per_pixel > intr_bpp:
-            # must be a multiple - choice of 1, 2, 4, 8
-            factor = bits_per_pixel // intr_bpp
-            # widen each pixel to the expected number of bits
-            # e.g 1->2bpp 0 -> 00 1 -> 11
-            #     4->8bpp 5 -> 55 A -> AA
-            raster = raster.stretch(factor=(factor, 1))
-        if align == 'bit':
-            inklevels = get_inklevels(self._levels)
-            bits = ''.join(
+        # alignment is meaningless for 8bpp
+        if align == 'bit' and raster.bits_per_pixel <= 4:
+            # NOTE we depend on inklevels being base-n digits
+            inklevels = get_inklevels(raster._levels)
+            pixels = ''.join(
                 ''.join(_row)
                 for _row in raster.as_matrix(inklevels=inklevels)
             )
-            base = 2 ** bits_per_pixel
-            pixels_per_byte = 8 // bits_per_pixel
-            bytesize = ceildiv(len(bits), pixels_per_byte)
-            # left align the bits to byte boundary
-            bits = bits.ljust(bytesize * pixels_per_byte, inklevels[0])
-            # per-byte bit swap.
+            pixels_per_byte = 8 // raster.bits_per_pixel
+            bytesize = ceildiv(len(pixels), pixels_per_byte)
+            # left align the pixels to byte boundary
+            pixels = pixels.ljust(bytesize * pixels_per_byte, inklevels[0])
+            # per-byte pixel swap.
+            # NOTE bit_order is really pixel-order for >1 bpp
+            # LE bit order   01 23 45 67 -> BE bit order 76 54 32 10
+            #.               00 10 01 11                 11 10 01 00
+            # but each pixel's value remains the same:
+            #                0  1  2  3 (LE)              3  2  1  0 (BE)
             if bit_order == 'little':
-                bits = reverse_by_group(bits)
-            byterows = (int(bits, base).to_bytes(bytesize, 'big'),)
+                pixels = reverse_by_group(
+                    pixels, group_size=pixels_per_byte, fill=inklevels[0]
+                )
+            base = 1 << raster.bits_per_pixel
+            byterows = (int(pixels, base).to_bytes(bytesize, 'big'),)
         else:
             byterows = raster.as_byterows(align=align, bit_order=bit_order)
         byteseq = b''.join(byterows)
@@ -408,8 +434,7 @@ class Raster:
             return 0
         if stride is NOT_SET:
             stride = self.width
-        bits_per_pixel = (self._levels - 1).bit_length()
-        pixels_per_byte = 8 // bits_per_pixel
+        pixels_per_byte = 8 // self.bits_per_pixel
         if align == 'bit':
             return ceildiv(stride * self.height, pixels_per_byte)
         return ceildiv(stride, pixels_per_byte) * self.height
@@ -715,16 +740,17 @@ class Raster:
         )
         return type(self)(pixels, inklevels=self._inklevels)
 
-    def interlace(self, factor:Coord=Coord(1, 1), *, shift_mask_column:int=None):
+    def interlace(self, factor:Coord=Coord(1, 1), *, shift_mask_column:str=None):
         """
         Insert empty rows and/or columns.
 
         factor: resulting stretch factor (horizontal, vertical)
-        shift_mask_column: column holding a mask for half-dot shifts (leftmost=0; rightmost=-1; default: None)
+        shift_mask_column: column holding a mask for half-dot shifts ('left' or 'right'; default: no half-dot shift)
         """
         factor_x, factor_y = factor
         if factor_x < 1 or factor_y < 1:
             raise ValueError('`factor` values must be greater than zero')
+
         # vertical interlace
         pixels = self._pixels
         if factor_y != 1:
@@ -735,7 +761,7 @@ class Raster:
                 for _rep in range(factor_y)
             )
             # remove "interlace" at the end
-            pixels = pixels[:-(factor-y-1)]
+            pixels = pixels[:-(factor_y-1)]
         if factor_x != 1:
             # horizontal interlace
             pixels = tuple(
@@ -748,16 +774,22 @@ class Raster:
             )
             pixels = tuple(_row[:-(factor_x-1)] for _row in pixels)
             if shift_mask_column is not None:
+                shift_mask_column = shift_mask_column[0].lower()
+                if shift_mask_column not in ('r', 'l'):
+                    raise ValueError(
+                        "`shift_mask_column` must be one of 'left', 'right'; "
+                        f"not '{shift_mask_column}'."
+                    )
                 def _exclude_mask(row):
-                    # TODO: use 'left' or 'right' here
-                    if shift_mask_column == -1:
+                    if shift_mask_column == 'r':
                         # remove the interlace of the mask column too
                         return row[:-factor_x]
                     else:
                         return row[factor_x:]
                 # half-pixel shift logic for hp-264x, Apple II HRCG
+                mask_col = -1 if shift_mask_column == 'r' else 0
                 pixels = tuple(
-                    self._paper + _exclude_mask(_row) if _row[shift_mask_column] != self._paper
+                    self._paper + _exclude_mask(_row) if _row[mask_col] != self._paper
                     else _exclude_mask(_row) + self._paper
                     for _row in pixels
                 )

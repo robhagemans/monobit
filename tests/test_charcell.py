@@ -63,7 +63,7 @@ class TestCharCell(BaseTester):
         font = self.fixed8x8r
         if codepage:
             font = font.modify(encoding=codepage)
-            font = font.label(codepoint_from=codepage, overwrite=True)
+            font = font.label(codepoint_from=codepage, replace=True)
         monobit.save(font, file, format=format, **save_kwargs)
         font, *_ = monobit.load(file, format=format, **load_kwargs)
         self.assertEqual(len(font.glyphs), count)
@@ -111,8 +111,8 @@ class TestCharCell(BaseTester):
         self._test_export_charcell_reduced('cpi', count=256, codepage='cp437')
 
     def test_export_cp_r(self):
-        """Test exporting kbd CP files"""
-        self._test_export_charcell_reduced('kbd', count=256, codepage='cp437')
+        """Test exporting DOS codepage files"""
+        self._test_export_charcell_reduced('cp', count=256, codepage='cp437')
 
     def test_export_fontx_r(self):
         """Test exporting fontx files."""

@@ -1,0 +1,307 @@
+"""
+monobit.core.palette - RGB or greyscale palette
+
+(c) 2024--2026 Rob Hagemans
+licence: https://opensource.org/licenses/MIT
+"""
+
+import logging
+from operator import itemgetter
+from collections import namedtuple
+
+from monobit.base.basetypes import CONVERTERS, _VectorMixin, grouper
+
+
+class Colour(_VectorMixin):
+    """Base class for RGB or RGBA tuples; mixin alongside namedtuple."""
+
+    def __bool__(self):
+        return True
+
+    def __str__(self):
+        # pylint: disable=not-an-iterable
+        # iter() to be inherited from namedtuple
+        return ''.join(f'{_elem:02X}' for _elem in self)
+
+
+class RGB(Colour, namedtuple('RGB', 'r g b')):
+    """Red-green-blue tuple."""
+
+
+class RGBA(Colour, namedtuple('RGBA', 'r g b a')):
+    """Red-green-blue-alpha tuple."""
+
+
+def to_colour(value):
+    """Convert scalar, tuple or string to RGB or RGBA value."""
+    if isinstance(value, tuple):
+        valuetuple = tuple
+    elif isinstance(value, str):
+        groups = tuple(''.join(_g) for _g in grouper(value, 2))
+        valuetuple = tuple(int(_g, 16) for _g in groups)
+    else:
+        valuetuple = value,
+    if len(valuetuple) == 4:
+        return RGBA(*valuetuple)
+    elif len(valuetuple) == 3:
+        return RGB(*valuetuple)
+    elif len(valuetuple) == 1:
+        return RGB(*(valuetuple*3))
+    raise ValueError(f'Unknown colour specification {value}')
+
+
+CONVERTERS[Colour] = to_colour
+
+
+BLACK = RGB(0, 0, 0)
+WHITE = RGB(255, 255, 255)
+
+
+def light_defaults(paper=None, ink=None):
+    if paper is None:
+        paper = WHITE
+    if ink is None:
+        ink = BLACK
+    return paper, ink
+
+
+def dark_defaults(paper=None, ink=None):
+    if paper is None:
+        paper = BLACK
+    if ink is None:
+        ink = WHITE
+    return paper, ink
+
+
+def sort_inklevels(colours, paper):
+    """Get brightness-sorted list of ink levels, with explicitly known paper colour."""
+    colours = list(set(colours))
+    try:
+        colours.remove(paper)
+    except ValueError:
+        pass
+    # if paper is darker than average colour, sort dark to bright
+    # else sort bright to dark
+    reverse = brightness(paper) > sum(brightness(_c) for _c in colours) / len(colours)
+    # use alpha to break ties between equal brightness
+    inklevels = sorted(colours, key=lambda _t: (brightness(_t), _t[-1]), reverse=reverse)
+    return (paper,) + tuple(inklevels)
+
+
+def brightness(colour):
+    """Intensity of RGB or RGBA colour."""
+    try:
+        if len(colour) == 4:
+            r, g, b, a = colour
+            return (r + g + b) * a // (3*255)
+    except TypeError:
+        pass
+    return sum(colour) // len(colour)
+
+
+class Palette:
+
+    def __init__(self, table=()):
+        """Set up palette."""
+        if isinstance(table, type(self)):
+            self._rgb = table._rgb
+            self._alpha = table._alpha
+            self._levels = table._levels
+            return
+        if isinstance(table, str):
+            if not table:
+                table = ()
+            else:
+                lines = (_l.strip() for _l in table.splitlines())
+                groupslines = (
+                    tuple(''.join(_g) for _g in zip(*([iter(_l)] * 2)))
+                    for _l in lines
+                )
+                table = tuple(
+                    tuple(int(_g, 16) for _g in _l)
+                    for _l in groupslines
+                )
+        table = tuple(table)
+        self._levels = len(table)
+        if not table:
+            self._alpha = ()
+            self._rgb = None
+        elif isinstance(table[0], int):
+            self._alpha = table
+            self._rgb = None
+        elif len(table[0]) == 1:
+            self._alpha = tuple(int(_entry[0]) for _entry in table)
+            self._rgb = None
+        elif len(table[0]) == 3:
+            self._alpha = None
+            self._rgb = tuple(RGB(*_v) for _v in table)
+        elif len(table[0]) == 4:
+            self._rgb = tuple(RGB(*_v[:3]) for _v in table)
+            self._alpha = tuple(_v[3] for _v in table)
+            if len(set(
+                    _rgb for _rgb, _a in zip(self._rgb, self._alpha) if _a)
+                ) <= 1:
+                # all the same colour except if alpha zero -> intensity palette
+                self._rgb = None
+            elif (
+                    len(set(self._alpha)) <= 1
+                    or (
+                        set(self._alpha) == {0, 255}
+                        and all(
+                            sum(_rgb) == 0
+                            for _rgb, _a in zip(self._rgb, self._alpha)
+                            if _a == 0
+                        )
+                    )
+                ):
+                # all alpha the same, or alpha only zero if black background -> RGB palette
+                self._alpha = None
+        else:
+            raise ValueError('Palette must be intensity, rgb or rgba')
+        # convert RGB greyscale palette to intensity palette
+        if self._alpha is None and all(_c.r == _c.g == _c.b for _c in self._rgb):
+            self._alpha = tuple(_c[0] for _c in table)
+            self._rgb = None
+
+    def __len__(self):
+        """Number of levels."""
+        return self._levels
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, type(self))
+            and self._levels == other._levels
+            and self._alpha == other._alpha
+            and self._rgb == other._rgb
+        )
+
+    def __hash__(self):
+        return hash((self._levels, self._rgb, self._alpha))
+
+    def __repr__(self):
+        if self._alpha is None:
+            table = self._rgb
+        elif self._rgb is None:
+            table = self._alpha
+        else:
+            table = self.as_rgba()
+        return f'{type(self).__name__}({list(table)})'
+
+    def __str__(self):
+        """Convert palette to multiline string."""
+        if self._rgb is None:
+            return '\n'.join(f'{_a:02X}' for _a in self._alpha)
+        if self._alpha is None:
+            table = self._rgb
+        else:
+            table = self.as_rgba()
+        return '\n'.join(''.join(f'{_v:02X}' for _v in _c) for _c in table)
+
+    def is_greyscale(self):
+        """This palette is a grey scale."""
+        return self._rgb is None
+
+    def has_alpha(self):
+        """This palette has an alpha channel."""
+        return self._alpha is not None
+
+    def is_default(self):
+        """This palette is the default palette for this number of levels."""
+        return self == self.default(self._levels)
+
+    def if_not_default(self):
+        """None if default palette. For use with Font property."""
+        if self.is_default():
+            return None
+        return self
+
+    @classmethod
+    def default(cls, levels):
+        """Create equal-stepped intensity gradient."""
+        maxlevel = levels - 1
+        return cls(_value * 255 // maxlevel for _value in range(levels))
+
+    def as_intensity(self):
+        """Return iterable of intensity values for this palette."""
+        if self._rgb is None:
+            return self._alpha
+        rgb_int = (brightness(_tup) for _tup in self._rgb)
+        if self._alpha is None:
+            return tuple(rgb_int)
+        return tuple(brightness((*_a, _i)) for _a, _i in zip(self._alpha, rgb_int))
+
+    def as_rgb(self, paper=None, ink=None):
+        """Return RGB palette with substituted ink and blended paper values."""
+        paper, ink = dark_defaults(paper, ink)
+        rgba = self.as_rgba(ink)
+        # blend with paper. paper is fully opaque at given RGB
+        return tuple(
+            RGB(
+                (paper.r * (255-_a) + _r * _a) // 255,
+                (paper.g * (255-_a) + _g * _a) // 255,
+                (paper.b * (255-_a) + _b * _a) // 255,
+            )
+            for _r, _g, _b, _a in rgba
+        )
+
+    def as_rgba(self, ink=None):
+        """Return RGBA palette with substituted RGB ink value."""
+        if self._rgb is None:
+            ink = ink or WHITE
+            return tuple(RGBA(*ink, _int) for _int in self._alpha)
+        elif self._alpha is None:
+            # set alpha to fully opaque, except background
+            return (RGBA(*self._rgb[0], 0,),) + tuple(
+                RGBA(*_c, 255) for _c in self._rgb[1:]
+            )
+        else:
+            rgb = [*self._rgb]
+            if ink is not None:
+                rgb[-1] = ink
+            return tuple(RGBA(*_v, _a) for _v, _a in zip(rgb, self._alpha))
+
+    def as_mono(self, threshold=0.5):
+        """Map to monochrome."""
+        intensities = self.as_intensity()
+        thresh = int(max(intensities) * threshold)
+        return tuple(int(_int >= thresh) for _int in intensities)
+
+    def as_imagemode(self, image_mode, *, paper=None, ink=None, threshold=0.5):
+        """Get palette for given image mode."""
+        image_mode = image_mode[:4].lower()
+        supported_modes = ('grey', 'gray', 'mono', 'rgb', 'rgba')
+        if image_mode == 'mono':
+            return self.as_mono(threshold=threshold)
+        elif image_mode in ('grey', 'gray'):
+            return self.as_intensity()
+        elif image_mode == 'rgb':
+            return self.as_rgb(paper=paper, ink=ink)
+        elif image_mode == 'rgba':
+            return self.as_rgba(ink=ink)
+        else:
+            raise ValueError(
+                f"`image_mode`=='{image_mode}' not supported: "
+                f'must be one of {supported_modes}.'
+            )
+
+    def map_to(self, other, approximate=False):
+        """Return closest index in other palette for each entry."""
+        other = type(self)(other)
+        distances = tuple(
+            tuple(
+                sum(abs(_sv - _ov) for _sv, _ov in zip(_s, _o))
+                for _o in other.as_rgb()
+            )
+            for _s in self.as_rgb()
+        )
+        if any(min(_d) for (_d) in distances):
+            msg = 'Could not map palettes exactly.'
+            if not approximate:
+                raise ValueError(msg)
+            else:
+                logging.warning(msg)
+        mapped_index = tuple(
+            min(enumerate(_dist), key=itemgetter(1))[0]
+            for _dist in distances
+        )
+        return mapped_index

@@ -139,13 +139,38 @@ class TestFeatures(BaseTester):
             'hppcl', save_kwargs=dict(orientation='landscape')
         )
 
-    def test_image_proportional(self):
+    def test_image_proportional_grey(self):
         self._render_proportional(
-            'image', load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
+            'image',
+            save_kwargs=dict(image_mode='grey'),
+            load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
         )
 
-    def test_imageset_proportional(self):
-        self._render_proportional('imageset')
+    def test_image_proportional_rgb(self):
+        self._render_proportional(
+            'image',
+            save_kwargs=dict(image_mode='rgb'),
+            load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
+        )
+
+    def test_image_proportional_rgba(self):
+        self._render_proportional(
+            'image',
+            save_kwargs=dict(image_mode='rgba'),
+            load_kwargs=dict(table_size=(32, 7), first_codepoint=0x20)
+        )
+
+    def test_imageset_proportional_rgb(self):
+        self._render_proportional('imageset', save_kwargs=dict(image_mode='rgb'))
+
+    def test_imageset_proportional_rgba(self):
+        self._render_proportional('imageset', save_kwargs=dict(image_mode='rgba'))
+
+    def test_imageset_proportional_grey(self):
+        self._render_proportional('imageset', save_kwargs=dict(image_mode='grey'))
+
+    def test_imageset_proportional_mono(self):
+        self._render_proportional('imageset', save_kwargs=dict(image_mode='mono'))
 
     def test_iigs_proportional(self):
         self._render_proportional('iigs')
@@ -157,7 +182,7 @@ class TestFeatures(BaseTester):
         self._render_proportional('mkwinfont')
 
     def test_win_proportional(self):
-        self._render_proportional('mzfon')
+        self._render_proportional('fon')
 
     def test_winv1_proportional(self):
         # windows v1 .fnt stores proportional fonts differently from v2 and 3
@@ -185,7 +210,17 @@ class TestFeatures(BaseTester):
         self._render_proportional('sfnt', char=True)
 
     def test_beos_proportional(self):
-        self._render_proportional('beos', inklevels='.123456789ABCDE@')
+        self._render_proportional('beos', inklevels='.123456@')
+
+    def test_pff2_proportional(self):
+        self._render_proportional('pff2', char=True)
+
+    def test_bmf_proportional(self):
+        self._render_proportional('bmf', char=True)
+
+    def test_u8m_proportional(self):
+        self._render_proportional('u8m', char=True)
+
 
     # kerning
 
@@ -221,8 +256,11 @@ class TestFeatures(BaseTester):
     def test_render_yaff_kerning(self):
         self._render_kerning('yaff')
 
-    def test_render_bmf_kerning(self):
+    def test_render_bmfont_kerning(self):
         self._render_kerning('bmfont')
+
+    def test_render_bmf_kerning(self):
+        self._render_kerning('bmf')
 
     def test_render_otb_kerning(self):
         self._render_kerning('sfnt', char=True)
@@ -260,16 +298,16 @@ class TestFeatures(BaseTester):
         rendered_text = monobit.render_text(font, text).as_text(inklevels='.@', border='.')
         assert_text_eq(rendered_text, self.testtext)
 
-    def test_render_bmf_kerning_bearings_binary(self):
+    def test_render_bmfont_kerning_bearings_binary(self):
         self._render_kerning_bearings('bmfont', descriptor='binary')
 
-    def test_render_bmf_kerning_bearings_text(self):
+    def test_render_bmfont_kerning_bearings_text(self):
         self._render_kerning_bearings('bmfont', descriptor='text')
 
-    def test_render_bmf_kerning_bearings_xml(self):
+    def test_render_bmfont_kerning_bearings_xml(self):
         self._render_kerning_bearings('bmfont', descriptor='xml')
 
-    def test_render_bmf_kerning_bearings_json(self):
+    def test_render_bmfont_kerning_bearings_json(self):
         self._render_kerning_bearings('bmfont', descriptor='json')
 
     def test_render_otb_kerning_bearings(self):
@@ -288,8 +326,10 @@ class TestFeatures(BaseTester):
 
     def _render_bearings(self, format, char=False, inklevels='.@', **save_kwargs):
         font, *_ = monobit.load(self.font_path / 'positioning.yaff')
-        monobit.save(font, self.temp_path / f'positioning.{format}', format=format, **save_kwargs)
-        font, *_ = monobit.load(self.temp_path / f'positioning.{format}', format=format)
+        path = self.temp_path / f'positioning.{format}'
+        # path =  f'positioning.{format}'
+        monobit.save(font, path, format=format, **save_kwargs)
+        font, *_ = monobit.load(path, format=format)
         if char:
             text = monobit.render_text(font, '012').as_text(inklevels=inklevels, border=inklevels[0])
         else:
@@ -318,6 +358,9 @@ class TestFeatures(BaseTester):
 
     def test_bmfont_negbearings(self):
         self._render_bearings('bmfont')
+
+    def test_bmf_negbearings(self):
+        self._render_bearings('bmf')
 
     def test_fzx_negbearings(self):
         self._render_bearings('fzx')
@@ -356,7 +399,13 @@ class TestFeatures(BaseTester):
         self._render_bearings('vfont')
 
     def test_beos_negbearings(self):
-        self._render_bearings('beos', inklevels='.123456789ABCDE@')
+        self._render_bearings('beos', inklevels='.123456@')
+
+    def test_pff2_negbearings(self):
+        self._render_bearings('pff2', char=True)
+
+    def test_u8m_negbearings(self):
+        self._render_bearings('u8m', char=True)
 
 
     # vertical negative bearings
