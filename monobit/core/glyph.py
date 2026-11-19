@@ -12,7 +12,6 @@ from monobit.encoding.unicode import is_graphical, is_blank
 from monobit.base import Props, extend_string
 from monobit.base import HasProps, checked_property, writable_property
 from monobit.base import Coord, Bounds, to_number, NOT_SET
-from monobit.plumbing.scripting import scriptable
 
 from .raster import Raster, turn_method, shear_shift
 from .vector import StrokePath
@@ -667,7 +666,7 @@ class Glyph(HasProps):
         return self.modify(pixels)
 
 
-    turn = scriptable(turn_method)
+    turn = turn_method
 
     # raster resizing
 

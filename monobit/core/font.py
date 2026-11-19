@@ -1658,10 +1658,7 @@ class Font(HasProps):
         """
         if thickness is None:
             thickness = self.outline_thickness
-        return self.for_all(
-            Glyph.outline,
-            thickness = thickness
-        )
+        return self.for_all(Glyph.outline, thickness=thickness)
 
     # palette and levels
 
