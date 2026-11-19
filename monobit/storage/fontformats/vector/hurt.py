@@ -20,7 +20,7 @@ from monobit.base import Props
 def load_hurt(
         instream,
         baseline:int=9, top:int=-12, bottom:int=16,
-        renumber:bool=False,
+        renumber:bool=False, scale:int=1,
     ):
     """
     Load a stroke font in Jim Hurt's format for Hershey's fonts.
@@ -29,9 +29,10 @@ def load_hurt(
     baseline: y-coordinate of baseline (default: 9)
     bottom: y-coordinate of bottom (default: 16)
     renumber: set codepoint to ordinal value in file
+    scale: number of pixels per vector length unit (default:1)
     """
     jhf_data = _read_hurt(instream, renumber)
-    font = _convert_hurt(jhf_data, baseline, top, bottom)
+    font = _convert_hurt(jhf_data, baseline, top, bottom, scale)
     return font
 
 
@@ -75,7 +76,7 @@ def _read_hurt(instream, renumber=False):
     return glyphdata
 
 
-def _convert_hurt(glyphdata, baseline, top, bottom):
+def _convert_hurt(glyphdata, baseline, top, bottom, scale):
     """Convert JHF font data to monobit Font."""
     glyphs = []
     minx, miny = 0, 0
@@ -102,8 +103,8 @@ def _convert_hurt(glyphdata, baseline, top, bottom):
         # convert from top-left to bottom-left coordinates
         path = StrokePath(path).flip().shift(0, baseline-top)
         glyphs.append(Glyph.from_path(
-            path, codepoint=glyphrec.number,
-            advance_width=glyphrec.right_margin-glyphrec.left_margin,
+            path, scale=scale, codepoint=glyphrec.number,
+            scalable_width=glyphrec.right_margin-glyphrec.left_margin,
         ))
     return Font(
         glyphs, ascent=-top+baseline, descent=-baseline+bottom,

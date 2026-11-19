@@ -40,10 +40,14 @@ FNT_MAGIC_3 = b'\0\3'
     magic=(FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3),
     patterns=('*.fnt',),
 )
-def load_win_fnt(instream):
-    """Load font from a Windows .FNT resource."""
+def load_win_fnt(instream, scale:int=1):
+    """
+    Load font from a Windows .FNT resource.
+
+    scale: number of pixels per vector length unit (vector fonts only; default:1)
+    """
     resource = instream.read()
-    font = convert_win_fnt_resource(resource)
+    font = convert_win_fnt_resource(resource, scale)
     return font
 
 
@@ -230,11 +234,11 @@ _GLYPH_ENTRY_PVECTOR = le.Struct(
 ##############################################################################
 # windows .FNT reader
 
-def convert_win_fnt_resource(data):
+def convert_win_fnt_resource(data, scale):
     """Convert Windows FNT resource to monobit Font."""
     win_props = _extract_win_props(data)
     properties = _convert_win_props(data, win_props)
-    glyphs = _extract_glyphs(data, win_props)
+    glyphs = _extract_glyphs(data, win_props, scale)
     font = Font(glyphs, **properties)
     font = font.label()
     return font
@@ -253,10 +257,10 @@ def _extract_win_props(data):
     win_props = SimpleNamespace(**vars(header), **vars(extension))
     return win_props
 
-def _extract_glyphs(data, win_props):
+def _extract_glyphs(data, win_props, scale):
     """Read a WinFont character table."""
     if win_props.dfType & 1:
-        return _extract_vector_glyphs(data, win_props)
+        return _extract_vector_glyphs(data, win_props, scale)
     if win_props.dfVersion == 0x100:
         return _extract_glyphs_v1(data, win_props)
     return _extract_glyphs_v2(data, win_props)
@@ -316,7 +320,7 @@ def _extract_glyphs_v2(data, win_props):
     return glyphs
 
 
-def _extract_vector_glyphs(data, win_props):
+def _extract_vector_glyphs(data, win_props, scale):
     """Read a vector character table."""
     n_chars = win_props.dfLastChar - win_props.dfFirstChar + 1
     ct_start = _FNT_HEADER_SIZE[win_props.dfVersion]
@@ -345,10 +349,10 @@ def _extract_vector_glyphs(data, win_props):
             win_props.dfFirstChar
         )
     )
-    return _convert_vector_glyphs(glyphdata, win_props)
+    return _convert_vector_glyphs(glyphdata, win_props, scale)
 
 
-def _convert_vector_glyphs(glyphdata, win_props):
+def _convert_vector_glyphs(glyphdata, win_props, scale):
     """Convert a vector character table to paths."""
     glyphs = []
     for i, glyphrec in enumerate(glyphdata):
@@ -372,7 +376,8 @@ def _convert_vector_glyphs(glyphdata, win_props):
         # Windows uses top-left coordinates
         path = StrokePath(path).flip().shift(0, win_props.dfAscent)
         glyphs.append(Glyph.from_path(
-            path, advance_width=glyphrec.width, codepoint=glyphrec.codepoint
+            path, scale=scale,
+            scalable_width=glyphrec.width, codepoint=glyphrec.codepoint
         ))
     return glyphs
 

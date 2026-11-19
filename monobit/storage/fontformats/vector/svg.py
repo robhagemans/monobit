@@ -37,8 +37,12 @@ DEFAULT_NAME = 'missing'
         b'<?xml version="1.0" standalone="yes"?>\n<svg'
     ),
 )
-def load_svg(instream):
-    """Load vector font from Scalable Vector Graphics font."""
+def load_svg(instream, scale:int=1):
+    """
+    Load vector font from Scalable Vector Graphics font.
+
+    scale: number of pixels per vector length unit (default:1)
+    """
     root = etree.parse(instream).getroot()
     if not root.tag.endswith('svg'):
         raise FileFormatError(f'Not an SVG file: root tag is {root.tag}')
@@ -82,7 +86,7 @@ def load_svg(instream):
     glyph_props = tuple(
         dict(
             char=_g.attrib.get('unicode', ''),
-            advance_width=int(_g.attrib.get('horiz-adv-x', 0)),
+            scalable_width=int(_g.attrib.get('horiz-adv-x', 0)),
             tag=_g.attrib.get('glyph-name', '')
         )
         for _g in glyph_elems
@@ -93,7 +97,7 @@ def load_svg(instream):
     glyphs = tuple(
         Glyph.from_path(
             _path.shift(0, -props.line_height + props.descent).flip(),
-            **_gprop
+            scale=scale, **_gprop
         )
         for _path, _gprop in zip(paths, glyph_props)
     )
@@ -180,8 +184,11 @@ def save_svg(fonts, outfile):
             font.get_property('svg.font_id') or font.font_id
             or font.family or '0'
         ),
-        # default advance
-        'horiz-adv-x': ceil(font.average_width),
+        # default advance is average scalable width
+        'horiz-adv-x': ceil(
+            sum(_g.scalable_width for _g in font.glyphs)
+            / len(font.glyphs)
+        ),
     }
     outfile.write(f'<font{attr_str(font_attr, indent=4)}>\n')
     font_face = {
@@ -220,7 +227,7 @@ def _write_glyph(outfile, font, glyph, tag='glyph'):
         d = ''
     charstr = ''.join(f'&#{ord(_c)};' for _c in glyph.char)
     glyphprops = {
-        'horiz-adv-x': glyph.advance_width,
+        'horiz-adv-x': glyph.scalable_width,
     }
     if tag != 'missing-glyph':
         if charstr:
@@ -231,4 +238,4 @@ def _write_glyph(outfile, font, glyph, tag='glyph'):
     outfile.write(f'    <path{d}\n      fill="none" stroke="currentColor" stroke-width="1"/>\n')
     outfile.write(f'  </{tag}>\n')
     # this is shorter but not recognised as single-stroke font by FontForge
-    #outfile.write(f'  <{tag}{unicode} horiz-adv-x="{glyph.advance_width}"{d}/>\n')
+    #outfile.write(f'  <{tag}{unicode} horiz-adv-x="{glyph.scalable_width}"{d}/>\n')

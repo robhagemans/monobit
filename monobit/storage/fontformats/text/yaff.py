@@ -38,13 +38,14 @@ from .draw import format_comment
     patterns=('*.yaff', '*.yaffs',),
     text=True,
 )
-def load_yaff(instream, allow_empty:bool=False):
+def load_yaff(instream, allow_empty:bool=False, scale:int=1):
     """
     Load font from a monobit .yaff file.
 
     allow_empty: allow files with no glyphs (default: False)
+    scale: number of pixels per vector length unit (vector fonts only; default:1)
     """
-    return _load_yaffs(instream.text, allow_empty)
+    return _load_yaffs(instream.text, allow_empty, scale)
 
 
 @savers.register(
@@ -123,12 +124,12 @@ def _resolve_key(key):
 # read file
 
 
-def _load_yaffs(text_stream, allow_empty):
+def _load_yaffs(text_stream, allow_empty, scale):
     """Parse a yaff or yaffs file."""
     fonts = []
     reader = SectionIterator(text_stream)
     while not reader.eof:
-        font = _read_yaff(reader)
+        font = _read_yaff(reader, scale)
         # if no glyphs, ignore it - may not be yaff at all
         if font.glyphs or allow_empty:
             fonts.append(font)
@@ -157,7 +158,7 @@ class SectionIterator:
             return line
 
 
-def _read_yaff(text_stream):
+def _read_yaff(text_stream, scale):
     """Parse a monobit yaff file."""
     blocktypes = (
         YaffComment, YaffProperty, YaffGlyph, YaffPropertyOrGlyph,
@@ -197,8 +198,8 @@ def _read_yaff(text_stream):
     font_comments.extend(current_comment)
     # construct glyphs, including path-only glyphs
     glyphs = (
-        Glyph(**vars(_g)) if _g.pixels or not hasattr(_g, 'path')
-        else Glyph.from_path(**vars(_g - 'pixels'))
+        Glyph(**vars(_g)) if not hasattr(_g, 'path')
+        else Glyph.from_path(scale=scale, **vars(_g - 'pixels'))
         for _g in glyphs
     )
     return Font(
