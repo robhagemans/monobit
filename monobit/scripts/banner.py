@@ -49,7 +49,14 @@ def main():
     )
     parser.add_argument(
         '--font', '-f', type=str, default='',
-        help='font file to use when printng text'
+        help='font file to use when printing text'
+    )
+    parser.add_argument(
+        '--vector-scale', type=float, default=1,
+        help=(
+            'number of pixels per length unit for vector fonts '
+            '(default: 1)'
+        )
     )
     parser.add_argument(
         '--format', type=str, default='',
@@ -196,7 +203,9 @@ def main():
         #######################################################################
         if args.font:
             # take first font from pack
-            font, *_ = monobit.load(args.font, format=args.format)
+            font, *_ = monobit.load(
+                args.font, format=args.format, scale=args.vector_scale
+            )
         elif args.set_default:
             font = None
         elif DEFAULT_CACHE:

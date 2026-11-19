@@ -34,11 +34,12 @@ from .os2.gpifont import convert_os2_font_resource, GPI_MAGIC
     magic=(b'MZ', b'LX', b'LE', b'NE', b'PE'),
     patterns=('*.fon', '*.exe', '*.dll'),
 )
-def load_mzfon(instream, all_type_ids:bool=False):
+def load_mzfon(instream, all_type_ids:bool=False, scale:float=1):
     """
     Load fonts from a Windows or OS/2 .FON container.
 
     all_type_ids: try to extract font from any resource, regardless of type id
+    scale: number of pixels per vector length unit (vector fonts only; default:1)
     """
     mz_header = MZ_HEADER.read_from(instream)
     if mz_header.e_magic == b'MZ':
@@ -94,7 +95,7 @@ def load_mzfon(instream, all_type_ids:bool=False):
                 font = convert_os2_font_resource(resource)
                 fonts.append(font)
             elif magic[:2] in (FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3):
-                font = convert_win_fnt_resource(resource)
+                font = convert_win_fnt_resource(resource, scale)
                 fonts.append(font)
             else:
                 logging.warning(

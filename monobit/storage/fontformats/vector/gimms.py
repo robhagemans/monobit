@@ -23,11 +23,15 @@ _GIMMS_MAGIC = Magic.offset(4) + b'GIMM'
     name='gimms',
     magic=(_GIMMS_MAGIC,),
 )
-def load_gimms(instream):
-    """Read GIMMS.BIN font file."""
+def load_gimms(instream, scale:float=1):
+    """
+    Read GIMMS.BIN font file.
+
+    scale: number of pixels per vector length unit (default:1)
+    """
     fonts = []
     while True:
-        font = _read_gimms_resource(instream)
+        font = _read_gimms_resource(instream, scale)
         if not font:
             break
         fonts.append(font)
@@ -57,7 +61,7 @@ _CHARHEADER = be.Struct(
 )
 
 
-def _read_gimms_resource(instream):
+def _read_gimms_resource(instream, scale):
     """Read font resource from GIMMS.BIN file."""
     try:
         gimms_header = _HEADER.read_from(instream)
@@ -91,6 +95,6 @@ def _read_gimms_resource(instream):
             if codeword & _LASTVECTOR:
                 break
         glyphs.append(
-            Glyph.from_path(path, codepoint=cp)
+            Glyph.from_path(path, scale=scale, codepoint=cp)
         )
     return Font(glyphs, name=f"GIMMS-{gimms_header.number.decode('latin-1')}")
