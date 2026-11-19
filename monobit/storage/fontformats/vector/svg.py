@@ -37,7 +37,7 @@ DEFAULT_NAME = 'missing'
         b'<?xml version="1.0" standalone="yes"?>\n<svg'
     ),
 )
-def load_svg(instream, scale:int=1):
+def load_svg(instream, scale:float=1):
     """
     Load vector font from Scalable Vector Graphics font.
 

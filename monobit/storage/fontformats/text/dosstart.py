@@ -25,7 +25,7 @@ _DOSSTART_SIG = 'DosStartFont'
     patterns=('*.dsf',),
     text=True,
 )
-def load_dosstart(instream, scale:int=1):
+def load_dosstart(instream, scale:float=1):
     """
     Load font from DosStart! .DSF file.
 

@@ -22,7 +22,7 @@ _BGI_MAGIC = b'PK\b\bBGI '
     magic=(_BGI_MAGIC,),
     patterns=('*.chr',),
 )
-def load_borland(instream, scale:int=1):
+def load_borland(instream, scale:float=1):
     """
     Load a Borland BGI stroke font.
 

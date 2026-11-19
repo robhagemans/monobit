@@ -40,7 +40,7 @@ FNT_MAGIC_3 = b'\0\3'
     magic=(FNT_MAGIC_1, FNT_MAGIC_2, FNT_MAGIC_3),
     patterns=('*.fnt',),
 )
-def load_win_fnt(instream, scale:int=1):
+def load_win_fnt(instream, scale:float=1):
     """
     Load font from a Windows .FNT resource.
 

@@ -23,7 +23,7 @@ _GIMMS_MAGIC = Magic.offset(4) + b'GIMM'
     name='gimms',
     magic=(_GIMMS_MAGIC,),
 )
-def load_gimms(instream, scale:int=1):
+def load_gimms(instream, scale:float=1):
     """
     Read GIMMS.BIN font file.
 

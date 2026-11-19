@@ -38,7 +38,7 @@ from .draw import format_comment
     patterns=('*.yaff', '*.yaffs',),
     text=True,
 )
-def load_yaff(instream, allow_empty:bool=False, scale:int=1):
+def load_yaff(instream, allow_empty:bool=False, scale:float=1):
     """
     Load font from a monobit .yaff file.
 

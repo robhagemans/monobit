@@ -34,7 +34,7 @@ from .os2.gpifont import convert_os2_font_resource, GPI_MAGIC
     magic=(b'MZ', b'LX', b'LE', b'NE', b'PE'),
     patterns=('*.fon', '*.exe', '*.dll'),
 )
-def load_mzfon(instream, all_type_ids:bool=False, scale:int=1):
+def load_mzfon(instream, all_type_ids:bool=False, scale:float=1):
     """
     Load fonts from a Windows or OS/2 .FON container.
 

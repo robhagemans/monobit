@@ -534,9 +534,9 @@ class Glyph(HasProps):
             raster, path=strokepath,
             **(kwargs | dict(
                 scalable_width=scalable_width,
-                right_bearing=(scalable_width-strokepath.bounds.right)*scale,
-                left_bearing=strokepath.bounds.left*scale,
-                shift_up=strokepath.bounds.bottom*scale,
+                right_bearing=round((scalable_width-strokepath.bounds.right)*scale),
+                left_bearing=round(strokepath.bounds.left*scale),
+                shift_up=round(strokepath.bounds.bottom*scale),
             ))
         )
 

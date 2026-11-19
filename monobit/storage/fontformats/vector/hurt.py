@@ -20,7 +20,7 @@ from monobit.base import Props
 def load_hurt(
         instream,
         baseline:int=9, top:int=-12, bottom:int=16,
-        renumber:bool=False, scale:int=1,
+        renumber:bool=False, scale:float=1,
     ):
     """
     Load a stroke font in Jim Hurt's format for Hershey's fonts.
