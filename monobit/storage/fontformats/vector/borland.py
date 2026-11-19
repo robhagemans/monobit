@@ -140,7 +140,7 @@ def _convert_borland(
         )
         path = StrokePath(relmoves)
         glyphs.append(Glyph.from_path(
-            path, scale=scale, scalable_width=width, codepoint=codepoint,
+            path, scale=scale, path_width=width, codepoint=codepoint,
         ))
     return Font(
         glyphs, ascent=old_header.capital_top, descent=-old_header.descent,
@@ -224,7 +224,7 @@ def _convert_to_borland(font):
     offsets = (0, *accumulate(len(_b) for _b in glyphbytes[:-1]))
     offsets = le.uint16.array(old_header.number_chars)(*offsets)
     widths = le.uint8.array(old_header.number_chars)(
-        *(_g.scalable_width for _g in font.glyphs)
+        *(_g.path_width for _g in font.glyphs)
     )
     return dict(
         header=header,

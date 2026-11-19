@@ -377,7 +377,7 @@ def _convert_vector_glyphs(glyphdata, win_props, scale):
         path = StrokePath(path).flip().shift(0, win_props.dfAscent)
         glyphs.append(Glyph.from_path(
             path, scale=scale,
-            scalable_width=glyphrec.width, codepoint=glyphrec.codepoint
+            path_width=glyphrec.width, codepoint=glyphrec.codepoint
         ))
     return glyphs
 

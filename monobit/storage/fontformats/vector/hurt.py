@@ -104,7 +104,7 @@ def _convert_hurt(glyphdata, baseline, top, bottom, scale):
         path = StrokePath(path).flip().shift(0, baseline-top)
         glyphs.append(Glyph.from_path(
             path, scale=scale, codepoint=glyphrec.number,
-            scalable_width=glyphrec.right_margin-glyphrec.left_margin,
+            path_width=glyphrec.right_margin-glyphrec.left_margin,
         ))
     return Font(
         glyphs, ascent=-top+baseline, descent=-baseline+bottom,

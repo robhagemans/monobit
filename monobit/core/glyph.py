@@ -89,6 +89,8 @@ class GlyphProperties:
 
     # path segments for stroke fonts
     path: StrokePath = StrokePath()
+    # scaling factor, number of pixels used per vector length unit
+    path_width: int
 
     # overridable
     scalable_width: float
@@ -522,19 +524,22 @@ class Glyph(HasProps):
         return cls(pixels, **kwargs)
 
     @classmethod
-    def from_path(cls, path, *, scalable_width=None, scale=1, **kwargs):
+    def from_path(cls, path, *, path_width=None, scale=1, **kwargs):
         """Draw the StrokePath and create a Glyph."""
         strokepath = StrokePath(path)
         raster = strokepath.draw(scale=scale)
-        if scalable_width is None:
-            scalable_width = strokepath.bounds.right
+        if path_width is None:
+            path_width = strokepath.bounds.right
         else:
-            scalable_width = float(scalable_width)
+            path_width = float(path_width)
         return cls(
-            raster, path=strokepath,
+            raster, path=strokepath, path_width=path_width,
             **(kwargs | dict(
-                scalable_width=scalable_width,
-                right_bearing=round((scalable_width-strokepath.bounds.right)*scale),
+                scalable_width=path_width*scale,
+                right_bearing=(
+                    round(path_width*scale)
+                    - round(strokepath.bounds.right*scale)
+                ),
                 left_bearing=round(strokepath.bounds.left*scale),
                 shift_up=round(strokepath.bounds.bottom*scale),
             ))

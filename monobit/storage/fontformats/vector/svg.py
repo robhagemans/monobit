@@ -86,7 +86,7 @@ def load_svg(instream, scale:float=1):
     glyph_props = tuple(
         dict(
             char=_g.attrib.get('unicode', ''),
-            scalable_width=int(_g.attrib.get('horiz-adv-x', 0)),
+            path_width=int(_g.attrib.get('horiz-adv-x', 0)),
             tag=_g.attrib.get('glyph-name', '')
         )
         for _g in glyph_elems
@@ -184,9 +184,9 @@ def save_svg(fonts, outfile):
             font.get_property('svg.font_id') or font.font_id
             or font.family or '0'
         ),
-        # default advance is average scalable width
+        # default advance is average path width
         'horiz-adv-x': ceil(
-            sum(_g.scalable_width for _g in font.glyphs)
+            sum(_g.path_width for _g in font.glyphs)
             / len(font.glyphs)
         ),
     }
@@ -227,7 +227,7 @@ def _write_glyph(outfile, font, glyph, tag='glyph'):
         d = ''
     charstr = ''.join(f'&#{ord(_c)};' for _c in glyph.char)
     glyphprops = {
-        'horiz-adv-x': glyph.scalable_width,
+        'horiz-adv-x': glyph.path_width,
     }
     if tag != 'missing-glyph':
         if charstr:
@@ -238,4 +238,4 @@ def _write_glyph(outfile, font, glyph, tag='glyph'):
     outfile.write(f'    <path{d}\n      fill="none" stroke="currentColor" stroke-width="1"/>\n')
     outfile.write(f'  </{tag}>\n')
     # this is shorter but not recognised as single-stroke font by FontForge
-    #outfile.write(f'  <{tag}{unicode} horiz-adv-x="{glyph.scalable_width}"{d}/>\n')
+    #outfile.write(f'  <{tag}{unicode} horiz-adv-x="{glyph.path_width}"{d}/>\n')
