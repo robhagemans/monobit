@@ -11,39 +11,9 @@ from pathlib import Path
 
 from monobit.base import safe_import
 ttLib = safe_import('fontTools.ttLib')
-loaded = ttLib is not None
+loaded = bool(ttLib)
 
 from monobit.base import FileFormatError
-
-
-def register_extensions():
-    """Register extension tables"""
-    for file in files(__name__).iterdir():
-        name = Path(file.name).stem
-        if name.startswith('__'):
-            continue
-        tag = name.replace('_', '')
-        ttLib.registerCustomTableClass(tag, f'{__package__}.{name}')
-
-
-def ebdt_monkey_patch():
-    """Monkey patch to fix a bug in fontTools (as of 4.39.3)"""
-    from fontTools.ttLib.tables import E_B_D_T_
-    from fontTools.ttLib.tables.E_B_D_T_ import bytesjoin, byteord, bytechr
-
-    def _reverseBytes(data):
-        if isinstance(data, bytes) and len(data) != 1:
-            # this is where the bug was
-            return bytesjoin(map(_reverseBytes, data))
-        byte = byteord(data)
-        result = 0
-        for i in range(8):
-            result = result << 1
-            result |= byte & 1
-            byte = byte >> 1
-        return bytechr(result)
-
-    E_B_D_T_._reverseBytes = _reverseBytes
 
 
 if not loaded:
@@ -55,9 +25,6 @@ if not loaded:
 else:
     def check_fonttools(*args, **kwargs):
         pass
-
-    ebdt_monkey_patch()
-    register_extensions()
 
     from fontTools.ttLib import TTLibError
     from fontTools.ttLib.ttFont import TTFont
@@ -172,7 +139,7 @@ else:
 
     # `EBSC`
 
-    from .E_B_S_C_ import BitmapScaleTable
+    from fontTools.ttLib.tables.E_B_S_C_ import BitmapScaleTable
 
     def _setup_ebsc_table(fb, scaler_mapping):
         # EBSC should only be used with EBDT, EBLC tables
